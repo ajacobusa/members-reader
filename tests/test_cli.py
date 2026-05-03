@@ -1,3 +1,4 @@
+import csv
 import json
 import pytest
 
@@ -40,3 +41,17 @@ class TestCLI:
         exit_code = main([str(empty_csv)])
         assert exit_code == 0
         assert capsys.readouterr().out == ""
+
+    def test_verbose_flag(self, sample_csv, capsys):
+        exit_code = main([str(sample_csv), "--verbose"])
+        assert exit_code == 0
+
+    def test_bad_columns_returns_exit_code_1(self, tmp_path, capsys):
+        bad_csv = tmp_path / "bad.csv"
+        with open(bad_csv, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["id", "email"])
+            writer.writeheader()
+            writer.writerow({"id": "1", "email": "x@example.com"})
+        exit_code = main([str(bad_csv)])
+        assert exit_code == 1
+        assert "Error" in capsys.readouterr().err
