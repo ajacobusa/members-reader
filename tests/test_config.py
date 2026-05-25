@@ -21,3 +21,9 @@ def test_missing_required_key_raises(tmp_path):
 def test_extra_tickers_merged(config_path):
     cfg = load_config(config_path)
     assert isinstance(cfg.universe["extra_tickers"], list)
+
+def test_empty_config_file_raises_value_error(tmp_path):
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("")
+    with pytest.raises(ValueError, match="YAML mapping"):
+        load_config(empty)
