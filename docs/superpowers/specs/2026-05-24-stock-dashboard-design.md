@@ -18,6 +18,7 @@ A Python Dash web application that generates and displays daily top-10 stock buy
 - Persist picks history in SQLite for reference and pattern learning
 - Make every threshold, weight, and condition adjustable via `config.yaml` without touching code
 - Work fully on free data sources (Tier A); optionally enhance with free API keys (Tier B)
+- Send a formatted HTML email of the day's top 10 picks to ajacobusa@gmail.com at 7:30 AM every weekday via Windows Task Scheduler
 
 ---
 
@@ -51,8 +52,10 @@ stock_dashboard/
 ├── db/
 │   ├── database.py         # SQLite schema, connection, CRUD
 │   └── stocks.db           # Created on first run
-└── assets/
-    └── style.css
+├── assets/
+│   └── style.css
+├── notifier.py             # HTML email builder + Gmail SMTP sender
+└── run_daily.py            # Standalone script: pipeline → email (Task Scheduler entry point)
 ```
 
 ---
@@ -285,6 +288,68 @@ output:
 
 ---
 
+## Email Notifications
+
+A daily HTML email is sent to **ajacobusa@gmail.com** at 7:30 AM every weekday, before US market open (9:30 AM ET).
+
+### Mechanism
+- **Sender:** ajacobusa@gmail.com (via Gmail SMTP, port 587, STARTTLS)
+- **Auth:** Gmail App Password — a 16-character app-specific password generated once in Google Account → Security → 2-Step Verification → App Passwords. Stored in `config.yaml` under `email.app_password`. Never the real Gmail password.
+- **Library:** Python standard library `smtplib` + `email.mime` — zero extra dependencies.
+
+### Email Content (HTML)
+- Subject: `📈 StockBoard — Top 10 Picks for [Day, Date]`
+- Market conditions banner (green/red)
+- Top 10 picks table: rank, ticker, company, composite score, primary catalyst tag
+- "Why Buy Today" one-liner per pick
+- Footer: "Open dashboard for full breakdown → http://localhost:8050"
+
+### Entry Point
+`run_daily.py` — standalone script that:
+1. Loads `config.yaml`
+2. Runs the full 5-gate pipeline
+3. Saves picks to SQLite
+4. Calls `notifier.py` to build and send the HTML email
+5. Logs result to `logs/daily.log`
+
+Runs independently of the Dash app — the app does not need to be open.
+
+---
+
+## Scheduling (Windows Task Scheduler)
+
+Windows Task Scheduler triggers `run_daily.py` at 7:30 AM every weekday. Setup is automated via a one-time PowerShell command included in the project README:
+
+```powershell
+schtasks /create /tn "StockBoard Daily" `
+  /tr "python D:\path\to\stock_dashboard\run_daily.py" `
+  /sc weekly /d MON,TUE,WED,THU,FRI `
+  /st 07:30 /f
+```
+
+- Runs even if the Dash app is closed
+- Runs whether or not the user is logged in (configurable in Task Scheduler)
+- Task name `StockBoard Daily` — visible and manageable in Task Scheduler UI
+- To disable: `schtasks /delete /tn "StockBoard Daily" /f`
+- Email/schedule config in `config.yaml`:
+
+```yaml
+email:
+  enabled: true
+  recipient: ajacobusa@gmail.com
+  sender: ajacobusa@gmail.com
+  app_password: ""          # Gmail App Password (not your real password)
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+
+schedule:
+  time: "07:30"             # 24hr format, local time
+  days: [MON, TUE, WED, THU, FRI]
+  skip_market_holidays: true
+```
+
+---
+
 ## Error Handling
 
 - **yfinance rate limit / timeout:** retry with exponential backoff (3 attempts), skip ticker after 3 failures, log warning
@@ -293,6 +358,9 @@ output:
 - **Tier B API error (bad key, quota exceeded):** skip source silently, build narrative from remaining sources
 - **Market data stale (weekend/holiday):** detect and display "Markets closed — showing last available data"
 - **No stocks pass gates:** display informative message ("No picks today — market conditions unfavorable" or "No catalyst-driven opportunities found")
+- **Email send fails (SMTP error, bad app password):** log error to `logs/daily.log`, do not crash — picks are still saved to SQLite
+- **Email disabled / no app password configured:** skip email silently, pipeline still runs and saves picks
+- **Weekend / market holiday at 7:30 AM:** `run_daily.py` detects non-trading days via the `exchange_calendars` library and exits early without running the pipeline or sending email
 
 ---
 
@@ -317,6 +385,7 @@ feedparser>=6.0
 requests>=2.31
 beautifulsoup4>=4.12
 PyYAML>=6.0
+exchange_calendars>=4.5
 pytest>=8.0
 pytest-mock>=3.12
 ```
@@ -326,7 +395,7 @@ pytest-mock>=3.12
 ## Out of Scope
 
 - Real-time / auto-refreshing data (on-demand only)
-- Push notifications or email alerts
+- SMS or push notifications
 - Brokerage integration or trade execution
 - Portfolio tracking or P&L calculation
 - Mobile app or PWA
