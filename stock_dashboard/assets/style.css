@@ -1,0 +1,12 @@
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8f9fa; }
+.navbar { background: #1a1a2e; padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 32px; }
+.navbar-brand { color: #00d4ff; font-weight: 700; font-size: 18px; text-decoration: none; }
+.nav-link { color: #aaa; text-decoration: none; font-size: 14px; padding: 4px 12px; border-radius: 4px; }
+.nav-link:hover, .nav-link.active { color: #00d4ff; }
+.score-badge { background: #00c853; color: white; border-radius: 50%; width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+.catalyst-tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px;
+  font-weight: 600; margin-right: 4px; }
+.market-banner { padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; }
+.market-ok { background: #e8f5e9; color: #2e7d32; }
+.market-bad { background: #fce4ec; color: #c62828; }
