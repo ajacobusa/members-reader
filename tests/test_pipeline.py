@@ -65,3 +65,17 @@ def test_gate4_rejects_below_20sma(config_path):
     cfg = load_config(config_path)
     stock = _stock(price_history=_history(trend="down"), current_price=82.0)
     assert gate4_technical(stock, cfg) is False
+
+def test_run_pipeline_aborts_on_bad_market(config_path, mocker):
+    cfg = load_config(config_path)
+    mocker.patch("stock_dashboard.engine.fetcher.fetch_stock_data", return_value=None)
+    records, market_ok = run_pipeline(
+        tickers=["AAPL"],
+        cfg=cfg,
+        market_data={"vix": 50.0, "spy_vs_50sma": -0.05, "fear_greed": 10},
+        earnings_data={},
+        sector_pe_map={},
+        marked_picks_count=0,
+    )
+    assert market_ok is False
+    assert records == []
