@@ -55,3 +55,15 @@ def test_send_email_skips_when_no_app_password(config_path, mocker):
     mock_smtp = mocker.patch("smtplib.SMTP")
     send_email("subject", "<p>body</p>", cfg)
     mock_smtp.assert_not_called()
+
+
+def test_send_email_calls_smtp_when_configured(config_path, mocker):
+    cfg = load_config(config_path)
+    cfg.email["enabled"] = True
+    cfg.email["app_password"] = "test-app-password"
+    mock_smtp_class = mocker.patch("smtplib.SMTP")
+    mock_server = mock_smtp_class.return_value.__enter__.return_value
+    send_email("Test Subject", "<p>body</p>", cfg)
+    mock_smtp_class.assert_called_once_with(cfg.email["smtp_host"], cfg.email["smtp_port"])
+    mock_server.starttls.assert_called_once()
+    mock_server.login.assert_called_once_with(cfg.email["sender"], "test-app-password")

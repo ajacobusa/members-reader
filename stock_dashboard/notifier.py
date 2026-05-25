@@ -3,6 +3,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import date
+from html import escape
 from stock_dashboard.db.database import PickRecord
 from stock_dashboard.engine.config_loader import Config
 
@@ -34,18 +35,14 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
         cat_badges = "".join(
             f'<span style="background:{_CATALYST_COLORS.get(c.get("type", ""), "#888")};'
             f'color:white;padding:2px 8px;border-radius:10px;font-size:11px;'
-            f'margin-right:4px;">{c.get("label", c.get("type", ""))}</span>'
+            f'margin-right:4px;">{escape(c.get("label", c.get("type", "")))}</span>'
             for c in cats
-        )
-        narrative = p.narrative
-        narrative_display = (
-            narrative[:120] + "..." if len(narrative) > 120 else narrative
         )
         rows += f"""
         <tr style="border-bottom:1px solid #f0f0f0;">
           <td style="padding:10px 8px;font-weight:700;color:#888;">{i}</td>
-          <td style="padding:10px 8px;font-weight:800;color:#1565c0;font-size:15px;">{p.ticker}</td>
-          <td style="padding:10px 8px;">{p.company}</td>
+          <td style="padding:10px 8px;font-weight:800;color:#1565c0;font-size:15px;">{escape(p.ticker)}</td>
+          <td style="padding:10px 8px;">{escape(p.company)}</td>
           <td style="padding:10px 8px;text-align:right;">${p.price:.2f}</td>
           <td style="padding:10px 8px;text-align:center;">
             <span style="background:#00c853;color:white;border-radius:50%;width:36px;height:36px;
@@ -54,7 +51,7 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
             </span>
           </td>
           <td style="padding:10px 8px;">{cat_badges}</td>
-          <td style="padding:10px 8px;color:#666;font-size:12px;">{narrative_display}</td>
+          <td style="padding:10px 8px;color:#666;font-size:12px;">{escape(p.narrative[:120]) + "..." if len(p.narrative) > 120 else escape(p.narrative)}</td>
         </tr>"""
 
     table_html = ""
@@ -91,14 +88,14 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
 </body></html>"""
 
 
-def send_email(subject: str, html_body: str, cfg: Config) -> None:
+def send_email(subject: str, html_body: str, cfg: Config) -> bool:
     ec = cfg.email
     if not ec.get("enabled"):
         log.info("Email disabled — skipping send")
-        return
+        return False
     if not ec.get("app_password"):
         log.warning("No Gmail App Password configured — skipping email send")
-        return
+        return False
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = ec["sender"]
@@ -110,5 +107,7 @@ def send_email(subject: str, html_body: str, cfg: Config) -> None:
             server.login(ec["sender"], ec["app_password"])
             server.sendmail(ec["sender"], ec["recipient"], msg.as_string())
         log.info("Email sent to %s", ec["recipient"])
+        return True
     except Exception as exc:
         log.error("Failed to send email: %s", exc)
+        return False
