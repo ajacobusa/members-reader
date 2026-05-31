@@ -23,6 +23,22 @@ class PickRecord:
 
 
 class Database:
+    _NEW_PICK_COLUMNS = {
+        "expected_return_pct": "REAL",
+        "prob_gain": "REAL",
+        "ci_low_pct": "REAL",
+        "ci_high_pct": "REAL",
+        "risk_reward": "REAL",
+        "risk_score": "REAL",
+        "kelly_fraction": "REAL",
+        "suggested_size_pct": "REAL",
+        "earnings_beat_rate": "REAL",
+        "eps_revision_30d_pct": "REAL",
+        "options_summary": "TEXT",
+        "realized_return_pct": "REAL",
+        "outcome_recorded": "INTEGER DEFAULT 0",
+    }
+
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
@@ -54,6 +70,14 @@ class Database:
                 market_favorable INTEGER
             );
         """)
+        self.conn.commit()
+        self._migrate_pick_columns()
+
+    def _migrate_pick_columns(self) -> None:
+        existing = {r[1] for r in self.conn.execute("PRAGMA table_info(picks)").fetchall()}
+        for col, decl in self._NEW_PICK_COLUMNS.items():
+            if col not in existing:
+                self.conn.execute(f"ALTER TABLE picks ADD COLUMN {col} {decl}")
         self.conn.commit()
 
     def save_picks(self, records: list[PickRecord]) -> None:

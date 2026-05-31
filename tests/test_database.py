@@ -61,3 +61,17 @@ def test_get_picks_filter_by_date(db):
     picks = db.get_picks(date="2026-05-25")
     assert len(picks) == 1
     assert picks[0]["date"] == "2026-05-25"
+
+def test_new_profit_columns_exist(db):
+    cols = {r[1] for r in db.conn.execute("PRAGMA table_info(picks)").fetchall()}
+    for c in ["expected_return_pct", "prob_gain", "ci_low_pct", "ci_high_pct",
+              "risk_reward", "risk_score", "kelly_fraction", "suggested_size_pct",
+              "earnings_beat_rate", "eps_revision_30d_pct", "options_summary",
+              "realized_return_pct", "outcome_recorded"]:
+        assert c in cols
+
+def test_migration_is_idempotent(db):
+    db.init_schema()  # second call must not raise
+    db.init_schema()
+    cols = {r[1] for r in db.conn.execute("PRAGMA table_info(picks)").fetchall()}
+    assert "expected_return_pct" in cols
