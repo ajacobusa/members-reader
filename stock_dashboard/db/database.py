@@ -158,3 +158,16 @@ class Database:
 
     def get_marked_picks(self) -> list[dict]:
         return self.get_picks(marked_only=True)
+
+    def get_unrecorded_picks(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM picks WHERE COALESCE(outcome_recorded,0)=0"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def record_outcome(self, pick_id: int, realized_return_pct: float) -> None:
+        self.conn.execute(
+            "UPDATE picks SET realized_return_pct=?, outcome_recorded=1 WHERE id=?",
+            (realized_return_pct, pick_id),
+        )
+        self.conn.commit()
