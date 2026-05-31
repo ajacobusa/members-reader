@@ -98,12 +98,20 @@ class Database:
             """INSERT INTO picks
                (date, ticker, company, price, composite_score, technical_score,
                 fundamental_score, catalyst_score, pattern_score, catalysts,
-                narrative, signals, marked_as_picked)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                narrative, signals, marked_as_picked,
+                expected_return_pct, prob_gain, ci_low_pct, ci_high_pct,
+                risk_reward, risk_score, kelly_fraction, suggested_size_pct,
+                earnings_beat_rate, eps_revision_30d_pct, options_summary,
+                realized_return_pct, outcome_recorded)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             [(r.date, r.ticker, r.company, r.price, r.composite_score,
               r.technical_score, r.fundamental_score, r.catalyst_score,
               r.pattern_score, json.dumps(r.catalysts), r.narrative,
-              json.dumps(r.signals), int(r.marked_as_picked))
+              json.dumps(r.signals), int(r.marked_as_picked),
+              r.expected_return_pct, r.prob_gain, r.ci_low_pct, r.ci_high_pct,
+              r.risk_reward, r.risk_score, r.kelly_fraction, r.suggested_size_pct,
+              r.earnings_beat_rate, r.eps_revision_30d_pct, r.options_summary,
+              r.realized_return_pct, int(bool(r.outcome_recorded)))
              for r in records],
         )
         self.conn.commit()

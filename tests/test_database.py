@@ -75,3 +75,17 @@ def test_migration_is_idempotent(db):
     db.init_schema()
     cols = {r[1] for r in db.conn.execute("PRAGMA table_info(picks)").fetchall()}
     assert "expected_return_pct" in cols
+
+def test_save_picks_persists_enrichment_fields(db):
+    rec = PickRecord(
+        date="2026-05-31", ticker="NVDA", company="NVIDIA", price=900.0,
+        composite_score=88.0, technical_score=85.0, fundamental_score=90.0,
+        catalyst_score=82.0, pattern_score=0.0, catalysts=[], narrative="x",
+        signals={}, expected_return_pct=1.8, prob_gain=0.63,
+        suggested_size_pct=4.2, risk_reward=2.5,
+    )
+    db.save_picks([rec])
+    got = db.get_picks()[0]
+    assert got["expected_return_pct"] == 1.8
+    assert got["prob_gain"] == 0.63
+    assert got["suggested_size_pct"] == 4.2
