@@ -79,3 +79,33 @@ def test_rank_and_filter_orders_by_ev_and_drops_failures(config_path):
     enriched = rank_and_filter(inputs, options_map={}, factor_inputs={}, cfg=cfg)
     tickers = [e.pick.ticker for e in enriched]
     assert tickers == ["HIGH", "LOW"]
+
+
+def test_factor_score_renormalizes_over_present_factors(config_path):
+    cfg = load_config(config_path)
+    # disable everything except relative_volume and technical_momentum
+    for name, spec in cfg.factor_weights.items():
+        spec["enabled"] = name in ("relative_volume", "technical_momentum")
+    # weights: relative_volume 0.10, technical_momentum 0.10 -> renormalize to 0.5/0.5
+    fs = factor_score(profile=_profile(), options=None,
+                      relative_volume=1.0, technical_momentum=0.0,
+                      sector_strength=0.5, cfg=cfg)
+    # 0.5*1.0 + 0.5*0.0 = 0.5
+    assert fs == pytest.approx(0.5, abs=1e-9)
+
+
+def test_options_flow_low_put_call_scores_higher(config_path):
+    from stock_dashboard.engine.options import OptionsSignal
+    cfg = load_config(config_path)
+    bullish = OptionsSignal("T", 0.4, 0.4, True, False, 100.0, 50.0, True)   # low P/C
+    bearish = OptionsSignal("T", 0.4, 1.5, False, True, 100.0, -50.0, True)  # high P/C
+    hi = factor_score(_profile(), bullish, 0.5, 0.5, 0.5, cfg)
+    lo = factor_score(_profile(), bearish, 0.5, 0.5, 0.5, cfg)
+    assert hi > lo
+
+
+def test_profit_gate_disabled_passes_everything(config_path):
+    cfg = load_config(config_path)
+    cfg.probability_filter["enabled"] = False
+    assert passes_profit_gate(composite=0, expected_return_pct=-5.0,
+                              prob_gain=0.0, risk_reward=0.0, cfg=cfg) is True

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+import json
 import numpy as np
 from stock_dashboard.engine.config_loader import Config
 from stock_dashboard.engine.statistics import ProbabilityProfile
@@ -109,6 +110,15 @@ def rank_and_filter(inputs: list[tuple], options_map: dict, factor_inputs: dict,
         rec.suggested_size_pct = size
         rec.earnings_beat_rate = profile.earnings_beat_rate
         rec.eps_revision_30d_pct = profile.eps_revision_30d_pct
+        if opt is not None and opt.available:
+            rec.options_summary = json.dumps({
+                "iv": opt.implied_volatility,
+                "put_call": opt.put_call_ratio,
+                "max_pain": opt.max_pain,
+                "unusual_call": opt.unusual_call_volume,
+                "unusual_put": opt.unusual_put_volume,
+                "gamma_proxy": opt.gamma_proxy,
+            })
         enriched.append(EnrichedPick(rec, profile, opt, ev_rank, size, ok))
     passing = [e for e in enriched if e.passes_profit_gate]
     passing.sort(key=lambda e: e.ev_rank, reverse=True)
