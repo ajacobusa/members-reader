@@ -113,6 +113,8 @@ health:
   min_fetch_success_rate: 0.85
   alert_on_degraded: true
   abort_if_no_market_data: true
+ranking:
+  require_catalyst: true
 """)
     return cfg
 

@@ -100,3 +100,49 @@ def test_run_pipeline_enriches_and_profit_gates(config_path):
     for r in records:
         assert r.expected_return_pct is not None
         assert r.suggested_size_pct is not None
+
+
+def test_upside_mode_includes_stocks_without_catalyst(config_path):
+    cfg = load_config(config_path)
+    cfg.ranking["require_catalyst"] = False          # upside bucket mode
+    # relax profit gate so survivors flow through to records for assertion
+    cfg.probability_filter["min_composite_score"] = 0
+    cfg.probability_filter["min_expected_return_pct"] = -100.0
+    cfg.probability_filter["min_probability_gain"] = 0.0
+    cfg.probability_filter["min_risk_reward"] = 0.0
+
+    def fake_fetch(ticker):
+        # a clean quality+uptrend stock but with NO catalyst (empty earnings_data,
+        # normal volume, not at 52w high, no upgrade news)
+        return _stock(ticker=ticker, market_cap=50.0, avg_volume=5_000_000,
+                      news_headlines=[])
+
+    records, ok = run_pipeline(
+        tickers=["TEST"], cfg=cfg,
+        market_data={"vix": 16.0, "spy_vs_50sma": 0.05, "fear_greed": 65},
+        earnings_data={}, sector_pe_map={"Technology": 28.0},
+        marked_picks_count=0, fetch_fn=fake_fetch,
+    )
+    assert ok is True
+    assert len(records) >= 1     # no-catalyst stock still ranked in upside mode
+
+
+def test_catalyst_mode_still_excludes_no_catalyst(config_path):
+    cfg = load_config(config_path)  # default require_catalyst: true
+    cfg.probability_filter["min_composite_score"] = 0
+    cfg.probability_filter["min_expected_return_pct"] = -100.0
+    cfg.probability_filter["min_probability_gain"] = 0.0
+    cfg.probability_filter["min_risk_reward"] = 0.0
+
+    def fake_fetch(ticker):
+        return _stock(ticker=ticker, market_cap=50.0, avg_volume=5_000_000,
+                      news_headlines=[])
+
+    records, ok = run_pipeline(
+        tickers=["TEST"], cfg=cfg,
+        market_data={"vix": 16.0, "spy_vs_50sma": 0.05, "fear_greed": 65},
+        earnings_data={}, sector_pe_map={"Technology": 28.0},
+        marked_picks_count=0, fetch_fn=fake_fetch,
+    )
+    # strict mode: no catalyst -> dropped at gate3 -> empty
+    assert records == []

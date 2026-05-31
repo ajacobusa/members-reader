@@ -26,6 +26,7 @@ class Config:
     backtest: dict[str, Any]
     performance: dict[str, Any]
     health: dict[str, Any]
+    ranking: dict[str, Any]
 
 
 REQUIRED_KEYS = [f.name for f in dataclasses.fields(Config)]

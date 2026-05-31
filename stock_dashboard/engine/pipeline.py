@@ -180,7 +180,8 @@ def run_pipeline(
             continue
         if not gate1_quality(stock, cfg):
             continue
-        if not gate3_catalyst(stock, cfg, earnings_data):
+        has_catalyst = gate3_catalyst(stock, cfg, earnings_data)
+        if cfg.ranking.get("require_catalyst", True) and not has_catalyst:
             continue
         if not gate4_technical(stock, cfg):
             continue
