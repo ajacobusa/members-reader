@@ -6,6 +6,8 @@ import pandas as pd
 from stock_dashboard.engine.config_loader import Config
 from stock_dashboard.engine.fetcher import StockData
 from stock_dashboard.engine.scorer import score_stock, ScoreResult
+from stock_dashboard.engine.statistics import build_profile
+from stock_dashboard.engine.enrichment import rank_and_filter
 from stock_dashboard.db.database import PickRecord
 
 log = logging.getLogger(__name__)
@@ -188,25 +190,28 @@ def run_pipeline(
         scored.append(result)
         stock_lookup[ticker] = stock
 
-    scored.sort(key=lambda r: r.composite, reverse=True)
-    top = scored[: cfg.scoring["top_n"]]
-
+    # Build (profile, PickRecord) pairs for survivors, then enrich + EV-rank + profit-gate
     today = datetime.date.today().isoformat()
-    records = [
-        PickRecord(
-            date=today,
-            ticker=r.ticker,
-            company=stock_lookup[r.ticker].company if r.ticker in stock_lookup else r.ticker,
-            price=stock_lookup[r.ticker].current_price if r.ticker in stock_lookup else 0.0,
-            composite_score=r.composite,
-            technical_score=r.technical,
-            fundamental_score=r.fundamental,
-            catalyst_score=r.catalyst_score,
-            pattern_score=r.pattern_score,
-            catalysts=r.catalysts,
-            narrative=r.narrative,
-            signals=r.signals,
+    inputs = []
+    factor_inputs = {}
+    for result in scored:
+        stock = stock_lookup[result.ticker]
+        profile = build_profile(stock, cfg)
+        rec = PickRecord(
+            date=today, ticker=result.ticker, company=stock.company,
+            price=float(stock.current_price),
+            composite_score=result.composite, technical_score=result.technical,
+            fundamental_score=result.fundamental, catalyst_score=result.catalyst_score,
+            pattern_score=result.pattern_score, catalysts=result.catalysts,
+            narrative=result.narrative, signals=result.signals,
         )
-        for r in top
-    ]
+        inputs.append((profile, rec))
+        factor_inputs[result.ticker] = {
+            "relative_volume": float(result.signals.get("volume_ratio", 0.5)),
+            "technical_momentum": float(result.signals.get("momentum_20d", 0.5)),
+            "sector_strength": 0.5,
+        }
+
+    enriched = rank_and_filter(inputs, options_map={}, factor_inputs=factor_inputs, cfg=cfg)
+    records = [e.pick for e in enriched][: cfg.scoring["top_n"]]
     return records, True
