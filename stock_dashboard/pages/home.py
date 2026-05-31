@@ -97,16 +97,27 @@ def render_picks_table(data):
                       style={"background": "#1565c0", "color": "white"})
             for c in cats[:2]
         ])
+        price_val = p.get("price")
+        price_str = f"${float(price_val):.2f}" if price_val not in (None, "") else "—"
+        er = p.get("expected_return_pct")
+        pg = p.get("prob_gain")
+        sz = p.get("suggested_size_pct")
+        er_str = "—" if er is None else f"{float(er):+.1f}%"
+        pg_str = "—" if pg is None else f"{float(pg)*100:.0f}%"
+        sz_str = "—" if sz is None else f"{float(sz):.1f}%"
         rows.append(html.Tr([
             html.Td(i + 1, style={"color": "#888", "padding": "10px 8px"}),
             html.Td(html.Strong(p.get("ticker", ""), style={"color": "#1565c0", "fontSize": "15px"}),
                     style={"padding": "10px 8px"}),
             html.Td(p.get("company", ""), style={"padding": "10px 8px"}),
-            html.Td(f"${p.get('price', 0):.2f}", style={"padding": "10px 8px"}),
+            html.Td(price_str, style={"padding": "10px 8px"}),
             html.Td(html.Span(int(p.get("composite_score", 0)), className="score-badge"),
                     style={"padding": "10px 8px", "textAlign": "center"}),
             html.Td(html.Span(int(p.get("technical_score", 0))), style={"padding": "10px 8px", "color": "#1565c0"}),
             html.Td(html.Span(int(p.get("fundamental_score", 0))), style={"padding": "10px 8px", "color": "#2e7d32"}),
+            html.Td(er_str, style={"padding": "10px 8px", "textAlign": "right", "fontWeight": "700"}),
+            html.Td(pg_str, style={"padding": "10px 8px", "textAlign": "right"}),
+            html.Td(sz_str, style={"padding": "10px 8px", "textAlign": "right", "color": "#1565c0"}),
             html.Td(cat_tags, style={"padding": "10px 8px"}),
             html.Td(
                 html.Button("Expand ▾", id={"type": "expand-btn", "index": p.get("ticker")},
@@ -123,7 +134,7 @@ def render_picks_table(data):
             html.Th(h, style={"padding": "8px", "background": "#f8f9fa",
                               "color": "#555", "fontWeight": "600",
                               "borderBottom": "2px solid #e5e7eb"})
-            for h in ["#", "Ticker", "Company", "Price", "Score", "Tech", "Fund", "Catalysts", ""]
+            for h in ["#", "Ticker", "Company", "Price", "Score", "Tech", "Fund", "Exp.Ret", "P(Gain)", "Size", "Catalysts", ""]
         ])),
         html.Tbody(rows),
     ], style={"width": "100%", "borderCollapse": "collapse",
