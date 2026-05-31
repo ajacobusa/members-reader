@@ -68,7 +68,8 @@ def main() -> None:
     marked_count = len(db.get_picks(marked_only=True))
 
     market_data = _fetch_market_data()
-    earnings_data = _fetch_earnings_data(tickers)
+    earnings_data = _fetch_earnings_data(
+        tickers, lookback_days=cfg.catalysts.get("earnings_beat", {}).get("lookback_days", 5))
     sector_pe_map: dict[str, float] = {}
 
     records, market_ok = run_pipeline(
@@ -172,39 +173,20 @@ def _fetch_fear_greed() -> int:
         return 50
 
 
-def _fetch_earnings_data(tickers: list[str]) -> dict:
-    """
-    Fetch recent earnings data for tickers from yfinance.
-    Returns {ticker: {date, eps_actual, eps_estimate}} for tickers
-    with earnings in the last 5 days.
-    """
+def _fetch_earnings_data(tickers: list[str], lookback_days: int = 5) -> dict:
+    """Fetch recent earnings (actual vs estimate) for tickers via yfinance."""
     import yfinance as yf
-    earnings: dict = {}
+    from stock_dashboard.engine.earnings import parse_recent_earnings
     today = datetime.date.today()
-    cutoff = today - datetime.timedelta(days=5)
-
+    earnings: dict = {}
     for ticker in tickers:
         try:
             t = yf.Ticker(ticker)
-            hist_earnings = t.earnings_dates
-            if hist_earnings is None or hist_earnings.empty:
-                continue
-            # earnings_dates index is DatetimeIndex; filter to recent past
-            recent = hist_earnings[
-                (hist_earnings.index.date >= cutoff) &  # type: ignore[operator]
-                (hist_earnings.index.date <= today)      # type: ignore[operator]
-            ]
-            if recent.empty:
-                continue
-            row = recent.iloc[0]
-            earnings[ticker] = {
-                "date": recent.index[0].date().isoformat(),
-                "eps_actual": row.get("Reported EPS") if hasattr(row, "get") else None,
-                "eps_estimate": row.get("EPS Estimate") if hasattr(row, "get") else None,
-            }
+            parsed = parse_recent_earnings(t.earnings_dates, today, lookback_days)
+            if parsed is not None:
+                earnings[ticker] = parsed
         except Exception:
             continue
-
     return earnings
 
 
