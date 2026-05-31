@@ -27,3 +27,13 @@ def test_empty_config_file_raises_value_error(tmp_path):
     empty.write_text("")
     with pytest.raises(ValueError, match="YAML mapping"):
         load_config(empty)
+
+def test_profit_engine_config_blocks_present(config_path):
+    cfg = load_config(config_path)
+    assert "earnings_surprise" in cfg.factor_weights
+    assert cfg.sizing["kelly_multiplier"] == 0.5
+    assert cfg.probability_filter["min_probability_gain"] == 0.60
+    assert cfg.statistics["return_lookback_days"] == 120
+    assert cfg.performance["enrich_only_survivors"] is True
+    assert cfg.health["min_fetch_success_rate"] == 0.85
+    assert cfg.backtest["auto_tune"] is True

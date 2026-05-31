@@ -18,6 +18,14 @@ class Config:
     email: dict[str, Any]
     schedule: dict[str, Any]
     output: dict[str, Any]
+    factor_weights: dict[str, Any]
+    statistics: dict[str, Any]
+    enrichment: dict[str, Any]
+    sizing: dict[str, Any]
+    probability_filter: dict[str, Any]
+    backtest: dict[str, Any]
+    performance: dict[str, Any]
+    health: dict[str, Any]
 
 
 REQUIRED_KEYS = [f.name for f in dataclasses.fields(Config)]

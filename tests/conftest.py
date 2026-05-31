@@ -67,6 +67,52 @@ schedule:
 output:
   db_path: ":memory:"
   export_csv: false
+factor_weights:
+  earnings_surprise:   {enabled: true, weight: 0.15}
+  analyst_revision:    {enabled: true, weight: 0.15}
+  options_flow:        {enabled: true, weight: 0.20}
+  relative_volume:     {enabled: true, weight: 0.10}
+  institutional:       {enabled: true, weight: 0.10}
+  insider:             {enabled: true, weight: 0.10}
+  technical_momentum:  {enabled: true, weight: 0.10}
+  sector_strength:     {enabled: true, weight: 0.10}
+statistics:
+  return_lookback_days: 120
+  earnings_lookback_quarters: 8
+  ci_sigma_multiplier: 1.5
+  conditioning: "catalyst"
+enrichment:
+  conviction_blend: 0.5
+sizing:
+  kelly_multiplier: 0.5
+  max_position_pct: 10.0
+  max_total_pct: 100.0
+probability_filter:
+  enabled: true
+  min_composite_score: 80
+  min_expected_return_pct: 1.0
+  min_probability_gain: 0.60
+  min_risk_reward: 2.0
+  cost_slippage_haircut_pct: 0.3
+backtest:
+  years: 3
+  preferred_timing: "C"
+  auto_tune: true
+  schedule_day: SAT
+  min_sample_trades: 200
+  min_improvement_pct: 0.2
+  min_factor_significance: 0.6
+performance:
+  max_workers: 12
+  bulk_ohlc: true
+  enrich_only_survivors: true
+  cache_ttl_hours: 18
+  cache_dir: "cache"
+health:
+  enabled: true
+  min_fetch_success_rate: 0.85
+  alert_on_degraded: true
+  abort_if_no_market_data: true
 """)
     return cfg
 

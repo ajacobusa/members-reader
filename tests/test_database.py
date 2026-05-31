@@ -61,3 +61,31 @@ def test_get_picks_filter_by_date(db):
     picks = db.get_picks(date="2026-05-25")
     assert len(picks) == 1
     assert picks[0]["date"] == "2026-05-25"
+
+def test_new_profit_columns_exist(db):
+    cols = {r[1] for r in db.conn.execute("PRAGMA table_info(picks)").fetchall()}
+    for c in ["expected_return_pct", "prob_gain", "ci_low_pct", "ci_high_pct",
+              "risk_reward", "risk_score", "kelly_fraction", "suggested_size_pct",
+              "earnings_beat_rate", "eps_revision_30d_pct", "options_summary",
+              "realized_return_pct", "outcome_recorded"]:
+        assert c in cols
+
+def test_migration_is_idempotent(db):
+    db.init_schema()  # second call must not raise
+    db.init_schema()
+    cols = {r[1] for r in db.conn.execute("PRAGMA table_info(picks)").fetchall()}
+    assert "expected_return_pct" in cols
+
+def test_save_picks_persists_enrichment_fields(db):
+    rec = PickRecord(
+        date="2026-05-31", ticker="NVDA", company="NVIDIA", price=900.0,
+        composite_score=88.0, technical_score=85.0, fundamental_score=90.0,
+        catalyst_score=82.0, pattern_score=0.0, catalysts=[], narrative="x",
+        signals={}, expected_return_pct=1.8, prob_gain=0.63,
+        suggested_size_pct=4.2, risk_reward=2.5,
+    )
+    db.save_picks([rec])
+    got = db.get_picks()[0]
+    assert got["expected_return_pct"] == 1.8
+    assert got["prob_gain"] == 0.63
+    assert got["suggested_size_pct"] == 4.2

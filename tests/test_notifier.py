@@ -67,3 +67,24 @@ def test_send_email_calls_smtp_when_configured(config_path, mocker):
     mock_smtp_class.assert_called_once_with(cfg.email["smtp_host"], cfg.email["smtp_port"])
     mock_server.starttls.assert_called_once()
     mock_server.login.assert_called_once_with(cfg.email["sender"], "test-app-password")
+
+
+def test_email_shows_expected_return_and_size(config_path):
+    cfg = load_config(config_path)
+    picks = [PickRecord(
+        date="2026-05-31", ticker="NVDA", company="NVIDIA", price=900.0,
+        composite_score=92, technical_score=88, fundamental_score=90,
+        catalyst_score=95, pattern_score=0, catalysts=[], narrative="x", signals={},
+        expected_return_pct=1.8, prob_gain=0.63, ci_low_pct=-4.5, ci_high_pct=7.2,
+        suggested_size_pct=4.2,
+    )]
+    html = build_html_email(picks, market_favorable=True, cfg=cfg)
+    assert "1.8%" in html
+    assert "63%" in html
+    assert "4.2%" in html
+
+
+def test_email_no_setups_message_when_empty(config_path):
+    cfg = load_config(config_path)
+    html = build_html_email([], market_favorable=True, cfg=cfg)
+    assert "No high-conviction setups" in html

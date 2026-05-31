@@ -79,3 +79,24 @@ def test_run_pipeline_aborts_on_bad_market(config_path, mocker):
     )
     assert market_ok is False
     assert records == []
+
+def test_run_pipeline_enriches_and_profit_gates(config_path):
+    cfg = load_config(config_path)
+    import datetime
+    today = datetime.date.today().isoformat()
+
+    def fake_fetch(ticker):
+        return _stock(ticker=ticker, market_cap=50.0, avg_volume=5_000_000)
+
+    records, market_ok = run_pipeline(
+        tickers=["TEST"], cfg=cfg,
+        market_data={"vix": 16.0, "spy_vs_50sma": 0.05, "fear_greed": 65},
+        earnings_data={"TEST": {"eps_actual": 6.0, "eps_estimate": 5.0, "date": today}},
+        sector_pe_map={"Technology": 28.0}, marked_picks_count=0,
+        fetch_fn=fake_fetch,
+    )
+    assert market_ok is True
+    # any emitted record must carry enrichment fields
+    for r in records:
+        assert r.expected_return_pct is not None
+        assert r.suggested_size_pct is not None

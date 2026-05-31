@@ -38,6 +38,11 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
             f'margin-right:4px;">{escape(c.get("label", c.get("type", "")))}</span>'
             for c in cats
         )
+        er = "—" if p.expected_return_pct is None else f"{p.expected_return_pct:+.1f}%"
+        pg = "—" if p.prob_gain is None else f"{p.prob_gain*100:.0f}%"
+        sz = "—" if p.suggested_size_pct is None else f"{p.suggested_size_pct:.1f}%"
+        rng = ("—" if p.ci_low_pct is None or p.ci_high_pct is None
+               else f"{p.ci_low_pct:+.1f}% to {p.ci_high_pct:+.1f}%")
         rows += f"""
         <tr style="border-bottom:1px solid #f0f0f0;">
           <td style="padding:10px 8px;font-weight:700;color:#888;">{i}</td>
@@ -50,11 +55,14 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
               {int(p.composite_score)}
             </span>
           </td>
+          <td style="padding:10px 8px;text-align:right;font-weight:700;">{er}</td>
+          <td style="padding:10px 8px;text-align:right;">{pg}</td>
+          <td style="padding:10px 8px;text-align:right;color:#666;font-size:11px;">{rng}</td>
+          <td style="padding:10px 8px;text-align:right;color:#1565c0;">{sz}</td>
           <td style="padding:10px 8px;">{cat_badges}</td>
           <td style="padding:10px 8px;color:#666;font-size:12px;">{escape(p.narrative[:120]) + "..." if len(p.narrative) > 120 else escape(p.narrative)}</td>
         </tr>"""
 
-    table_html = ""
     if picks:
         table_html = f"""
   <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -65,12 +73,19 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
         <th style="padding:8px;">Company</th>
         <th style="padding:8px;">Price</th>
         <th style="padding:8px;">Score</th>
+        <th style="padding:8px;">Exp.Return</th>
+        <th style="padding:8px;">P(Gain)</th>
+        <th style="padding:8px;">Range</th>
+        <th style="padding:8px;">Size</th>
         <th style="padding:8px;">Catalysts</th>
         <th style="padding:8px;">Why Buy Today</th>
       </tr>
     </thead>
     <tbody>{rows}</tbody>
   </table>"""
+    else:
+        table_html = ("<div style='padding:24px;text-align:center;color:#666;"
+                      "font-size:16px;'>No high-conviction setups today — staying in cash.</div>")
 
     return f"""<!DOCTYPE html>
 <html><body style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:20px;">
