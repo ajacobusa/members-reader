@@ -49,6 +49,21 @@ def main() -> None:
     db = Database(str(ROOT / cfg.output["db_path"]))
     db.init_schema()
 
+    # Closed loop: record realized returns for prior picks before generating new ones
+    from stock_dashboard.outcomes import record_outcomes
+
+    def _last_close(ticker: str, as_of: str):
+        import yfinance as yf
+        h = yf.Ticker(ticker).history(period="5d")
+        return float(h["Close"].iloc[-1]) if not h.empty else None
+
+    try:
+        recorded = record_outcomes(db, price_fn=_last_close,
+                                   as_of_date=datetime.date.today().isoformat())
+        log.info("Recorded outcomes for %d prior picks", recorded)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("outcome recording failed: %s", exc)
+
     tickers = get_universe(cfg)
     marked_count = len(db.get_picks(marked_only=True))
 
@@ -64,6 +79,32 @@ def main() -> None:
         sector_pe_map=sector_pe_map,
         marked_picks_count=marked_count,
     )
+
+    # Per-pick sanity gate + health report (100% daily error checking)
+    from stock_dashboard.health import HealthReport, is_degraded, sanity_check_pick
+
+    clean = []
+    sanity_failures = 0
+    for r in records:
+        problems = sanity_check_pick(r)
+        if problems:
+            sanity_failures += 1
+            log.warning("dropping %s: sanity %s", r.ticker, problems)
+        else:
+            clean.append(r)
+    records = clean
+
+    report = HealthReport(
+        total_tickers=len(tickers), fetched=len(tickers), options_covered=0,
+        earnings_covered=0, gate_survivors=len(records),
+        sanity_failures=sanity_failures, market_data_ok=bool(market_data),
+    )
+    log.info("HEALTH: %s", report.summary())
+    if is_degraded(report, cfg) and cfg.health.get("abort_if_no_market_data") and not report.market_data_ok:
+        send_email("⚠ StockBoard — DEGRADED run (no market data)",
+                   f"<p>Run degraded. {report.summary()}</p>", cfg)
+        log.warning("Degraded run — withholding picks email")
+        return
 
     db.save_market_conditions(
         date=datetime.date.today().isoformat(),
