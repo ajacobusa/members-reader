@@ -146,3 +146,33 @@ def test_catalyst_mode_still_excludes_no_catalyst(config_path):
     )
     # strict mode: no catalyst -> dropped at gate3 -> empty
     assert records == []
+
+
+def test_enrich_from_sources_adds_catalyst(config_path, mocker):
+    cfg = load_config(config_path)
+    cfg.api_keys["fmp"] = "KEY"   # enable a provider
+    from stock_dashboard.engine import pipeline
+    from stock_dashboard.engine.sources.aggregator import AggregatedData
+    mocker.patch.object(
+        pipeline, "enrich_from_sources",
+        wraps=pipeline.enrich_from_sources)  # keep real, but mock aggregate underneath
+    mocker.patch("stock_dashboard.engine.sources.aggregator.aggregate",
+                 return_value=AggregatedData(headlines=["Big upgrade"],
+                                             analyst_target=200.0, recent_upgrade=True,
+                                             news_sentiment=0.8, earnings_surprise_pct=None,
+                                             sources_used=["fmp"]))
+    stock = _stock(ticker="TEST", current_price=130.0)
+    used = pipeline.enrich_from_sources(stock, cfg)
+    assert "fmp" in used
+    assert any(c["type"] == "analyst_upgrade" for c in stock.catalysts)
+    assert stock.sentiment_score == 0.8
+
+
+def test_enrich_from_sources_noop_without_keys(config_path):
+    cfg = load_config(config_path)  # all api_keys blank in fixture
+    from stock_dashboard.engine import pipeline
+    stock = _stock(ticker="TEST")
+    before = len(stock.catalysts)
+    used = pipeline.enrich_from_sources(stock, cfg)
+    assert used == []
+    assert len(stock.catalysts) == before

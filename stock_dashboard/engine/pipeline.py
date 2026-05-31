@@ -12,6 +12,53 @@ from stock_dashboard.db.database import PickRecord
 
 log = logging.getLogger(__name__)
 
+
+def enrich_from_sources(stock, cfg) -> list[str]:
+    """Augment a SURVIVOR stock with multi-source data. Returns sources used.
+    No-op (no cost) when no API keys are configured."""
+    keys = cfg.api_keys
+    if not any((keys.get("newsapi"), keys.get("fmp"), keys.get("finnhub"))):
+        return []
+    from stock_dashboard.engine.sources.aggregator import aggregate
+    agg = aggregate(stock.ticker, stock.company, keys)
+
+    # merge headlines (dedup against existing)
+    existing = set(stock.news_headlines)
+    for h in agg.headlines:
+        if h not in existing:
+            stock.news_headlines.append(h)
+            existing.add(h)
+    if agg.news_sentiment is not None:
+        stock.sentiment_score = agg.news_sentiment
+    if agg.analyst_target is not None and stock.analyst_target is None:
+        stock.analyst_target = agg.analyst_target
+
+    have = {c.get("type") for c in stock.catalysts}
+    # analyst upgrade from FMP grades
+    if agg.recent_upgrade and "analyst_upgrade" not in have:
+        stock.catalysts.append({"type": "analyst_upgrade", "magnitude": 1.0,
+                                "strength": 0.8, "label": "Analyst Upgrade (FMP)"})
+    # price target increase
+    pt_min = cfg.catalysts.get("price_target_increase", {}).get("min_increase_pct", 10)
+    if (agg.analyst_target and stock.current_price and
+            "price_target_increase" not in have and
+            agg.analyst_target >= stock.current_price * (1 + pt_min / 100.0)):
+        upside = (agg.analyst_target / stock.current_price - 1) * 100
+        stock.catalysts.append({"type": "price_target_increase",
+                                "magnitude": round(upside, 1),
+                                "strength": min(upside / 30, 1.0),
+                                "label": f"PT +{upside:.0f}% upside (FMP)"})
+    # earnings beat from FMP surprise
+    eb_min = cfg.catalysts.get("earnings_beat", {}).get("min_beat_pct", 5)
+    if (agg.earnings_surprise_pct is not None and
+            agg.earnings_surprise_pct >= eb_min and "earnings_beat" not in have):
+        stock.catalysts.append({"type": "earnings_beat",
+                                "magnitude": agg.earnings_surprise_pct,
+                                "strength": min(agg.earnings_surprise_pct / 30, 1.0),
+                                "label": f"Earnings Beat +{agg.earnings_surprise_pct:.0f}% (FMP)"})
+    return agg.sources_used
+
+
 def gate1_quality(stock: StockData, cfg: Config) -> bool:
     qf = cfg.quality_filter
     if stock.market_cap < qf["min_market_cap_b"]:
@@ -185,6 +232,7 @@ def run_pipeline(
             continue
         if not gate4_technical(stock, cfg):
             continue
+        enrich_from_sources(stock, cfg)  # multi-source augmentation (survivors only)
         result = score_stock(stock, cfg, sector_pe_map, marked_picks_count)
         result.narrative = build_narrative(stock, result)
         result.catalysts = stock.catalysts
