@@ -44,9 +44,12 @@ stock_dashboard/engine/
   statistics.py    # per-stock historical outcome stats → ProbabilityProfile
   options.py       # options-market intelligence → OptionsSignal (graceful skip)
   enrichment.py    # orchestrates stats + options + EV + Kelly → EnrichedPick
-  backtest.py      # standalone strategy validator (2-5yr, 4 entry/exit timings)
+  backtest.py      # strategy validator (2-5yr) + guarded auto-weight tuner
+  cache.py         # per-ticker per-day on-disk cache (TTL) for fundamentals/options
+  fetch_pool.py    # bounded ThreadPoolExecutor + bulk OHLC download wrapper
 stock_dashboard/
   outcomes.py      # records realized next-day return per saved pick (closed loop)
+  health.py        # per-stage daily validation + health report + failure alerts
 ```
 
 ### Data flow
@@ -151,8 +154,9 @@ def rank_and_filter(enriched: list[EnrichedPick], cfg) -> list[EnrichedPick]: ..
   - B: buy close → sell next close
   - C: buy close → sell next open
   - D: buy open → sell close
-- Optionally evaluates **signal predictiveness** (does high EV_rank correlate with realized next-day return?) to inform weight tuning.
-- Writes a report to `logs/backtest_<date>.txt` and a summary CSV. **Does not auto-write weights** — surfaces recommendations for the user to accept in `config.yaml`.
+- Evaluates **signal predictiveness** (does high EV_rank correlate with realized next-day return?) to inform weight tuning.
+- Writes a report to `logs/backtest_<date>.txt` and a summary CSV.
+- **Guarded auto-tuning (zero manual intervention):** auto-writes the winning entry/exit timing to `backtest.preferred_timing` and updated `factor_weights` to `config.yaml` **only if** all guards pass: `min_sample_trades` met, out-of-sample improvement ≥ `min_improvement_pct`, and per-factor significance ≥ threshold. On apply, it first copies `config.yaml` → `config.bak.<timestamp>.yaml` and logs the full before/after diff. If guards fail, weights are left unchanged and the reason is logged. Runs on a schedule (e.g., weekly), fully unattended.
 
 ### `outcomes.py` (closed-loop tracking)
 
@@ -200,7 +204,25 @@ probability_filter:                  # Gate 6 — the profit gate
 
 backtest:
   years: 3
-  preferred_timing: "C"             # set after running backtest; drives outcome timing
+  preferred_timing: "C"             # AUTO-written by the tuner; drives outcome timing
+  auto_tune: true                   # guarded auto-apply of weights (no manual step)
+  schedule_day: SAT                 # weekly unattended backtest+tune
+  min_sample_trades: 200            # guard: don't tune on thin data
+  min_improvement_pct: 0.2          # guard: only apply if OOS edge improves
+  min_factor_significance: 0.6      # guard: per-factor predictiveness floor
+
+performance:
+  max_workers: 12                   # bounded thread pool for I/O-bound fetches
+  bulk_ohlc: true                   # one yf.download for all tickers' price history
+  enrich_only_survivors: true       # never fetch options/earnings for gate failures
+  cache_ttl_hours: 18               # per-ticker per-day cache; survives re-runs
+  cache_dir: "cache"
+
+health:
+  enabled: true
+  min_fetch_success_rate: 0.85      # below → degraded run → alert
+  alert_on_degraded: true           # send a separate alert email
+  abort_if_no_market_data: true     # refuse to email on stale/missing market data
 ```
 
 ---
@@ -245,6 +267,74 @@ Schema init uses additive `ALTER TABLE ... ADD COLUMN` guarded by a column-exist
 
 ---
 
+## Full Autonomy — Zero Manual Intervention
+
+The system runs as a closed loop with **no human step in the daily cycle**:
+
+```
+Task Scheduler (07:30 wkdays)
+  → run_daily.main()
+      → health precheck (config, schema, market-data freshness)
+      → fetch (cached, pooled, bulk OHLC)
+      → 5-gate pipeline → enrich survivors → EV rank → profit gate
+      → save picks (+ new columns)
+      → health report → email (or alert email if degraded)
+  → outcomes.record_yesterday()  (auto, same run)
+Task Scheduler (weekly, SAT)
+  → backtest.run()  → guarded auto-tune of weights + timing (auto-backup + log)
+  → calibration.recalibrate()  (adjust prob estimates from realized outcomes)
+```
+
+- **No manual config edits required.** API keys remain optional (graceful degrade). Weights and entry/exit timing self-tune under guards. Outcome recording and calibration are automatic.
+- **Idempotent & restartable.** Every step is safe to re-run; the cache and `outcome_recorded` flag prevent duplicate work or double-counting.
+- **Self-recovering.** Transient data failures retry with backoff; a ticker that fails all retries is skipped and counted in the health report rather than aborting the run.
+- The only human touchpoints are *optional*: reviewing the dashboard, or overriding a weight by hand (which the next guarded tune will respect as a new baseline).
+
+---
+
+## Daily Error Checking & Health (`health.py`)
+
+**Goal: 100% coverage — every external call wrapped, every stage validated, every emitted number sanity-checked.**
+
+- **Per-stage validation:** config load, schema/migration, market-data freshness, fetch success rate, enrichment coverage (how many picks got earnings stats / options data), gate funnel counts.
+- **Per-pick sanity checks before email:** price > 0; no NaN/inf in EV, P(gain), CI, Kelly; CI_low ≤ EV ≤ CI_high; size within caps; probability ∈ [0,1]. Any pick failing a check is dropped and logged (never emailed with bad numbers).
+- **Health report** appended to `logs/daily.log` and embedded as a compact footer in the email: `Fetched 612/640 (95.7%) · options 71% · earnings-stats 64% · 0 sanity failures`.
+- **Degraded-run policy:** if fetch success < `min_fetch_success_rate`, or market data is stale/missing, the run is marked degraded → a **separate alert email** is sent and (per `abort_if_no_market_data`) normal picks are withheld rather than emailing on bad data.
+- **Catastrophic failure:** any unhandled exception in `main()` is caught at the top level, logged with traceback, and triggers a failure alert email — the scheduler never fails silently.
+
+---
+
+## Automation Opportunities Map
+
+| Opportunity | Mechanism | Status in this design |
+|---|---|---|
+| Daily pipeline + email | Windows Task Scheduler → `run_daily.py` | existing |
+| Realized-outcome recording | auto hook in daily run (`outcomes.py`) | new |
+| Weight + timing tuning | weekly guarded auto-tune (`backtest.py`) | new |
+| Probability recalibration | weekly from realized outcomes | new |
+| Transient-failure recovery | retry-with-backoff in `fetch_pool.py` | new |
+| Stale-data / health alerting | `health.py` degraded-run + alert email | new |
+| Re-fetch avoidance | TTL cache (`cache.py`) | new |
+| Test enforcement on change | CI workflow runs `pytest` on push | recommended add |
+| Backup scheduler | optional GitHub Actions cron as failover runner | optional/out-of-scope |
+
+---
+
+## Performance & Efficiency
+
+The universe is ~600 tickers; naïve per-ticker fetching of info + history + options + earnings + 2–5yr backtest data is slow and rate-limited. Design choices:
+
+1. **Enrich only gate survivors** (`enrich_only_survivors`). The expensive calls (option chains, earnings stats) run only for the handful of stocks that pass gates 1/3/4 — the single biggest win. Cheap price history (for gates) is fetched first.
+2. **Bulk OHLC** via one `yf.download(tickers, ...)` instead of N calls (`bulk_ohlc`), for both the daily gate pass and the backtest.
+3. **Bounded concurrency** (`fetch_pool.py`, `max_workers`) for the remaining per-ticker I/O-bound calls — `ThreadPoolExecutor`, not processes (these are network-bound, GIL is released).
+4. **TTL cache** (`cache.py`): per-ticker per-day fundamentals/options cached on disk (parquet/JSON). The dashboard "Run" button and re-runs hit cache, not the network.
+5. **Vectorized stats**: distributions, EV, CI computed with numpy on arrays — no Python per-day loops. The backtest is fully vectorized over the OHLC matrix.
+6. **Lazy imports** of heavy libs (already the pattern) keep CLI/test startup fast.
+
+Target: a daily run completes in well under the pre-open window even on a cold cache; warm-cache and dashboard re-runs are near-instant.
+
+---
+
 ## Honest Limitations (documented in README + UI labels)
 
 1. **Institutional "flow" is not real on free data** — only quarterly 13F holdings with ~45-day lag. Labeled as stale holdings; weighted low; flagged as the first candidate for a paid-feed upgrade.
@@ -263,7 +353,11 @@ Schema init uses additive `ALTER TABLE ... ADD COLUMN` guarded by a column-exist
 - `tests/test_backtest.py` — strategy comparison on a tiny fixed OHLC fixture (no live calls).
 - `tests/test_outcomes.py` — realized-return recording + idempotency.
 - `tests/test_database.py` (extend) — additive-column migration is non-destructive.
-- **No live network calls** — all yfinance/option data mocked.
+- `tests/test_health.py` — per-stage validation, per-pick sanity rejection, degraded-run/alert path, top-level failure capture.
+- `tests/test_cache.py` — cache hit/miss, TTL expiry, no network on warm hit.
+- `tests/test_fetch_pool.py` — bounded concurrency returns same results as serial; failures skipped, not fatal.
+- `tests/test_backtest.py` (extend) — guarded auto-tune **applies** when guards pass, **refuses** when they fail, and always backs up config first.
+- **No live network calls** — all yfinance/option data mocked. Concurrency tests use mocked fetchers.
 
 ---
 
@@ -280,10 +374,13 @@ Schema init uses additive `ALTER TABLE ... ADD COLUMN` guarded by a column-exist
 
 1. `statistics.py` + tests (the heart — evidence-based per-pick numbers)
 2. DB additive columns + migration (+ extend `test_database.py`)
-3. `enrichment.py` (EV rank, Kelly, profit gate) + tests
-4. Wire enrichment into `pipeline.run_pipeline` + integration test
-5. `options.py` + tests (graceful degradation)
-6. Email + dashboard output fields
-7. `outcomes.py` closed-loop tracking + tests + daily-runner hook
-8. `backtest.py` standalone validator + tests
-9. README: limitations, backtest usage, profit-gate tuning
+3. `cache.py` + `fetch_pool.py` + tests (efficiency foundation used by everything below)
+4. `enrichment.py` (EV rank, Kelly, profit gate) + tests
+5. Wire enrichment into `pipeline.run_pipeline` (enrich-only-survivors) + integration test
+6. `options.py` + tests (graceful degradation)
+7. `health.py` (per-stage + per-pick checks, degraded-run alerts) + tests
+8. Email + dashboard output fields (incl. health footer) — also fixes Task 10 review bugs
+9. `outcomes.py` closed-loop tracking + tests + daily-runner hook
+10. `backtest.py` validator + guarded auto-tuner + tests + weekly scheduler entry
+11. Calibration step (recalibrate prob estimates from realized outcomes) + tests
+12. README: autonomy, health, efficiency, limitations, backtest/profit-gate tuning
