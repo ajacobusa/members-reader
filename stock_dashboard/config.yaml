@@ -62,6 +62,8 @@ api_keys:
   alpha_vantage: ""
   benzinga: ""
   newsapi: ""
+  fmp: ""        # financialmodelingprep.com — free tier
+  finnhub: ""    # finnhub.io — free tier
 
 email:
   enabled: true
