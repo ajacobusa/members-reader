@@ -165,6 +165,13 @@ class Database:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_closed_picks(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM picks WHERE outcome_recorded=1 "
+            "AND realized_return_pct IS NOT NULL"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def record_outcome(self, pick_id: int, realized_return_pct: float) -> None:
         self.conn.execute(
             "UPDATE picks SET realized_return_pct=?, outcome_recorded=1 WHERE id=?",

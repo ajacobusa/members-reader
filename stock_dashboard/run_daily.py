@@ -135,7 +135,10 @@ def main() -> None:
 
     today_str = datetime.date.today().strftime("%A, %B %d %Y")
     subject = f"📈 StockBoard — Top 10 Picks for {today_str}"
-    html = build_html_email(records, market_ok, cfg)
+    from stock_dashboard.paper_trading import summarize, summary_line
+    paper = summarize(db.get_closed_picks())
+    log.info("PAPER-TRADING: %s", summary_line(paper))
+    html = build_html_email(records, market_ok, cfg, paper_note=summary_line(paper))
     success = send_email(subject, html, cfg)
     if not success:
         log.warning("Email was not sent (disabled, unconfigured, or failed)")

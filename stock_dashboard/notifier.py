@@ -20,7 +20,7 @@ _CATALYST_COLORS = {
 
 
 def build_html_email(picks: list[PickRecord], market_favorable: bool,
-                     cfg: Config) -> str:
+                     cfg: Config, paper_note: str = "") -> str:
     today = date.today().strftime("%A, %B %d %Y")
     banner_color = "#00c853" if market_favorable else "#e53935"
     banner_text = (
@@ -87,6 +87,9 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
         table_html = ("<div style='padding:24px;text-align:center;color:#666;"
                       "font-size:16px;'>No high-conviction setups today — staying in cash.</div>")
 
+    paper_html = (f'<p style="color:#444;font-size:13px;margin-top:16px;">{escape(paper_note)}</p>'
+                  if paper_note else "")
+
     return f"""<!DOCTYPE html>
 <html><body style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;padding:20px;">
   <h1 style="color:#1a1a2e;">StockBoard — Top 10 Picks</h1>
@@ -95,6 +98,7 @@ def build_html_email(picks: list[PickRecord], market_favorable: bool,
     {banner_text}
   </div>
   {table_html}
+  {paper_html}
   <hr style="margin-top:24px;">
   <p style="color:#aaa;font-size:12px;">
     Open dashboard for full breakdown &#x2192; <a href="http://localhost:8050">http://localhost:8050</a><br>
