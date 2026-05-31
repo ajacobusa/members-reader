@@ -37,6 +37,12 @@ def main() -> None:
         log.info("Non-trading day — exiting")
         return
 
+    started_marker = ROOT / "logs" / "last_run_started.txt"
+    try:
+        started_marker.write_text(datetime.date.today().isoformat())
+    except Exception:
+        pass
+
     from stock_dashboard.engine.config_loader import load_config
     from stock_dashboard.engine.universe import get_universe
     from stock_dashboard.engine.pipeline import run_pipeline

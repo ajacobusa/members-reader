@@ -24,11 +24,24 @@ class MonitorReport:
         return " | ".join(parts)
 
 
-def check_daily_freshness(ran_today: bool, is_trading_day: bool) -> list[str]:
-    """Flag a missed run only on trading days."""
-    if is_trading_day and not ran_today:
-        return ["Missed daily run for today (trading day, no picks/market row found)"]
-    return []
+def check_daily_freshness(completed_today: bool, started_today: bool,
+                          is_trading_day: bool) -> list[str]:
+    """3-state: completed (healthy), started-but-incomplete (alert, do not rerun),
+    or genuinely missed (alert; caller may recover)."""
+    if not is_trading_day or completed_today:
+        return []
+    if started_today:
+        return ["Daily run started but did not complete today — check daily.log "
+                "(possible crash or still running; not auto-rerun)"]
+    return ["Missed daily run for today (trading day, nothing started)"]
+
+
+def should_recover(completed_today: bool, started_today: bool,
+                   is_trading_day: bool, already_attempted: bool) -> bool:
+    """Only auto-rerun when it's a trading day, nothing started or completed,
+    and we have not already attempted a recovery today."""
+    return (is_trading_day and not completed_today and not started_today
+            and not already_attempted)
 
 
 def check_log_for_errors(log_text: Optional[str]) -> list[str]:

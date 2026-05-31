@@ -55,6 +55,14 @@ def _task_state(name: str):
         return None
 
 
+def _started_today() -> bool:
+    marker = ROOT / "logs" / "last_run_started.txt"
+    try:
+        return marker.exists() and marker.read_text().strip() == datetime.date.today().isoformat()
+    except Exception:
+        return False
+
+
 def _recovery_attempted_today() -> bool:
     if not RECOVERY_MARKER.exists():
         return False
@@ -79,18 +87,19 @@ def main() -> None:
     db.init_schema()
 
     trading = _is_trading_day()
-    ran = _ran_today(db)
+    completed = _ran_today(db)
+    started = _started_today()
     recovered = []
 
-    # Auto-recover a missed run, at most once per day
-    if trading and not ran and not _recovery_attempted_today():
-        log.warning("Missed daily run detected — attempting one recovery run")
+    from stock_dashboard.monitor import should_recover
+    if should_recover(completed, started, trading, _recovery_attempted_today()):
+        log.warning("Genuinely missed daily run — attempting one recovery run")
         _mark_recovery()
         try:
             from stock_dashboard.run_daily import main as run_daily_main
             run_daily_main()
-            ran = _ran_today(db)
-            if ran:
+            completed = _ran_today(db)
+            if completed:
                 recovered.append("Re-ran missed daily pipeline")
         except Exception as exc:  # noqa: BLE001
             log.error("Recovery run failed: %s", exc)
@@ -101,7 +110,9 @@ def main() -> None:
         log_text = log_path.read_text(errors="ignore")[-8000:]
 
     issues = []
-    issues += check_daily_freshness(ran_today=ran, is_trading_day=trading)
+    issues += check_daily_freshness(completed_today=completed,
+                                    started_today=_started_today(),
+                                    is_trading_day=trading)
     issues += check_log_for_errors(log_text)
     issues += check_data_source(_probe_yfinance)
     issues += check_scheduled_tasks(["StockBoard Daily", "StockBoard Backtest"],
