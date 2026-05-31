@@ -66,10 +66,11 @@ def _earnings_stats(stock: StockData, quarters: int) -> dict:
     eps_hist = getattr(stock, "earnings_history", None)
     if not eps_hist:
         return {"beat_rate": None, "avg_move": None, "median_move": None, "n": 0}
+    eps_hist = eps_hist[:quarters]
     beats = [1 for e in eps_hist if e.get("actual") is not None and
              e.get("estimate") not in (None, 0) and e["actual"] > e["estimate"]]
     moves = [e["move_pct"] for e in eps_hist if e.get("move_pct") is not None]
-    n = len(eps_hist[:quarters])
+    n = len(eps_hist)
     return {
         "beat_rate": (len(beats) / n) if n else None,
         "avg_move": float(np.mean(moves)) if moves else None,

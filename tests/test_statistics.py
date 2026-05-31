@@ -66,3 +66,12 @@ def test_build_profile_insufficient_data_is_safe(config_path):
     p = build_profile(stock, cfg)
     assert isinstance(p, ProbabilityProfile)
     assert p.sample_size >= 0
+
+
+def test_earnings_beat_rate_capped_at_quarters(config_path):
+    from stock_dashboard.engine.statistics import _earnings_stats
+    class S:  # minimal stub with the attribute
+        earnings_history = [{"actual": 2.0, "estimate": 1.0, "move_pct": 3.0}] * 10
+    out = _earnings_stats(S(), quarters=8)
+    assert out["n"] == 8
+    assert out["beat_rate"] == 1.0
