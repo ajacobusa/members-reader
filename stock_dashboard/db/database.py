@@ -20,6 +20,19 @@ class PickRecord:
     narrative: str
     signals: dict
     marked_as_picked: bool = False
+    expected_return_pct: Optional[float] = None
+    prob_gain: Optional[float] = None
+    ci_low_pct: Optional[float] = None
+    ci_high_pct: Optional[float] = None
+    risk_reward: Optional[float] = None
+    risk_score: Optional[float] = None
+    kelly_fraction: Optional[float] = None
+    suggested_size_pct: Optional[float] = None
+    earnings_beat_rate: Optional[float] = None
+    eps_revision_30d_pct: Optional[float] = None
+    options_summary: Optional[str] = None
+    realized_return_pct: Optional[float] = None
+    outcome_recorded: bool = False
 
 
 class Database:
