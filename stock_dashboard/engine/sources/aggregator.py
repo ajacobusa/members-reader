@@ -12,6 +12,7 @@ class AggregatedData:
     recent_upgrade: bool = False
     news_sentiment: Optional[float] = None
     earnings_surprise_pct: Optional[float] = None
+    analyst_consensus: Optional[str] = None
     sources_used: list[str] = field(default_factory=list)
 
 
@@ -56,12 +57,14 @@ def aggregate(ticker: str, company: str, api_keys: dict,
     analyst_target = fmp.fetch_price_target(ticker, fk) if fk else None
     recent_upgrade = fmp.fetch_recent_upgrade(ticker, fk) if fk else False
     surprise = fmp.fetch_latest_earnings_surprise_pct(ticker, fk) if fk else None
+    consensus = finnhub.fetch_recommendation(ticker, hk) if hk else None
     sentiment = finnhub.fetch_news_sentiment(ticker, hk) if hk else None
 
     result = AggregatedData(
         headlines=deduped[:headline_limit], analyst_target=analyst_target,
         recent_upgrade=recent_upgrade, news_sentiment=sentiment,
-        earnings_surprise_pct=surprise, sources_used=sources,
+        earnings_surprise_pct=surprise, analyst_consensus=consensus,
+        sources_used=sources,
     )
 
     if cache is not None:

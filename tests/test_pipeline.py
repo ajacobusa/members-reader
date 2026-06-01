@@ -168,6 +168,32 @@ def test_enrich_from_sources_adds_catalyst(config_path, mocker):
     assert stock.sentiment_score == 0.8
 
 
+def test_enrich_sets_analyst_rating_from_consensus_fallback(config_path, mocker):
+    cfg = load_config(config_path)
+    cfg.api_keys["finnhub"] = "KEY"
+    from stock_dashboard.engine import pipeline
+    from stock_dashboard.engine.sources.aggregator import AggregatedData
+    mocker.patch("stock_dashboard.engine.sources.aggregator.aggregate",
+                 return_value=AggregatedData(analyst_consensus="strong_buy",
+                                             sources_used=["finnhub"]))
+    stock = _stock(ticker="TEST", analyst_rating=None)
+    pipeline.enrich_from_sources(stock, cfg)
+    assert stock.analyst_rating == "strong_buy"
+
+
+def test_enrich_does_not_override_existing_analyst_rating(config_path, mocker):
+    cfg = load_config(config_path)
+    cfg.api_keys["finnhub"] = "KEY"
+    from stock_dashboard.engine import pipeline
+    from stock_dashboard.engine.sources.aggregator import AggregatedData
+    mocker.patch("stock_dashboard.engine.sources.aggregator.aggregate",
+                 return_value=AggregatedData(analyst_consensus="sell",
+                                             sources_used=["finnhub"]))
+    stock = _stock(ticker="TEST", analyst_rating="buy")
+    pipeline.enrich_from_sources(stock, cfg)
+    assert stock.analyst_rating == "buy"  # yfinance value preserved
+
+
 def test_enrich_from_sources_noop_without_keys(config_path):
     cfg = load_config(config_path)  # all api_keys blank in fixture
     from stock_dashboard.engine import pipeline

@@ -35,6 +35,8 @@ def enrich_from_sources(stock, cfg) -> list[str]:
         stock.sentiment_score = agg.news_sentiment
     if agg.analyst_target is not None and stock.analyst_target is None:
         stock.analyst_target = agg.analyst_target
+    if agg.analyst_consensus and not stock.analyst_rating:
+        stock.analyst_rating = agg.analyst_consensus
 
     have = {c.get("type") for c in stock.catalysts}
     # analyst upgrade from FMP grades

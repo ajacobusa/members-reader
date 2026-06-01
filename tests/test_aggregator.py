@@ -75,6 +75,29 @@ def test_aggregate_uses_cache_hit_without_calling_providers(mocker):
     spy.assert_not_called()  # cache hit -> no provider calls
 
 
+def test_aggregate_includes_finnhub_consensus(mocker):
+    from stock_dashboard.engine.sources import aggregator
+    mocker.patch.object(aggregator.finnhub, "fetch_recommendation", return_value="strong_buy")
+    mocker.patch.object(aggregator.finnhub, "fetch_company_news", return_value=[])
+    mocker.patch.object(aggregator.finnhub, "fetch_news_sentiment", return_value=None)
+    mocker.patch.object(aggregator.newsapi, "fetch_headlines", return_value=[])
+    mocker.patch.object(aggregator.fmp, "fetch_stock_news", return_value=[])
+    mocker.patch.object(aggregator.fmp, "fetch_price_target", return_value=None)
+    mocker.patch.object(aggregator.fmp, "fetch_recent_upgrade", return_value=False)
+    mocker.patch.object(aggregator.fmp, "fetch_latest_earnings_surprise_pct", return_value=None)
+    out = aggregator.aggregate("AAPL", "Apple",
+                               api_keys={"finnhub": "k", "fmp": "", "newsapi": ""})
+    assert out.analyst_consensus == "strong_buy"
+    assert "finnhub" in out.sources_used
+
+
+def test_aggregate_consensus_none_without_finnhub_key(mocker):
+    from stock_dashboard.engine.sources import aggregator
+    out = aggregator.aggregate("AAPL", "Apple",
+                               api_keys={"finnhub": "", "fmp": "", "newsapi": ""})
+    assert out.analyst_consensus is None
+
+
 def test_aggregate_populates_cache_on_miss(mocker):
     from stock_dashboard.engine.sources import aggregator
     mocker.patch.object(aggregator.fmp, "fetch_price_target", return_value=250.0)
