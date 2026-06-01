@@ -20,7 +20,10 @@ def enrich_from_sources(stock, cfg) -> list[str]:
     if not any((keys.get("newsapi"), keys.get("fmp"), keys.get("finnhub"))):
         return []
     from stock_dashboard.engine.sources.aggregator import aggregate
-    agg = aggregate(stock.ticker, stock.company, keys)
+    from stock_dashboard.engine.cache import Cache
+    perf = cfg.performance
+    cache = Cache(perf.get("cache_dir", "cache"), perf.get("cache_ttl_hours", 18))
+    agg = aggregate(stock.ticker, stock.company, keys, cache=cache)
 
     # merge headlines (dedup against existing)
     existing = set(stock.news_headlines)

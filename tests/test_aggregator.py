@@ -1,4 +1,15 @@
+from dataclasses import asdict
+
 from stock_dashboard.engine.sources.aggregator import aggregate, AggregatedData
+
+
+class _FakeCache:
+    def __init__(self):
+        self.store = {}
+    def get(self, ticker, kind):
+        return self.store.get((ticker, kind))
+    def set(self, ticker, kind, value):
+        self.store[(ticker, kind)] = value
 
 
 def test_no_keys_returns_empty():
@@ -47,3 +58,36 @@ def test_dedupes_headlines(mocker):
     mocker.patch("stock_dashboard.engine.sources.aggregator.finnhub.fetch_news_sentiment", return_value=None)
     out = aggregate("AAPL", "Apple", api_keys={"newsapi": "k", "fmp": "k", "finnhub": ""})
     assert out.headlines.count("same") == 1
+
+
+def test_aggregate_uses_cache_hit_without_calling_providers(mocker):
+    from stock_dashboard.engine.sources import aggregator
+    spy = mocker.patch.object(aggregator.fmp, "fetch_price_target")
+    cache = _FakeCache()
+    cache.set("AAPL", "aggregate", {
+        "headlines": ["cached"], "analyst_target": 200.0, "recent_upgrade": True,
+        "news_sentiment": 0.5, "earnings_surprise_pct": 9.0, "sources_used": ["fmp"]})
+    out = aggregator.aggregate("AAPL", "Apple",
+                               api_keys={"fmp": "k", "finnhub": "", "newsapi": ""},
+                               cache=cache)
+    assert out.headlines == ["cached"]
+    assert out.analyst_target == 200.0
+    spy.assert_not_called()  # cache hit -> no provider calls
+
+
+def test_aggregate_populates_cache_on_miss(mocker):
+    from stock_dashboard.engine.sources import aggregator
+    mocker.patch.object(aggregator.fmp, "fetch_price_target", return_value=250.0)
+    mocker.patch.object(aggregator.fmp, "fetch_recent_upgrade", return_value=False)
+    mocker.patch.object(aggregator.fmp, "fetch_latest_earnings_surprise_pct", return_value=None)
+    mocker.patch.object(aggregator.fmp, "fetch_stock_news", return_value=[])
+    mocker.patch.object(aggregator.finnhub, "fetch_company_news", return_value=[])
+    mocker.patch.object(aggregator.finnhub, "fetch_news_sentiment", return_value=None)
+    mocker.patch.object(aggregator.newsapi, "fetch_headlines", return_value=[])
+    cache = _FakeCache()
+    out = aggregator.aggregate("MSFT", "Microsoft",
+                               api_keys={"fmp": "k", "finnhub": "", "newsapi": ""},
+                               cache=cache)
+    assert out.analyst_target == 250.0
+    stored = cache.get("MSFT", "aggregate")
+    assert stored is not None and stored["analyst_target"] == 250.0

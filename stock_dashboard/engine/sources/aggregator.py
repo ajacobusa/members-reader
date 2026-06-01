@@ -1,6 +1,6 @@
 """Merge multiple data-source providers into one normalized result.
 Each provider is skipped when its key is absent (graceful degradation)."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional
 from stock_dashboard.engine.sources import newsapi, finnhub, fmp
 
@@ -16,7 +16,12 @@ class AggregatedData:
 
 
 def aggregate(ticker: str, company: str, api_keys: dict,
-              headline_limit: int = 12) -> AggregatedData:
+              headline_limit: int = 12, cache=None) -> AggregatedData:
+    if cache is not None:
+        cached = cache.get(ticker, "aggregate")
+        if cached is not None:
+            return AggregatedData(**cached)
+
     nk = api_keys.get("newsapi", "") or ""
     fk = api_keys.get("fmp", "") or ""
     hk = api_keys.get("finnhub", "") or ""
@@ -53,8 +58,15 @@ def aggregate(ticker: str, company: str, api_keys: dict,
     surprise = fmp.fetch_latest_earnings_surprise_pct(ticker, fk) if fk else None
     sentiment = finnhub.fetch_news_sentiment(ticker, hk) if hk else None
 
-    return AggregatedData(
+    result = AggregatedData(
         headlines=deduped[:headline_limit], analyst_target=analyst_target,
         recent_upgrade=recent_upgrade, news_sentiment=sentiment,
         earnings_surprise_pct=surprise, sources_used=sources,
     )
+
+    if cache is not None:
+        try:
+            cache.set(ticker, "aggregate", asdict(result))
+        except Exception:
+            pass
+    return result
