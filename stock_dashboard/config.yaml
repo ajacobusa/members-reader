@@ -107,12 +107,12 @@ sizing:
   max_total_pct: 100.0
 
 probability_filter:
-  enabled: false              # false = rank-and-take-top-N (10-20 list); true = high-conviction-only gate
-  min_composite_score: 80
-  min_expected_return_pct: 1.0
-  min_probability_gain: 0.60
-  min_risk_reward: 2.0
-  cost_slippage_haircut_pct: 0.3
+  enabled: true               # quality floor: rank all, show up to top_n with a POSITIVE edge
+  min_composite_score: 0      # ranking (EV) does the selecting, not a score cutoff
+  min_expected_return_pct: 0.0   # only names with positive expected return
+  min_probability_gain: 0.5      # better than a coin flip
+  min_risk_reward: 0.0
+  cost_slippage_haircut_pct: 0.0
 
 backtest:
   years: 3
