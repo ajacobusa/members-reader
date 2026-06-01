@@ -44,7 +44,7 @@ scoring:
   fundamental_weight: 0.35
   catalyst_weight: 0.20
   pattern_weight: 0.10
-  top_n: 10
+  top_n: 20
 
 signals:
   rsi: {enabled: true, weight: 1.0}
@@ -107,7 +107,7 @@ sizing:
   max_total_pct: 100.0
 
 probability_filter:
-  enabled: true
+  enabled: false              # false = rank-and-take-top-N (10-20 list); true = high-conviction-only gate
   min_composite_score: 80
   min_expected_return_pct: 1.0
   min_probability_gain: 0.60
@@ -137,4 +137,4 @@ health:
   abort_if_no_market_data: true
 
 ranking:
-  require_catalyst: true      # true = strict catalyst-driven; false = rank all quality+technical survivors (upside bucket)
+  require_catalyst: false     # true = strict catalyst-driven; false = rank all quality+technical survivors (upside bucket)
