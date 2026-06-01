@@ -226,8 +226,13 @@ def run_pipeline(
     scored: list[ScoreResult] = []
     stock_lookup: dict[str, StockData] = {}
 
+    # Optimization: fetch all tickers concurrently (I/O-bound), then gate sequentially.
+    from stock_dashboard.engine.fetch_pool import fetch_many
+    max_workers = int(cfg.performance.get("max_workers", 12))
+    fetched = fetch_many(tickers, fetch, max_workers=max_workers)
+
     for ticker in tickers:
-        stock = fetch(ticker)
+        stock = fetched.get(ticker)
         if stock is None:
             continue
         if not gate1_quality(stock, cfg):
