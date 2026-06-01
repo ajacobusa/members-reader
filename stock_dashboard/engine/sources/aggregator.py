@@ -2,7 +2,7 @@
 Each provider is skipped when its key is absent (graceful degradation)."""
 from dataclasses import dataclass, field, asdict
 from typing import Optional
-from stock_dashboard.engine.sources import newsapi, finnhub, fmp
+from stock_dashboard.engine.sources import newsapi, finnhub, fmp, alphavantage
 
 
 @dataclass
@@ -26,6 +26,7 @@ def aggregate(ticker: str, company: str, api_keys: dict,
     nk = api_keys.get("newsapi", "") or ""
     fk = api_keys.get("fmp", "") or ""
     hk = api_keys.get("finnhub", "") or ""
+    av = api_keys.get("alpha_vantage", "") or ""
 
     headlines: list[str] = []
     sources: list[str] = []
@@ -45,6 +46,11 @@ def aggregate(ticker: str, company: str, api_keys: dict,
         if h:
             headlines += h
         sources.append("fmp")
+    if av:
+        h = alphavantage.fetch_headlines(ticker, av)
+        if h:
+            headlines += h
+        sources.append("alpha_vantage")
 
     # de-dup preserving order
     seen = set()
@@ -59,6 +65,8 @@ def aggregate(ticker: str, company: str, api_keys: dict,
     surprise = fmp.fetch_latest_earnings_surprise_pct(ticker, fk) if fk else None
     consensus = finnhub.fetch_recommendation(ticker, hk) if hk else None
     sentiment = finnhub.fetch_news_sentiment(ticker, hk) if hk else None
+    if sentiment is None and av:  # Finnhub sentiment is paid; Alpha Vantage fallback
+        sentiment = alphavantage.fetch_sentiment(ticker, av)
 
     result = AggregatedData(
         headlines=deduped[:headline_limit], analyst_target=analyst_target,
