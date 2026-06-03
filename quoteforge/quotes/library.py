@@ -416,6 +416,145 @@ QUOTE_LIBRARY: dict[str, list[str]] = {
         "Leaders do not wait for permission to lead.",
         "Build something you are proud of.",
         "The best investment you can make is in yourself.",
+        "Culture eats strategy for breakfast. Build the culture first.",
+        "Five posters. One vision. Unstoppable team.",
+    ],
+
+    "Dental School & Healthcare": [
+        # DAT / pre-dental
+        "The DAT is one door. Dentistry is a whole world.",
+        "Every practice question is one step closer to Doctor of Dental Surgery.",
+        "Pre-dental today. Changing smiles forever.",
+        "Study like the patients are already waiting.",
+        "The grind today is the degree tomorrow.",
+        # Dental school journey
+        "Dental school is not just education — it is transformation.",
+        "You chose one of the hardest paths because you are built for it.",
+        "Boards are a season. Your career is a lifetime.",
+        "Anatomy is not just a class — it is the foundation of every life you will save.",
+        "Two years of science. Two years of clinic. A lifetime of purpose.",
+        # Future DDS / white coat
+        "One day you will wear the white coat and wonder how you ever doubted yourself.",
+        "Future DDS: the credential is coming. The calling is already here.",
+        "The white coat is not just fabric — it is the weight of trust and the gift of healing.",
+        "Doctor of Dental Surgery: earned in exhaustion, worn in pride.",
+        # Practice owner
+        "One day your name will be on the door. Keep going.",
+        "Your future patients are waiting for the dentist only you can be.",
+        "Dream of the practice. Build the skills. Open the door.",
+        # Dental hygienist
+        "Changing lives one smile at a time.",
+        "Dental hygienists: the quiet heroes of preventive care.",
+        "Every cleaned tooth is a small act of love.",
+    ],
+
+    "Future Professions": [
+        "Future Dentist: the chair is waiting.",
+        "Future Doctor: the patients need who you are becoming.",
+        "Future Nurse: compassion is already in you.",
+        "Future Teacher: the classroom needs your gift.",
+        "Future Engineer: build the world no one else can imagine.",
+        "Future Lawyer: justice needs your voice.",
+        "Future Veterinarian: the animals trust you before you even begin.",
+        "Future Entrepreneur: the idea that keeps you up at night is the one that matters.",
+        "Not yet arrived — but already becoming.",
+        "The degree comes later. The calling is now.",
+        "Vision boards are just the beginning. Execution is everything.",
+        "Affirm it. Believe it. Become it.",
+        "Every great professional once sat exactly where you are sitting.",
+    ],
+
+    "Children's Confidence": [
+        "Brave little dreamer.",
+        "You can learn anything.",
+        "You are braver than you know.",
+        "Be kind. Be curious. Be you.",
+        "You were made to shine.",
+        "You are enough, just as you are.",
+        "Dream big, little one.",
+        "Your ideas matter. Your voice matters. You matter.",
+        "You can do hard things — even the hard things.",
+        "Kindness is always the right answer.",
+        "The world is better because you are in it.",
+        "You are smart. You are loved. You are capable.",
+        "Be yourself — everyone else is taken.",
+        "Grow at your own pace. Bloom in your own season.",
+        "You are a miracle in motion.",
+    ],
+
+    "Recovery & Healing Journey": [
+        # Divorce / new chapter
+        "What feels like an ending is also a beginning.",
+        "Starting over is an act of tremendous courage.",
+        "You are not starting from scratch. You are starting from experience.",
+        "The chapter closed. The story continues.",
+        # Grief & loss
+        "Grief is love with nowhere to go — let it move through you.",
+        "You do not have to be strong every day. Just today.",
+        "Missing them is not weakness. It is love that has no expiration date.",
+        # Addiction recovery
+        "One day at a time. One hour at a time. One breath at a time.",
+        "Recovery is not giving something up. It is getting your life back.",
+        "Sobriety is not a destination. It is a daily choice you keep winning.",
+        # Cancer / illness
+        "Healing is not linear — but you are always moving forward.",
+        "Survivor: a title worn with scars and grace.",
+        "The body heals. The spirit endures. The story continues.",
+        # General healing
+        "You are allowed to grieve, to rest, and to rise again.",
+        "There is no timeline for healing. Just keep moving.",
+        "What broke you open also let the light in.",
+        "You are still here. That matters more than you know.",
+    ],
+
+    "Personalized — Life Chapters": [
+        # These are template starters — Claude generates the personalized versions
+        "Chapter [Age]: Becoming Who You Were Always Meant To Be.",
+        "This is the chapter where everything changes.",
+        "The hard chapters are the ones worth writing.",
+        "You did not come this far to only come this far.",
+        "Every chapter has prepared you for this one.",
+        "The best chapters are the ones no one saw coming.",
+        "Your story is still being written. Keep going.",
+    ],
+
+    "Personalized — Family Legacy": [
+        # Template starters — Claude fills in the family name
+        "Where faith meets family, legacy is built.",
+        "Built on love. Rooted in purpose. Growing still.",
+        "A name is not just what you are called — it is what you stand for.",
+        "The greatest inheritance is the values we pass on.",
+        "Family: the first community, the lasting legacy.",
+        "Every generation adds a new chapter to the family story.",
+        "Home is where the legacy begins.",
+    ],
+
+    "Christian Prayers by Situation": [
+        # Anxiety prayer
+        "Lord, still the storm inside me. Let your peace be my anchor.",
+        "When anxiety rises, let my trust in you rise higher.",
+        "I cast my worries upon you — carry what I cannot hold alone.",
+        # Student / exam prayer
+        "Guide my mind, steady my hands, and let your wisdom speak through me.",
+        "Lord, let every hour of study be met with your clarity and grace.",
+        # Dental school / medical prayer
+        "Lord, guide these hands to heal, these eyes to see, and this heart to serve.",
+        "In every patient, let me see a life worth fighting for.",
+        # New mother prayer
+        "Lord, give me the strength, wisdom, and grace this little life deserves.",
+        "Thank you for the miracle I now hold. Guide every step I take for them.",
+        # Cancer recovery prayer
+        "Lord, heal what only you can reach. Let your peace go before me.",
+        "In the middle of the hardest battle, I choose faith over fear.",
+        # Marriage prayer
+        "Lord, keep our love rooted in grace and growing through every season.",
+        "Bless this marriage with patience, laughter, and unshakeable faith.",
+        # Grief prayer
+        "Lord, hold what I cannot carry. Be near to my broken heart.",
+        "In grief, let me feel your presence more than the pain.",
+        # New job / financial
+        "Lord, let my work be a blessing — to others and to the life you have given me.",
+        "Open doors no one else can open. Close the ones that do not serve your plan.",
     ],
 }
 
