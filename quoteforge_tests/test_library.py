@@ -10,10 +10,16 @@ def test_each_category_has_quotes():
         assert len(quotes) >= 5, f"{cat} has fewer than 5 quotes"
 
 def test_get_quotes_returns_list():
-    result = get_quotes("Nature & Peace", count=3)
+    result = get_quotes("Nature & Scenic", count=3)
     assert isinstance(result, list)
     assert len(result) == 3
     assert all(isinstance(q, str) for q in result)
+
+def test_new_categories_have_quotes():
+    for cat in ["Life Events", "Professional Niches", "Fitness & Sports",
+                "Seasonal Collections", "Room Decor"]:
+        result = get_quotes(cat, count=3)
+        assert len(result) >= 3, f"{cat} returned fewer than 3 quotes"
 
 def test_get_quotes_no_duplicates():
     result = get_quotes("Motivation & Mindset", count=5)

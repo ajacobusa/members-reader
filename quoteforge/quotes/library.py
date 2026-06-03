@@ -2,20 +2,50 @@ import random
 
 QUOTE_LIBRARY: dict[str, list[str]] = {
     "Faith & Spiritual": [
+        # Christian encouragement
         "Let your faith be bigger than your fear.",
-        "In every storm, peace waits in the shelter of prayer.",
-        "Grace is not earned — it is freely given.",
-        "Where hope grows, miracles blossom.",
-        "Walk by faith, not by what you can see.",
-        "Every sunrise is a reminder that grace is new.",
+        "Faith over fear — always.",
+        "God is within her. She will not fall.",
+        "Be still and know that you are held.",
+        "Every morning is a reminder that grace is new.",
         "God's timing is always perfect.",
         "Let go and let grace guide you.",
         "The light within you is stronger than any darkness around you.",
-        "Prayer is not asking — it is listening.",
         "Trust the journey even when you cannot see the road.",
         "Blessed are those who believe before they see.",
+        "Walk by faith, not by sight.",
+        # Bible verse inspired (paraphrased originals — not direct quotes)
+        "I can do all things through the strength I have been given.",
+        "For I know the plans for you — plans for hope and a future.",
+        "Be strong and courageous. Do not be afraid.",
+        "Trust in the Lord with all your heart and lean not on your own understanding.",
+        "I will never leave you nor forsake you.",
+        # Prayer & hope
+        "In every storm, peace waits in the shelter of prayer.",
+        "Grace is not earned — it is freely given.",
+        "Where hope grows, miracles blossom.",
+        "Prayer is not asking — it is listening.",
+        # Baptism / confirmation / sacraments
+        "A new life washed in grace and love.",
+        "Confirmed in faith, rooted in love.",
+        "Today you begin your walk with purpose and grace.",
+        "Received into the family of faith — welcome.",
+        # Easter
+        "He is risen — and because of that, everything is different.",
+        "Because of Easter, hope has the final word.",
+        "Death could not hold what love had claimed.",
+        # Christmas nativity
+        "Peace on earth begins in the heart.",
+        "A savior was born and love came down.",
+        "The greatest gift was wrapped not in paper, but in grace.",
+        # General spiritual
+        "The universe bends toward those who trust it.",
+        "You were made for more than you can imagine.",
+        "Gratitude turns what you have into enough.",
     ],
+
     "Healing & Wellness": [
+        # Mental health
         "Healing is not linear — every step forward counts.",
         "You are allowed to take up space in this world.",
         "Rest is not giving up — it is gathering strength.",
@@ -26,33 +56,114 @@ QUOTE_LIBRARY: dict[str, list[str]] = {
         "Every breath is a new beginning.",
         "You are worthy of kindness, especially from yourself.",
         "Healing happens slowly, then all at once.",
+        # Progress not perfection
+        "Progress, not perfection.",
+        "You do not have to be perfect. You just have to keep going.",
+        "Small steps every day still move you forward.",
+        "Done is better than perfect. Begin.",
+        # One day at a time
+        "One day at a time. One breath at a time.",
+        "You do not have to figure out forever today. Just today.",
+        "Today is enough. You are enough.",
+        # Trust the process
+        "Trust the process even when the process is hard.",
+        "Growth takes time. Roots before branches.",
+        "What is growing in you right now cannot be rushed.",
+        # Choose joy
+        "Choose joy — not because life is easy, but because you are strong.",
+        "Joy is not found. It is chosen.",
+        "Choose peace daily.",
+        # You can do hard things
+        "You can do hard things.",
+        "You have already survived your hardest days. Keep going.",
+        "Keep going. You are closer than you think.",
     ],
+
     "Love & Relationships": [
+        # Anniversary / wedding
         "Love is not a destination — it is the journey taken together.",
         "In your arms, I found my home.",
         "The best thing to hold onto in life is each other.",
         "A great love is not found — it is built, day by day.",
         "Still my favorite person after all this time.",
-        "Together is the best place to be.",
+        "Still choosing you. Every single day.",
+        "Together is my favorite place to be.",
+        "Forever starts today.",
         "Love grows best in small houses and big hearts.",
         "You are my today and all of my tomorrows.",
+        "Growing together, always.",
+        # Motherhood
         "A mother's love is the compass that guides us home.",
+        "Mom, thank you for everything.",
+        "A mother is a forever kind of love.",
+        "The love of a mother is the heart of a family.",
+        # Fatherhood
         "A father's love is the quiet strength that shapes a child's world.",
-        "Family: where life begins and love never ends.",
+        "Behind every great child is a dad who believed first.",
+        "A dad is someone who lifts you up even when life weighs him down.",
+        # Grandparents
+        "A grandmother's love is a treasure that never fades.",
+        "Grandpa: the man who makes everything feel right.",
+        "Some people make the world more beautiful just by being in it — grandma.",
+        # Children
+        "A daughter is a blessing wrapped in grace.",
+        "A son is a forever piece of your heart.",
+        "Children are the living messages we send to a time we will not see.",
+        # Siblings / friends
+        "A sister is a forever friend.",
+        "Brothers: born together, friends forever.",
         "True friendship doubles joy and divides grief.",
+        "Best friends are the family we choose.",
+        # Family
+        "Family: where life begins and love never ends.",
+        "Home is not a place — it is the people in it.",
     ],
-    "Milestone Celebrations": [
-        "Today is just the beginning of your greatest chapter.",
-        "Look how far you have come — and look how far you will go.",
-        "Celebrate every step — even the small ones lead somewhere great.",
+
+    "Life Events": [
+        # Graduation
+        "The best is yet to come.",
+        "Dream big. Start now.",
+        "Your journey starts here.",
+        "You did not just earn a degree — you earned your story.",
+        "Go forth and be remarkable.",
+        "Today is the first page of a brand new chapter.",
+        # New job / promotion
+        "Success is earned daily.",
+        "Keep climbing. The view gets better.",
+        "Promoted: because excellence speaks for itself.",
+        "Every expert was once a beginner who refused to quit.",
+        "You worked for this. Now own it.",
+        # Retirement
+        "The adventure begins.",
+        "Enjoy the journey — you have earned every step.",
+        "Retirement: not the end of work, but the beginning of freedom.",
+        "Now the real fun begins.",
+        "You gave your best years. Now live your best life.",
+        # New home / housewarming
+        "Home is where your story begins.",
+        "Bless this home.",
+        "New home, new memories, new story.",
+        "May this home be filled with laughter, love, and peace.",
+        "Every great story needs a great home.",
+        # Wedding
+        "Together is my favorite place to be.",
+        "Forever starts today.",
+        "Two lives, one love story.",
+        "Today I choose you. Tomorrow I choose you again.",
+        # Baby shower / new parents
+        "Welcome, little one.",
+        "Adventure awaits, little one.",
+        "You are loved beyond measure.",
+        "The world just got a little brighter — welcome.",
+        "Tiny hands, enormous love.",
+        "The greatest chapter begins with a tiny heartbeat.",
+        # New beginnings
         "A new beginning is the bravest kind of chapter.",
         "You did not come this far only to come this far.",
-        "Graduates: you did not just earn a degree — you earned your story.",
-        "Retirement: not the end of work, but the beginning of freedom.",
-        "The world just got a little brighter — welcome, little one.",
-        "New home, new memories, new story.",
-        "Promoted: because excellence speaks for itself.",
+        "Every ending is a new beginning in disguise.",
+        "Look how far you have come — and look how far you will go.",
     ],
+
     "Motivation & Mindset": [
         "The difference between ordinary and extraordinary is that little extra.",
         "Start before you are ready. Grow as you go.",
@@ -66,21 +177,151 @@ QUOTE_LIBRARY: dict[str, list[str]] = {
         "Hard work beats talent when talent does not work hard.",
         "Great leaders do not create followers — they create more leaders.",
         "Innovation begins where comfort ends.",
+        "Keep going. You are closer than you think.",
+        "Discipline beats motivation every single time.",
+        "Make this year count.",
+        "Do something today your future self will thank you for.",
+        "The only bad workout is the one that did not happen.",
+        "Rise up and attack the day with enthusiasm.",
+        "Stronger every day.",
+        "Train with purpose. Live with intention.",
     ],
+
+    "Professional Niches": [
+        # Nurse / healthcare
+        "Nurses: the heart of healthcare.",
+        "Changing lives one patient at a time.",
+        "Compassion is the foundation of healing.",
+        "She chose nursing because the world needed more heroes.",
+        "Not all angels have wings — some wear scrubs.",
+        "Nurses do not just care for patients. They carry them.",
+        # Doctor
+        "Medicine is the art of keeping hope alive.",
+        "Heal with skill. Lead with compassion.",
+        "A great doctor listens before they speak.",
+        # Dental
+        "Changing lives one smile at a time.",
+        "A great smile starts with great care.",
+        "The best tool a dentist has is a genuine heart.",
+        # Teacher
+        "Teachers plant seeds that grow forever.",
+        "A great teacher creates more than lessons — they create futures.",
+        "Teaching is the one profession that creates all others.",
+        "You may forget what a teacher said, but never how they made you feel.",
+        "One great teacher can change everything.",
+        # Engineer
+        "Build something the world will remember.",
+        "Engineers do not just build things — they build the future.",
+        # Police / firefighter
+        "Courage is not the absence of fear. It is running toward it anyway.",
+        "Police officers: standing between order and chaos every day.",
+        "The firefighter runs toward the fire so you do not have to.",
+        # Military
+        "Honor the fallen by living with purpose.",
+        "Service before self. Every single day.",
+        "Freedom is not free — it is protected by the brave.",
+        # Veterinarian
+        "They cannot speak for themselves. You speak for them.",
+        "Caring for those who give us unconditional love.",
+    ],
+
+    "Fitness & Sports": [
+        "Stronger every day.",
+        "Train with purpose.",
+        "Discipline beats motivation.",
+        "Your only limit is the one you set.",
+        "One more rep. One more mile. One more reason.",
+        "The body achieves what the mind believes.",
+        "Sweat is just your fat crying.",
+        "Push yourself because no one else will do it for you.",
+        "Fall in love with the process and the results will follow.",
+        "Champions are made in the moments they want to quit.",
+        "Run the day. Do not let the day run you.",
+        "Yoga is not about touching your toes. It is about what you learn on the way down.",
+        "Find your strength. Own your story.",
+        "Every rep is a vote for the person you are becoming.",
+        "Hard work pays off — always.",
+        "Be stronger than your excuses.",
+    ],
+
     "Holidays & Seasonal": [
-        "May your Christmas be wrapped in peace and tied with love.",
+        # New Year
+        "New year, new beginnings.",
+        "Make this year count.",
+        "New year, same soul — but braver and wiser.",
+        "Every new year is a blank page. Write something beautiful.",
+        # Valentine's Day
+        "Love never fails.",
+        "You are my home.",
+        "Love is not just for today — it is for every day.",
+        "You are the reason I believe in love.",
+        # St. Patrick's Day
+        "May your luck be as endless as the Irish hills.",
+        "Lucky to have you.",
+        # Easter
         "He is risen — and because of that, everything is different.",
-        "Grateful hearts make grateful homes — Happy Thanksgiving.",
-        "Love is not just for Valentine's Day — it is for every single day.",
+        "Because of Easter, hope has the final word.",
+        # Mother's Day
         "To the woman who made home feel like heaven — Happy Mother's Day.",
+        "Mom: my first friend, my forever hero.",
+        "The world is better because you are a mother in it.",
+        # Father's Day
         "Behind every great child is a dad who believed first.",
+        "Dad: the man who holds everything together.",
+        # Memorial Day
+        "Honor the fallen by living with purpose.",
+        "Freedom is never free. Remember those who paid the price.",
+        # Independence Day
         "Land of the free because of the brave.",
-        "New year, same soul — but a braver, wiser version.",
-        "Fall: the art of letting go beautifully.",
-        "Winter is not the end — it is the earth resting before it blooms.",
-        "Spring: proof that after every winter, life begins again.",
-        "Summer is the season when memories are made and kept forever.",
+        "Born free. Live free.",
+        # Labor Day
+        "Hard work is never wasted.",
+        "The dignity of labor is the foundation of a great life.",
+        # Halloween
+        "Be the kind of person who brings the candy.",
+        "Spooky season — the time of year when magic feels real.",
+        # Thanksgiving
+        "Grateful hearts make grateful homes.",
+        "Gratitude turns what you have into enough.",
+        "There is always something to be thankful for.",
+        # Christmas
+        "May your Christmas be wrapped in peace and tied with love.",
+        "Peace on earth begins in the heart.",
+        "The greatest gift is the people around the table.",
+        # Hanukkah
+        "Eight nights of light, love, and miracles.",
+        "The light that pushed back the darkness — still shining.",
+        # New Year's Eve
+        "Cheers to new chapters and brave beginnings.",
+        "Tonight we celebrate. Tomorrow we rise.",
     ],
+
+    "Seasonal Collections": [
+        # Spring
+        "Spring: proof that after every winter, life begins again.",
+        "Bloom where you are planted.",
+        "Every spring is a reminder that growth follows rest.",
+        "The earth laughs in flowers.",
+        "Spring growth collection: new season, new you.",
+        # Summer
+        "Summer is the season when memories are made and kept forever.",
+        "Chase sunsets. Collect moments.",
+        "Life is better with sand between your toes.",
+        "Good vibes and sunshine.",
+        # Autumn
+        "Fall: the art of letting go beautifully.",
+        "Autumn leaves and gratitude.",
+        "There is beauty in letting go.",
+        "Every leaf is a flower before it falls.",
+        "Cozy season. Grateful heart.",
+        # Winter
+        "Winter is not the end — it is the earth resting before it blooms.",
+        "Winter peace collection.",
+        "In the stillness of winter, something beautiful is preparing to grow.",
+        "Let it snow. Let it go.",
+        "Warmth is not a season — it is a choice.",
+    ],
+
     "Civic & Political": [
         "Freedom is not free — it is purchased with courage and sacrifice.",
         "Democracy is not a spectator sport. Vote.",
@@ -92,19 +333,77 @@ QUOTE_LIBRARY: dict[str, list[str]] = {
         "A nation's character is measured by how it treats its most vulnerable.",
         "Your voice matters. Your vote matters. Show up.",
         "Heroes are ordinary people who make extraordinary choices.",
+        "Born free. Live free. Give freely.",
+        "One nation, under hope.",
     ],
-    "Nature & Peace": [
-        "The mountains are calling and I must go.",
+
+    "Nature & Scenic": [
+        # Mountains
+        "The mountains teach us that the higher you climb, the better the view.",
         "Not all who wander are lost — some are just finding themselves.",
+        "Rise above the clouds. The summit awaits.",
+        "In the mountains, I find my peace.",
+        # Beach / ocean
         "In the waves of change, I found my direction.",
+        "The ocean does not apologize for its depth. Neither should you.",
+        "Life is better at the beach.",
+        "Let the waves wash away what no longer serves you.",
+        "Salt air. Bare feet. Free spirit.",
+        # Forest
         "The forest is the original cathedral.",
+        "Go where the trees are tall and the noise is quiet.",
+        "In the woods, I find what the city takes away.",
+        # Sunrise / sunset
         "Be still and let the morning remind you — today is a gift.",
         "Every sunset carries the seeds of tomorrow's sunrise.",
-        "The ocean does not apologize for its depth. Neither should you.",
-        "Peace begins where ambition ends and wonder begins.",
+        "Chase sunrises. They remind you that new beginnings are daily.",
+        # Stars / night
         "Stars remind us that even in darkness, light exists.",
+        "Look up. The universe is larger than your worry.",
+        # Waterfalls
+        "Like a waterfall — keep moving and you will create something beautiful.",
+        "Flow. Do not force.",
+        # Wildflowers
+        "Wildflowers do not ask permission to bloom. Neither should you.",
+        "Bloom in your own season.",
+        # General nature / peace
         "Slow down. The earth has been here longer than your hurry.",
+        "Peace begins where nature begins.",
+        "Nature does not rush — yet everything gets done.",
     ],
+
+    "Room Decor": [
+        # Office / workspace
+        "Do what you love and the work will show it.",
+        "This is where the magic happens.",
+        "Dream. Plan. Execute.",
+        "Create. Inspire. Repeat.",
+        # Home
+        "Home: where every story worth telling begins.",
+        "Bless this house with love and laughter.",
+        "The best memories are made right here.",
+        # Bedroom
+        "Rest. Restore. Rise.",
+        "Dream big, even while you sleep.",
+        "Tomorrow needs a rested version of you.",
+        # Nursery
+        "You are loved beyond measure, little one.",
+        "Dream big, tiny dreamer.",
+        "Welcome to the world, little miracle.",
+        # Dorm room
+        "You did not come this far to only come this far.",
+        "This is where your future begins.",
+        "Study hard. Dream big. Rise higher.",
+        # Classroom
+        "This classroom runs on curiosity and courage.",
+        "Every great thinker started right where you are.",
+        "Learn. Grow. Lead.",
+        # Gym
+        "Train hard. Live well.",
+        "This is where excuses come to die.",
+        "Stronger every single day.",
+    ],
+
     "Office & Business": [
         "Great teams do not happen by accident — they are built with intention.",
         "Do what you love and you will never work a day in your life.",
@@ -114,6 +413,9 @@ QUOTE_LIBRARY: dict[str, list[str]] = {
         "Balance is not something you find — it is something you build.",
         "Create. Innovate. Lead.",
         "Your work is a reflection of your standards. Set them high.",
+        "Leaders do not wait for permission to lead.",
+        "Build something you are proud of.",
+        "The best investment you can make is in yourself.",
     ],
 }
 
