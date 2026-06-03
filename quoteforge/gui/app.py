@@ -6,10 +6,8 @@ from pathlib import Path
 from quoteforge.quotes.categories import CATEGORIES
 from quoteforge.pipeline import run_pipeline
 from quoteforge.etsy.exporter import export_listings_csv
-from quoteforge.config import OUTPUT_DIR
+from quoteforge.config import OUTPUT_DIR, BANNERBEAR_TEMPLATE_UID
 from quoteforge.gui.progress import ProgressTracker
-
-DEFAULT_TEMPLATE_UID = "YOUR_BANNERBEAR_TEMPLATE_UID"
 
 
 class QuoteForgeApp:
@@ -79,7 +77,7 @@ class QuoteForgeApp:
                 category=cat,
                 subcategory=sub,
                 count=count,
-                template_uid=DEFAULT_TEMPLATE_UID,
+                template_uid=BANNERBEAR_TEMPLATE_UID,
                 output_dir=OUTPUT_DIR,
                 on_progress=on_progress,
             )

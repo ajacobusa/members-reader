@@ -12,5 +12,5 @@ class ProgressTracker:
 
     def update(self, current: int, total: int, message: str) -> None:
         pct = int((current / total) * 100) if total > 0 else 0
-        self._root.after(0, self._bar.configure, {"value": pct})
-        self._root.after(0, self._label.configure, {"text": f"({current}/{total}) {message[:60]}"})
+        self._root.after(0, lambda: self._bar.configure(value=pct))
+        self._root.after(0, lambda: self._label.configure(text=f"({current}/{total}) {message[:60]}"))

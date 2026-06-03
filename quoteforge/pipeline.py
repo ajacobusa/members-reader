@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 import re
 
@@ -20,7 +21,7 @@ def run_pipeline(
     count: int,
     template_uid: str,
     output_dir: Path,
-    on_progress: callable = None,
+    on_progress: "Callable | None" = None,
 ) -> list[dict]:
     """Run full quote→image→listing pipeline. Returns list of result dicts."""
     results = []

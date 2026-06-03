@@ -19,3 +19,6 @@ SIZES: dict[str, tuple[int, int]] = {
 
 # Claude model
 CLAUDE_MODEL: str = "claude-sonnet-4-6"
+
+# Bannerbear template UID — set this after creating your template
+BANNERBEAR_TEMPLATE_UID: str = os.getenv("BANNERBEAR_TEMPLATE_UID", "YOUR_BANNERBEAR_TEMPLATE_UID")

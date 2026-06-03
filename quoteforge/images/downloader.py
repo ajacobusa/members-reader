@@ -5,7 +5,7 @@ from pathlib import Path
 def download_png(url: str, output_dir: Path, filename: str) -> Path:
     """Download a PNG from URL and save to output_dir/filename.png."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     response.raise_for_status()
     out_path = output_dir / f"{filename}.png"
     out_path.write_bytes(response.content)

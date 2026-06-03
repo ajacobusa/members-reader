@@ -10,7 +10,8 @@ def test_render_poster_returns_url():
     poll_resp.json.return_value = {"status": "done", "image_url": expected_url}
     poll_resp.raise_for_status = lambda: None
 
-    with patch("quoteforge.images.renderer.requests.post", return_value=create_resp), \
+    with patch("quoteforge.images.renderer.BANNERBEAR_API_KEY", "test-key"), \
+         patch("quoteforge.images.renderer.requests.post", return_value=create_resp), \
          patch("quoteforge.images.renderer.requests.get", return_value=poll_resp), \
          patch("quoteforge.images.renderer.time.sleep"):
         url = render_poster(

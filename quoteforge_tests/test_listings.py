@@ -13,7 +13,8 @@ def test_generate_listing_returns_dict():
 TAGS: motivational poster,wall art print,mountain decor,office art,inspirational quote,nature print,gift for him,positive mindset,entrepreneur gift,home decor,wall decor,quote print,modern art
 DESCRIPTION: Bring the power of the mountains into your space with this stunning motivational wall art print."""
 
-    with patch("quoteforge.etsy.listings.anthropic.Anthropic", return_value=_mock_claude(fake_text)):
+    with patch("quoteforge.etsy.listings.ANTHROPIC_API_KEY", "test-key"), \
+         patch("quoteforge.etsy.listings.anthropic.Anthropic", return_value=_mock_claude(fake_text)):
         listing = generate_listing(
             quote="Rise above the storm.",
             category="Motivation & Mindset",

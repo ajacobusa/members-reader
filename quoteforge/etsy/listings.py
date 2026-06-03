@@ -4,6 +4,8 @@ from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
 def generate_listing(quote: str, category: str, subcategory: str) -> dict:
     """Generate Etsy-optimized title, 13 tags, and description for a design."""
+    if not ANTHROPIC_API_KEY:
+        raise ValueError("ANTHROPIC_API_KEY is not set. Open quoteforge/config.py and add your key.")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = (
         f"You are an expert Etsy SEO copywriter. Write a complete Etsy listing for a "
@@ -23,12 +25,21 @@ def generate_listing(quote: str, category: str, subcategory: str) -> dict:
     )
     raw: str = message.content[0].text
     listing: dict = {"title": "", "tags": [], "description": ""}
-    for line in raw.strip().split("\n"):
+    lines = raw.strip().split("\n")
+    desc_lines: list[str] = []
+    in_description = False
+    for line in lines:
         if line.startswith("TITLE:"):
             listing["title"] = line.replace("TITLE:", "").strip()
+            in_description = False
         elif line.startswith("TAGS:"):
             raw_tags = line.replace("TAGS:", "").strip()
             listing["tags"] = [t.strip() for t in raw_tags.split(",")][:13]
+            in_description = False
         elif line.startswith("DESCRIPTION:"):
-            listing["description"] = line.replace("DESCRIPTION:", "").strip()
+            desc_lines.append(line.replace("DESCRIPTION:", "").strip())
+            in_description = True
+        elif in_description:
+            desc_lines.append(line)
+    listing["description"] = " ".join(desc_lines).strip()
     return listing

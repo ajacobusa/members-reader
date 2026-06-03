@@ -5,6 +5,8 @@ from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
 def generate_quotes(category: str, subcategory: str, count: int = 5) -> list[str]:
     """Generate `count` original copyright-safe quotes via Claude API."""
+    if not ANTHROPIC_API_KEY:
+        raise ValueError("ANTHROPIC_API_KEY is not set. Open quoteforge/config.py and add your key.")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = (
         f"Write {count} original, memorable, copyright-safe motivational quotes "
