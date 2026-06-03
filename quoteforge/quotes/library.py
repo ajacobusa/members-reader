@@ -529,6 +529,247 @@ QUOTE_LIBRARY: dict[str, list[str]] = {
         "Home is where the legacy begins.",
     ],
 
+    "Airport & Aviation": [
+        "Not all who wander are lost — some have a boarding pass.",
+        "The sky is not the limit. It is home.",
+        "Born to fly. Trained to land safely.",
+        "Pilots do not just fly planes — they carry dreams.",
+        "Cleared for takeoff. Cleared for greatness.",
+        "Flight attendants: grace under pressure at 35,000 feet.",
+        "Air traffic control: the unseen hands that keep the sky safe.",
+        "Every great journey begins with a boarding pass and a leap of faith.",
+        "Fly high. Land well. Go again.",
+        "The runway is just the beginning.",
+    ],
+    "National Parks": [
+        "In every walk with nature, one receives far more than they seek.",
+        "The wilderness holds answers to questions we have not yet learned to ask.",
+        "Leave it better than you found it.",
+        "National parks: the best idea America ever had.",
+        "Some places are so beautiful they make you believe in something greater.",
+        "The mountains are calling. The parks are waiting.",
+        "Protect wild places — they protect your soul.",
+        "Yellowstone: where the earth still breathes.",
+        "Grand Canyon: carved by time, filled with wonder.",
+        "Great Smoky Mountains: where every season is a masterpiece.",
+        "Yosemite: where granite meets grace.",
+        "Zion: carved by faith and water.",
+        "Leave only footprints. Take only memories.",
+    ],
+    "State Pride": [
+        "Georgia: where peaches are sweet and roots run deep.",
+        "Florida: sunshine, salt air, and soul.",
+        "Texas: big land, bigger heart, biggest pride.",
+        "Tennessee: where the mountains meet the music.",
+        "California: dream it, live it, love it.",
+        "North Carolina: mountains to the sea, beauty in between.",
+        "Colorado: elevation of land and spirit.",
+        "Born and raised here. Proud every day.",
+        "Home is not just a place — it is a state of being.",
+        "Some people are lucky enough to call this place home.",
+        "This land shaped me. I carry it everywhere.",
+    ],
+    "Pet Lovers": [
+        # Dog memorial
+        "Not gone, just waiting at the rainbow bridge.",
+        "A dog's love is the closest thing to unconditional grace.",
+        "You were only here for a season, but you changed me forever.",
+        "Good dogs never really leave — they live in the love they gave.",
+        # Cat memorial
+        "Cats do not just live in our homes — they live in our hearts.",
+        "You purred your way into my soul and never left.",
+        # Breed-specific
+        "Golden Retrievers: love in fur form.",
+        "German Shepherds: loyal beyond measure, brave beyond words.",
+        "Labradors: proof that a good heart can wear a wagging tail.",
+        # General pet love
+        "My dog taught me more about unconditional love than any book ever could.",
+        "The best therapist I ever had had four paws.",
+        "A house is not a home without pet hair on everything.",
+        "Pets fill a corner of your heart no human ever could.",
+    ],
+    "Indian & South Asian": [
+        # Malayalam / Kerala
+        "Kerala: where the backwaters carry the stories of generations.",
+        "In the land of coconut palms and monsoon grace, roots run deep.",
+        "Malayalam: a language that sounds like music and tastes like home.",
+        # Indian Christian
+        "Faith grew here long before the world knew its name.",
+        "Indian Christian heritage: where ancient faith meets enduring love.",
+        "Blessed by grace. Rooted in heritage. Growing in faith.",
+        # Traditional Indian proverbs (original paraphrases)
+        "A home with an elder is a home with a library.",
+        "The fruit of patience is always sweet.",
+        "Where love dwells, no storm can uproot the family.",
+        # Indian wedding / family
+        "Two families. One love. A story that begins today.",
+        "Indian weddings do not just join two people — they join two worlds.",
+        "Family is the original blessing.",
+        # Diwali
+        "Let the light of Diwali remind us — darkness never wins.",
+        "Diwali: the festival of lights, the victory of hope.",
+    ],
+    "Men's Market": [
+        # Father-son
+        "A father's greatest gift is the man his son becomes.",
+        "Father and son: different chapters of the same great story.",
+        "Dad, you taught me how to be a man before I knew I needed it.",
+        # Hunting / fishing
+        "The hunt is not about the trophy — it is about the silence and the patience.",
+        "Fishing: the art of doing nothing that matters enormously.",
+        "Early mornings, cold coffee, and the best kind of quiet.",
+        "Hunting season: where memories are made and traditions are kept.",
+        # Leadership / strength
+        "A real man lifts others as he climbs.",
+        "Strength is not just muscle — it is character under pressure.",
+        "Men of honor do not chase respect. They earn it quietly.",
+        # Veterans
+        "Veteran: earned in service, worn with pride.",
+        "He left as a soldier. He came back as a man who carries something most will never understand.",
+        # Brotherhood / man cave
+        "Brotherhood: built in the field, forged in fire, kept forever.",
+        "This is my space. My rules. My peace.",
+    ],
+    "Wedding Industry": [
+        "Two imperfect people choosing to be perfect for each other.",
+        "Today I marry my best friend.",
+        "Together is my favorite place to be.",
+        "Forever starts right here.",
+        "Welcome — you are exactly where love lives.",
+        "She said yes. Everything changes now.",
+        "Mr. & Mrs.: the beginning of our best chapter.",
+        "Love brought us here. Grace will carry us forward.",
+        "This is where two stories become one.",
+        "With this ring, I choose you — today, tomorrow, always.",
+        "Eat, drink, and be married.",
+    ],
+    "Financial Independence": [
+        "Wealth is not about money — it is about options.",
+        "Build assets while others build expenses.",
+        "Financial freedom is not a dream. It is a decision.",
+        "Invest in your future self — they will thank you.",
+        "The best time to plant a money tree was yesterday. The second best time is now.",
+        "Your net worth is your future freedom.",
+        "FIRE: Financial Independence. Your rules. Your timeline.",
+        "Spend less than you earn. Invest the difference. Repeat.",
+        "Abundance is a mindset before it is a bank balance.",
+        "Build wealth quietly. Live fully. Give generously.",
+    ],
+    "Faith-Based Professions": [
+        # Christian nurse
+        "I am a nurse because God needed hands that heal with both skill and love.",
+        "Called to care. Equipped by grace. Sustained by faith.",
+        "Christian nurse: where medicine meets ministry.",
+        # Christian dentist
+        "God called me to restore smiles. I show up every day to answer that call.",
+        "Every patient in my chair is someone God loves — I treat them accordingly.",
+        "Christian dentist: healing mouths, serving hearts.",
+        # Christian teacher
+        "I teach because every child is made in the image of the greatest Teacher.",
+        "Called to the classroom. Faithful in the mission.",
+        "Christian teacher: planting seeds of truth in every lesson.",
+        # Christian athlete
+        "I run for an audience of one.",
+        "Train the body. Strengthen the faith. Compete with grace.",
+        "Christian athlete: the victory that matters most is eternal.",
+        # Christian mom
+        "Christian mom: raising arrows for a purpose greater than herself.",
+        "My greatest ministry is the children who call me Mom.",
+        "Motherhood is my mission field.",
+        # Christian college student
+        "Campus is my mission field. Faith is my foundation.",
+        "Christian student: learning to think, choosing to believe.",
+        # Christian entrepreneur
+        "Built on faith. Driven by purpose. Accountable to grace.",
+        "Business is my ministry. Excellence is my worship.",
+    ],
+    "Children's Themed Rooms": [
+        # Safari
+        "Wild at heart. Brave by nature.",
+        "Born to explore the wild, wonderful world.",
+        "Adventure is out there — start in your own backyard.",
+        # Ocean
+        "Dream deep. Swim far. Wonder always.",
+        "The ocean is calling, little one.",
+        "Salty air and big dreams.",
+        # Space
+        "Reach for the stars — they are closer than you think.",
+        "The universe is big enough for every dream you have.",
+        "Future astronaut in training.",
+        # Dinosaur
+        "Roar with courage. Stomp with kindness.",
+        "Tiny but mighty — just like T-Rex.",
+        # Bible verse nursery
+        "You are fearfully and wonderfully made.",
+        "Before you were born, you were known and loved.",
+        "Children are a gift — a blessing beyond measure.",
+        # General kids
+        "You are braver, stronger, and smarter than you think.",
+        "Dream big, little one. The world needs your gift.",
+        "Be kind. Be curious. Be wonderfully, completely you.",
+    ],
+    "Open When Posters": [
+        "Open when you feel like quitting: You have come too far to stop now. Rest if you must, but do not quit.",
+        "Open when you are lonely: You are never truly alone — you are loved more than you know.",
+        "Open when you need courage: Courage is not the absence of fear. It is deciding something matters more.",
+        "Open when you miss home: Home is not just a place — it is the people and the love that shaped you.",
+        "Open when life feels hard: Hard seasons do not last. Strong people do. You are one of them.",
+        "Open when you doubt yourself: Every great person once sat where you are sitting, doubting everything.",
+        "Open when you need a reminder: You are enough. You are loved. You are not alone.",
+        "Open when you want to give up: The story is not over. The best chapters often come after the hardest ones.",
+    ],
+    "Healthcare Specialists": [
+        # ICU / NICU
+        "ICU nurses: standing guard over the most fragile moments of life.",
+        "NICU nurse: holding the tiniest lives with the steadiest hands.",
+        "Every patient who leaves the ICU carries a piece of the nurse who fought for them.",
+        # PT / OT
+        "Physical therapists: turning recovery into a comeback story, one step at a time.",
+        "Occupational therapy: teaching life how to resume after life paused.",
+        "PT: where pain becomes progress and progress becomes possible.",
+        # Pharmacist
+        "Pharmacists: the last line of defense between patient and error.",
+        "Behind every safe medication is a pharmacist who checked twice.",
+        # Radiologist / respiratory
+        "Radiologists: seeing what the eye cannot, diagnosing what words cannot describe.",
+        "Respiratory therapists: the breath between crisis and recovery.",
+        "Every specialist in healthcare chose a harder path — because the patient needed them to.",
+    ],
+    "Home Gym & Fitness": [
+        "This is where excuses come to die.",
+        "Train hard. Rest well. Rise stronger.",
+        "No days off from becoming better.",
+        "The gym is not punishment. It is a promise you keep to yourself.",
+        "Running: the cheapest therapy with the best results.",
+        "26.2 miles of proof that you can do hard things.",
+        "CrossFit: where you find out what you are actually made of.",
+        "Bodybuilding is the art of becoming what you eat, lift, and believe.",
+        "Discipline is the bridge between goal and accomplishment.",
+        "Home gym: no commute, no excuses, no limits.",
+        "Stronger every single day.",
+        "The only bad workout is the one you skipped.",
+    ],
+    "Digital Products": [
+        "Your vision board is just the beginning — now execute.",
+        "A goal without a plan is just a wish. Write it down.",
+        "Track your habits. Track your life.",
+        "Prayer journal: where conversation with God becomes visible.",
+        "Scripture study: the more you read, the more you find.",
+        "What you consistently do shapes who you consistently become.",
+        "Manifest it. Plan it. Execute it. Review it. Repeat.",
+        "Gratitude turns ordinary days into extraordinary ones.",
+        "Your future self is reading the habits you set today.",
+    ],
+    "Dental School Journey Map": [
+        "Shadowing → DAT → Interview → Acceptance → Year One → Clinic → Boards → DDS → Practice Owner.",
+        "Every step of the dental journey is earned. None of it is given.",
+        "The path to DDS is long, hard, and absolutely worth it.",
+        "Pre-dental grind today. White coat moment tomorrow.",
+        "DAT done. Dental school next. Practice someday. Dream always.",
+        "The dental school journey is not just a degree — it is a transformation.",
+        "From the library to the clinic to the practice — every step matters.",
+        "Your name will be on that door. Keep going.",
+    ],
     "Christian Prayers by Situation": [
         # Anxiety prayer
         "Lord, still the storm inside me. Let your peace be my anchor.",
