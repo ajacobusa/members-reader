@@ -36,6 +36,24 @@ PRODUCTS: dict[str, dict] = {
     "Square 12x12 in": {"size": (3600, 3600), "gelato_sku": "poster_12x12", "profit": "medium"},
 }
 
+# Airtable
+AIRTABLE_API_KEY: str = os.getenv("AIRTABLE_API_KEY", "")
+AIRTABLE_BASE_ID: str = os.getenv("AIRTABLE_BASE_ID", "")
+
+# Gelato API (for programmatic order creation)
+GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
+
+# Google Drive (for artwork storage)
+GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
+
+# Canva API
+CANVA_API_KEY: str = os.getenv("CANVA_API_KEY", "")
+
+# Pipeline settings
+PIPELINE_AUTO_APPROVE_PROOF: bool = False  # True = skip proof step, auto-submit to Gelato
+PIPELINE_REVIEW_DELAY_DAYS: int = 14       # days after delivery to send review request
+PIPELINE_UPSELL_DELAY_HOURS: int = 2       # hours after order to send upsell message
+
 # Phase 1 priority niches to validate first (20-30 manual listings)
 PHASE1_NICHES: list[str] = [
     "Personalized Daughter Gifts",
