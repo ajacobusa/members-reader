@@ -142,12 +142,26 @@ def _cmd_verify_keys() -> int:
     print(f"  [{'PASS' if g['ok'] else ' -- ' if 'not set' in g['detail'] else 'FAIL'}] "
           f"Gelato: {g['detail']}")
 
+    # Gelato product UID mappings — must be real, not seed placeholders
+    from quoteforge.etsy.gelato_catalog import verify_catalog_mappings
+    m = verify_catalog_mappings()
+    if m["all_real"]:
+        print(f"  [PASS] Gelato UIDs: all {m['total']} product mappings configured")
+    else:
+        print(f"  [WARN] Gelato UIDs: {m['placeholder_count']}/{m['total']} still on "
+              f"placeholder SKUs - replace with real UIDs from your Gelato account:")
+        for ph in m["placeholders"][:8]:
+            print(f"           - {ph['product_id']} ({ph['size']}): {ph['current_sku']}")
+        if m["placeholder_count"] > 8:
+            print(f"           ... and {m['placeholder_count'] - 8} more")
+
     print()
-    if anthropic_ok and g["ok"]:
-        print("Both minimum keys verified live. You can run the real sample flow")
+    if anthropic_ok and g["ok"] and m["all_real"]:
+        print("Keys + UID mappings verified live. You can run the real sample flow")
         print("(keep TEST_MODE=true — Gelato fulfillment stays manual).")
         return 0
-    print("Not all keys verified. Add/fix keys in .env and re-run.")
+    print("Not ready: fix the keys in .env and/or replace placeholder Gelato")
+    print("product UIDs with real ones from your account, then re-run.")
     return 1
 
 

@@ -187,6 +187,51 @@ def _process_in_background(payload: dict) -> None:
         logger.error(f"Background order processing failed: {exc}")
 
 
+# Gelato fulfillment status → our internal order status
+_GELATO_STATUS_MAP = {
+    "passed": "fulfillment_accepted",
+    "in_production": "in_production",
+    "printed": "in_production",
+    "shipped": "shipped",
+    "delivered": "delivered",
+    "canceled": "canceled",
+    "cancelled": "canceled",
+    "failed": "error",
+}
+
+
+def process_gelato_callback(payload: dict) -> dict:
+    """Apply a Gelato status/tracking callback to the matching order.
+
+    Gelato sends `orderReferenceId` (which we set to our own order_id when we
+    created the order) plus a fulfillment `status` and, on shipment, a tracking
+    code/url. We match on the reference and update status + tracking.
+    """
+    from quoteforge.db.database import init_db, get_order, update_order
+    init_db()
+    ref = str(payload.get("orderReferenceId")
+              or payload.get("order_reference_id") or "")
+    if not ref or not get_order(ref):
+        return {"status": "ignored", "reason": "unknown orderReferenceId",
+                "reference": ref}
+
+    raw_status = str(payload.get("status") or payload.get("fulfillmentStatus")
+                     or "").lower()
+    fields: dict = {}
+    if raw_status in _GELATO_STATUS_MAP:
+        fields["status"] = _GELATO_STATUS_MAP[raw_status]
+    tracking = (payload.get("trackingCode") or payload.get("tracking_code")
+                or payload.get("trackingNumber") or "")
+    if tracking:
+        fields["tracking_number"] = tracking
+    if not fields:
+        return {"status": "ignored", "reason": "no actionable fields",
+                "reference": ref}
+    update_order(ref, **fields)
+    logger.info(f"Gelato callback applied to {ref}: {fields}")
+    return {"status": "ok", "reference": ref, "updated": fields}
+
+
 if FLASK_AVAILABLE and app:
     @app.route("/health", methods=["GET"])
     def health():
@@ -238,6 +283,21 @@ if FLASK_AVAILABLE and app:
                          daemon=True).start()
         return jsonify({"status": "accepted", "order_id": etsy_order_id,
                         "message": "Order accepted and processing"}), 202
+
+    @app.route("/gelato", methods=["POST"])
+    def receive_gelato_callback():
+        """Gelato status/tracking webhook — signature-verified, then applied."""
+        from quoteforge.automation.webhook_security import verify_gelato_signature
+        raw_body = request.get_data()
+        signature = (request.headers.get("X-Gelato-Signature")
+                     or request.headers.get("X-Webhook-Signature", ""))
+        if not verify_gelato_signature(raw_body, signature):
+            logger.warning("Rejected Gelato callback — invalid signature")
+            return jsonify({"status": "error", "message": "Invalid signature"}), 401
+        payload = request.get_json(force=True, silent=True) or {}
+        result = process_gelato_callback(payload)
+        code = 200 if result["status"] in ("ok", "ignored") else 400
+        return jsonify(result), code
 
     @app.route("/backup", methods=["POST"])
     def trigger_backup():

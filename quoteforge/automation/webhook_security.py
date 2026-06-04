@@ -7,7 +7,7 @@ not an attacker spamming your /order endpoint.
 import hashlib
 import hmac
 
-from quoteforge.config import ETSY_WEBHOOK_SECRET
+from quoteforge.config import ETSY_WEBHOOK_SECRET, GELATO_WEBHOOK_SECRET
 
 
 def compute_signature(payload_bytes: bytes, secret: str) -> str:
@@ -25,6 +25,21 @@ def verify_signature(payload_bytes: bytes, provided_signature: str,
     system works in development. Set ETSY_WEBHOOK_SECRET in .env for production.
     """
     secret = secret or ETSY_WEBHOOK_SECRET
+    return _verify(payload_bytes, provided_signature, secret)
+
+
+def verify_gelato_signature(payload_bytes: bytes, provided_signature: str,
+                            secret: str = "") -> bool:
+    """Verify a Gelato status/tracking callback against its HMAC-SHA256 signature.
+
+    Like verify_signature, but keyed on GELATO_WEBHOOK_SECRET. If no secret is
+    configured, verification is skipped (returns True) for dev parity.
+    """
+    secret = secret or GELATO_WEBHOOK_SECRET
+    return _verify(payload_bytes, provided_signature, secret)
+
+
+def _verify(payload_bytes: bytes, provided_signature: str, secret: str) -> bool:
     if not secret:
         return True  # no secret configured — verification disabled (dev mode)
     if not provided_signature:

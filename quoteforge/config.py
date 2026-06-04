@@ -98,6 +98,9 @@ CANVA_BRAND_TEMPLATE_ID: str = os.getenv("CANVA_BRAND_TEMPLATE_ID", "")
 ETSY_SHOP_ID: str = os.getenv("ETSY_SHOP_ID", "")
 ETSY_API_KEY: str = os.getenv("ETSY_API_KEY", "")
 ETSY_WEBHOOK_SECRET: str = os.getenv("ETSY_WEBHOOK_SECRET", "")
+# Shared secret Gelato signs its status/tracking callbacks with (set the same
+# value in the Gelato dashboard webhook config). Empty = verification disabled.
+GELATO_WEBHOOK_SECRET: str = os.getenv("GELATO_WEBHOOK_SECRET", "")
 
 # Pipeline settings
 PIPELINE_AUTO_APPROVE_PROOF: bool = _env_bool("PIPELINE_AUTO_APPROVE_PROOF", False)

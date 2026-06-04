@@ -521,6 +521,54 @@ def get_best_profit_products(min_profit: float = 15.0) -> list[GelatoProduct]:
     return [p for p in GELATO_CATALOG if p.profit_margin.get("mid", 0) >= min_profit]
 
 
+def verify_catalog_mappings() -> dict:
+    """Check that each product has a REAL Gelato product UID (not a placeholder).
+
+    The seed catalog ships placeholder SKUs like 'GEL-POSTER-8X10-STD'; before
+    go-live each must be replaced with the actual Gelato product UID from your
+    connected account, or fulfillment will fail. Returns a summary + the list of
+    products still on placeholders.
+    """
+    placeholders = []
+    for p in GELATO_CATALOG:
+        sku = (p.gelato_sku or "").strip()
+        # Placeholder if empty or matches the seed 'GEL-...-...' pattern.
+        if not sku or sku.upper().startswith("GEL-"):
+            placeholders.append({"product_id": p.product_id, "size": p.size,
+                                 "current_sku": sku or "(empty)"})
+    total = len(GELATO_CATALOG)
+    return {
+        "total": total,
+        "configured": total - len(placeholders),
+        "placeholder_count": len(placeholders),
+        "placeholders": placeholders,
+        "all_real": not placeholders,
+    }
+
+
+def get_product(identifier: str) -> "GelatoProduct | None":
+    """Look up a product by product_id, gelato_sku, or size string (case-insensitive)."""
+    if not identifier:
+        return None
+    key = identifier.strip().lower()
+    for p in GELATO_CATALOG:
+        if key in (p.product_id.lower(), p.gelato_sku.lower(), p.size.lower()):
+            return p
+    # size given without unit, e.g. "11x14"
+    for p in GELATO_CATALOG:
+        if p.size.lower().replace(" in", "").strip() == key:
+            return p
+    return None
+
+
+def dimensions_for(identifier: str,
+                   default: tuple[int, int] = (5400, 7200)) -> tuple[int, int]:
+    """Return (width_px, height_px) at 300 DPI for a product, or a sane default
+    (18x24 in) when the product can't be resolved."""
+    p = get_product(identifier)
+    return (p.width_px, p.height_px) if p else default
+
+
 def calculate_profit(product_id: str, sale_price: float) -> dict:
     """Calculate exact profit for a given product and sale price."""
     product = next((p for p in GELATO_CATALOG if p.product_id == product_id), None)

@@ -189,10 +189,17 @@ def run_full_pipeline(
             keyword = get_unsplash_keyword(mood)
             bg_url = fetch_background_url(keyword) or fetch_background_url(scenery)
             out_dir = OUTPUT_DIR / "pipeline" / order_id
+            # Render at the ORDERED product's exact 300-DPI dimensions so an
+            # 11x14 / canvas / etc. has the right proportions (no reprints).
+            from quoteforge.etsy.gelato_catalog import dimensions_for
+            size_key = (order_data.get("product_size")
+                        or order_data.get("size") or gelato_product_uid)
+            render_size = dimensions_for(size_key)
             png_path = render_local_poster(
                 quote=quote,
                 output_path=out_dir / "artwork.png",
                 background_url=bg_url,  # None → solid color fallback
+                size=render_size,
             )
             artwork_url = png_path.as_uri()
 

@@ -49,12 +49,20 @@ Do NOT enable Etsy live fulfillment until the physical sample is approved.
 
 ## Automated Testing
 
-- [x] ✅ All unit tests passing (165/165)
+- [x] ✅ All unit tests passing (408/408)
 - [x] ✅ All integration tests passing
 - [x] ✅ End-to-end pipeline test passing (`test_full_pipeline_e2e.py`)
-- [x] ✅ Webhook signature verification passing
+- [x] ✅ Webhook signature verification passing — **Etsy AND Gelato** (`/order` + `/gelato` routes, `test_golive_gaps.py`)
+- [x] ✅ Gelato status/tracking callback applies to the matching order
+- [x] ✅ Artwork rendered at the **ordered product's** 300-DPI size (8x10/11x14/canvas/etc., not always 18x24)
 - [x] ✅ Airtable sync verified (graceful skip when unconfigured)
 - [x] ✅ Gelato test order verified (mock in TEST_MODE)
+
+> **Gelato product UIDs must be real before fulfillment.** Run
+> `python -m quoteforge.admin verify-keys` — it now flags any catalog SKU still
+> on a seed placeholder (`GEL-…`). Replace each with the real product UID from
+> your connected Gelato account until it reports `all 22 product mappings
+> configured`.
 
 ## TEST_MODE Verification
 
