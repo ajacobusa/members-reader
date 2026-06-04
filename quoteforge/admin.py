@@ -11,6 +11,7 @@ Usage:
   python -m quoteforge.admin sample-quote     # preview a REAL AI quote (safe)
   python -m quoteforge.admin email-report     # email the daily sales report
   python -m quoteforge.admin report PERIOD    # daily|weekly|monthly|yearly (add 'email' to send)
+  python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -184,6 +185,25 @@ def _cmd_customer_approved(args: list[str]) -> int:
     return 0
 
 
+def _cmd_healthcheck(args: list[str]) -> int:
+    from quoteforge.automation.healthcheck import (
+        run_healthcheck, format_health_text, send_health_alert,
+    )
+    if args and args[0] == "email":
+        out = send_health_alert(always=True)
+        result = out["result"]
+        print(format_health_text(result))
+        print(f"\nEmail: {out['status']}")
+    else:
+        result = run_healthcheck()
+        print(format_health_text(result))
+        # If there are problems, also fire an alert email automatically
+        if result["overall"] != "OK":
+            send_health_alert()
+    # Exit non-zero on FAIL so a scheduler / monitor can detect it
+    return 1 if result["overall"] == "FAIL" else 0
+
+
 def _cmd_report(args: list[str]) -> int:
     from quoteforge.db.database import init_db
     from quoteforge.etsy.reports import period_report, format_report_text, PERIODS
@@ -278,6 +298,7 @@ COMMANDS = {
     "sample-quote": lambda args: _cmd_sample_quote(),
     "email-report": lambda args: _cmd_email_report(),
     "report": _cmd_report,
+    "healthcheck": _cmd_healthcheck,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
