@@ -47,17 +47,24 @@ def upsell_actions(orders: list[dict]) -> list[dict]:
 
     Targets fulfilled orders that haven't been offered an upsell yet.
     """
+    from quoteforge.etsy.product_lines import story_to_products
     eligible = {"approved_ready_to_print", "in_production", "shipped"}
     actions = []
     for o in orders:
         if o.get("status") in eligible and not o.get("upsell_sent"):
+            # Cross-sell: the SAME message on 2-3 other products (mug, journal...)
+            extras = [p["product"] for p in story_to_products(o.get("occasion", ""))
+                      if p["product"] not in ("Poster 18x24",)][:3]
+            suggest = ("Offer the same design as a matching set: "
+                       + ", ".join(extras) + ".") if extras else \
+                      "Offer the matching canvas/framed upgrade."
             actions.append({
                 "type": "upsell",
                 "order_id": o["order_id"],
                 "customer": o.get("sender_name") or o.get("customer_name") or "there",
                 "occasion": o.get("occasion", ""),
-                "suggested": ("Offer the matching CANVAS / FRAMED upgrade and a "
-                              "3-print bundle for the same design."),
+                "suggested": suggest,
+                "cross_sell_products": extras,
             })
     return actions
 

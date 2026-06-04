@@ -16,6 +16,7 @@ Usage:
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
   python -m quoteforge.admin calendar          # annual retailer timeline: list/market dates due
+  python -m quoteforge.admin products [Occasion]  # full product range + 1-story-to-many bundle
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -186,6 +187,39 @@ def _cmd_customer_approved(args: list[str]) -> int:
     else:
         print("  Status: approved_ready_to_print — now upload the artwork to "
               "Gelato to place the print order.")
+    return 0
+
+
+def _cmd_products(args: list[str]) -> int:
+    from quoteforge.etsy.product_lines import (
+        top_ranked, bundle_value, catalog_by_category,
+    )
+    if args:
+        occasion = " ".join(args)
+        bundle = bundle_value(occasion)
+        print("=" * 58)
+        print(f"ONE STORY → MANY PRODUCTS — {occasion}")
+        print("=" * 58)
+        print(f"{'PRODUCT':24} {'PRICE':>8} {'PROFIT':>8}  PERSONALIZE")
+        print("-" * 58)
+        for p in bundle["products"]:
+            print(f"{p['product']:24} ${p['sell_price']:>6.2f} ${p['net_profit']:>6.2f}  {p['personalization']}")
+        print("-" * 58)
+        print(f"If they buy the full bundle: ${bundle['total_revenue']:.2f} revenue, "
+              f"${bundle['total_profit']:.2f} profit ({bundle['product_count']} products)")
+        print("\nTip: offer 2-3 of these as a matching set to lift average order value.")
+        return 0
+    # No occasion → show the ranked product range
+    print("=" * 58)
+    print("GELATO PRODUCT RANGE — ranked by potential")
+    print("=" * 58)
+    print(f"{'#':>2} {'PRODUCT':24} {'COST':>7} {'SELL':>8} {'PROFIT':>8} {'MARGIN':>7}")
+    print("-" * 58)
+    for p in top_ranked(20):
+        print(f"{p.rank:>2} {p.name:24} ${p.gelato_cost:>5.2f} ${p.sell_price:>6.2f} "
+              f"${p.net_profit:>6.2f} {p.margin_pct:>5.1f}%")
+    print("\nThe big idea: 1 AI message → poster + mug + journal + card + tote...")
+    print("Run  python -m quoteforge.admin products Graduation  for a bundle.")
     return 0
 
 
@@ -396,6 +430,7 @@ COMMANDS = {
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,
     "calendar": _cmd_calendar,
+    "products": _cmd_products,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
