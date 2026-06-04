@@ -33,9 +33,9 @@ def test_all_listings_are_personalized():
 
 def test_pricing_ladder():
     assert PRICING["Digital Download"] == (19, 29)
-    assert PRICING["Poster"] == (29, 49)
-    assert PRICING["Framed Poster"] == (59, 99)
-    assert PRICING["Canvas"] == (79, 149)
+    assert PRICING["Poster"] == (37, 59)
+    assert PRICING["Framed Poster"] == (93, 129)
+    assert PRICING["Canvas"] == (106, 169)
 
 
 def test_avoid_list_has_low_intent_items():

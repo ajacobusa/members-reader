@@ -31,30 +31,32 @@ class ProductLine:
 
 
 # Ranked roughly per strategic potential for a message-first business.
+# Prices are set so every line clears a 60% net margin (after Gelato + Etsy
+# fees). Re-run `admin margins 60` after any Gelato/Etsy fee change.
 PRODUCT_LINES: list[ProductLine] = [
-    ProductLine("Personalized Journal", "paper", 9.00, 27.99, 1, "name", True),
+    ProductLine("Personalized Journal", "paper", 9.00, 30.99, 1, "name", True),
     ProductLine("Greeting Card", "paper", 2.20, 7.99, 2, "message", True),
-    ProductLine("Mug 11oz", "drinkware", 8.00, 21.99, 3, "message", True),
-    ProductLine("Tote Bag", "accessory", 12.00, 29.99, 4, "message", True),
-    ProductLine("Christmas Ornament", "seasonal", 9.00, 24.99, 5, "name", True),
-    ProductLine("T-Shirt", "apparel", 13.00, 29.99, 6, "message", True),
-    ProductLine("Hoodie", "apparel", 28.00, 54.99, 6, "message", False),
-    ProductLine("Sweatshirt", "apparel", 24.00, 49.99, 6, "message", False),
-    ProductLine("Wall Calendar", "paper", 13.00, 32.99, 7, "photo", False),
-    ProductLine("Photo Puzzle", "accessory", 15.00, 36.99, 8, "photo", False),
-    ProductLine("Sticker Pack", "accessory", 2.50, 7.99, 9, "message", True),
-    ProductLine("Mouse Pad", "accessory", 8.00, 19.99, 10, "message", False),
-    ProductLine("Coaster Set", "accessory", 10.00, 26.99, 10, "name", False),
-    ProductLine("Fridge Magnet", "accessory", 3.50, 11.99, 10, "message", True),
-    ProductLine("Phone Case", "accessory", 12.00, 27.99, 10, "message", False),
-    ProductLine("Baby Onesie", "baby", 13.00, 28.99, 10, "name", True),
-    ProductLine("Baby Bib", "baby", 10.00, 22.99, 10, "name", True),
-    ProductLine("Pet Bandana", "pet", 9.00, 20.99, 10, "name", True),
-    ProductLine("Pet Bowl", "pet", 16.00, 34.99, 10, "name", False),
+    ProductLine("Mug 11oz", "drinkware", 8.00, 26.99, 3, "message", True),
+    ProductLine("Tote Bag", "accessory", 12.00, 40.99, 4, "message", True),
+    ProductLine("Christmas Ornament", "seasonal", 9.00, 30.99, 5, "name", True),
+    ProductLine("T-Shirt", "apparel", 13.00, 43.99, 6, "message", True),
+    ProductLine("Hoodie", "apparel", 28.00, 92.99, 6, "message", False),
+    ProductLine("Sweatshirt", "apparel", 24.00, 79.99, 6, "message", False),
+    ProductLine("Wall Calendar", "paper", 13.00, 43.99, 7, "photo", False),
+    ProductLine("Photo Puzzle", "accessory", 15.00, 49.99, 8, "photo", False),
+    ProductLine("Sticker Pack", "accessory", 2.50, 8.99, 9, "message", True),
+    ProductLine("Mouse Pad", "accessory", 8.00, 26.99, 10, "message", False),
+    ProductLine("Coaster Set", "accessory", 10.00, 33.99, 10, "name", False),
+    ProductLine("Fridge Magnet", "accessory", 3.50, 12.99, 10, "message", True),
+    ProductLine("Phone Case", "accessory", 12.00, 40.99, 10, "message", False),
+    ProductLine("Baby Onesie", "baby", 13.00, 43.99, 10, "name", True),
+    ProductLine("Baby Bib", "baby", 10.00, 33.99, 10, "name", True),
+    ProductLine("Pet Bandana", "pet", 9.00, 30.99, 10, "name", True),
+    ProductLine("Pet Bowl", "pet", 16.00, 53.99, 10, "name", False),
     # Existing print products (kept here for the unified catalog/cross-sell)
-    ProductLine("Poster 18x24", "print", 11.00, 29.99, 3, "message", False),
-    ProductLine("Canvas 16x20", "print", 32.00, 64.99, 7, "message", False),
-    ProductLine("Framed Print 11x14", "print", 28.00, 54.99, 7, "message", False),
+    ProductLine("Poster 18x24", "print", 11.00, 36.99, 3, "message", False),
+    ProductLine("Canvas 16x20", "print", 32.00, 105.99, 7, "message", False),
+    ProductLine("Framed Print 11x14", "print", 28.00, 92.99, 7, "message", False),
 ]
 
 # The universal set — almost any customer story works on these four.

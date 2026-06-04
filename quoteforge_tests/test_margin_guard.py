@@ -31,6 +31,19 @@ def test_impossible_floor_returns_inf():
     assert min_price_for_margin(10.0, 95) == float("inf")
 
 
+def test_entire_catalog_clears_60pct_floor():
+    # Hard guarantee: every product AND gallery set nets at least 60%.
+    audit = audit_catalog(floor_pct=60)
+    assert audit["below_floor"] == 0, (
+        "Below 60%: " + ", ".join(
+            f"{o['name']} ({o['margin_pct']}%)" for o in audit["offenders"]))
+
+
+def test_default_floor_is_60():
+    from quoteforge.config import TARGET_MARGIN_PCT
+    assert TARGET_MARGIN_PCT == 60
+
+
 def test_audit_catalog_runs_over_products_and_sets():
     audit = audit_catalog(floor_pct=50)
     assert audit["checked"] > 0

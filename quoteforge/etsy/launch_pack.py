@@ -52,12 +52,14 @@ LAUNCH_PACK_20: list[LaunchListing] = [
 # The six proven high-converting categories to expand within FIRST
 PROVEN_CATEGORIES = ["Daughter", "Mom", "Wedding", "Christian", "Graduation", "Memorial", "Son"]
 
-# Pricing ladder (USD) — same design, sold at multiple price points
+# Pricing ladder (USD) — same design, sold at multiple price points.
+# Low ends are set so each physical format clears a 60% net margin after
+# Gelato + Etsy fees (digital has ~no unit cost, so it runs far above 60%).
 PRICING = {
     "Digital Download": (19, 29),
-    "Poster": (29, 49),
-    "Framed Poster": (59, 99),
-    "Canvas": (79, 149),
+    "Poster": (37, 59),
+    "Framed Poster": (93, 129),
+    "Canvas": (106, 169),
 }
 
 # What to AVOID at launch (crowded, price-sensitive, low intent)

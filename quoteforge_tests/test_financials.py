@@ -24,8 +24,9 @@ def test_order_financials_with_real_numbers():
 def test_order_financials_falls_back_to_defaults():
     fin = order_financials({"order_id": "B", "status": "shipped"})  # no prices
     assert fin["estimated"] is True
-    assert fin["sale_price"] == 29.99   # DEFAULT_SALE_PRICE
-    assert fin["gelato_cost"] == 11.0   # DEFAULT_GELATO_COST
+    from quoteforge.config import DEFAULT_SALE_PRICE, DEFAULT_GELATO_COST
+    assert fin["sale_price"] == DEFAULT_SALE_PRICE
+    assert fin["gelato_cost"] == DEFAULT_GELATO_COST
 
 
 def test_summarize_totals():

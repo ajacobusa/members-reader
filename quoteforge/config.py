@@ -46,9 +46,10 @@ RENDERER: str = os.getenv("RENDERER", "local")
 # a print on white. Free (Pillow); the mockup is a listing image, not the print.
 GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
 
-# Target gross margin floor (% of sale price kept after Gelato + Etsy fees).
-# High-ticket POD guidance is 50-70%; the margin guard flags anything below this.
-TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "50"))
+# Target net margin floor (% of sale price kept after Gelato + Etsy fees).
+# Set to 60%: every product and gallery set is priced to clear this, and the
+# margin guard flags anything that slips below it (e.g. after a fee increase).
+TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
 
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
@@ -110,7 +111,7 @@ PIPELINE_UPSELL_DELAY_HOURS: int = int(os.getenv("PIPELINE_UPSELL_DELAY_HOURS", 
 # Financial defaults — used to estimate per-order economics when the actual
 # sale price / print cost aren't recorded on the order yet (e.g. before the
 # Etsy + Gelato APIs feed real numbers). Override per env.
-DEFAULT_SALE_PRICE: float = float(os.getenv("DEFAULT_SALE_PRICE", "29.99"))
+DEFAULT_SALE_PRICE: float = float(os.getenv("DEFAULT_SALE_PRICE", "36.99"))
 DEFAULT_GELATO_COST: float = float(os.getenv("DEFAULT_GELATO_COST", "11.00"))
 # Average sales-tax rate Etsy COLLECTS and REMITS on your behalf (pass-through —
 # not your money, not a cost). Shown for reference/reconciliation only.

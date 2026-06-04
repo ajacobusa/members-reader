@@ -40,21 +40,21 @@ class GallerySet:
 # Prices target the article's $180-500 high-ticket band with 50%+ margins.
 GALLERY_SETS: list[GallerySet] = [
     GallerySet("Daughter Gallery Trio", "Graduation", "Daughter",
-               3, "Framed 11x14", 28.0, 219.0),
+               3, "Framed 11x14", 28.0, 276.99),
     GallerySet("Wedding Vows Gallery Wall", "Wedding", "Wife",
-               3, "Framed 11x14", 28.0, 249.0),
+               3, "Framed 11x14", 28.0, 276.99),
     GallerySet("Family Blessing Triptych", "Just Because", "Family",
-               3, "Canvas 12x16", 32.0, 239.0),
+               3, "Canvas 12x16", 32.0, 315.99),
     GallerySet("Christian Faith Set", "Just Because", "Family",
-               3, "Framed 11x14", 28.0, 209.0),
+               3, "Framed 11x14", 28.0, 276.99),
     GallerySet("Memorial Remembrance Set", "Memorial / In Memory Of", "Family",
-               3, "Framed 11x14", 28.0, 209.0),
+               3, "Framed 11x14", 28.0, 276.99),
     GallerySet("Nursery Story Set", "New Baby", "Baby",
-               4, "Framed 8x10", 22.0, 229.0),
+               4, "Framed 8x10", 22.0, 289.99),
     GallerySet("Anniversary Canvas Triptych", "Anniversary", "Wife",
-               3, "Canvas 16x20", 38.0, 299.0),
+               3, "Canvas 16x20", 38.0, 374.99),
     GallerySet("Deluxe Room Makeover (5)", "Graduation", "Daughter",
-               5, "Framed 11x14", 28.0, 399.0),
+               5, "Framed 11x14", 28.0, 459.99),
 ]
 
 
