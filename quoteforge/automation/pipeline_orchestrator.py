@@ -320,6 +320,13 @@ def resume_after_proof_approval(order_id: str,
         gelato_order_id = gelato_resp.get("id", "")
         update_order(order_id, gelato_order_id=gelato_order_id, status="in_production")
         log_pipeline_stage(order_id, "gelato_order", "success", gelato_order_id)
+    else:
+        # Manual-Gelato flow: approval recorded but no automated order placed.
+        # Move the order off "awaiting_customer_approval" so it's clearly past
+        # the customer gate and ready for you to upload the artwork to Gelato.
+        update_order(order_id, status="approved_ready_to_print")
+        log_pipeline_stage(order_id, "gelato_order", "manual",
+                           "Approved — upload artwork to Gelato to print")
 
     return get_order(order_id) or {}
 

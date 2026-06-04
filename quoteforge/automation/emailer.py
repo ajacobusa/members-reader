@@ -21,24 +21,28 @@ def build_report_html() -> tuple[str, str]:
     from quoteforge.etsy.tier_advisor import recommend_tiers
 
     init_db()
-    report = daily_order_report()
+    report = daily_order_report()      # all-time status counts (outstanding work)
     by_status = report["by_status"]
-    total = sum(by_status.values())
-    shipped = by_status.get("shipped", 0)
     in_progress = sum(v for k, v in by_status.items()
                       if k not in ("shipped", "delivered", "error"))
     errors = by_status.get("error", 0)
 
-    # Financial summary (revenue, Etsy fees, sales tax, Gelato cost, profit)
-    from quoteforge.db.database import get_all_orders
+    # TODAY's activity + financials (scoped to today — this is a *daily* report)
+    from quoteforge.etsy.reports import period_report
     from quoteforge.etsy.financials import summarize
-    fin = summarize(get_all_orders(limit=100000))
+    from quoteforge.db.database import get_all_orders
+    today_rep = period_report("daily")
+    today_count = today_rep["total_orders"]
+    fin = today_rep["financials"]                       # today's money
+    all_time = summarize(get_all_orders(limit=100000))  # lifetime money (context)
+    shipped = by_status.get("shipped", 0)
 
-    # Demand-based tier recommendations (orders so far this run as a proxy)
-    recs = recommend_tiers(monthly_orders=total, renderer=RENDERER)
+    # Demand-based tier recommendations (use this month's volume as the signal)
+    monthly_orders = period_report("monthly")["total_orders"]
+    recs = recommend_tiers(monthly_orders=monthly_orders, renderer=RENDERER)
 
     today = datetime.now().strftime("%A, %B %d, %Y")
-    subject = f"QuoteForge Daily Report — {today} ({total} orders)"
+    subject = f"QuoteForge Daily Report — {today} ({today_count} new orders today)"
 
     def _row(label: str, value) -> str:
         return (f"<tr><td style='padding:6px 14px;border:1px solid #ddd'>{html.escape(label)}</td>"
@@ -69,23 +73,27 @@ def build_report_html() -> tuple[str, str]:
   <h2 style="color:#1F4E79">QuoteForge Daily Sales Report</h2>
   <p>{today}</p>
   <table style="border-collapse:collapse;margin:12px 0">
-    {_row("Total Orders", total)}
-    {_row("In Progress", in_progress)}
-    {_row("Shipped", shipped)}
-    {_row("Errors", errors)}
+    {_row("New Orders Today", today_count)}
+    {_row("In Progress (all)", in_progress)}
+    {_row("Shipped (all)", shipped)}
+    {_row("Errors (all)", errors)}
   </table>
 
-  <h3>💰 Financials (billable orders)</h3>
+  <h3>💰 Today's Financials</h3>
   <table style="border-collapse:collapse;margin:12px 0">
     {_row("Revenue (gross sales)", f"${fin['revenue']:.2f}")}
     {_row("Etsy Fees", f"-${fin['etsy_fees']:.2f}")}
     {_row("Gelato Print Cost", f"-${fin['gelato_cost']:.2f}")}
-    {_row("NET PROFIT", f"${fin['net_profit']:.2f}")}
+    {_row("NET PROFIT (today)", f"${fin['net_profit']:.2f}")}
     {_row("Avg Profit / Order", f"${fin['avg_profit_per_order']:.2f}")}
     {_row("Sales Tax (collected & remitted by Etsy — not your money)", f"${fin['sales_tax_collected']:.2f}")}
   </table>
 
-  <h3>Orders by Status</h3>
+  <p style="font-size:13px;color:#555">
+    All-time net profit: <b>${all_time['net_profit']:.2f}</b>
+    across {all_time['order_count']} billable orders.</p>
+
+  <h3>Orders by Status (all-time)</h3>
   <table style="border-collapse:collapse">{status_rows}</table>
 
   <h3>Pending Follow-ups</h3>

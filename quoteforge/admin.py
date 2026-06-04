@@ -173,8 +173,14 @@ def _cmd_customer_approved(args: list[str]) -> int:
     if not get_order(oid):
         print(f"Order {oid} not found.")
         return 1
-    record_customer_approval(oid)
-    print(f"Customer approval recorded for {oid}. Order released toward printing.")
+    result = record_customer_approval(oid)
+    status = result.get("status", "")
+    print(f"Customer approval recorded for {oid}.")
+    if status == "in_production":
+        print("  Order sent to Gelato for printing.")
+    else:
+        print("  Status: approved_ready_to_print — now upload the artwork to "
+              "Gelato to place the print order.")
     return 0
 
 

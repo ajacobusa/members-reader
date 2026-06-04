@@ -50,7 +50,8 @@ def summarize(orders: list[dict], billable_only: bool = True) -> dict:
     production/shipped/delivered) — pending/error orders haven't earned money.
     """
     billable_statuses = {"in_production", "shipped", "delivered",
-                         "awaiting_customer_approval", "artwork_done"}
+                         "awaiting_customer_approval", "approved_ready_to_print",
+                         "artwork_done"}
     rows = []
     for o in orders:
         if billable_only and o.get("status") not in billable_statuses:

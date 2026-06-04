@@ -53,8 +53,11 @@ def test_build_report_html_structure(tmp_path):
         db.create_order({"order_id": "R-1", "recipient_name": "Emma", "occasion": "Graduation"})
         subject, body = build_report_html()
     assert "QuoteForge Daily Report" in subject
+    assert "new orders today" in subject.lower()  # scoped to today, not all-time
     assert "Daily Sales Report" in body
-    assert "Total Orders" in body
+    assert "New Orders Today" in body
+    assert "Today's Financials" in body
+    assert "All-time net profit" in body
 
 
 def test_build_report_escapes_html(tmp_path):
