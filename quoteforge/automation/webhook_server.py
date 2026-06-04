@@ -151,10 +151,44 @@ def process_webhook_payload(payload: dict) -> dict:
         return {"status": "error", "message": str(exc)}
 
 
+def _is_duplicate(etsy_order_id: str) -> bool:
+    """Fast synchronous idempotency check (used before async dispatch)."""
+    if not etsy_order_id:
+        return False
+    from quoteforge.db.database import init_db, get_order_by_etsy_id
+    init_db()
+    return get_order_by_etsy_id(etsy_order_id) is not None
+
+
+def _process_in_background(payload: dict) -> None:
+    """Run the (slow) full pipeline off the request thread."""
+    try:
+        process_webhook_payload(payload)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error(f"Background order processing failed: {exc}")
+
+
 if FLASK_AVAILABLE and app:
     @app.route("/health", methods=["GET"])
     def health():
-        return jsonify({"status": "ok", "service": "QuoteForge Webhook", "timestamp": datetime.now().isoformat()})
+        """Deep health check — verifies the database is reachable."""
+        db_ok = True
+        db_error = ""
+        try:
+            from quoteforge.db.database import init_db, get_order_stats
+            init_db()
+            get_order_stats()
+        except Exception as exc:
+            db_ok = False
+            db_error = str(exc)
+        status = "ok" if db_ok else "degraded"
+        code = 200 if db_ok else 503
+        return jsonify({
+            "status": status,
+            "service": "QuoteForge Webhook",
+            "database": "ok" if db_ok else f"error: {db_error}",
+            "timestamp": datetime.now().isoformat(),
+        }), code
 
     @app.route("/order", methods=["POST"])
     def receive_order():
@@ -164,13 +198,27 @@ if FLASK_AVAILABLE and app:
         if not verify_signature(raw_body, signature):
             logger.warning("Rejected webhook — invalid signature")
             return jsonify({"status": "error", "message": "Invalid signature"}), 401
+
         payload = request.get_json(force=True, silent=True) or {}
-        logger.info(f"Received order webhook: order_id={payload.get('order_id')}")
-        result = process_webhook_payload(payload)
-        # 2xx for success AND duplicate (both are "done" — don't make Make.com retry).
-        # 4xx only for genuine errors so the sender can alert/retry.
-        status_code = 200 if result["status"] in ("success", "duplicate") else 400
-        return jsonify(result), status_code
+        etsy_order_id = str(payload.get("order_id") or payload.get("etsy_order_id") or "")
+        logger.info(f"Received order webhook: order_id={etsy_order_id}")
+
+        # Validate required fields synchronously (fast feedback to sender)
+        missing = [f for f in ("recipient_name", "occasion") if not payload.get(f)]
+        if missing:
+            return jsonify({"status": "error", "message": f"Missing fields: {missing}"}), 400
+
+        # Idempotency check synchronously — duplicates never spawn work
+        if _is_duplicate(etsy_order_id):
+            return jsonify({"status": "duplicate", "order_id": etsy_order_id,
+                            "message": "Already processed — skipped"}), 200
+
+        # Dispatch the heavy pipeline to a background thread and ACK immediately
+        # with 202 Accepted so Make.com/Zapier never times out waiting on us.
+        threading.Thread(target=_process_in_background, args=(payload,),
+                         daemon=True).start()
+        return jsonify({"status": "accepted", "order_id": etsy_order_id,
+                        "message": "Order accepted and processing"}), 202
 
     @app.route("/backup", methods=["POST"])
     def trigger_backup():
@@ -207,6 +255,20 @@ def run_server(host: str = "0.0.0.0", port: int = 5050, debug: bool = False) -> 
         return
     logger.info(f"QuoteForge Webhook Server starting on {host}:{port}")
     logger.info("Zapier/Make.com: POST to http://YOUR-IP:5050/order")
+
+    # Prefer a production WSGI server. waitress works on Windows (gunicorn does
+    # not). Falls back to the Flask dev server only if waitress isn't installed.
+    if not debug:
+        try:
+            from waitress import serve
+            logger.info("Serving with waitress (production WSGI server)")
+            serve(app, host=host, port=port, threads=8)
+            return
+        except ImportError:
+            logger.warning(
+                "waitress not installed — falling back to the Flask dev server "
+                "(NOT for production). Install with: pip install waitress"
+            )
     app.run(host=host, port=port, debug=debug)
 
 

@@ -6,6 +6,7 @@ python-dotenv>=1.0.0
 
 # Optional — automation pipeline (install as needed)
 # flask>=3.0.0            # webhook server
+# waitress>=3.0.0         # production WSGI server (Windows-friendly)
 # streamlit>=1.30.0       # web-based pipeline monitor
 # pandas>=2.0.0           # streamlit dataframes
 # google-api-python-client>=2.0.0   # Google Drive storage

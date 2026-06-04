@@ -150,7 +150,9 @@ def run_full_pipeline(
     try:
         # ── Stage 2: AI Quote Generation ────────────────────────
         _notify("quote_generation", "Generating personalized quote...")
-        variations = generate_personal_message(
+        from quoteforge.automation.retry import retry_call
+        variations = retry_call(
+            generate_personal_message,
             relationship=order_data.get("relationship", "To My Friend"),
             recipient_name=order_data.get("recipient_name", ""),
             sender_name=order_data.get("sender_name", ""),

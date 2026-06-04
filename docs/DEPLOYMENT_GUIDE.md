@@ -98,9 +98,27 @@ The pipeline is hardened for unattended operation:
   with `status: duplicate` so the sender stops retrying. This prevents duplicate
   quotes and duplicate Gelato orders.
 
+**Performance (no timeout cascades)**
+- The `/order` webhook validates + checks for duplicates synchronously (fast),
+  then dispatches the slow pipeline to a **background thread** and returns
+  **HTTP 202 Accepted** immediately. Make.com/Zapier never waits on quote +
+  artwork generation, so it never times out and never triggers retry storms.
+- Served by **waitress** (production WSGI, 8 threads) — not the Flask dev
+  server. `pip install waitress`; `run_server()` uses it automatically.
+
 **Resilience (transient failures)**
-- The Gelato order call retries transient errors (429/5xx/timeout) with
-  exponential backoff (3 attempts). A permanent error (e.g. 400) fails fast.
+- Both the Claude quote call and the Gelato order call retry transient errors
+  (429 rate-limit, 529 overloaded, 5xx, timeouts) with exponential backoff
+  (3 attempts). A permanent error (e.g. 400) fails fast — no wasted retries.
+
+**Monitoring**
+- `GET /health` performs a **deep check** — it verifies the database is
+  reachable and returns HTTP 503 if not. Point your uptime monitor here.
+
+**Tracking updates (no thread starvation)**
+- Use `check_and_update_tracking(order_id, gelato_order_id)` on a schedule
+  (one Gelato poll per tick). Do NOT use the blocking `poll_until_shipped`
+  from a request/GUI thread — it can block for up to 48 hours by design.
 
 **Recovery (backups)**
 - `backup_database()` uses SQLite's online backup API — a consistent snapshot

@@ -112,13 +112,34 @@ def _extract_tracking_url(data: dict) -> str:
 
 
 def poll_until_shipped(gelato_order_id: str, max_polls: int = 48, interval_secs: int = 3600) -> dict:
-    """Poll order status hourly until shipped or max polls reached."""
+    """Poll order status until shipped or max_polls reached.
+
+    WARNING: This BLOCKS the calling thread for up to max_polls * interval_secs
+    (default 48 hours). NEVER call this from a web request or the GUI thread.
+    Run it only from a dedicated background worker / scheduled job, or instead
+    call get_gelato_order_status() once per scheduled tick (recommended).
+    """
     for _ in range(max_polls):
         status = get_gelato_order_status(gelato_order_id)
         if status["status"] in ("shipped", "delivered"):
             return status
         time.sleep(interval_secs)
     return get_gelato_order_status(gelato_order_id)
+
+
+def check_and_update_tracking(order_id: str, gelato_order_id: str) -> dict:
+    """Non-blocking single status check — meant to be run on a schedule.
+
+    Polls Gelato once, updates the order's tracking number in the DB if shipped.
+    Returns the status dict. This is the recommended alternative to the blocking
+    poll_until_shipped for production (call it from /backup-style scheduled hits).
+    """
+    status = get_gelato_order_status(gelato_order_id)
+    tn = status.get("tracking_number", "")
+    if tn:
+        from quoteforge.db.database import update_order
+        update_order(order_id, tracking_number=tn, status="shipped")
+    return status
 
 
 def get_gelato_api_setup() -> str:

@@ -19,11 +19,17 @@ def is_transient(exc: Exception) -> bool:
     """Heuristic: is this exception worth retrying?"""
     # requests.HTTPError exposes .response.status_code
     status = getattr(getattr(exc, "response", None), "status_code", None)
-    if status in TRANSIENT_STATUS:
+    # Anthropic / many SDKs expose .status_code directly on the exception
+    if status is None:
+        status = getattr(exc, "status_code", None)
+    if status in TRANSIENT_STATUS or status == 529:  # 529 = Anthropic "overloaded"
         return True
-    # connection/timeout errors are transient
+    # connection/timeout/overload errors are transient (match by class name)
     name = type(exc).__name__.lower()
-    return any(k in name for k in ("timeout", "connection", "temporarilyunavailable"))
+    return any(k in name for k in (
+        "timeout", "connection", "temporarilyunavailable",
+        "ratelimit", "internalserver", "overloaded", "serviceunavailable",
+    ))
 
 
 def retry_call(
