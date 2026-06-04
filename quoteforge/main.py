@@ -7,6 +7,7 @@ from quoteforge.gui.order_tab import OrderTab
 from quoteforge.gui.catalog_tab import CatalogTab
 from quoteforge.gui.prompts_tab import PromptsTab
 from quoteforge.gui.profit_tab import ProfitTab
+from quoteforge.gui.pipeline_tab import PipelineTab
 from quoteforge.quotes.categories import CATEGORIES
 from quoteforge.pipeline import run_pipeline
 from quoteforge.etsy.exporter import export_listings_csv
@@ -131,6 +132,10 @@ def main() -> None:
     # Tab 6: Profit calculator + scaling milestones
     tab6 = ProfitTab(notebook)
     notebook.add(tab6, text="  Profit & Scaling  ")
+
+    # Tab 7: Pipeline monitor — 7-stage automation status
+    tab7 = PipelineTab(notebook)
+    notebook.add(tab7, text="  Pipeline Monitor  ")
 
     root.mainloop()
 
