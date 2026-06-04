@@ -3,11 +3,11 @@
 Replaces the manual Gelato dashboard upload workflow.
 API docs: developers.gelato.com
 """
+import os
 import time
 import requests
-from quoteforge.config import BANNERBEAR_API_KEY  # reuse existing config pattern
+from quoteforge.config import TEST_MODE
 
-import os
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
 GELATO_BASE_URL = "https://order.gelatoapis.com"
 GELATO_CATALOG_URL = "https://catalog.gelatoapis.com"
@@ -39,6 +39,16 @@ def create_gelato_order(
     }
     product_uid = Gelato's product UID (e.g. "framed-poster_pf_14x11_pl_4-4_cl_4-0_ct_framed-poster_cp_1_cr_pr_0_ver_1")
     """
+    # TEST_MODE / no key → return a mock order without spending money or printing
+    if TEST_MODE or not GELATO_API_KEY:
+        return {
+            "id": f"TEST-GELATO-{order_id}",
+            "gelato_order_id": f"TEST-GELATO-{order_id}",
+            "tracking_number": "TEST-TRACKING-123",
+            "fulfillmentStatus": "test_mode",
+            "test_mode": True,
+        }
+
     payload = {
         "orderReferenceId": order_id,
         "customerReferenceId": order_id,

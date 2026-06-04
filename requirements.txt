@@ -1,3 +1,12 @@
 anthropic>=0.25.0
 requests>=2.31.0
 Pillow>=10.0.0
+openpyxl>=3.1.0
+python-dotenv>=1.0.0
+
+# Optional — automation pipeline (install as needed)
+# flask>=3.0.0            # webhook server
+# streamlit>=1.30.0       # web-based pipeline monitor
+# pandas>=2.0.0           # streamlit dataframes
+# google-api-python-client>=2.0.0   # Google Drive storage
+# google-auth>=2.0.0

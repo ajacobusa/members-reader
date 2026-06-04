@@ -25,12 +25,14 @@ def _mock_claude(text: str):
 
 # ── Base template tests ──────────────────────────────────────────
 
-def test_base_templates_has_four_types():
-    assert len(BASE_TEMPLATES) == 4
+def test_base_templates_has_all_types():
+    # Five types: includes "In Production" (added for full lifecycle coverage)
+    assert len(BASE_TEMPLATES) == 5
 
 
 def test_all_message_types_present():
-    for t in ["Order Received", "Proof Ready", "Order Shipped", "Review Request"]:
+    for t in ["Order Received", "Proof Ready", "In Production",
+              "Order Shipped", "Review Request"]:
         assert t in BASE_TEMPLATES
         assert len(BASE_TEMPLATES[t]) > 20
 

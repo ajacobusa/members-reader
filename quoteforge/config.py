@@ -1,6 +1,24 @@
 import os
 from pathlib import Path
 
+# Load .env file if present (python-dotenv optional — degrade gracefully)
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parent.parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass  # dotenv not installed — environment variables still work
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in ("true", "1", "yes", "on")
+
+
+# TEST_MODE — when true, pipeline generates mock outputs without calling paid APIs.
+# Keep this ON until a full real test order has succeeded end-to-end.
+TEST_MODE: bool = _env_bool("TEST_MODE", True)
+
 # API Keys — set these as environment variables or paste directly
 ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 UNSPLASH_ACCESS_KEY: str = os.getenv("UNSPLASH_ACCESS_KEY", "")
@@ -42,17 +60,25 @@ AIRTABLE_BASE_ID: str = os.getenv("AIRTABLE_BASE_ID", "")
 
 # Gelato API (for programmatic order creation)
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
+GELATO_BASE_URL: str = os.getenv("GELATO_BASE_URL", "https://order.gelatoapis.com")
 
 # Google Drive (for artwork storage)
 GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
+GOOGLE_SERVICE_ACCOUNT_FILE: str = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
 
 # Canva API
 CANVA_API_KEY: str = os.getenv("CANVA_API_KEY", "")
+CANVA_BRAND_TEMPLATE_ID: str = os.getenv("CANVA_BRAND_TEMPLATE_ID", "")
+
+# Etsy API (for webhook verification + order pulling)
+ETSY_SHOP_ID: str = os.getenv("ETSY_SHOP_ID", "")
+ETSY_API_KEY: str = os.getenv("ETSY_API_KEY", "")
+ETSY_WEBHOOK_SECRET: str = os.getenv("ETSY_WEBHOOK_SECRET", "")
 
 # Pipeline settings
-PIPELINE_AUTO_APPROVE_PROOF: bool = False  # True = skip proof step, auto-submit to Gelato
-PIPELINE_REVIEW_DELAY_DAYS: int = 14       # days after delivery to send review request
-PIPELINE_UPSELL_DELAY_HOURS: int = 2       # hours after order to send upsell message
+PIPELINE_AUTO_APPROVE_PROOF: bool = _env_bool("PIPELINE_AUTO_APPROVE_PROOF", False)
+PIPELINE_REVIEW_DELAY_DAYS: int = int(os.getenv("PIPELINE_REVIEW_DELAY_DAYS", "14"))
+PIPELINE_UPSELL_DELAY_HOURS: int = int(os.getenv("PIPELINE_UPSELL_DELAY_HOURS", "2"))
 
 # Phase 1 priority niches to validate first (20-30 manual listings)
 PHASE1_NICHES: list[str] = [

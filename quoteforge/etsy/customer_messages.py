@@ -20,6 +20,11 @@ BASE_TEMPLATES: dict[str, str] = {
         "layout, or colors before I send it to print. "
         "I am happy to make adjustments until it is perfect for you."
     ),
+    "In Production": (
+        "Great news! Your personalized design has been approved and sent to production. "
+        "Our print partner is now carefully printing your piece. "
+        "I will share tracking details the moment it ships. Thank you for your patience!"
+    ),
     "Order Shipped": (
         "Great news! Your order has shipped and is on its way. "
         "You will receive a tracking number shortly from Gelato. "

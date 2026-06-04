@@ -58,6 +58,7 @@ def init_db() -> None:
             generated_quote TEXT,
             artwork_url     TEXT,
             drive_file_id   TEXT,
+            gelato_product_uid TEXT,
             gelato_order_id TEXT,
             tracking_number TEXT,
             status          TEXT DEFAULT 'received',
@@ -91,7 +92,44 @@ def init_db() -> None:
             message         TEXT,
             created_at      TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS customer_messages (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id        TEXT NOT NULL,
+            message_type    TEXT NOT NULL,
+            message_body    TEXT NOT NULL,
+            sent            INTEGER DEFAULT 0,
+            scheduled_for   TEXT,
+            created_at      TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS upsells (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id        TEXT NOT NULL,
+            offer_type      TEXT NOT NULL,
+            offer_body      TEXT NOT NULL,
+            accepted        INTEGER DEFAULT 0,
+            sent            INTEGER DEFAULT 0,
+            created_at      TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS reviews (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id        TEXT NOT NULL,
+            review_message  TEXT NOT NULL,
+            scheduled_for   TEXT,
+            sent            INTEGER DEFAULT 0,
+            created_at      TEXT DEFAULT (datetime('now'))
+        );
         """)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply lightweight column migrations to pre-existing databases."""
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(orders)")}
+    if "gelato_product_uid" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN gelato_product_uid TEXT")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -230,3 +268,77 @@ def get_order_stats() -> dict:
         for row in conn.execute("SELECT status, COUNT(*) as n FROM orders GROUP BY status"):
             by_status[row["status"]] = row["n"]
         return {"total": total, "by_status": by_status}
+
+
+# ── Customer message persistence ─────────────────────────────────
+
+def save_customer_message(order_id: str, message_type: str, message_body: str,
+                          scheduled_for: str = "", sent: bool = False) -> int:
+    """Persist a customer message (order_received, proof_ready, shipped, etc.)."""
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO customer_messages
+               (order_id, message_type, message_body, scheduled_for, sent)
+               VALUES (?,?,?,?,?)""",
+            (order_id, message_type, message_body, scheduled_for, int(sent)),
+        )
+        return cur.lastrowid
+
+
+def get_customer_messages(order_id: str) -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM customer_messages WHERE order_id=? ORDER BY created_at",
+            (order_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def mark_message_sent(message_id: int) -> None:
+    with _conn() as conn:
+        conn.execute("UPDATE customer_messages SET sent=1 WHERE id=?", (message_id,))
+
+
+# ── Upsell persistence ───────────────────────────────────────────
+
+def save_upsell(order_id: str, offer_type: str, offer_body: str) -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO upsells (order_id, offer_type, offer_body) VALUES (?,?,?)",
+            (order_id, offer_type, offer_body),
+        )
+        return cur.lastrowid
+
+
+def get_upsells(order_id: str) -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM upsells WHERE order_id=? ORDER BY created_at", (order_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ── Review persistence ───────────────────────────────────────────
+
+def save_review(order_id: str, review_message: str, scheduled_for: str = "") -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO reviews (order_id, review_message, scheduled_for)
+               VALUES (?,?,?)""",
+            (order_id, review_message, scheduled_for),
+        )
+        return cur.lastrowid
+
+
+def get_pending_reviews() -> list[dict]:
+    """Return reviews scheduled but not yet sent."""
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM reviews WHERE sent=0 ORDER BY scheduled_for"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def mark_review_sent(review_id: int) -> None:
+    with _conn() as conn:
+        conn.execute("UPDATE reviews SET sent=1 WHERE id=?", (review_id,))

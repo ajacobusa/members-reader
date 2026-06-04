@@ -116,6 +116,12 @@ if FLASK_AVAILABLE and app:
 
     @app.route("/order", methods=["POST"])
     def receive_order():
+        from quoteforge.automation.webhook_security import verify_signature
+        raw_body = request.get_data()
+        signature = request.headers.get("X-Webhook-Signature", "")
+        if not verify_signature(raw_body, signature):
+            logger.warning("Rejected webhook — invalid signature")
+            return jsonify({"status": "error", "message": "Invalid signature"}), 401
         payload = request.get_json(force=True, silent=True) or {}
         logger.info(f"Received order webhook: order_id={payload.get('order_id')}")
         result = process_webhook_payload(payload)
