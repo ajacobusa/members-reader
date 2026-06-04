@@ -132,6 +132,7 @@ def generate_personal_message(
     scenery: str,
     output_style: str,
     count: int = 3,
+    force_real: bool = False,
 ) -> list[str]:
     """Generate personalized poster text for a specific person, occasion, and relationship.
 
@@ -139,13 +140,18 @@ def generate_personal_message(
     returned here as a list of strings (one per variation).
 
     output_style: one of OUTPUT_STYLES
+    force_real: bypass the TEST_MODE mock and call the real Claude API. Use this
+        to verify real AI quality during the sample flow WITHOUT disabling the
+        global TEST_MODE flag (which would also arm live Gelato fulfillment).
+        Requires ANTHROPIC_API_KEY.
     """
-    # TEST_MODE / no key → return realistic mock so the pipeline runs end-to-end
-    if TEST_MODE or not ANTHROPIC_API_KEY:
+    # TEST_MODE / no key → return realistic mock so the pipeline runs end-to-end.
+    # force_real overrides this so the sample flow can preview true AI output.
+    if not force_real and (TEST_MODE or not ANTHROPIC_API_KEY):
         return _mock_personal_message(
             recipient_name, sender_name, occasion, output_style, count)
 
-    client = _client()
+    client = _client()  # raises a clear error if ANTHROPIC_API_KEY is missing
 
     style_instructions = {
         "Custom Quote": (

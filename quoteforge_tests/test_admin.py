@@ -1,6 +1,6 @@
 """Tests for secret generation, restore, daily report, and the admin CLI."""
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from quoteforge.secrets_util import generate_webhook_secret
 from quoteforge import admin
@@ -98,6 +98,76 @@ def test_cli_daily_report(tmp_path, capsys):
     out = capsys.readouterr().out
     assert rc == 0
     assert "DAILY ORDER REPORT" in out
+
+
+def test_force_real_bypasses_test_mode_mock():
+    """force_real=True must call the real client even when TEST_MODE is on."""
+    from unittest.mock import MagicMock
+    from quoteforge.quotes import generator
+    raw = "Dear Emma,\nYou did it.\nProud of you.\nLove, Mom"
+    mock_client = MagicMock()
+    mock_msg = MagicMock()
+    mock_msg.content = [MagicMock(text=raw)]
+    mock_client.messages.create.return_value = mock_msg
+    with patch.object(generator, "TEST_MODE", True), \
+         patch.object(generator, "ANTHROPIC_API_KEY", "test-key"), \
+         patch.object(generator.anthropic, "Anthropic", return_value=mock_client):
+        out = generator.generate_personal_message(
+            relationship="To My Daughter", recipient_name="Emma",
+            sender_name="Mom", occasion="Graduation", memory_or_story="",
+            scenery="Mountains", output_style="Personal Letter",
+            count=1, force_real=True,
+        )
+    # Real path returns the (mocked) Claude text, NOT the "[TEST MODE...]" mock
+    assert out
+    assert "TEST MODE" not in out[0]
+    mock_client.messages.create.assert_called_once()
+
+
+def test_verify_gelato_auth_no_key():
+    from quoteforge.automation import gelato_api
+    with patch.object(gelato_api, "GELATO_API_KEY", ""):
+        result = gelato_api.verify_gelato_auth()
+    assert result["ok"] is False
+    assert "not set" in result["detail"]
+
+
+def test_verify_gelato_auth_success():
+    from quoteforge.automation import gelato_api
+    fake = MagicMock()
+    fake.status_code = 200
+    with patch.object(gelato_api, "GELATO_API_KEY", "real-key"), \
+         patch.object(gelato_api.requests, "get", return_value=fake):
+        result = gelato_api.verify_gelato_auth()
+    assert result["ok"] is True
+
+
+def test_verify_gelato_auth_rejected():
+    from quoteforge.automation import gelato_api
+    fake = MagicMock()
+    fake.status_code = 401
+    with patch.object(gelato_api, "GELATO_API_KEY", "bad-key"), \
+         patch.object(gelato_api.requests, "get", return_value=fake):
+        result = gelato_api.verify_gelato_auth()
+    assert result["ok"] is False
+    assert "401" in result["detail"]
+
+
+def test_cli_sample_quote_no_key(capsys):
+    from quoteforge import config
+    with patch.object(config, "ANTHROPIC_API_KEY", ""):
+        rc = admin.main(["sample-quote"])
+    assert rc == 1
+    assert "ANTHROPIC_API_KEY not set" in capsys.readouterr().out
+
+
+def test_cli_verify_keys_runs(capsys):
+    from quoteforge import config
+    with patch.object(config, "ANTHROPIC_API_KEY", ""):
+        rc = admin.main(["verify-keys"])
+    out = capsys.readouterr().out
+    assert "Anthropic" in out and "Gelato" in out
+    assert rc == 1  # nothing configured → not all verified
 
 
 def test_cli_backup_and_list(tmp_path, capsys):

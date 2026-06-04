@@ -11,6 +11,21 @@
 >
 > Legend: ✅ verified by tests/preflight · ⚙️ your config step · ⬜ manual / physical
 
+### Safest Launch Order (Anthropic + Gelato first, Etsy last)
+
+```
+1. Add to .env:   ANTHROPIC_API_KEY,  GELATO_API_KEY
+2. Verify:        python -m quoteforge.admin verify-keys     (both [PASS])
+3. Preview AI:    python -m quoteforge.admin sample-quote    (judge real quality)
+4. Sample flow (KEEP TEST_MODE=true — Gelato stays manual):
+      real AI quote → artwork → MANUAL Gelato sample → physical print approved
+5. Only after print approved, add: ETSY_API_KEY, ETSY_SHOP_ID,
+      BANNERBEAR_API_KEY, BANNERBEAR_TEMPLATE_UID, UNSPLASH_ACCESS_KEY
+6. Finally:       TEST_MODE=false
+```
+
+Do NOT enable Etsy live fulfillment until the physical sample is approved.
+
 ### Current Status
 
 - [x] ✅ Development Complete

@@ -142,6 +142,28 @@ def check_and_update_tracking(order_id: str, gelato_order_id: str) -> dict:
     return status
 
 
+def verify_gelato_auth() -> dict:
+    """Live check that GELATO_API_KEY is valid (hits the catalog API).
+
+    Returns {"ok": bool, "detail": str}. Does NOT create any order.
+    """
+    if not GELATO_API_KEY:
+        return {"ok": False, "detail": "GELATO_API_KEY not set"}
+    try:
+        resp = requests.get(
+            "https://product.gelatoapis.com/v3/catalogs",
+            headers={"X-API-KEY": GELATO_API_KEY},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            return {"ok": True, "detail": "authenticated (catalog reachable)"}
+        if resp.status_code in (401, 403):
+            return {"ok": False, "detail": f"auth rejected (HTTP {resp.status_code}) — check key"}
+        return {"ok": False, "detail": f"unexpected HTTP {resp.status_code}"}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+
+
 def get_gelato_api_setup() -> str:
     return """
 GELATO API SETUP
