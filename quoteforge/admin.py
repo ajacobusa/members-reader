@@ -12,7 +12,8 @@ Usage:
   python -m quoteforge.admin email-report     # email the daily sales report
   python -m quoteforge.admin report PERIOD    # daily|weekly|monthly|yearly (add 'email' to send)
   python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
-  python -m quoteforge.admin install-schedule [--dry-run|--remove]  # create all 8 scheduled jobs
+  python -m quoteforge.admin install-schedule [--dry-run|--remove]  # create all scheduled jobs
+  python -m quoteforge.admin maintenance [email|--check]  # daily self-healing infra agent
   python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
@@ -389,6 +390,26 @@ def _cmd_healthcheck(args: list[str]) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _cmd_maintenance(args: list[str]) -> int:
+    """Daily self-healing agent: check infra, auto-fix ops issues, suggest more."""
+    from quoteforge.automation.maintenance import (
+        run_maintenance, format_maintenance_text, send_maintenance_digest,
+    )
+    fix = "--check" not in args  # --check = report only, change nothing
+    if "email" in args:
+        out = send_maintenance_digest(fix=fix, always=True)
+        report = out["report"]
+        print(format_maintenance_text(report))
+        print(f"\nEmail: {out['status']}")
+    else:
+        report = run_maintenance(fix=fix)
+        print(format_maintenance_text(report))
+        # If something needs a human (failed fix / integrity alert), email anyway
+        if report["overall"] == "ALERT":
+            send_maintenance_digest(fix=False, always=True)
+    return 1 if report["overall"] == "ALERT" else 0
+
+
 def _cmd_install_schedule(args: list[str]) -> int:
     """Create (or remove) ALL Windows scheduled jobs from one source of truth."""
     from quoteforge.automation.scheduler import install_schedule, format_install_text
@@ -504,6 +525,7 @@ COMMANDS = {
     "report": _cmd_report,
     "healthcheck": _cmd_healthcheck,
     "install-schedule": _cmd_install_schedule,
+    "maintenance": _cmd_maintenance,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,

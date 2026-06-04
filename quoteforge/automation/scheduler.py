@@ -65,6 +65,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "QuoteForge Weekly Sales Actions", "sales",
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:05"],
         "Lists upsell/review/win-back actions to send (Mondays)"),
+    ScheduledJob(
+        "QuoteForge Daily Maintenance", "maintenance email",
+        ["/SC", "DAILY", "/ST", "06:00"],
+        "Self-healing agent: checks infra, auto-fixes ops issues, "
+        "measures performance, emails a digest with enhancement suggestions"),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

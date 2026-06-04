@@ -374,6 +374,36 @@ def mark_review_sent(review_id: int) -> None:
 
 # ── Backup / recovery ────────────────────────────────────────────
 
+def db_maintenance() -> dict:
+    """Run database health + performance maintenance.
+
+    - integrity_check : detects corruption early
+    - wal_checkpoint  : flushes the write-ahead log back into the main file
+    - VACUUM          : reclaims space and defragments for faster queries
+    Returns metrics (size before/after, integrity result). Safe to run daily.
+    """
+    if not DB_PATH.exists():
+        return {"ran": False, "reason": "no database yet"}
+    size_before = DB_PATH.stat().st_size
+    with _conn() as conn:
+        integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    # VACUUM cannot run inside a transaction/context-managed connection
+    vac = sqlite3.connect(DB_PATH, timeout=30)
+    try:
+        vac.execute("VACUUM")
+    finally:
+        vac.close()
+    size_after = DB_PATH.stat().st_size
+    return {
+        "ran": True,
+        "integrity": integrity,                      # "ok" when healthy
+        "size_before_kb": round(size_before / 1024, 1),
+        "size_after_kb": round(size_after / 1024, 1),
+        "reclaimed_kb": round((size_before - size_after) / 1024, 1),
+    }
+
+
 def backup_database(backup_dir: Optional[Path] = None) -> Optional[Path]:
     """Create a consistent, timestamped snapshot of the database.
 

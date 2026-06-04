@@ -61,6 +61,33 @@ The `Scheduled Jobs` check turns to `[OK] 8 jobs registered and enabled` once
 they're installed; it reports anything `missing` or `disabled` otherwise (and
 emails you an alert if a job ever disappears).
 
+## Daily self-healing maintenance agent
+
+One of the scheduled jobs (`QuoteForge Daily Maintenance`, 6:00 AM) is an agent
+that keeps the infrastructure running without you. Each morning it:
+
+1. **Checks** the DB, storage, backups, scheduled jobs, and stuck orders.
+2. **Fixes** the operational problems it's safe to fix unattended:
+   - re-installs any scheduled job that went missing or got disabled,
+   - takes a fresh backup if the latest one is stale,
+   - runs `VACUUM` + WAL checkpoint + integrity check to keep queries fast.
+3. **Measures** performance (DB size, query latency, space reclaimed).
+4. **Suggests** enhancements based on live numbers (errored orders, when to
+   scale listings, when to review tier capacity).
+5. **Emails** you a single digest of everything it did and recommends.
+
+Run it manually any time:
+```powershell
+python -m quoteforge.admin maintenance          # heal + print digest
+python -m quoteforge.admin maintenance email     # also email the digest
+python -m quoteforge.admin maintenance --check    # report only, change nothing
+```
+
+**Safety boundaries — the agent never** edits code, spends money, flips paid
+subscriptions, or deletes data. If the database integrity check ever fails, it
+**stops and alerts** rather than attempting a risky auto-repair — that's your
+cue to restore from a backup (`admin restore`).
+
 ## Reports on demand
 
 The same engine produces reports at four cadences. View any on screen:
