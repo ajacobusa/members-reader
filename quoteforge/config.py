@@ -41,6 +41,11 @@ BANNERBEAR_TEMPLATE_UID: str = os.getenv("BANNERBEAR_TEMPLATE_UID", "YOUR_BANNER
 # eliminating the Bannerbear subscription ($49/mo) for standard quote posters.
 RENDERER: str = os.getenv("RENDERER", "local")
 
+# Generate a styled-room lifestyle mockup alongside the print file. Context sells
+# high-ticket wall art: a framed print on a styled wall converts far better than
+# a print on white. Free (Pillow); the mockup is a listing image, not the print.
+GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))

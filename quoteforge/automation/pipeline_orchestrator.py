@@ -18,6 +18,7 @@ from typing import Callable, Optional
 from quoteforge.config import (
     OUTPUT_DIR, BANNERBEAR_TEMPLATE_UID,
     PIPELINE_AUTO_APPROVE_PROOF, TEST_MODE, RENDERER, CUSTOMER_PROOF_APPROVAL,
+    GENERATE_ROOM_MOCKUP,
 )
 from quoteforge.db.database import (
     create_order, update_order, get_order, log_pipeline_stage,
@@ -222,6 +223,22 @@ def run_full_pipeline(
         update_order(order_id, artwork_url=artwork_url)
         _log(order_id, "artwork_generation", "success" if artwork_url else "skipped",
              f"Artwork URL: {artwork_url[:80] if artwork_url else 'none'}")
+
+        # Emit a styled-room lifestyle mockup for the Etsy gallery whenever we
+        # have a local print file. Context sells high-ticket wall art (a framed
+        # print on a styled wall converts far better than a print on white).
+        # Best-effort: a mockup failure must never block the print itself.
+        if GENERATE_ROOM_MOCKUP and png_path and png_path.exists():
+            try:
+                from quoteforge.images.room_mockup import render_room_mockup
+                mockup_path = render_room_mockup(
+                    png_path, png_path.parent / "mockup_room.png")
+                update_order(order_id, mockup_url=mockup_path.as_uri())
+                _log(order_id, "artwork_generation", "success",
+                     f"Room mockup: {mockup_path.name}")
+            except Exception as exc:  # noqa: BLE001
+                _log(order_id, "artwork_generation", "warn",
+                     f"Room mockup skipped: {type(exc).__name__}: {exc}")
 
         # ── Stage 4: Google Drive Upload ─────────────────────────
         drive_url = ""

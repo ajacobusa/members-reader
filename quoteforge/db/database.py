@@ -63,6 +63,7 @@ def init_db() -> None:
             output_style    TEXT DEFAULT 'Personal Letter',
             generated_quote TEXT,
             artwork_url     TEXT,
+            mockup_url      TEXT,
             drive_file_id   TEXT,
             gelato_product_uid TEXT,
             gelato_order_id TEXT,
@@ -140,6 +141,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN sale_price REAL")
     if "gelato_cost" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN gelato_cost REAL")
+    if "mockup_url" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN mockup_url TEXT")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────

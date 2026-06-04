@@ -14,6 +14,7 @@ Usage:
   python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
   python -m quoteforge.admin install-schedule [--dry-run|--remove]  # create all scheduled jobs
   python -m quoteforge.admin maintenance [email|--check]  # daily self-healing infra agent
+  python -m quoteforge.admin mockup POSTER.png [out] [wall] [frame]  # styled-room lifestyle mockup
   python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
@@ -390,6 +391,32 @@ def _cmd_healthcheck(args: list[str]) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _cmd_mockup(args: list[str]) -> int:
+    """Composite a poster PNG into a styled-room lifestyle mockup for the gallery."""
+    from pathlib import Path
+    from quoteforge.images.room_mockup import (
+        render_room_mockup, WALL_PRESETS, FRAME_STYLES,
+    )
+    if not args:
+        print("Usage: python -m quoteforge.admin mockup POSTER.png [out.png] "
+              "[wall] [frame]")
+        print(f"  walls : {', '.join(WALL_PRESETS)}")
+        print(f"  frames: {', '.join(FRAME_STYLES)}")
+        return 2
+    poster = Path(args[0])
+    if not poster.exists():
+        print(f"Poster not found: {poster}")
+        return 1
+    out = Path(args[1]) if len(args) > 1 else poster.with_name(
+        poster.stem + "_mockup.png")
+    wall = args[2] if len(args) > 2 else "warm-gray"
+    frame = args[3] if len(args) > 3 else "black"
+    path = render_room_mockup(poster, out, wall=wall, frame_style=frame)
+    print(f"Room mockup saved: {path}")
+    print("Upload this to the Etsy gallery (it's a listing image, not the print).")
+    return 0
+
+
 def _cmd_maintenance(args: list[str]) -> int:
     """Daily self-healing agent: check infra, auto-fix ops issues, suggest more."""
     from quoteforge.automation.maintenance import (
@@ -526,6 +553,7 @@ COMMANDS = {
     "healthcheck": _cmd_healthcheck,
     "install-schedule": _cmd_install_schedule,
     "maintenance": _cmd_maintenance,
+    "mockup": _cmd_mockup,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,
