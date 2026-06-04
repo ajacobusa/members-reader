@@ -58,15 +58,26 @@ RELATIONSHIPS = [
     "A Prayer For", "A Blessing For",
 ]
 
-# Occasion types
-OCCASIONS = [
-    "Graduation", "Wedding", "Anniversary", "Birthday",
-    "New Baby", "Baby Shower", "New Home", "New Job", "Promotion",
-    "Retirement", "Christmas", "Mother's Day", "Father's Day",
-    "Valentine's Day", "Just Because", "Memorial / In Memory Of",
-    "Recovery & Healing", "Baptism", "Confirmation", "Dental School Graduation",
-    "Medical School Graduation", "Nursing School Graduation",
-]
+# Occasion types — comprehensive, year-round coverage. The complete taxonomy
+# (calendar months, religions, milestones, emotional events) lives in
+# quoteforge.etsy.occasions; this is the de-duplicated flat list the GUI uses.
+def _build_occasions() -> list[str]:
+    base = [
+        "Graduation", "Wedding", "Anniversary", "Birthday",
+        "New Baby", "Baby Shower", "New Home", "New Job", "Promotion",
+        "Retirement", "Christmas", "Mother's Day", "Father's Day",
+        "Valentine's Day", "Just Because", "Memorial / In Memory Of",
+        "Recovery & Healing", "Baptism", "Confirmation",
+    ]
+    try:
+        from quoteforge.etsy.occasions import all_occasions
+        merged = list(dict.fromkeys(base + all_occasions()))  # dedupe, keep order
+        return merged
+    except Exception:
+        return base
+
+
+OCCASIONS = _build_occasions()
 
 # Scenery options for background matching
 SCENERY_OPTIONS = [

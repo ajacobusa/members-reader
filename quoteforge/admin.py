@@ -12,6 +12,7 @@ Usage:
   python -m quoteforge.admin email-report     # email the daily sales report
   python -m quoteforge.admin report PERIOD    # daily|weekly|monthly|yearly (add 'email' to send)
   python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
+  python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -185,6 +186,26 @@ def _cmd_customer_approved(args: list[str]) -> int:
     return 0
 
 
+def _cmd_plan(args: list[str]) -> int:
+    from quoteforge.etsy.occasions import get_current_month_plan, coverage_summary
+    plan = get_current_month_plan()
+    cov = coverage_summary()
+    print("=" * 56)
+    print(f"OCCASION PLAN — {plan['month']}")
+    print("=" * 56)
+    print(f"\nCREATE THESE NOW ({plan['month']} buyers are shopping):")
+    for o in plan["this_month"]:
+        print(f"  • {o}")
+    print(f"\nPREP AHEAD for {plan['prep_next_month']} (list ~3-4 weeks early):")
+    for o in plan["next_month"]:
+        print(f"  • {o}")
+    print("\nALWAYS-ON evergreen categories (sell year-round):")
+    for o in plan["evergreen_always_list"]:
+        print(f"  • {o}")
+    print(f"\nTotal distinct occasions covered: {cov['total_distinct_occasions']}")
+    return 0
+
+
 def _cmd_healthcheck(args: list[str]) -> int:
     from quoteforge.automation.healthcheck import (
         run_healthcheck, format_health_text, send_health_alert,
@@ -299,6 +320,7 @@ COMMANDS = {
     "email-report": lambda args: _cmd_email_report(),
     "report": _cmd_report,
     "healthcheck": _cmd_healthcheck,
+    "plan": _cmd_plan,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
