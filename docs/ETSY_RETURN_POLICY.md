@@ -33,7 +33,7 @@ off on.
 
 **If your item arrives damaged or defective:** Your satisfaction matters. If your
 order arrives damaged, has a printing error, or is not as described, please
-message me within **48 hours of delivery with a clear photo** of the issue. I
+message me within **7 days of delivery with a clear photo** of the issue. I
 will arrange a **free replacement** at no cost to you. (Photos are required so I
 can resolve it quickly with my print partner.)
 
@@ -53,7 +53,7 @@ every design personal and high quality.
 
 > ⚠️ Personalized item — all sales final, no returns/refunds for change of mind.
 > A digital proof is sent for your approval before printing. Damaged or defective
-> items are replaced free within 48 hours of delivery (photo required).
+> items are replaced free within 7 days of delivery (photo required).
 
 ---
 

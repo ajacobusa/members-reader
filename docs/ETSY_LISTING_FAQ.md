@@ -54,11 +54,11 @@ print, the design is final.
 Because each item is custom-made and personalized, **all sales are final** — I
 can't accept returns or refunds for change of mind or for personalization details
 entered incorrectly at checkout. **However**, if your item arrives **damaged or
-defective**, message me within **48 hours of delivery with a photo** and I'll
+defective**, message me within **7 days of delivery with a photo** and I'll
 send a **free replacement** right away. Your happiness matters to me. 💛
 
 **My order arrived damaged — what do I do?**
-I'm so sorry! Please message me within 48 hours of delivery with a clear photo of
+I'm so sorry! Please message me within 7 days of delivery with a clear photo of
 the damage and your order number. I'll arrange a free replacement as quickly as
 possible.
 
