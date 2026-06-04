@@ -21,6 +21,8 @@ EXPECTED_TASKS = [
     "QuoteForge Yearly Report",
     "QuoteForge Daily Backup",
     "QuoteForge Health Check",
+    "QuoteForge Monthly Campaign",
+    "QuoteForge Weekly Sales Actions",
 ]
 
 HEALTH_LOG = OUTPUT_DIR / "health_log.json"

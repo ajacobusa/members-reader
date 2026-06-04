@@ -14,6 +14,7 @@ Usage:
   python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
   python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
+  python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -187,6 +188,22 @@ def _cmd_customer_approved(args: list[str]) -> int:
     return 0
 
 
+def _cmd_sales(args: list[str]) -> int:
+    from quoteforge.db.database import init_db
+    from quoteforge.etsy.sales_engine import sales_actions_digest, format_digest_text
+    init_db()
+    digest = sales_actions_digest()
+    print(format_digest_text(digest))
+    if args and args[0] == "email":
+        from quoteforge.automation.emailer import _send_email
+        body = (f"<html><body style='font-family:Arial'>"
+                f"<pre style='font-size:13px'>{format_digest_text(digest)}</pre>"
+                f"</body></html>")
+        res = _send_email(f"QuoteForge Sales Actions ({digest['total_actions']} to send)", body)
+        print(f"\nEmail: {res['status']}")
+    return 0
+
+
 def _cmd_campaign(args: list[str]) -> int:
     from datetime import datetime
     from quoteforge.etsy.campaign import seasonal_campaign, export_campaign_excel
@@ -206,6 +223,16 @@ def _cmd_campaign(args: list[str]) -> int:
     path = export_campaign_excel(month)
     print(f"\n{len(plans)} listings planned. Full plan (titles + tags) saved:")
     print(f"  {path}")
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        rows = "\n".join(f"{p['publish_by']}  {p['urgency']:22}  {p['occasion']}"
+                         for p in plans)
+        body = (f"<html><body style='font-family:Arial'>"
+                f"<h3>{month} Campaign — publish early to rank first</h3>"
+                f"<pre style='font-size:13px'>{rows}</pre>"
+                f"<p>Full plan with titles + tags: {path}</p></body></html>")
+        res = _send_email(f"QuoteForge {month} Campaign — {len(plans)} listings to publish", body)
+        print(f"Email: {res['status']}")
     return 0
 
 
@@ -345,6 +372,7 @@ COMMANDS = {
     "healthcheck": _cmd_healthcheck,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
+    "sales": _cmd_sales,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,

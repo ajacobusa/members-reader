@@ -41,6 +41,12 @@ def build_report_html() -> tuple[str, str]:
     monthly_orders = period_report("monthly")["total_orders"]
     recs = recommend_tiers(monthly_orders=monthly_orders, renderer=RENDERER)
 
+    # Automated sales actions to send today (upsells / reviews / win-backs)
+    from quoteforge.etsy.sales_engine import sales_actions_digest
+    _sd = sales_actions_digest()
+    sales = {"upsell_n": len(_sd["upsells"]), "review_n": len(_sd["reviews"]),
+             "winback_n": len(_sd["winbacks"])}
+
     today = datetime.now().strftime("%A, %B %d, %Y")
     subject = f"QuoteForge Daily Report — {today} ({today_count} new orders today)"
 
@@ -95,6 +101,13 @@ def build_report_html() -> tuple[str, str]:
 
   <h3>Orders by Status (all-time)</h3>
   <table style="border-collapse:collapse">{status_rows}</table>
+
+  <h3>📈 Sales Actions to Send Today</h3>
+  <p>Upsells: <b>{sales['upsell_n']}</b> &nbsp;|&nbsp;
+     Review requests due: <b>{sales['review_n']}</b> &nbsp;|&nbsp;
+     Repeat-buyer win-backs: <b>{sales['winback_n']}</b><br>
+     <span style="font-size:12px;color:#555">Run
+     <code>python -m quoteforge.admin sales</code> for the exact messages to send.</span></p>
 
   <h3>Pending Follow-ups</h3>
   <p>Unsent customer messages: <b>{report['unsent_messages']}</b> &nbsp;|&nbsp;
