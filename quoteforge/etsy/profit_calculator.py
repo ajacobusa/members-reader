@@ -5,6 +5,47 @@ ETSY_LISTING_FEE = 0.20        # per listing
 ETSY_PAYMENT_FEE = 0.03        # 3% payment processing
 ETSY_LISTING_RENEWAL = 0.20    # every 4 months per listing
 
+# Monthly cost of paid renderers (the free local renderer is $0)
+RENDERER_COSTS = {
+    "local": 0.0,
+    "bannerbear": 49.0,   # Automate plan
+    "canva": 12.99,       # Canva Pro (manual editor)
+}
+
+
+def renderer_breakeven(
+    renderer: str,
+    avg_profit_per_order: float,
+    trial_months: int = 2,
+) -> dict:
+    """Decide whether a paid renderer is worth keeping after a trial.
+
+    A paid renderer is a FIXED monthly cost — it only pays off if its better
+    designs drive *extra* sales. This computes how many extra orders/month those
+    designs must produce to cover the subscription.
+
+    Returns the monthly cost, extra orders needed to break even, and the total
+    trial cost over `trial_months`.
+    """
+    monthly_cost = RENDERER_COSTS.get(renderer, 0.0)
+    if avg_profit_per_order <= 0:
+        extra_orders = 0.0
+    else:
+        extra_orders = round(monthly_cost / avg_profit_per_order, 1)
+    return {
+        "renderer": renderer,
+        "monthly_cost": monthly_cost,
+        "avg_profit_per_order": round(avg_profit_per_order, 2),
+        "extra_orders_to_break_even": extra_orders,
+        "trial_months": trial_months,
+        "total_trial_cost": round(monthly_cost * trial_months, 2),
+        "verdict": (
+            "Free — no break-even needed"
+            if monthly_cost == 0
+            else f"Keep only if it adds >= {extra_orders} extra orders/month"
+        ),
+    }
+
 
 def calculate_order_profit(
     sale_price: float,
