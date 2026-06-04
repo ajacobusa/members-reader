@@ -13,6 +13,7 @@ Usage:
   python -m quoteforge.admin report PERIOD    # daily|weekly|monthly|yearly (add 'email' to send)
   python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
   python -m quoteforge.admin plan              # which occasions to create listings for now
+  python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -186,6 +187,28 @@ def _cmd_customer_approved(args: list[str]) -> int:
     return 0
 
 
+def _cmd_campaign(args: list[str]) -> int:
+    from datetime import datetime
+    from quoteforge.etsy.campaign import seasonal_campaign, export_campaign_excel
+    month = args[0].title() if args else datetime.now().strftime("%B")
+    try:
+        plans = seasonal_campaign(month)
+    except ValueError:
+        print(f"Unknown month: {month!r}. Use a full month name, e.g. June.")
+        return 2
+    print("=" * 60)
+    print(f"{month.upper()} CAMPAIGN — publish early to rank first")
+    print("=" * 60)
+    print(f"{'PUBLISH BY':12} {'URGENCY':22} OCCASION")
+    print("-" * 60)
+    for p in plans:
+        print(f"{p['publish_by']:12} {p['urgency']:22} {p['occasion']}")
+    path = export_campaign_excel(month)
+    print(f"\n{len(plans)} listings planned. Full plan (titles + tags) saved:")
+    print(f"  {path}")
+    return 0
+
+
 def _cmd_plan(args: list[str]) -> int:
     from quoteforge.etsy.occasions import get_current_month_plan, coverage_summary
     plan = get_current_month_plan()
@@ -321,6 +344,7 @@ COMMANDS = {
     "report": _cmd_report,
     "healthcheck": _cmd_healthcheck,
     "plan": _cmd_plan,
+    "campaign": _cmd_campaign,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
