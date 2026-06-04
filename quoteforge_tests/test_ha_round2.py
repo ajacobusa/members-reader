@@ -61,12 +61,17 @@ def test_retry_recovers_from_anthropic_overload():
 # ── Async webhook dispatch (202 Accepted, no blocking) ───────────
 
 def _client(tmp_path):
-    """Build a Flask test client with isolated DB + output dirs."""
+    """Build a Flask test client with isolated DB + output dirs.
+
+    Signature verification is disabled here (secret="") so these tests exercise
+    routing/validation; signature verification has its own dedicated tests.
+    """
     import quoteforge.automation.webhook_server as ws
     ws.OUTPUT_DIR = tmp_path
     with patch("quoteforge.db.database.DB_PATH", tmp_path / "t.db"), \
          patch("quoteforge.db.database.OUTPUT_DIR", tmp_path), \
-         patch("quoteforge.automation.pipeline_orchestrator.OUTPUT_DIR", tmp_path):
+         patch("quoteforge.automation.pipeline_orchestrator.OUTPUT_DIR", tmp_path), \
+         patch("quoteforge.automation.webhook_security.ETSY_WEBHOOK_SECRET", ""):
         ws.app.config["TESTING"] = True
         yield ws.app.test_client()
 

@@ -403,3 +403,64 @@ def prune_old_backups(backup_dir: Optional[Path] = None, keep: int = 14) -> int:
         old.unlink()
         deleted += 1
     return deleted
+
+
+def list_backups(backup_dir: Optional[Path] = None) -> list[Path]:
+    """Return available backups, newest first."""
+    if backup_dir is None:
+        backup_dir = DB_PATH.parent / "db_backups"
+    if not backup_dir.exists():
+        return []
+    return sorted(backup_dir.glob("quoteforge_*.db"), reverse=True)
+
+
+def restore_database(backup_path: Optional[Path] = None,
+                     backup_dir: Optional[Path] = None) -> Optional[Path]:
+    """Restore the live DB from a backup (newest if not specified).
+
+    Safety: the current DB is itself backed up first (so a restore is reversible).
+    Returns the path that was restored from, or None if no backup exists.
+    """
+    import shutil
+    if backup_path is None:
+        backups = list_backups(backup_dir)
+        if not backups:
+            return None
+        backup_path = backups[0]
+    if not backup_path.exists():
+        return None
+    # Back up current state before overwriting (reversible restore)
+    if DB_PATH.exists():
+        backup_database()
+    shutil.copy2(backup_path, DB_PATH)
+    return backup_path
+
+
+def daily_order_report() -> dict:
+    """Summary for the daily order-review process.
+
+    Returns counts by status plus the orders needing human attention
+    (pending proof, and errors).
+    """
+    with _conn() as conn:
+        by_status: dict[str, int] = {}
+        for row in conn.execute("SELECT status, COUNT(*) n FROM orders GROUP BY status"):
+            by_status[row["status"]] = row["n"]
+        needs_attention = [
+            dict(r) for r in conn.execute(
+                "SELECT order_id, recipient_name, occasion, status FROM orders "
+                "WHERE status IN ('proof_sent','error') ORDER BY created_at"
+            ).fetchall()
+        ]
+        pending_reviews = conn.execute(
+            "SELECT COUNT(*) FROM reviews WHERE sent=0"
+        ).fetchone()[0]
+        unsent_messages = conn.execute(
+            "SELECT COUNT(*) FROM customer_messages WHERE sent=0"
+        ).fetchone()[0]
+    return {
+        "by_status": by_status,
+        "needs_attention": needs_attention,
+        "pending_reviews": pending_reviews,
+        "unsent_messages": unsent_messages,
+    }

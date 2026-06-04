@@ -59,9 +59,11 @@ def test_verify_signature_invalid():
 
 
 def test_verify_signature_skipped_when_no_secret():
-    # No secret configured → verification disabled (dev mode)
-    payload = b'{"order_id":"123"}'
-    assert verify_signature(payload, "", "") is True
+    # No secret configured → verification disabled (dev mode).
+    # Patch the module constant so an ambient .env secret can't interfere.
+    with patch("quoteforge.automation.webhook_security.ETSY_WEBHOOK_SECRET", ""):
+        payload = b'{"order_id":"123"}'
+        assert verify_signature(payload, "", "") is True
 
 
 def test_verify_signature_rejects_missing_sig_when_secret_set():
