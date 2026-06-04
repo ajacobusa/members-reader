@@ -24,6 +24,7 @@ Zapier JSON format expected:
 """
 import json
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -37,27 +38,42 @@ except ImportError:
     FLASK_AVAILABLE = False
 
 from quoteforge.config import OUTPUT_DIR
-from quoteforge.etsy.order_processor import process_order, _log_order
 
 app = Flask(__name__) if FLASK_AVAILABLE else None
 
 WEBHOOK_LOG = OUTPUT_DIR / "webhook_log.json"
 
 
+_log_lock = threading.Lock()
+
+
 def _append_webhook_log(entry: dict) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    entries = []
-    if WEBHOOK_LOG.exists():
-        try:
-            entries = json.loads(WEBHOOK_LOG.read_text())
-        except Exception:
-            entries = []
-    entries.append(entry)
-    WEBHOOK_LOG.write_text(json.dumps(entries, indent=2))
+    """Append a log entry atomically (lock + atomic file replace).
+
+    Prevents concurrent webhook requests from losing/corrupting entries.
+    """
+    with _log_lock:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        entries = []
+        if WEBHOOK_LOG.exists():
+            try:
+                entries = json.loads(WEBHOOK_LOG.read_text())
+            except Exception:
+                entries = []
+        entries.append(entry)
+        # write to temp then atomically replace — never leaves a half-written file
+        tmp = WEBHOOK_LOG.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(entries, indent=2))
+        tmp.replace(WEBHOOK_LOG)
 
 
 def process_webhook_payload(payload: dict) -> dict:
-    """Process an incoming webhook payload dict. Returns result dict.
+    """Process an incoming Etsy webhook payload through the full pipeline.
+
+    - Idempotent: a retried delivery for the same Etsy order is detected and
+      skipped (prevents duplicate quotes and duplicate Gelato charges).
+    - Routes through run_full_pipeline so the order lands in the database and
+      appears in the monitor with full per-stage logging.
 
     This function is testable without Flask running.
     """
@@ -66,46 +82,72 @@ def process_webhook_payload(payload: dict) -> dict:
     if missing:
         return {"status": "error", "message": f"Missing fields: {missing}"}
 
-    try:
-        result = process_order(
-            recipient_name=payload.get("recipient_name", "Friend"),
-            sender_name=payload.get("customer_name", "Anonymous"),
-            relationship=payload.get("relationship", "To My Friend"),
-            occasion=payload.get("occasion", "Special Occasion"),
-            scenery=payload.get("scenery", "Mountains"),
-            tone=payload.get("tone", "Inspirational & Motivational"),
-            memory=payload.get("memory", ""),
-            output_style=payload.get("output_style", "Personal Letter"),
-            variations=1,
-        )
+    etsy_order_id = str(payload.get("order_id") or payload.get("etsy_order_id") or "")
 
-        log_entry = {
+    # ── Idempotency guard ───────────────────────────────────────
+    if etsy_order_id:
+        from quoteforge.db.database import init_db, get_order_by_etsy_id
+        init_db()
+        existing = get_order_by_etsy_id(etsy_order_id)
+        if existing:
+            logger.info(f"Duplicate webhook for Etsy order {etsy_order_id} — skipping")
+            _append_webhook_log({
+                "timestamp": datetime.now().isoformat(),
+                "order_id": etsy_order_id,
+                "status": "duplicate_skipped",
+            })
+            return {
+                "status": "duplicate",
+                "order_id": etsy_order_id,
+                "message": "Order already processed — skipped to avoid duplicate fulfillment",
+                "internal_order_id": existing["order_id"],
+            }
+
+    try:
+        from quoteforge.automation.pipeline_orchestrator import run_full_pipeline
+
+        order_data = {
+            "etsy_order_id": etsy_order_id,
+            "customer_name": payload.get("customer_name", ""),
+            "customer_email": payload.get("customer_email", ""),
+            "recipient_name": payload.get("recipient_name", "Friend"),
+            "sender_name": payload.get("customer_name", "Anonymous"),
+            "relationship": payload.get("relationship", "To My Friend"),
+            "occasion": payload.get("occasion", "Special Occasion"),
+            "scenery": payload.get("scenery", "Mountains"),
+            "tone": payload.get("tone", "Inspirational & Motivational"),
+            "memory": payload.get("memory", ""),
+            "output_style": payload.get("output_style", "Personal Letter"),
+        }
+
+        # Default config stops at the proof stage for manual review — exactly
+        # the right behavior for personalized orders.
+        result = run_full_pipeline(order_data)
+
+        _append_webhook_log({
             "timestamp": datetime.now().isoformat(),
-            "order_id": payload.get("order_id", "unknown"),
-            "customer": payload.get("customer_name", ""),
+            "order_id": etsy_order_id,
+            "internal_order_id": result.get("order_id", ""),
             "recipient": payload.get("recipient_name", ""),
             "occasion": payload.get("occasion", ""),
-            "saved_to": str(result["saved_paths"][0]) if result["saved_paths"] else "",
-            "status": "success",
-        }
-        _append_webhook_log(log_entry)
+            "status": result.get("status", "processed"),
+        })
 
         return {
             "status": "success",
-            "order_id": payload.get("order_id"),
-            "message": f"Quote generated for {payload.get('recipient_name')}",
-            "saved_to": str(result["saved_paths"][0]) if result["saved_paths"] else "",
-            "variations_count": len(result["variations"]),
+            "order_id": etsy_order_id,
+            "internal_order_id": result.get("order_id", ""),
+            "pipeline_status": result.get("status", ""),
+            "message": f"Order processed for {payload.get('recipient_name')}",
         }
 
     except Exception as exc:
-        error_entry = {
+        _append_webhook_log({
             "timestamp": datetime.now().isoformat(),
-            "order_id": payload.get("order_id", "unknown"),
+            "order_id": etsy_order_id,
             "status": "error",
             "error": str(exc),
-        }
-        _append_webhook_log(error_entry)
+        })
         return {"status": "error", "message": str(exc)}
 
 
@@ -125,8 +167,21 @@ if FLASK_AVAILABLE and app:
         payload = request.get_json(force=True, silent=True) or {}
         logger.info(f"Received order webhook: order_id={payload.get('order_id')}")
         result = process_webhook_payload(payload)
-        status_code = 200 if result["status"] == "success" else 400
+        # 2xx for success AND duplicate (both are "done" — don't make Make.com retry).
+        # 4xx only for genuine errors so the sender can alert/retry.
+        status_code = 200 if result["status"] in ("success", "duplicate") else 400
         return jsonify(result), status_code
+
+    @app.route("/backup", methods=["POST"])
+    def trigger_backup():
+        """Create a database snapshot on demand (for scheduled backups)."""
+        from quoteforge.db.database import backup_database, prune_old_backups
+        path = backup_database()
+        prune_old_backups(keep=14)
+        return jsonify({
+            "status": "ok" if path else "no_database",
+            "backup": str(path) if path else "",
+        })
 
     @app.route("/test", methods=["GET"])
     def test_endpoint():

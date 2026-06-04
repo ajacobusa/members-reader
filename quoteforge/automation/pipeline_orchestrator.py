@@ -236,7 +236,9 @@ def run_full_pipeline(
             _notify("gelato_order", "Creating Gelato production order...")
             try:
                 from quoteforge.automation.gelato_api import create_gelato_order
-                gelato_resp = create_gelato_order(
+                from quoteforge.automation.retry import retry_call
+                gelato_resp = retry_call(
+                    create_gelato_order,
                     order_id=order_id,
                     recipient=recipient_address,
                     artwork_url=artwork_url,

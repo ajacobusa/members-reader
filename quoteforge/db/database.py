@@ -14,8 +14,14 @@ DB_PATH: Path = OUTPUT_DIR / "quoteforge.db"
 @contextmanager
 def _conn():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=30 → wait up to 30s for a lock instead of failing instantly.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    # WAL allows concurrent readers + one writer (vs default which blocks both).
+    # busy_timeout makes writers retry instead of raising "database is locked".
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     try:
         yield conn
         conn.commit()
@@ -174,6 +180,21 @@ def update_order(order_id: str, **fields) -> None:
 def get_order(order_id: str) -> Optional[dict]:
     with _conn() as conn:
         row = conn.execute("SELECT * FROM orders WHERE order_id=?", (order_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_order_by_etsy_id(etsy_order_id: str) -> Optional[dict]:
+    """Look up an order by its Etsy order ID — used for idempotency.
+
+    Lets the webhook detect a retried/duplicate delivery and skip reprocessing
+    (prevents duplicate quotes and duplicate Gelato charges).
+    """
+    if not etsy_order_id:
+        return None
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM orders WHERE etsy_order_id=?", (etsy_order_id,)
+        ).fetchone()
         return dict(row) if row else None
 
 
@@ -342,3 +363,43 @@ def get_pending_reviews() -> list[dict]:
 def mark_review_sent(review_id: int) -> None:
     with _conn() as conn:
         conn.execute("UPDATE reviews SET sent=1 WHERE id=?", (review_id,))
+
+
+# ── Backup / recovery ────────────────────────────────────────────
+
+def backup_database(backup_dir: Optional[Path] = None) -> Optional[Path]:
+    """Create a consistent, timestamped snapshot of the database.
+
+    Uses SQLite's online backup API (safe even while the DB is in use, unlike
+    a raw file copy). Returns the backup path, or None if the DB doesn't exist.
+    """
+    if not DB_PATH.exists():
+        return None
+    if backup_dir is None:
+        backup_dir = DB_PATH.parent / "db_backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"quoteforge_{timestamp}.db"
+
+    source = sqlite3.connect(DB_PATH)
+    dest = sqlite3.connect(backup_path)
+    try:
+        source.backup(dest)  # atomic online backup
+    finally:
+        dest.close()
+        source.close()
+    return backup_path
+
+
+def prune_old_backups(backup_dir: Optional[Path] = None, keep: int = 14) -> int:
+    """Keep only the most recent `keep` database backups. Returns count deleted."""
+    if backup_dir is None:
+        backup_dir = DB_PATH.parent / "db_backups"
+    if not backup_dir.exists():
+        return 0
+    backups = sorted(backup_dir.glob("quoteforge_*.db"), reverse=True)
+    deleted = 0
+    for old in backups[keep:]:
+        old.unlink()
+        deleted += 1
+    return deleted

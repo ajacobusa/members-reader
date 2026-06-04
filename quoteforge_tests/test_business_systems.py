@@ -138,16 +138,11 @@ def test_webhook_processes_valid_payload(tmp_path):
         "output_style": "Custom Quote",
         "order_id": "TEST-001",
     }
-    with patch("quoteforge.etsy.order_processor.OUTPUT_DIR", tmp_path), \
+    # TEST_MODE generates a mock quote; isolate the DB so the run is clean.
+    with patch("quoteforge.db.database.DB_PATH", tmp_path / "t.db"), \
+         patch("quoteforge.db.database.OUTPUT_DIR", tmp_path), \
          patch("quoteforge.automation.webhook_server.OUTPUT_DIR", tmp_path), \
-         patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", "test-key"), \
-         patch("quoteforge.quotes.generator.anthropic.Anthropic") as mock_cls:
-        from unittest.mock import MagicMock
-        mock_client = MagicMock()
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="Rise above the storm.")]
-        mock_client.messages.create.return_value = mock_msg
-        mock_cls.return_value = mock_client
+         patch("quoteforge.automation.pipeline_orchestrator.OUTPUT_DIR", tmp_path):
         result = process_webhook_payload(payload)
     assert result["status"] == "success"
     assert result["order_id"] == "TEST-001"
@@ -164,19 +159,14 @@ def test_webhook_logs_to_json(tmp_path):
     def fake_append(entry):
         captured.append(entry)
 
-    with patch("quoteforge.etsy.order_processor.OUTPUT_DIR", tmp_path), \
-         patch("quoteforge.automation.webhook_server._append_webhook_log", side_effect=fake_append), \
-         patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", "test-key"), \
-         patch("quoteforge.quotes.generator.anthropic.Anthropic") as mock_cls:
-        from unittest.mock import MagicMock
-        mock_client = MagicMock()
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="You are ready.")]
-        mock_client.messages.create.return_value = mock_msg
-        mock_cls.return_value = mock_client
+    with patch("quoteforge.db.database.DB_PATH", tmp_path / "t.db"), \
+         patch("quoteforge.db.database.OUTPUT_DIR", tmp_path), \
+         patch("quoteforge.automation.webhook_server.OUTPUT_DIR", tmp_path), \
+         patch("quoteforge.automation.pipeline_orchestrator.OUTPUT_DIR", tmp_path), \
+         patch("quoteforge.automation.webhook_server._append_webhook_log", side_effect=fake_append):
         process_webhook_payload(payload)
     assert len(captured) >= 1
-    assert captured[0]["order_id"] == "LOG-001"
+    assert captured[-1]["order_id"] == "LOG-001"
 
 
 # ── Scaling roadmap ───────────────────────────────────────────────

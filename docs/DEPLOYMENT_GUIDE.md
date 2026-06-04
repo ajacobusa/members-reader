@@ -83,6 +83,43 @@ even when your computer is off.
 
 ---
 
+## High Availability, Performance & Recovery
+
+The pipeline is hardened for unattended operation:
+
+**Concurrency (HA)**
+- SQLite runs in **WAL mode** with a 30s `busy_timeout` — concurrent webhook
+  requests no longer hit "database is locked". Safe for Flask's multithreaded server.
+- The webhook log uses a lock + atomic file replace — no lost entries under load.
+
+**Idempotency (no duplicate charges)**
+- Every order is keyed by its Etsy order ID. A retried webhook delivery
+  (Make.com retries on timeout) is detected and **skipped** — returns HTTP 200
+  with `status: duplicate` so the sender stops retrying. This prevents duplicate
+  quotes and duplicate Gelato orders.
+
+**Resilience (transient failures)**
+- The Gelato order call retries transient errors (429/5xx/timeout) with
+  exponential backoff (3 attempts). A permanent error (e.g. 400) fails fast.
+
+**Recovery (backups)**
+- `backup_database()` uses SQLite's online backup API — a consistent snapshot
+  even while the DB is in use. `prune_old_backups(keep=14)` rotates them.
+- Trigger on a schedule via the webhook endpoint:
+  ```bash
+  curl -X POST https://your-app.onrender.com/backup
+  ```
+  Schedule it daily with cron / Render Cron Job / Make.com scheduler.
+- To restore: stop the webhook server, copy a snapshot from `db_backups/` over
+  `quoteforge.db`, restart. Orders resume from the snapshot state.
+
+**Recovery (stuck orders)**
+- Orders that fail mid-pipeline are marked `status='error'` and logged per-stage
+  in `pipeline_log`. Inspect with the monitor, fix the cause, and re-run via
+  `resume_after_proof_approval(order_id, ...)` or re-trigger the order.
+
+---
+
 ## Security Checklist Before Going Live
 
 - [ ] `.env` is in `.gitignore` (never commit secrets)
