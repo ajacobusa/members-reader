@@ -238,6 +238,116 @@ def generate_family_legacy(family_name: str, values: str, count: int = 3) -> lis
     return variations[:count]
 
 
+# ──────────────────────────────────────────────────────────────
+# Prompt-template generators (from ChatGPT_Quote_Prompts.txt)
+# ──────────────────────────────────────────────────────────────
+
+def generate_heartfelt_message(
+    recipient: str,
+    occasion: str,
+    relationship: str,
+    tone: str,
+    word_count: int = 120,
+    count: int = 3,
+) -> list[str]:
+    """Prompt template 1: Heartfelt personalized message.
+
+    Matches the ChatGPT_Quote_Prompts.txt template exactly, using Claude.
+    """
+    client = _client()
+    prompt = (
+        f"Create {count} variations of a heartfelt personalized message.\n\n"
+        f"Recipient: {recipient}\n"
+        f"Occasion: {occasion}\n"
+        f"Relationship: {relationship}\n"
+        f"Tone: {tone}\n"
+        f"Length: approximately {word_count} words\n\n"
+        f"Rules:\n"
+        f"- Avoid clichés — make it emotionally meaningful and specific\n"
+        f"- 100% original — safe for print-on-demand wall art\n"
+        f"- Each variation should feel distinct in structure or angle\n"
+        f"- Address the recipient by name\n\n"
+        f"Separate each variation with '---'\n"
+        f"Output only the messages, nothing else."
+    )
+    message = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = message.content[0].text.strip()
+    return [v.strip() for v in raw.split("---") if v.strip()][:count]
+
+
+def generate_christian_encouragement(
+    recipient: str,
+    challenge: str,
+    bible_theme: str,
+    count: int = 3,
+) -> list[str]:
+    """Prompt template 2: Christian encouragement letter.
+
+    Matches the ChatGPT_Quote_Prompts.txt template exactly.
+    """
+    client = _client()
+    prompt = (
+        f"Create {count} variations of a Christian encouragement letter.\n\n"
+        f"Recipient: {recipient}\n"
+        f"Challenge they are facing: {challenge}\n"
+        f"Favorite Bible theme: {bible_theme}\n\n"
+        f"Rules:\n"
+        f"- Deeply faith-based, warm, and uplifting\n"
+        f"- Weave the Bible theme naturally — do not copy exact Bible verses (paraphrase in your own words)\n"
+        f"- Speak directly to the challenge with hope\n"
+        f"- 100% original — safe for print-on-demand wall art\n"
+        f"- Address the recipient by name\n"
+        f"- 100-150 words per variation\n\n"
+        f"Separate each variation with '---'\n"
+        f"Output only the letters, nothing else."
+    )
+    message = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = message.content[0].text.strip()
+    return [v.strip() for v in raw.split("---") if v.strip()][:count]
+
+
+def generate_graduation_message(
+    name: str,
+    degree: str,
+    career_goal: str,
+    count: int = 3,
+) -> list[str]:
+    """Prompt template 3: Graduation personalized message.
+
+    Matches the ChatGPT_Quote_Prompts.txt template exactly.
+    """
+    client = _client()
+    prompt = (
+        f"Create {count} variations of a personalized graduation message.\n\n"
+        f"Name: {name}\n"
+        f"Degree: {degree}\n"
+        f"Career Goal: {career_goal}\n\n"
+        f"Rules:\n"
+        f"- Specific to their degree and career goal — not generic\n"
+        f"- Bold, celebratory, and forward-looking\n"
+        f"- 100% original — safe for print-on-demand wall art\n"
+        f"- Address the graduate by name\n"
+        f"- 80-120 words per variation\n\n"
+        f"Separate each variation with '---'\n"
+        f"Output only the messages, nothing else."
+    )
+    message = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = message.content[0].text.strip()
+    return [v.strip() for v in raw.split("---") if v.strip()][:count]
+
+
 def generate_letter_to_future_self(context: str, count: int = 2) -> list[str]:
     """Generate 'Letter to My Future Self' poster text."""
     client = _client()

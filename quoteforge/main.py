@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 from quoteforge.gui.personal_tab import PersonalTab
 from quoteforge.gui.order_tab import OrderTab
 from quoteforge.gui.catalog_tab import CatalogTab
+from quoteforge.gui.prompts_tab import PromptsTab
 from quoteforge.quotes.categories import CATEGORIES
 from quoteforge.pipeline import run_pipeline
 from quoteforge.etsy.exporter import export_listings_csv
@@ -121,6 +122,10 @@ def main() -> None:
     # Tab 4: Bulk catalog + SEO packs
     tab4 = CatalogTab(notebook)
     notebook.add(tab4, text="  Catalog & SEO  ")
+
+    # Tab 5: Quote prompts + customer messages
+    tab5 = PromptsTab(notebook)
+    notebook.add(tab5, text="  Prompts & Messages  ")
 
     root.mainloop()
 
