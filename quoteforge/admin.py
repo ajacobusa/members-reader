@@ -9,6 +9,7 @@ Usage:
   python -m quoteforge.admin preflight        # run the go-live preflight checks
   python -m quoteforge.admin verify-keys      # LIVE test: Anthropic + Gelato auth
   python -m quoteforge.admin sample-quote     # preview a REAL AI quote (safe)
+  python -m quoteforge.admin email-report     # email the daily sales report
 """
 import sys
 
@@ -133,6 +134,17 @@ def _cmd_verify_keys() -> int:
     return 1
 
 
+def _cmd_email_report() -> int:
+    from quoteforge.automation.emailer import send_daily_report
+    result = send_daily_report()
+    if result["status"] == "sent":
+        print(f"Daily report emailed to {result['to']}")
+        print(f"  Subject: {result['subject']}")
+        return 0
+    print(f"Report not sent: {result['message']}")
+    return 1
+
+
 def _cmd_sample_quote() -> int:
     """Preview a REAL AI quote without disabling TEST_MODE (safe).
 
@@ -172,6 +184,7 @@ COMMANDS = {
     "preflight": lambda args: _cmd_preflight(),
     "verify-keys": lambda args: _cmd_verify_keys(),
     "sample-quote": lambda args: _cmd_sample_quote(),
+    "email-report": lambda args: _cmd_email_report(),
 }
 
 

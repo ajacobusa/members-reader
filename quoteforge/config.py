@@ -88,6 +88,12 @@ PIPELINE_AUTO_APPROVE_PROOF: bool = _env_bool("PIPELINE_AUTO_APPROVE_PROOF", Fal
 PIPELINE_REVIEW_DELAY_DAYS: int = int(os.getenv("PIPELINE_REVIEW_DELAY_DAYS", "14"))
 PIPELINE_UPSELL_DELAY_HOURS: int = int(os.getenv("PIPELINE_UPSELL_DELAY_HOURS", "2"))
 
+# Daily report email (Gmail SMTP). Create an App Password at
+# myaccount.google.com -> Security -> App passwords (requires 2FA).
+GMAIL_ADDRESS: str = os.getenv("GMAIL_ADDRESS", "")
+GMAIL_APP_PASSWORD: str = os.getenv("GMAIL_APP_PASSWORD", "")
+REPORT_RECIPIENT: str = os.getenv("REPORT_RECIPIENT", "ajacobusa@gmail.com")
+
 # Phase 1 priority niches to validate first (20-30 manual listings)
 PHASE1_NICHES: list[str] = [
     "Personalized Daughter Gifts",
