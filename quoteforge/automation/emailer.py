@@ -29,6 +29,11 @@ def build_report_html() -> tuple[str, str]:
                       if k not in ("shipped", "delivered", "error"))
     errors = by_status.get("error", 0)
 
+    # Financial summary (revenue, Etsy fees, sales tax, Gelato cost, profit)
+    from quoteforge.db.database import get_all_orders
+    from quoteforge.etsy.financials import summarize
+    fin = summarize(get_all_orders(limit=100000))
+
     # Demand-based tier recommendations (orders so far this run as a proxy)
     recs = recommend_tiers(monthly_orders=total, renderer=RENDERER)
 
@@ -68,6 +73,16 @@ def build_report_html() -> tuple[str, str]:
     {_row("In Progress", in_progress)}
     {_row("Shipped", shipped)}
     {_row("Errors", errors)}
+  </table>
+
+  <h3>💰 Financials (billable orders)</h3>
+  <table style="border-collapse:collapse;margin:12px 0">
+    {_row("Revenue (gross sales)", f"${fin['revenue']:.2f}")}
+    {_row("Etsy Fees", f"-${fin['etsy_fees']:.2f}")}
+    {_row("Gelato Print Cost", f"-${fin['gelato_cost']:.2f}")}
+    {_row("NET PROFIT", f"${fin['net_profit']:.2f}")}
+    {_row("Avg Profit / Order", f"${fin['avg_profit_per_order']:.2f}")}
+    {_row("Sales Tax (collected & remitted by Etsy — not your money)", f"${fin['sales_tax_collected']:.2f}")}
   </table>
 
   <h3>Orders by Status</h3>

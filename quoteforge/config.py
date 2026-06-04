@@ -92,6 +92,15 @@ CUSTOMER_PROOF_APPROVAL: bool = _env_bool("CUSTOMER_PROOF_APPROVAL", True)
 PIPELINE_REVIEW_DELAY_DAYS: int = int(os.getenv("PIPELINE_REVIEW_DELAY_DAYS", "14"))
 PIPELINE_UPSELL_DELAY_HOURS: int = int(os.getenv("PIPELINE_UPSELL_DELAY_HOURS", "2"))
 
+# Financial defaults — used to estimate per-order economics when the actual
+# sale price / print cost aren't recorded on the order yet (e.g. before the
+# Etsy + Gelato APIs feed real numbers). Override per env.
+DEFAULT_SALE_PRICE: float = float(os.getenv("DEFAULT_SALE_PRICE", "29.99"))
+DEFAULT_GELATO_COST: float = float(os.getenv("DEFAULT_GELATO_COST", "11.00"))
+# Average sales-tax rate Etsy COLLECTS and REMITS on your behalf (pass-through —
+# not your money, not a cost). Shown for reference/reconciliation only.
+ESTIMATED_SALES_TAX_RATE: float = float(os.getenv("ESTIMATED_SALES_TAX_RATE", "0.07"))
+
 # Daily report email (Gmail SMTP). Create an App Password at
 # myaccount.google.com -> Security -> App passwords (requires 2FA).
 GMAIL_ADDRESS: str = os.getenv("GMAIL_ADDRESS", "")

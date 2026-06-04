@@ -136,6 +136,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {row["name"] for row in conn.execute("PRAGMA table_info(orders)")}
     if "gelato_product_uid" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN gelato_product_uid TEXT")
+    if "sale_price" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN sale_price REAL")
+    if "gelato_cost" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN gelato_cost REAL")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -148,8 +152,9 @@ def create_order(data: dict) -> str:
             INSERT OR REPLACE INTO orders
             (order_id, etsy_order_id, customer_name, customer_email,
              recipient_name, sender_name, relationship, occasion,
-             scenery, tone, memory, output_style, status)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+             scenery, tone, memory, output_style, status,
+             sale_price, gelato_cost)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -164,6 +169,8 @@ def create_order(data: dict) -> str:
             data.get("memory", ""),
             data.get("output_style", "Personal Letter"),
             "received",
+            data.get("sale_price"),   # None until a real sale price is known
+            data.get("gelato_cost"),  # None until a real print cost is known
         ))
     return order_id
 

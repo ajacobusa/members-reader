@@ -10,6 +10,7 @@ Usage:
   python -m quoteforge.admin verify-keys      # LIVE test: Anthropic + Gelato auth
   python -m quoteforge.admin sample-quote     # preview a REAL AI quote (safe)
   python -m quoteforge.admin email-report     # email the daily sales report
+  python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
 """
@@ -176,6 +177,29 @@ def _cmd_customer_approved(args: list[str]) -> int:
     return 0
 
 
+def _cmd_reconcile(args: list[str]) -> int:
+    from datetime import datetime
+    from quoteforge.db.database import init_db
+    from quoteforge.etsy.reconciliation import export_reconciliation
+    from quoteforge.etsy.financials import month_financials
+    init_db()
+    if args and "-" in args[0]:
+        year, month = (int(x) for x in args[0].split("-")[:2])
+    else:
+        now = datetime.now()
+        year, month = now.year, now.month
+    data = month_financials(year, month)
+    path = export_reconciliation(year, month)
+    print(f"Reconciliation for {data['period']} ({data['order_count']} billable orders):")
+    print(f"  Revenue          : ${data['revenue']:.2f}")
+    print(f"  Etsy fees        : -${data['etsy_fees']:.2f}")
+    print(f"  Gelato cost      : -${data['gelato_cost']:.2f}")
+    print(f"  NET PROFIT       : ${data['net_profit']:.2f}")
+    print(f"  Sales tax (Etsy remits): ${data['sales_tax_collected']:.2f}")
+    print(f"\n  Excel saved: {path}")
+    return 0
+
+
 def _cmd_email_report() -> int:
     from quoteforge.automation.emailer import send_daily_report
     result = send_daily_report()
@@ -227,6 +251,7 @@ COMMANDS = {
     "verify-keys": lambda args: _cmd_verify_keys(),
     "sample-quote": lambda args: _cmd_sample_quote(),
     "email-report": lambda args: _cmd_email_report(),
+    "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
 }
