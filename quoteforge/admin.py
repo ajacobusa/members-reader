@@ -15,6 +15,7 @@ Usage:
   python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
+  python -m quoteforge.admin calendar          # annual retailer timeline: list/market dates due
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -185,6 +186,27 @@ def _cmd_customer_approved(args: list[str]) -> int:
     else:
         print("  Status: approved_ready_to_print — now upload the artwork to "
               "Gelato to place the print order.")
+    return 0
+
+
+def _cmd_calendar(args: list[str]) -> int:
+    from quoteforge.etsy.marketing_calendar import (
+        upcoming_actions, ANNUAL_CALENDAR, HIGH_REVENUE_CATEGORIES,
+    )
+    horizon = int(args[0]) if args and args[0].isdigit() else 60
+    actions = upcoming_actions(horizon_days=horizon)
+    print("=" * 60)
+    print(f"ANNUAL MARKETING CALENDAR — next {horizon} days")
+    print("=" * 60)
+    print(f"{'DATE':12} {'URGENCY':10} {'ACTION':20} OCCASION (rev #)")
+    print("-" * 60)
+    for a in actions:
+        print(f"{a['date']:12} {a['urgency']:10} {a['action']:20} "
+              f"{a['occasion']} (#{a['revenue_rank']})")
+    if not actions:
+        print("  Nothing due in this window — you're ahead of schedule.")
+    print("\nHighest-revenue categories (always keep listed):")
+    print("  " + " > ".join(HIGH_REVENUE_CATEGORIES[:5]))
     return 0
 
 
@@ -373,6 +395,7 @@ COMMANDS = {
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,
+    "calendar": _cmd_calendar,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
