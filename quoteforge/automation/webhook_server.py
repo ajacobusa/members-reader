@@ -67,6 +67,17 @@ def _append_webhook_log(entry: dict) -> None:
         tmp.replace(WEBHOOK_LOG)
 
 
+def _parse_money(value) -> float | None:
+    """Parse a money value from a webhook (handles '$29.99', '29,99', 29.99)."""
+    if value is None or value == "":
+        return None
+    try:
+        s = str(value).replace("$", "").replace(",", "").strip()
+        return round(float(s), 2)
+    except (ValueError, TypeError):
+        return None
+
+
 def process_webhook_payload(payload: dict) -> dict:
     """Process an incoming Etsy webhook payload through the full pipeline.
 
@@ -118,6 +129,14 @@ def process_webhook_payload(payload: dict) -> dict:
             "tone": payload.get("tone", "Inspirational & Motivational"),
             "memory": payload.get("memory", ""),
             "output_style": payload.get("output_style", "Personal Letter"),
+            # Real sale price from Etsy (Make.com maps the order total). Accept
+            # several common field names; None → financials fall back to default.
+            "sale_price": _parse_money(
+                payload.get("sale_price") or payload.get("price")
+                or payload.get("total") or payload.get("order_total")
+                or payload.get("grandtotal")
+            ),
+            "gelato_cost": _parse_money(payload.get("gelato_cost")),
         }
 
         # Default config stops at the proof stage for manual review — exactly

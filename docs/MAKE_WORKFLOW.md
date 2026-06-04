@@ -51,9 +51,14 @@ ngrok http 5050
   "tone": "{{order.personalization.tone}}",
   "memory": "{{order.personalization.special_memory}}",
   "output_style": "Personal Letter",
-  "customer_email": "{{order.buyer_email}}"
+  "customer_email": "{{order.buyer_email}}",
+  "total": "{{order.grandtotal}}"
 }
 ```
+
+> **Map the order total** (`total`) so reconciliation uses the *real* sale price
+> per order instead of an estimate. The webhook accepts `total`, `sale_price`,
+> `price`, `order_total`, or `grandtotal` and parses values like `$34.99`.
 
 ### Step 4: Add Airtable sync (optional)
 
