@@ -110,8 +110,21 @@ def test_suggestions_flag_errored_orders():
 def test_suggestions_clean_when_healthy():
     perf = {"orders_total": 3, "stats_query_ms": 5, "db_size_kb": 50,
             "by_status": {"shipped": 3}}
-    tips = suggest_enhancements(perf, {"overall": "OK"})
+    # Isolate the "all clear" path — margins are covered by their own tests.
+    with patch("quoteforge.etsy.margin_guard.audit_catalog",
+               return_value={"below_floor": 0, "offenders": [], "floor_pct": 50}):
+        tips = suggest_enhancements(perf, {"overall": "OK"})
     assert any("no issues" in t.lower() or "no action" in t.lower() for t in tips)
+
+
+def test_suggestions_flag_margin_erosion():
+    perf = {"orders_total": 3, "stats_query_ms": 5, "db_size_kb": 50,
+            "by_status": {"shipped": 3}}
+    fake = {"below_floor": 2, "floor_pct": 50,
+            "offenders": [{"name": "Hoodie", "margin_pct": 39}]}
+    with patch("quoteforge.etsy.margin_guard.audit_catalog", return_value=fake):
+        tips = suggest_enhancements(perf, {"overall": "OK"})
+    assert any("margin floor" in t.lower() for t in tips)
 
 
 # ── CLI ──────────────────────────────────────────────────────────

@@ -123,6 +123,19 @@ def suggest_enhancements(perf: dict, health: dict) -> list[str]:
     if total >= 100:
         tips.append("At 100+ orders, run `admin report monthly` and check the "
                     "tier advisor for capacity headroom before peak season.")
+    # Margin erosion guard — flag any product/set that slipped below the floor
+    # (e.g. after a Gelato or Etsy fee increase).
+    try:
+        from quoteforge.etsy.margin_guard import audit_catalog
+        audit = audit_catalog()
+        if audit["below_floor"]:
+            worst = audit["offenders"][0]
+            tips.append(f"{audit['below_floor']} item(s) below the "
+                        f"{audit['floor_pct']:.0f}% margin floor "
+                        f"(worst: {worst['name']} at {worst['margin_pct']:.0f}%) — "
+                        f"run `admin margins` and reprice.")
+    except Exception:  # noqa: BLE001
+        pass
     if not tips:
         tips.append("No issues found. Infra is healthy and within performance "
                     "targets - no action needed today.")

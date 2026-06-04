@@ -46,6 +46,10 @@ RENDERER: str = os.getenv("RENDERER", "local")
 # a print on white. Free (Pillow); the mockup is a listing image, not the print.
 GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
 
+# Target gross margin floor (% of sale price kept after Gelato + Etsy fees).
+# High-ticket POD guidance is 50-70%; the margin guard flags anything below this.
+TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "50"))
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))

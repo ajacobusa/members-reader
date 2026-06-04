@@ -15,6 +15,8 @@ Usage:
   python -m quoteforge.admin install-schedule [--dry-run|--remove]  # create all scheduled jobs
   python -m quoteforge.admin maintenance [email|--check]  # daily self-healing infra agent
   python -m quoteforge.admin mockup POSTER.png [out] [wall] [frame]  # styled-room lifestyle mockup
+  python -m quoteforge.admin bundles [occasion]   # high-ticket gallery-set bundles ($180-500)
+  python -m quoteforge.admin margins [floor%]      # audit catalog against the margin floor
   python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
@@ -391,6 +393,35 @@ def _cmd_healthcheck(args: list[str]) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _cmd_bundles(args: list[str]) -> int:
+    """Show the high-ticket gallery-set bundles (multi-piece, $180-500)."""
+    from quoteforge.etsy.gallery_sets import (
+        format_sets_text, sets_for_occasion, set_economics,
+    )
+    if args:
+        matches = sets_for_occasion(" ".join(args))
+        if not matches:
+            print(f"No gallery sets match '{' '.join(args)}'.")
+            return 0
+        for s in matches:
+            e = set_economics(s)
+            print(f"{e['name']} — {e['pieces']}x {e['piece_format']}")
+            print(f"  Price ${e['set_price']:.0f} | cost ${e['gelato_cost']:.0f} "
+                  f"| profit ${e['net_profit']:.0f} | margin {e['margin_pct']:.0f}%")
+        return 0
+    print(format_sets_text())
+    return 0
+
+
+def _cmd_margins(args: list[str]) -> int:
+    """Audit every product + gallery set against the target margin floor."""
+    from quoteforge.etsy.margin_guard import audit_catalog, format_audit_text
+    floor = float(args[0]) if args else None
+    audit = audit_catalog(floor)
+    print(format_audit_text(audit))
+    return 1 if audit["below_floor"] else 0
+
+
 def _cmd_mockup(args: list[str]) -> int:
     """Composite a poster PNG into a styled-room lifestyle mockup for the gallery."""
     from pathlib import Path
@@ -554,6 +585,8 @@ COMMANDS = {
     "install-schedule": _cmd_install_schedule,
     "maintenance": _cmd_maintenance,
     "mockup": _cmd_mockup,
+    "bundles": _cmd_bundles,
+    "margins": _cmd_margins,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,
