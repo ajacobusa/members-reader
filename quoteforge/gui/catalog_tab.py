@@ -12,6 +12,8 @@ import sys
 from quoteforge.config import OUTPUT_DIR, PHASE1_NICHES, BULK_CATALOG_RELATIONSHIPS
 from quoteforge.etsy.bulk_catalog import generate_bulk_catalog, generate_seo_pack
 from quoteforge.etsy.order_processor import NICHE_LISTING_TITLES
+from quoteforge.etsy.scaling_roadmap import export_scaling_roadmap
+from quoteforge.etsy.order_tracker import export_order_tracker
 
 
 class CatalogTab(tk.Frame):
@@ -65,7 +67,9 @@ class CatalogTab(tk.Frame):
 
         open_btn = ttk.Button(self, text="Open Output Folder",
                               command=self._open_folder)
-        open_btn.grid(row=row, column=2, columnspan=2, pady=6, sticky="w")
+        open_btn.grid(row=row, column=2, pady=6, sticky="w")
+        ttk.Button(self, text="📊 Export Scaling Roadmap",
+                   command=self._on_roadmap).grid(row=row, column=3, pady=6, sticky="w")
         row += 1
 
         ttk.Separator(self, orient="horizontal").grid(
@@ -128,6 +132,16 @@ class CatalogTab(tk.Frame):
     def _open_folder(self) -> None:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         subprocess.Popen(f'explorer "{OUTPUT_DIR}"')
+
+    def _on_roadmap(self) -> None:
+        try:
+            path = export_scaling_roadmap()
+            subprocess.Popen(f'start "" "{path}"', shell=True)
+            messagebox.showinfo("Scaling Roadmap Exported",
+                                f"Saved and opened:\n{path}\n\n"
+                                "3 sheets: Roadmap · Weekly Tracker · VA Task Log")
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc))
 
     def _on_catalog(self) -> None:
         self._cat_btn.configure(state="disabled")
