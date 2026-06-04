@@ -10,6 +10,7 @@ Usage:
   python -m quoteforge.admin verify-keys      # LIVE test: Anthropic + Gelato auth
   python -m quoteforge.admin sample-quote     # preview a REAL AI quote (safe)
   python -m quoteforge.admin email-report     # email the daily sales report
+  python -m quoteforge.admin report PERIOD    # daily|weekly|monthly|yearly (add 'email' to send)
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -177,6 +178,25 @@ def _cmd_customer_approved(args: list[str]) -> int:
     return 0
 
 
+def _cmd_report(args: list[str]) -> int:
+    from quoteforge.db.database import init_db
+    from quoteforge.etsy.reports import period_report, format_report_text, PERIODS
+    if not args or args[0] not in PERIODS:
+        print(f"Usage: python -m quoteforge.admin report <{'|'.join(PERIODS)}> [email]")
+        return 2
+    init_db()
+    period = args[0]
+    rep = period_report(period)
+    print(format_report_text(rep))
+    if len(args) > 1 and args[1] == "email":
+        from quoteforge.automation.emailer import send_period_report
+        result = send_period_report(period)
+        print(f"\nEmail: {result['status']}"
+              + (f" -> {result.get('to')}" if result["status"] == "sent" else
+                 f" ({result.get('message','')})"))
+    return 0
+
+
 def _cmd_reconcile(args: list[str]) -> int:
     from datetime import datetime
     from quoteforge.db.database import init_db
@@ -251,6 +271,7 @@ COMMANDS = {
     "verify-keys": lambda args: _cmd_verify_keys(),
     "sample-quote": lambda args: _cmd_sample_quote(),
     "email-report": lambda args: _cmd_email_report(),
+    "report": _cmd_report,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,

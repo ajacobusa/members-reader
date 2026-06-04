@@ -50,7 +50,35 @@ $trigger = New-ScheduledTaskTrigger -Daily -At 7:30am
 Register-ScheduledTask -TaskName "QuoteForge Daily Report" -Action $action -Trigger $trigger
 ```
 
-## What the report contains
+## Weekly / Monthly / Yearly reports too
+
+The same engine produces reports at four cadences. View any on screen:
+```powershell
+python -m quoteforge.admin report daily
+python -m quoteforge.admin report weekly
+python -m quoteforge.admin report monthly
+python -m quoteforge.admin report yearly
+```
+Add `email` to send it instead of printing: `... report monthly email`.
+
+Schedule each via Task Scheduler (PowerShell):
+```powershell
+# Weekly — Mondays 8:00 AM
+$a=New-ScheduledTaskAction -Execute "python" -Argument "-m quoteforge.admin report weekly email" -WorkingDirectory "D:\ANOOP PERSONAL HOME\CLAUD\Claud AJ"
+Register-ScheduledTask -TaskName "QuoteForge Weekly Report" -Action $a -Trigger (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8:00am)
+
+# Monthly — 1st of month 8:00 AM (Task Scheduler has no native monthly trigger in PS;
+# use a daily trigger and the command self-checks, OR set via the Task Scheduler GUI -> Monthly)
+$a=New-ScheduledTaskAction -Execute "python" -Argument "-m quoteforge.admin report monthly email" -WorkingDirectory "D:\ANOOP PERSONAL HOME\CLAUD\Claud AJ"
+Register-ScheduledTask -TaskName "QuoteForge Monthly Report" -Action $a -Trigger (New-ScheduledTaskTrigger -Daily -At 8:05am)
+
+# Yearly — also via the GUI (Monthly trigger, January only) or a daily self-checking run.
+```
+
+For exact monthly/yearly bookkeeping with a per-order Excel ledger, use
+`python -m quoteforge.admin reconcile YYYY-MM` (see ETSY return/finance docs).
+
+## What the daily report contains
 
 - Total / In-Progress / Shipped / Error order counts
 - Orders by status

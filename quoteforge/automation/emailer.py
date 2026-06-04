@@ -105,21 +105,42 @@ def build_report_html() -> tuple[str, str]:
     return subject, body
 
 
-def send_daily_report() -> dict:
-    """Build and email the daily report. Returns a status dict."""
+def _send_email(subject: str, body: str) -> dict:
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         return {"status": "skipped",
                 "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}
-
-    subject, body = build_report_html()
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = GMAIL_ADDRESS
     msg["To"] = REPORT_RECIPIENT
     msg.attach(MIMEText(body, "html"))
-
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
         server.sendmail(GMAIL_ADDRESS, [REPORT_RECIPIENT], msg.as_string())
+    return {"status": "sent", "to": REPORT_RECIPIENT, "subject": subject}
+
+
+def send_period_report(period: str) -> dict:
+    """Email a daily/weekly/monthly/yearly sales report."""
+    if period == "daily":
+        return send_daily_report()
+    from quoteforge.etsy.reports import period_report, format_report_text
+    rep = period_report(period)
+    f = rep["financials"]
+    subject = (f"QuoteForge {period.title()} Report — {rep['label']} "
+               f"(${f['net_profit']:.2f} profit)")
+    body = (f"<html><body style='font-family:Arial'>"
+            f"<pre style='font-size:14px'>{format_report_text(rep)}</pre>"
+            f"</body></html>")
+    return _send_email(subject, body)
+
+
+def send_daily_report() -> dict:
+    """Build and email the daily report. Returns a status dict."""
+    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
+        return {"status": "skipped",
+                "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}
+    subject, body = build_report_html()
+    return _send_email(subject, body)
 
     return {"status": "sent", "to": REPORT_RECIPIENT, "subject": subject}
