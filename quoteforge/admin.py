@@ -18,6 +18,7 @@ Usage:
   python -m quoteforge.admin calendar          # annual retailer timeline: list/market dates due
   python -m quoteforge.admin products [Occasion]  # full product range + 1-story-to-many bundle
   python -m quoteforge.admin tco [listings] [orders/mo]  # total cost of ownership breakdown
+  python -m quoteforge.admin launch [scale N]  # the 20 starter listings; or next batch to add
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -188,6 +189,46 @@ def _cmd_customer_approved(args: list[str]) -> int:
     else:
         print("  Status: approved_ready_to_print — now upload the artwork to "
               "Gelato to place the print order.")
+    return 0
+
+
+def _cmd_launch(args: list[str]) -> int:
+    from quoteforge.etsy.launch_pack import (
+        LAUNCH_PACK_20, PRICING, AVOID_INITIALLY, SCALING_PHASES,
+        next_additions, current_phase,
+    )
+    # Scale mode: show the next batch to add
+    if args and args[0] == "scale":
+        count = int(args[1]) if len(args) > 1 and args[1].isdigit() else 20
+        phase = current_phase(count)
+        adds = next_additions(count, batch=15)
+        print("=" * 58)
+        print(f"SCALING — you have ~{count} listings (Phase {phase['phase']})")
+        print(f"Focus: {phase['focus']}")
+        print("=" * 58)
+        print("NEXT LISTINGS TO ADD:")
+        for a in adds:
+            print(f"  • {a['title']}")
+        if not adds:
+            print("  You've covered the proven pool — move to seasonal campaigns "
+                  "(admin campaign) and cross-sell products (admin products).")
+        return 0
+    # Default: the 20 starter listings + pricing + what to avoid
+    print("=" * 58)
+    print("LAUNCH PACK — 20 high-intent personalized gift listings")
+    print("=" * 58)
+    last_cat = None
+    for l in LAUNCH_PACK_20:
+        if l.category != last_cat:
+            print(f"\n[{l.category}]")
+            last_cat = l.category
+        print(f"  {l.n:>2}. {l.title}")
+    print("\nPRICING LADDER (same design, multiple price points):")
+    for product, (lo, hi) in PRICING.items():
+        print(f"  {product:18} ${lo}-${hi}")
+    print("\nAVOID AT LAUNCH (crowded / low-intent):")
+    print("  " + ", ".join(AVOID_INITIALLY))
+    print(f"\nThen scale: run  python -m quoteforge.admin launch scale 20")
     return 0
 
 
@@ -448,6 +489,7 @@ COMMANDS = {
     "calendar": _cmd_calendar,
     "products": _cmd_products,
     "tco": _cmd_tco,
+    "launch": _cmd_launch,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
