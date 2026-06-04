@@ -17,7 +17,7 @@ from typing import Callable, Optional
 
 from quoteforge.config import (
     OUTPUT_DIR, BANNERBEAR_TEMPLATE_UID,
-    PIPELINE_AUTO_APPROVE_PROOF, TEST_MODE,
+    PIPELINE_AUTO_APPROVE_PROOF, TEST_MODE, RENDERER,
 )
 from quoteforge.db.database import (
     create_order, update_order, get_order, log_pipeline_stage,
@@ -179,7 +179,23 @@ def run_full_pipeline(
                                             order_data.get("recipient_name", ""))
             artwork_url = png_path.as_uri() if png_path else ""
 
-        # Try Canva API first
+        # Free local renderer (default) — composite quote over Unsplash bg with Pillow
+        if not artwork_url and RENDERER == "local":
+            from quoteforge.images.local_renderer import render_local_poster
+            category = order_data.get("category", "Motivation & Mindset")
+            scenery = order_data.get("scenery", "Mountains")
+            mood = get_mood(category, "")
+            keyword = get_unsplash_keyword(mood)
+            bg_url = fetch_background_url(keyword) or fetch_background_url(scenery)
+            out_dir = OUTPUT_DIR / "pipeline" / order_id
+            png_path = render_local_poster(
+                quote=quote,
+                output_path=out_dir / "artwork.png",
+                background_url=bg_url,  # None → solid color fallback
+            )
+            artwork_url = png_path.as_uri()
+
+        # Canva API (if a template is configured)
         if not artwork_url and canva_template_id:
             canva_result = create_design_from_template(
                 canva_template_id, quote,
@@ -188,7 +204,7 @@ def run_full_pipeline(
             if canva_result.get("status") == "success":
                 artwork_url = export_design_as_png(canva_result["design_id"]) or ""
 
-        # Fall back to Bannerbear
+        # Bannerbear (optional paid upgrade)
         if not artwork_url and BANNERBEAR_TEMPLATE_UID and BANNERBEAR_TEMPLATE_UID != "YOUR_BANNERBEAR_TEMPLATE_UID":
             category = order_data.get("category", "Motivation & Mindset")
             scenery = order_data.get("scenery", "Mountains")

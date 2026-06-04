@@ -27,11 +27,19 @@ BANNERBEAR_API_KEY: str = os.getenv("BANNERBEAR_API_KEY", "")
 # Output
 OUTPUT_DIR: Path = Path.home() / "Desktop" / "QuoteForge-Output"
 
-# Claude model
-CLAUDE_MODEL: str = "claude-sonnet-4-6"
+# Claude models.
+# Quote/message/SEO generation is short and simple — Haiku 4.5 does it well at
+# ~1/3 the cost of Sonnet ($1/$5 per 1M vs $3/$15). Override per env if you want
+# higher quality (e.g. set CLAUDE_MODEL=claude-sonnet-4-6).
+CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5")
 
 # Bannerbear template UID — set this after creating your template
 BANNERBEAR_TEMPLATE_UID: str = os.getenv("BANNERBEAR_TEMPLATE_UID", "YOUR_BANNERBEAR_TEMPLATE_UID")
+
+# Renderer selection: "local" (free, Pillow — default) | "bannerbear" | "canva".
+# Local rendering composites the quote over an Unsplash background with Pillow,
+# eliminating the Bannerbear subscription ($49/mo) for standard quote posters.
+RENDERER: str = os.getenv("RENDERER", "local")
 
 # Phase 12: All Gelato product sizes at 300 DPI (width_px, height_px)
 PRODUCTS: dict[str, dict] = {
