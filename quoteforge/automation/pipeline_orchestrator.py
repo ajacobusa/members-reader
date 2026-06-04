@@ -17,7 +17,7 @@ from typing import Callable, Optional
 
 from quoteforge.config import (
     OUTPUT_DIR, BANNERBEAR_TEMPLATE_UID,
-    PIPELINE_AUTO_APPROVE_PROOF, TEST_MODE, RENDERER,
+    PIPELINE_AUTO_APPROVE_PROOF, TEST_MODE, RENDERER, CUSTOMER_PROOF_APPROVAL,
 )
 from quoteforge.db.database import (
     create_order, update_order, get_order, log_pipeline_stage,
@@ -234,12 +234,20 @@ def run_full_pipeline(
 
         # ── Stage 5: Proof ───────────────────────────────────────
         if not skip_proof and not PIPELINE_AUTO_APPROVE_PROOF:
-            _notify("proof", "Proof stage — manual review required")
-            update_order(order_id, proof_sent=1)
-            _log(order_id, "proof", "pending",
-                 "Awaiting manual approval before Gelato order")
-            # In production: send proof URL to customer via Etsy message
-            # For now: mark as pending and return — resume when approved
+            if CUSTOMER_PROOF_APPROVAL:
+                # Prepare a proof package for the BUYER to approve. Printing is
+                # blocked until you record their approval.
+                _notify("proof", "Proof prepared — awaiting CUSTOMER approval")
+                from quoteforge.automation.customer_proof import prepare_customer_proof
+                prepare_customer_proof(
+                    order_id,
+                    artwork_path=str(png_path) if png_path else artwork_url,
+                )
+            else:
+                _notify("proof", "Proof stage — owner review required")
+                update_order(order_id, proof_sent=1)
+                _log(order_id, "proof", "pending",
+                     "Awaiting owner approval before Gelato order")
             return get_order(order_id) or {}
         else:
             # Proof bypassed (auto-approve or skip) — still log for the audit trail

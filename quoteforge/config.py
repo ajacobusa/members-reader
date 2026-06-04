@@ -85,6 +85,10 @@ ETSY_WEBHOOK_SECRET: str = os.getenv("ETSY_WEBHOOK_SECRET", "")
 
 # Pipeline settings
 PIPELINE_AUTO_APPROVE_PROOF: bool = _env_bool("PIPELINE_AUTO_APPROVE_PROOF", False)
+# When true, the proof step is treated as CUSTOMER approval: the pipeline
+# prepares a proof message + image for you to send the buyer via Etsy, and
+# printing is blocked until you record the customer's approval.
+CUSTOMER_PROOF_APPROVAL: bool = _env_bool("CUSTOMER_PROOF_APPROVAL", True)
 PIPELINE_REVIEW_DELAY_DAYS: int = int(os.getenv("PIPELINE_REVIEW_DELAY_DAYS", "14"))
 PIPELINE_UPSELL_DELAY_HOURS: int = int(os.getenv("PIPELINE_UPSELL_DELAY_HOURS", "2"))
 

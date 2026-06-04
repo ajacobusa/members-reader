@@ -10,6 +10,8 @@ Usage:
   python -m quoteforge.admin verify-keys      # LIVE test: Anthropic + Gelato auth
   python -m quoteforge.admin sample-quote     # preview a REAL AI quote (safe)
   python -m quoteforge.admin email-report     # email the daily sales report
+  python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
+  python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
 """
 import sys
 
@@ -134,6 +136,46 @@ def _cmd_verify_keys() -> int:
     return 1
 
 
+def _cmd_show_proof(args: list[str]) -> int:
+    if not args:
+        print("Usage: python -m quoteforge.admin show-proof <ORDER_ID>")
+        return 2
+    from quoteforge.db.database import init_db, get_order
+    from quoteforge.automation.customer_proof import prepare_customer_proof
+    init_db()
+    oid = args[0]
+    if not get_order(oid):
+        print(f"Order {oid} not found.")
+        return 1
+    pkg = prepare_customer_proof(oid)
+    print("=" * 56)
+    print(f"PROOF TO SEND TO BUYER — order {oid}")
+    print("=" * 56)
+    print(f"\nAttach this image in the Etsy conversation:\n  {pkg['artwork_path']}\n")
+    print("Message to send:\n")
+    print(pkg["proof_message"])
+    print("\n" + "-" * 56)
+    print(f"When the buyer replies APPROVED, run:")
+    print(f"  python -m quoteforge.admin customer-approved {oid}")
+    return 0
+
+
+def _cmd_customer_approved(args: list[str]) -> int:
+    if not args:
+        print("Usage: python -m quoteforge.admin customer-approved <ORDER_ID>")
+        return 2
+    from quoteforge.db.database import init_db, get_order
+    from quoteforge.automation.customer_proof import record_customer_approval
+    init_db()
+    oid = args[0]
+    if not get_order(oid):
+        print(f"Order {oid} not found.")
+        return 1
+    record_customer_approval(oid)
+    print(f"Customer approval recorded for {oid}. Order released toward printing.")
+    return 0
+
+
 def _cmd_email_report() -> int:
     from quoteforge.automation.emailer import send_daily_report
     result = send_daily_report()
@@ -185,6 +227,8 @@ COMMANDS = {
     "verify-keys": lambda args: _cmd_verify_keys(),
     "sample-quote": lambda args: _cmd_sample_quote(),
     "email-report": lambda args: _cmd_email_report(),
+    "show-proof": _cmd_show_proof,
+    "customer-approved": _cmd_customer_approved,
 }
 
 
