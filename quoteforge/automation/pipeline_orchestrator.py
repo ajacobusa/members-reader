@@ -17,7 +17,7 @@ from typing import Callable, Optional
 
 from quoteforge.config import (
     OUTPUT_DIR, BANNERBEAR_TEMPLATE_UID,
-    PIPELINE_AUTO_APPROVE_PROOF,
+    PIPELINE_AUTO_APPROVE_PROOF, TEST_MODE,
 )
 from quoteforge.db.database import (
     create_order, update_order, get_order, log_pipeline_stage,
@@ -53,6 +53,70 @@ STATUS_MAP = {
     "gelato_order":      "in_production",
     "followup":          "shipped",
 }
+
+
+def _render_test_artwork(order_id: str, quote: str, recipient: str) -> Optional[Path]:
+    """Render a simple placeholder poster PNG locally for TEST_MODE runs.
+
+    Uses Pillow (already a dependency). Produces a real on-disk file so the
+    artwork stage is verifiable without paid rendering APIs.
+    """
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+
+    out_dir = OUTPUT_DIR / "pipeline" / order_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    png_path = out_dir / "artwork.png"
+
+    # 1800x2400 = 6x8 in @ 300 DPI placeholder
+    img = Image.new("RGB", (1800, 2400), color=(34, 51, 68))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([60, 60, 1740, 2340], outline=(220, 220, 220), width=6)
+    lines = ["[ TEST MODE ARTWORK ]", "", f"For: {recipient}", "", "Quote preview:"]
+    wrapped = quote.replace("\n", " ")
+    while wrapped:
+        lines.append(wrapped[:46])
+        wrapped = wrapped[46:]
+    y = 300
+    for line in lines[:24]:
+        draw.text((120, y), line, fill=(240, 240, 240))
+        y += 60
+    img.save(png_path, "PNG")
+    return png_path
+
+
+def _create_followup_records(order_id: str, order_data: dict) -> None:
+    """Persist customer lifecycle messages, an upsell offer, and a review request."""
+    from datetime import datetime, timedelta
+    from quoteforge.db.database import (
+        save_customer_message, save_upsell, save_review,
+    )
+    from quoteforge.etsy.customer_messages import BASE_TEMPLATES
+    from quoteforge.automation.upsell import (
+        generate_upsell_message, generate_review_request,
+    )
+    from quoteforge.config import PIPELINE_REVIEW_DELAY_DAYS
+
+    customer = order_data.get("customer_name", "")
+    occasion = order_data.get("occasion", "")
+    recipient = order_data.get("recipient_name", "")
+
+    # Lifecycle customer messages (queued, not yet sent)
+    for msg_type, body in BASE_TEMPLATES.items():
+        save_customer_message(order_id, msg_type, body, sent=False)
+
+    # Upsell offers
+    upsell = generate_upsell_message(customer, occasion)
+    save_upsell(order_id, "canvas", upsell["canvas_message"])
+    save_upsell(order_id, "framed", upsell["framed_message"])
+    save_upsell(order_id, "bundle", upsell["bundle_message"])
+
+    # Review request scheduled for the future
+    review_msg = generate_review_request(customer, occasion, recipient)
+    scheduled = (datetime.now() + timedelta(days=PIPELINE_REVIEW_DELAY_DAYS)).isoformat()
+    save_review(order_id, review_msg, scheduled_for=scheduled)
 
 
 def run_full_pipeline(
@@ -106,8 +170,15 @@ def run_full_pipeline(
         artwork_url: str = ""
         png_path: Optional[Path] = None
 
+        # TEST_MODE → render a local placeholder PNG so the stage produces a
+        # real file without calling paid rendering APIs.
+        if TEST_MODE:
+            png_path = _render_test_artwork(order_id, quote,
+                                            order_data.get("recipient_name", ""))
+            artwork_url = png_path.as_uri() if png_path else ""
+
         # Try Canva API first
-        if canva_template_id:
+        if not artwork_url and canva_template_id:
             canva_result = create_design_from_template(
                 canva_template_id, quote,
                 order_data.get("recipient_name", ""),
@@ -125,8 +196,8 @@ def run_full_pipeline(
             if bg_url:
                 artwork_url = render_poster(BANNERBEAR_TEMPLATE_UID, quote, bg_url) or ""
 
-        # Fall back to local placeholder
-        if artwork_url:
+        # Download remote artwork to local disk (skip if already local, e.g. TEST_MODE)
+        if artwork_url and png_path is None and artwork_url.startswith(("http://", "https://")):
             out_dir = OUTPUT_DIR / "pipeline" / order_id
             png_path = download_png(artwork_url, out_dir, "artwork")
 
@@ -152,6 +223,12 @@ def run_full_pipeline(
             # In production: send proof URL to customer via Etsy message
             # For now: mark as pending and return — resume when approved
             return get_order(order_id) or {}
+        else:
+            # Proof bypassed (auto-approve or skip) — still log for the audit trail
+            _notify("proof", "Proof auto-approved (skip_proof / auto-approve)")
+            update_order(order_id, proof_sent=1, proof_approved=1)
+            log_pipeline_stage(order_id, "proof", "auto_approved",
+                               "Proof skipped per configuration")
 
         # ── Stage 6: Gelato Order ────────────────────────────────
         gelato_order_id = ""
@@ -176,10 +253,11 @@ def run_full_pipeline(
                  "No product UID or address — manual Gelato upload required")
             _notify("gelato_order", "Gelato skipped — upload artwork manually")
 
-        # ── Stage 7: Follow-up Scheduled ────────────────────────
-        _notify("followup", "Follow-up messages scheduled")
-        _log(order_id, "followup", "scheduled",
-             "Upsell and review messages queued")
+        # ── Stage 7: Follow-up (persist messages, upsell, review) ──
+        _notify("followup", "Creating follow-up messages...")
+        _create_followup_records(order_id, order_data)
+        _log(order_id, "followup", "success",
+             "Customer messages, upsell, and review records created")
 
         return get_order(order_id) or {}
 

@@ -1,6 +1,26 @@
 import re
 import anthropic
-from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL
+from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL, TEST_MODE
+
+
+def _mock_personal_message(recipient_name: str, sender_name: str,
+                           occasion: str, output_style: str,
+                           count: int) -> list[str]:
+    """Deterministic mock output for TEST_MODE / no-API-key runs.
+
+    Lets the full pipeline be exercised end-to-end without spending money
+    or requiring credentials. Clearly marked so it never reaches a customer.
+    """
+    name = recipient_name or "Friend"
+    sender = sender_name or "Someone who loves you"
+    base = (
+        f"Dear {name},\n"
+        f"On this {occasion}, know how proud we are of you. "
+        f"Your strength, your heart, and your journey inspire everyone around you. "
+        f"Keep reaching for everything you dream of.\n"
+        f"With love, {sender}"
+    )
+    return [f"[TEST MODE — {output_style}] {base}" for _ in range(max(1, count))]
 
 # All supported output styles for custom personal messages
 OUTPUT_STYLES = [
@@ -120,6 +140,11 @@ def generate_personal_message(
 
     output_style: one of OUTPUT_STYLES
     """
+    # TEST_MODE / no key → return realistic mock so the pipeline runs end-to-end
+    if TEST_MODE or not ANTHROPIC_API_KEY:
+        return _mock_personal_message(
+            recipient_name, sender_name, occasion, output_style, count)
+
     client = _client()
 
     style_instructions = {

@@ -73,7 +73,8 @@ def test_constants_are_populated():
 
 def test_generate_personal_message_returns_variations():
     raw = "Dear Emma,\nYou worked so hard for this moment.\nNever forget the strength it took to get here.\nWith love, Mom\n---\nEmma,\nEvery late night was worth it.\nYou are ready for everything ahead.\nProud of you always, Mom"
-    with patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", "test-key"), \
+    with patch("quoteforge.quotes.generator.TEST_MODE", False), \
+         patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", "test-key"), \
          patch("quoteforge.quotes.generator.anthropic.Anthropic", return_value=_mock_claude(raw)):
         result = generate_personal_message(
             relationship="To My Daughter",
@@ -94,7 +95,8 @@ def test_generate_personal_message_all_styles():
     """Verify the function accepts every output style without error."""
     raw = "Dear Friend,\nYou are loved.\nKeep going.\nAlways."
     for style in OUTPUT_STYLES:
-        with patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", "test-key"), \
+        with patch("quoteforge.quotes.generator.TEST_MODE", False), \
+             patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", "test-key"), \
              patch("quoteforge.quotes.generator.anthropic.Anthropic", return_value=_mock_claude(raw)):
             result = generate_personal_message(
                 relationship="To My Best Friend",
@@ -107,6 +109,25 @@ def test_generate_personal_message_all_styles():
                 count=1,
             )
         assert isinstance(result, list)
+
+
+def test_personal_message_test_mode_mock():
+    """In TEST_MODE, generate_personal_message returns a mock without an API key."""
+    with patch("quoteforge.quotes.generator.TEST_MODE", True), \
+         patch("quoteforge.quotes.generator.ANTHROPIC_API_KEY", ""):
+        result = generate_personal_message(
+            relationship="To My Daughter",
+            recipient_name="Emma",
+            sender_name="Mom",
+            occasion="Graduation",
+            memory_or_story="",
+            scenery="Mountains",
+            output_style="Personal Letter",
+            count=2,
+        )
+    assert len(result) == 2
+    assert all("TEST MODE" in v for v in result)
+    assert all("Emma" in v for v in result)
 
 
 def test_generate_letter_to_future_self_returns_variations():
