@@ -64,12 +64,20 @@ def record_customer_approval(order_id: str,
     """Record that the customer approved the proof and release the order to
     printing (resumes the pipeline from the Gelato stage).
     """
+    from datetime import datetime
     from quoteforge.automation.pipeline_orchestrator import resume_after_proof_approval
     order = get_order(order_id)
     if not order:
         raise ValueError(f"Order {order_id} not found")
-    log_pipeline_stage(order_id, "proof", "customer_approved",
-                       "Customer approved the proof")
+    # Record an immutable approval audit trail. This is the evidence that lets
+    # you fairly deny "I changed my mind" / "I don't like it" after approval,
+    # while still honouring genuine defects/damage (see resolution engine).
+    approved_at = datetime.now().isoformat(timespec="seconds")
+    update_order(order_id, proof_approved=1, proof_approved_at=approved_at)
+    log_pipeline_stage(
+        order_id, "proof", "customer_approved",
+        f"Customer approved the proof at {approved_at}; "
+        f"approved quote+artwork on record")
     return resume_after_proof_approval(
         order_id,
         gelato_product_uid=gelato_product_uid,

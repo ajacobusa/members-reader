@@ -71,6 +71,7 @@ def init_db() -> None:
             status          TEXT DEFAULT 'received',
             proof_sent      INTEGER DEFAULT 0,
             proof_approved  INTEGER DEFAULT 0,
+            proof_approved_at TEXT,
             upsell_sent     INTEGER DEFAULT 0,
             review_sent     INTEGER DEFAULT 0,
             created_at      TEXT DEFAULT (datetime('now')),
@@ -143,6 +144,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN gelato_cost REAL")
     if "mockup_url" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN mockup_url TEXT")
+    if "proof_approved_at" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN proof_approved_at TEXT")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────

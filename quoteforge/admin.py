@@ -26,7 +26,8 @@ Usage:
   python -m quoteforge.admin launch [scale N]  # the 20 starter listings; or next batch to add
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
-  python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
+  python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print (logs audit trail)
+  python -m quoteforge.admin resolve <issue> [ID]  # decide a return/refund issue + draft the reply
 """
 import sys
 
@@ -407,6 +408,29 @@ def _cmd_healthcheck(args: list[str]) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _cmd_resolve(args: list[str]) -> int:
+    """Decide a customer issue (refund/replacement/claim) + draft the reply."""
+    from quoteforge.etsy.resolution import (
+        resolve_issue, format_resolution_text, ISSUE_CASES,
+    )
+    if not args:
+        print("Usage: python -m quoteforge.admin resolve <issue> [ORDER_ID]")
+        print("Issues: " + ", ".join(ISSUE_CASES.keys()))
+        return 2
+    category = args[0]
+    order = None
+    if len(args) > 1:
+        from quoteforge.db.database import init_db, get_order
+        init_db()
+        order = get_order(args[1])
+        if not order:
+            print(f"Order {args[1]} not found.")
+            return 1
+    res = resolve_issue(category, order)
+    print(format_resolution_text(res))
+    return 0 if res["recognized"] else 2
+
+
 def _cmd_bundles(args: list[str]) -> int:
     """Show the high-ticket gallery-set bundles (multi-piece, $180-500)."""
     from quoteforge.etsy.gallery_sets import (
@@ -601,6 +625,7 @@ COMMANDS = {
     "mockup": _cmd_mockup,
     "bundles": _cmd_bundles,
     "margins": _cmd_margins,
+    "resolve": _cmd_resolve,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,
