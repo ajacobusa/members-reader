@@ -130,6 +130,14 @@ RELATIONSHIPS: list[str] = [
     "Godmother", "Godfather", "Best Friend", "Mentor", "Teacher", "Coach",
 ]
 
+# ── Civic / political (recurring federal elections) ──────────────
+CIVIC_OCCASIONS: list[str] = [
+    "Election Day", "Vote", "Your Voice Matters", "First-Time Voter",
+    "Civic Pride", "Midterm Election", "Presidential Election",
+    "Inauguration Day", "Patriotic / Freedom", "Get Out The Vote",
+    "New Citizen / Naturalization",
+]
+
 # ── Profession-specific ──────────────────────────────────────────
 PROFESSIONS: list[str] = [
     "Dentist", "Dental Hygienist", "Orthodontist", "Nurse", "Physician",
@@ -181,7 +189,7 @@ def all_occasions() -> list[str]:
         seen.update(group)
     for group in (WEDDING_OCCASIONS, FAMILY_MILESTONES, CAREER_MILESTONES,
                   EDUCATION_MILESTONES, EMOTIONAL_EVENTS, RELATIONSHIPS,
-                  PROFESSIONS):
+                  PROFESSIONS, CIVIC_OCCASIONS):
         seen.update(group)
     return sorted(seen)
 
@@ -202,6 +210,7 @@ def coverage_summary() -> dict:
         "emotional_events": len(EMOTIONAL_EVENTS),
         "relationships": len(RELATIONSHIPS),
         "professions": len(PROFESSIONS),
+        "civic": len(CIVIC_OCCASIONS),
         "evergreen": len(EVERGREEN_CATEGORIES),
         "total_distinct_occasions": occasion_count(),
     }

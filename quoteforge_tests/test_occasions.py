@@ -49,6 +49,15 @@ def test_relationships_complete():
         assert r in RELATIONSHIPS
 
 
+def test_civic_election_occasions():
+    from quoteforge.etsy.occasions import CIVIC_OCCASIONS, all_occasions
+    occ = set(all_occasions())
+    for c in ["Election Day", "Vote", "Midterm Election", "Presidential Election",
+              "First-Time Voter", "Inauguration Day"]:
+        assert c in CIVIC_OCCASIONS
+        assert c in occ
+
+
 def test_evergreen_categories():
     assert "Christian Personalized Gifts" in EVERGREEN_CATEGORIES
     assert "Memorial Gifts" in EVERGREEN_CATEGORIES

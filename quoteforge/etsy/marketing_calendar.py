@@ -50,6 +50,68 @@ EMAIL_SEQUENCE = [
 SCALING_TARGETS = {1: 500, 2: 2000, 3: 5000}
 
 
+# ── US federal elections (every even year; Nov, alternating type) ─
+# Listings go live ~10 weeks before Election Day; marketing ~6 weeks before.
+ELECTION_LISTINGS_LEAD_DAYS = 70
+ELECTION_MARKETING_LEAD_DAYS = 42
+
+
+def election_day(year: int) -> datetime:
+    """US federal Election Day: first Tuesday after the first Monday of November."""
+    for day in range(2, 9):  # the Tuesday in this range follows the first Monday
+        d = datetime(year, 11, day)
+        if d.weekday() == 1:  # Tuesday
+            return d
+    raise ValueError("no election day found")  # unreachable
+
+
+def next_federal_election(now: datetime | None = None) -> dict:
+    """Return the next federal general election: date + type.
+
+    Presidential every 4 years (year % 4 == 0); midterm the other even years.
+    Odd years have no federal general election.
+    """
+    now = now or datetime.now()
+    year = now.year
+    if year % 2 == 1:
+        year += 1  # skip odd (off) years
+    elif election_day(year).date() < now.date():
+        year += 2  # this year's election already passed → next even year
+    etype = "Presidential Election" if year % 4 == 0 else "Midterm Election"
+    eday = election_day(year)
+    return {
+        "year": year,
+        "type": etype,
+        "election_day": eday.strftime("%Y-%m-%d"),
+        "is_presidential": year % 4 == 0,
+    }
+
+
+def election_actions(now: datetime | None = None, horizon_days: int = 45) -> list[dict]:
+    """List/market triggers for the next federal election, if within horizon."""
+    now = now or datetime.now()
+    info = next_federal_election(now)
+    eday = datetime.strptime(info["election_day"], "%Y-%m-%d")
+    out = []
+    triggers = [
+        ("LIST LISTINGS LIVE", eday - timedelta(days=ELECTION_LISTINGS_LEAD_DAYS)),
+        ("START MARKETING", eday - timedelta(days=ELECTION_MARKETING_LEAD_DAYS)),
+    ]
+    for label, when in triggers:
+        days = (when.date() - now.date()).days
+        if days <= horizon_days:
+            out.append({
+                "occasion": info["type"],
+                "action": label,
+                "date": when.strftime("%Y-%m-%d"),
+                "days_away": days,
+                "revenue_rank": 6,  # civic season ~ mid-tier, spikes every even year
+                "urgency": ("OVERDUE" if days < 0 else
+                            "THIS WEEK" if days <= 7 else "Upcoming"),
+            })
+    return out
+
+
 def _next_date(month: int, day: int, now: datetime) -> datetime:
     """The next occurrence of (month, day) on or after `now` (rolls to next year)."""
     candidate = datetime(now.year, month, day)
@@ -81,6 +143,8 @@ def upcoming_actions(now: datetime | None = None, horizon_days: int = 45) -> lis
                     "urgency": ("OVERDUE" if days < 0 else
                                 "THIS WEEK" if days <= 7 else "Upcoming"),
                 })
+    # Federal elections (every even year) — civic poster season
+    actions.extend(election_actions(now, horizon_days))
     actions.sort(key=lambda a: (a["days_away"], a["revenue_rank"]))
     return actions
 

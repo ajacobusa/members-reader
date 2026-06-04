@@ -4,6 +4,7 @@ from datetime import datetime
 from quoteforge.etsy.marketing_calendar import (
     ANNUAL_CALENDAR, HIGH_REVENUE_CATEGORIES, EMAIL_SEQUENCE, SCALING_TARGETS,
     upcoming_actions, due_email_touch, calendar_summary,
+    election_day, next_federal_election, election_actions,
 )
 
 
@@ -82,6 +83,53 @@ def test_calendar_summary():
     s = calendar_summary()
     assert s["seasons"] == 10
     assert "Christmas" in s["top_revenue"]
+
+
+# ── Federal elections (midterm + 4-year presidential) ───────────
+
+def test_election_day_formula():
+    # First Tuesday after first Monday of November
+    assert election_day(2026) == datetime(2026, 11, 3)   # midterm
+    assert election_day(2028) == datetime(2028, 11, 7)   # presidential
+    assert election_day(2024) == datetime(2024, 11, 5)
+    # Always a Tuesday, always Nov 2-8
+    for y in range(2024, 2040, 2):
+        d = election_day(y)
+        assert d.weekday() == 1 and 2 <= d.day <= 8
+
+
+def test_midterm_vs_presidential():
+    # 2026 = midterm, 2028 = presidential
+    assert next_federal_election(datetime(2026, 1, 1))["type"] == "Midterm Election"
+    assert next_federal_election(datetime(2028, 1, 1))["type"] == "Presidential Election"
+    assert next_federal_election(datetime(2028, 1, 1))["is_presidential"] is True
+
+
+def test_odd_year_rolls_to_next_even():
+    info = next_federal_election(datetime(2027, 3, 1))
+    assert info["year"] == 2028  # off-year → next even-year election
+    assert info["is_presidential"] is True
+
+
+def test_after_election_rolls_to_next_cycle():
+    # The day after the 2026 election → next is 2028
+    info = next_federal_election(datetime(2026, 11, 10))
+    assert info["year"] == 2028
+
+
+def test_election_actions_appear_before_election():
+    # ~10 weeks before the 2026 midterm, the "list listings live" trigger fires
+    now = datetime(2026, 8, 26)  # ~70 days before Nov 3
+    acts = election_actions(now, horizon_days=10)
+    assert any(a["action"] == "LIST LISTINGS LIVE"
+               and "Midterm" in a["occasion"] for a in acts)
+
+
+def test_election_in_upcoming_actions():
+    # Election season shows up alongside holidays in the unified calendar
+    now = datetime(2026, 9, 1)
+    acts = upcoming_actions(now=now, horizon_days=60)
+    assert any("Election" in a["occasion"] for a in acts)
 
 
 def test_cli_calendar(capsys):

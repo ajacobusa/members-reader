@@ -43,6 +43,22 @@ every list-live and marketing-start date due in the next 60 days, flags
 | **Nov** | Thanksgiving (gratitude, legacy) | **Christmas marketing starts aggressively** |
 | **Dec** | **Christmas** (Christian, family, blessings) | Valentine's listings go live (Dec 15) |
 
+## Federal Elections (every even year)
+
+US federal elections are predictable civic-poster seasons — "Vote", civic pride,
+first-time voter, election-night decor — that recur **every even year** and
+alternate **midterm** (e.g. 2026, 2030) and **presidential** (e.g. 2028, 2032).
+
+- Election Day = first Tuesday after the first Monday of November.
+- The calendar computes the next one automatically (type + date) and adds
+  list-live (~10 weeks before) and marketing-start (~6 weeks before) triggers.
+- Presidential years run hotter (higher national attention) than midterms.
+- `next_federal_election()` returns the year, type, and date; election triggers
+  appear in `admin calendar` when within the horizon.
+
+> Keep designs message-positive and non-partisan (civic pride, "Your Voice
+> Matters", "Vote") to stay broadly sellable and within Etsy's policies.
+
 ## The Automation Engine (what runs vs. what you do)
 
 | Engine | What the software does | Your part |
