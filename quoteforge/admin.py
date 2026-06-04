@@ -12,6 +12,7 @@ Usage:
   python -m quoteforge.admin email-report     # email the daily sales report
   python -m quoteforge.admin report PERIOD    # daily|weekly|monthly|yearly (add 'email' to send)
   python -m quoteforge.admin healthcheck [email]  # verify jobs/DB/storage; email if problems
+  python -m quoteforge.admin install-schedule [--dry-run|--remove]  # create all 8 scheduled jobs
   python -m quoteforge.admin plan              # which occasions to create listings for now
   python -m quoteforge.admin campaign [Month]  # batch listing plan + publish-by dates (Excel)
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
@@ -388,6 +389,25 @@ def _cmd_healthcheck(args: list[str]) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _cmd_install_schedule(args: list[str]) -> int:
+    """Create (or remove) ALL Windows scheduled jobs from one source of truth."""
+    from quoteforge.automation.scheduler import install_schedule, format_install_text
+    remove = "--remove" in args or "--uninstall" in args
+    dry_run = "--dry-run" in args or "--preview" in args
+    summary = install_schedule(remove=remove, dry_run=dry_run)
+    print(format_install_text(summary))
+    if dry_run:
+        print("\n(dry run - nothing changed. Re-run without --dry-run to apply.)")
+        return 0
+    if summary["errors"]:
+        print("\nSome jobs failed. On Windows, run this in an ADMIN terminal.")
+        return 1
+    if not remove:
+        print("\nAll jobs registered. Verify any time with: "
+              "python -m quoteforge.admin healthcheck")
+    return 0
+
+
 def _cmd_report(args: list[str]) -> int:
     from quoteforge.db.database import init_db
     from quoteforge.etsy.reports import period_report, format_report_text, PERIODS
@@ -483,6 +503,7 @@ COMMANDS = {
     "email-report": lambda args: _cmd_email_report(),
     "report": _cmd_report,
     "healthcheck": _cmd_healthcheck,
+    "install-schedule": _cmd_install_schedule,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,

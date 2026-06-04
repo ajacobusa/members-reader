@@ -32,25 +32,36 @@ python -m quoteforge.admin email-report
 You should get the email within a minute. If it prints "not sent", the Gmail
 credentials aren't set yet.
 
-## Step 3 — Schedule it daily (Windows Task Scheduler)
+## Step 3 — Schedule EVERYTHING with one command
 
-1. Open **Task Scheduler** → Create Basic Task
-2. Name: `QuoteForge Daily Report`
-3. Trigger: **Daily**, time **7:30 AM**
-4. Action: **Start a program**
-   - Program/script: `python`
-   - Arguments: `-m quoteforge.admin email-report`
-   - Start in: `D:\ANOOP PERSONAL HOME\CLAUD\Claud AJ`
-5. Finish. (Optional: check "Run whether user is logged on or not".)
+You no longer create tasks by hand. A single command registers all eight
+recurring jobs (daily/weekly/monthly/yearly reports, backup, health check,
+monthly campaign, weekly sales actions) in Windows Task Scheduler:
 
-PowerShell one-liner to create the task:
 ```powershell
-$action  = New-ScheduledTaskAction -Execute "python" -Argument "-m quoteforge.admin email-report" -WorkingDirectory "D:\ANOOP PERSONAL HOME\CLAUD\Claud AJ"
-$trigger = New-ScheduledTaskTrigger -Daily -At 7:30am
-Register-ScheduledTask -TaskName "QuoteForge Daily Report" -Action $action -Trigger $trigger
+# Preview exactly what will be created (changes nothing):
+python -m quoteforge.admin install-schedule --dry-run
+
+# Create them all (run in an Administrator terminal):
+python -m quoteforge.admin install-schedule
+
+# Remove them all later if you ever need to:
+python -m quoteforge.admin install-schedule --remove
 ```
 
-## Weekly / Monthly / Yearly reports too
+The job definitions live in one place (`quoteforge/automation/scheduler.py`),
+and the health check reads that **same** list — so the jobs that get created and
+the jobs that get monitored can never fall out of sync.
+
+Verify they registered and are enabled at any time:
+```powershell
+python -m quoteforge.admin healthcheck
+```
+The `Scheduled Jobs` check turns to `[OK] 8 jobs registered and enabled` once
+they're installed; it reports anything `missing` or `disabled` otherwise (and
+emails you an alert if a job ever disappears).
+
+## Reports on demand
 
 The same engine produces reports at four cadences. View any on screen:
 ```powershell
@@ -59,21 +70,8 @@ python -m quoteforge.admin report weekly
 python -m quoteforge.admin report monthly
 python -m quoteforge.admin report yearly
 ```
-Add `email` to send it instead of printing: `... report monthly email`.
-
-Schedule each via Task Scheduler (PowerShell):
-```powershell
-# Weekly — Mondays 8:00 AM
-$a=New-ScheduledTaskAction -Execute "python" -Argument "-m quoteforge.admin report weekly email" -WorkingDirectory "D:\ANOOP PERSONAL HOME\CLAUD\Claud AJ"
-Register-ScheduledTask -TaskName "QuoteForge Weekly Report" -Action $a -Trigger (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8:00am)
-
-# Monthly — 1st of month 8:00 AM (Task Scheduler has no native monthly trigger in PS;
-# use a daily trigger and the command self-checks, OR set via the Task Scheduler GUI -> Monthly)
-$a=New-ScheduledTaskAction -Execute "python" -Argument "-m quoteforge.admin report monthly email" -WorkingDirectory "D:\ANOOP PERSONAL HOME\CLAUD\Claud AJ"
-Register-ScheduledTask -TaskName "QuoteForge Monthly Report" -Action $a -Trigger (New-ScheduledTaskTrigger -Daily -At 8:05am)
-
-# Yearly — also via the GUI (Monthly trigger, January only) or a daily self-checking run.
-```
+Add `email` to send instead of print: `... report monthly email`. (The
+installer already schedules all four to email automatically.)
 
 For exact monthly/yearly bookkeeping with a per-order Excel ledger, use
 `python -m quoteforge.admin reconcile YYYY-MM` (see ETSY return/finance docs).

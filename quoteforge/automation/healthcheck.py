@@ -13,17 +13,10 @@ from typing import Callable, Optional
 
 from quoteforge.config import OUTPUT_DIR
 
-# The scheduled jobs that should exist (Windows Task Scheduler names)
-EXPECTED_TASKS = [
-    "QuoteForge Daily Report",
-    "QuoteForge Weekly Report",
-    "QuoteForge Monthly Report",
-    "QuoteForge Yearly Report",
-    "QuoteForge Daily Backup",
-    "QuoteForge Health Check",
-    "QuoteForge Monthly Campaign",
-    "QuoteForge Weekly Sales Actions",
-]
+# The scheduled jobs that should exist (Windows Task Scheduler names).
+# Derived from the single source of truth in scheduler.py so the jobs we MONITOR
+# here are exactly the jobs the installer CREATES — the two can never drift.
+from quoteforge.automation.scheduler import EXPECTED_TASK_NAMES as EXPECTED_TASKS
 
 HEALTH_LOG = OUTPUT_DIR / "health_log.json"
 
