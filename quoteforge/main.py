@@ -3,6 +3,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from quoteforge.gui.personal_tab import PersonalTab
+from quoteforge.gui.order_tab import OrderTab
+from quoteforge.gui.catalog_tab import CatalogTab
 from quoteforge.quotes.categories import CATEGORIES
 from quoteforge.pipeline import run_pipeline
 from quoteforge.etsy.exporter import export_listings_csv
@@ -97,7 +99,7 @@ def _build_bulk_tab(frame: tk.Frame) -> None:
 def main() -> None:
     root = tk.Tk()
     root.title("QuoteForge — Professional Wall Art Generator")
-    root.geometry("640x820")
+    root.geometry("680x860")
     root.resizable(False, False)
 
     notebook = ttk.Notebook(root)
@@ -111,6 +113,14 @@ def main() -> None:
     # Tab 2: Premium personalized messages
     tab2 = PersonalTab(notebook)
     notebook.add(tab2, text="  Custom Messages ✦  ")
+
+    # Tab 3: Order processor (Etsy fulfillment workflow)
+    tab3 = OrderTab(notebook)
+    notebook.add(tab3, text="  Order Processor  ")
+
+    # Tab 4: Bulk catalog + SEO packs
+    tab4 = CatalogTab(notebook)
+    notebook.add(tab4, text="  Catalog & SEO  ")
 
     root.mainloop()
 
