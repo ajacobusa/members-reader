@@ -3,6 +3,7 @@
 Paste incoming Etsy order personalization → instant custom message generated.
 10-15 minute manual fulfillment workflow, now reduced to 2 minutes.
 """
+import subprocess
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -13,6 +14,8 @@ from quoteforge.etsy.order_processor import (
     generate_post_purchase_email,
     ETSY_PERSONALIZATION_FORM,
 )
+from quoteforge.etsy.order_tracker import export_order_tracker
+from quoteforge.config import OUTPUT_DIR
 
 TONES = [
     "Faith & Prayer",
@@ -97,12 +100,15 @@ class OrderTab(tk.Frame):
         self._gen_btn = ttk.Button(btn_frame, text="✦ Generate Message",
                                    command=self._on_generate)
         self._gen_btn.pack(side="left", padx=6)
-        self._email_btn = ttk.Button(btn_frame, text="✉ Generate Follow-Up Email",
+        self._email_btn = ttk.Button(btn_frame, text="✉ Follow-Up Email",
                                      command=self._on_email)
         self._email_btn.pack(side="left", padx=6)
         self._form_btn = ttk.Button(btn_frame, text="📋 Copy Etsy Form",
                                     command=self._on_copy_form)
         self._form_btn.pack(side="left", padx=6)
+        self._excel_btn = ttk.Button(btn_frame, text="📊 Export Excel Tracker",
+                                     command=self._on_export_excel)
+        self._excel_btn.pack(side="left", padx=6)
         row += 1
 
         # Progress
@@ -192,6 +198,21 @@ class OrderTab(tk.Frame):
             self.after(0, messagebox.showerror, "Error", str(exc))
             self.after(0, self._bar.stop)
             self.after(0, self._email_btn.configure, {"state": "normal"})
+
+    def _on_export_excel(self) -> None:
+        try:
+            path = export_order_tracker()
+            subprocess.Popen(f'start "" "{path}"', shell=True)
+            messagebox.showinfo(
+                "Excel Tracker Exported",
+                f"Order tracker saved and opened:\n{path}\n\n"
+                "3 sheets included:\n"
+                "  • Orders — all orders with status dropdowns\n"
+                "  • Dashboard — live counts by status\n"
+                "  • SEO Reference — niche titles & tags",
+            )
+        except Exception as exc:
+            messagebox.showerror("Export Error", str(exc))
 
     def _on_copy_form(self) -> None:
         self.clipboard_clear()
