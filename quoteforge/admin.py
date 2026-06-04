@@ -17,6 +17,7 @@ Usage:
   python -m quoteforge.admin sales             # today's upsell/review/win-back actions to send
   python -m quoteforge.admin calendar          # annual retailer timeline: list/market dates due
   python -m quoteforge.admin products [Occasion]  # full product range + 1-story-to-many bundle
+  python -m quoteforge.admin tco [listings] [orders/mo]  # total cost of ownership breakdown
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print
@@ -187,6 +188,21 @@ def _cmd_customer_approved(args: list[str]) -> int:
     else:
         print("  Status: approved_ready_to_print — now upload the artwork to "
               "Gelato to place the print order.")
+    return 0
+
+
+def _cmd_tco(args: list[str]) -> int:
+    from quoteforge.db.database import init_db
+    from quoteforge.etsy.tco import estimate_tco, live_tco, format_tco_text
+    init_db()
+    listings = int(args[0]) if args and args[0].isdigit() else 100
+    if len(args) > 1 and args[1].isdigit():
+        # explicit volume → projection
+        tco = estimate_tco(listings=listings, orders_per_month=int(args[1]))
+    else:
+        # use this month's real orders for the variable side
+        tco = live_tco(listings=listings)
+    print(format_tco_text(tco))
     return 0
 
 
@@ -431,6 +447,7 @@ COMMANDS = {
     "sales": _cmd_sales,
     "calendar": _cmd_calendar,
     "products": _cmd_products,
+    "tco": _cmd_tco,
     "reconcile": _cmd_reconcile,
     "show-proof": _cmd_show_proof,
     "customer-approved": _cmd_customer_approved,
