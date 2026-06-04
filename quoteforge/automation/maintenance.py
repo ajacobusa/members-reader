@@ -136,6 +136,16 @@ def suggest_enhancements(perf: dict, health: dict) -> list[str]:
                         f"run `admin margins` and reprice.")
     except Exception:  # noqa: BLE001
         pass
+    # Autopilot — surface anything waiting on a human decision.
+    try:
+        from quoteforge.automation.autopilot import autopilot_status
+        ap = autopilot_status()
+        if ap["pending_human"]:
+            tips.append(f"{ap['pending_human']} decision(s) awaiting your approval "
+                        f"— run `admin approvals` (autopilot auto-handled "
+                        f"{ap['auto_last_24h']} in the last 24h).")
+    except Exception:  # noqa: BLE001
+        pass
     if not tips:
         tips.append("No issues found. Infra is healthy and within performance "
                     "targets - no action needed today.")

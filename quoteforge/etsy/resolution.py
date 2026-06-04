@@ -119,15 +119,26 @@ ISSUE_CASES: dict[str, Resolution] = {
 # Friendly aliases so callers can pass natural language.
 _ALIASES = {
     "changed my mind": "changed_mind", "dont want": "changed_mind",
+    "don't want": "changed_mind", "no longer want": "changed_mind",
     "wrong name": "wrong_personalization", "typo": "wrong_personalization",
-    "misspelled": "wrong_personalization",
+    "misspelled": "wrong_personalization", "mistyped": "wrong_personalization",
+    "wrong spelling": "wrong_personalization", "spelled wrong": "wrong_personalization",
     "approved": "approved_then_changed_mind",
     "damaged": "damaged_package", "broken": "damaged_package",
+    "torn": "damaged_package", "ripped": "damaged_package",
+    "bent": "damaged_package", "crushed": "damaged_package",
+    "dented": "damaged_package", "cracked": "damaged_package",
+    "arrived damaged": "damaged_package",
     "defect": "printing_error", "misprint": "printing_error",
-    "quality": "poor_quality", "blurry": "poor_quality", "faded": "poor_quality",
+    "printing error": "printing_error", "printed wrong": "printing_error",
+    "wrong color": "poor_quality", "quality": "poor_quality",
+    "blurry": "poor_quality", "faded": "poor_quality", "pixelated": "poor_quality",
+    "cropped": "poor_quality",
     "lost": "lost_package", "never arrived": "lost_package",
-    "address": "wrong_address",
-    "cancel": "cancellation",
+    "didn't arrive": "lost_package", "hasn't arrived": "lost_package",
+    "missing package": "lost_package",
+    "wrong address": "wrong_address", "address": "wrong_address",
+    "cancel": "cancellation", "cancellation": "cancellation",
 }
 
 

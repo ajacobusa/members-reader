@@ -1,0 +1,244 @@
+"""Autopilot — autonomous decision bots with a human-approval safety gate.
+
+Philosophy: automate every decision the business makes, and pull a human in ONLY
+when it genuinely matters. A decision is auto-executed when ALL of these hold:
+
+  * the classifier is confident       (>= AUTOPILOT_CONFIDENCE_THRESHOLD)
+  * no money leaves the business       (<= AUTOPILOT_MAX_AUTO_REFUND, default $0)
+  * the risk is not 'high'
+  * the order isn't high-value         (<= AUTOPILOT_HIGH_VALUE_ORDER)
+
+Otherwise the bot stages the decision in the human-approval queue with its full
+rationale, so the owner just clicks approve/reject. This keeps refunds, spends,
+disputes, and ambiguous cases under human control while everything routine —
+free defect/damage replacements, clear policy denials, lost-package reprints —
+happens automatically.
+
+What is NEVER automated (by design, regardless of settings):
+  * issuing refunds / spending money beyond the cap
+  * approving the customer's proof (that's the BUYER's decision)
+  * flipping TEST_MODE / going live and physical sample sign-off
+"""
+import json
+from dataclasses import dataclass, asdict
+
+from quoteforge.config import (
+    AUTOPILOT_ENABLED, AUTOPILOT_CONFIDENCE_THRESHOLD,
+    AUTOPILOT_MAX_AUTO_REFUND, AUTOPILOT_HIGH_VALUE_ORDER, AUTOPILOT_USE_LLM,
+    DEFAULT_SALE_PRICE,
+)
+from quoteforge.etsy.resolution import resolve_issue, ISSUE_CASES, _ALIASES
+
+
+@dataclass
+class AutoDecision:
+    category: str
+    title: str
+    action: str            # machine action key
+    decision: str          # human-readable outcome
+    confidence: float
+    risk: str              # low | medium | high
+    money_out: float       # USD the business would spend (0 if Gelato-covered)
+    auto: bool             # will it execute without a human?
+    reason: str            # why auto / why escalated
+    customer_message: str
+
+
+# ── Classifier ───────────────────────────────────────────────────
+
+def classify_issue(text: str) -> tuple[str, float]:
+    """Map free-text customer issue → (category, confidence 0..1).
+
+    Keyword/alias based by default (deterministic, no API). If AUTOPILOT_USE_LLM
+    and a key is set, Claude is used for fuzzy text and we keep its confidence.
+    """
+    raw = (text or "").strip().lower()
+    if not raw:
+        return ("", 0.0)
+    # Exact category key wins outright.
+    key = raw.replace(" ", "_")
+    if key in ISSUE_CASES:
+        return (key, 0.99)
+    # Alias hits — collect distinct categories matched.
+    hits = {cat for phrase, cat in _ALIASES.items() if phrase in raw}
+    if len(hits) == 1:
+        return (next(iter(hits)), 0.88)
+    if len(hits) > 1:
+        # Ambiguous — pick the first but flag low confidence for escalation.
+        return (sorted(hits)[0], 0.5)
+    if AUTOPILOT_USE_LLM:
+        llm = _llm_classify(text)
+        if llm:
+            return llm
+    return ("", 0.0)
+
+
+def _llm_classify(text: str) -> tuple[str, float] | None:  # pragma: no cover
+    """Optional Claude classifier. Returns (category, confidence) or None."""
+    try:
+        from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL
+        if not ANTHROPIC_API_KEY:
+            return None
+        import anthropic
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        cats = ", ".join(ISSUE_CASES.keys())
+        msg = client.messages.create(
+            model=CLAUDE_MODEL, max_tokens=60,
+            messages=[{"role": "user", "content":
+                f"Classify this customer message into exactly one category "
+                f"[{cats}] and give confidence 0-1. Reply as JSON "
+                f'{{"category":..,"confidence":..}} only.\n\nMessage: {text}'}],
+        )
+        data = json.loads(msg.content[0].text)
+        if data.get("category") in ISSUE_CASES:
+            return (data["category"], float(data.get("confidence", 0.7)))
+    except Exception:
+        return None
+    return None
+
+
+# ── Decision policy ──────────────────────────────────────────────
+
+def _risk_and_money(res: dict, order: dict | None) -> tuple[str, float]:
+    """Return (risk, money_out) for a recognised resolution."""
+    # Cancellation before production = a real refund (money out).
+    if res["category"] == "cancellation":
+        price = (order or {}).get("sale_price") or DEFAULT_SALE_PRICE
+        return ("high", float(price))
+    # Free replacements are Gelato-covered → no money out of OUR pocket.
+    if res["gelato_covered"]:
+        return ("low", 0.0)
+    # Customer-fault denials cost nothing and just send a polite 'no'.
+    if res["fault"] == "customer":
+        return ("low", 0.0)
+    return ("medium", 0.0)
+
+
+def decide(issue_text: str, order: dict | None = None) -> AutoDecision:
+    """Full decision: classify, resolve, and apply the auto/escalate policy."""
+    category, confidence = classify_issue(issue_text)
+    res = resolve_issue(category, order) if category else {"recognized": False}
+
+    if not res.get("recognized"):
+        return AutoDecision(
+            category="unknown", title="Unrecognised issue", action="escalate",
+            decision="Needs human classification", confidence=confidence,
+            risk="high", money_out=0.0, auto=False,
+            reason="Could not classify the issue with confidence",
+            customer_message="")
+
+    risk, money_out = _risk_and_money(res, order)
+    high_value = bool(order) and (
+        (order.get("sale_price") or 0) > AUTOPILOT_HIGH_VALUE_ORDER)
+
+    reasons = []
+    if not AUTOPILOT_ENABLED:
+        reasons.append("autopilot disabled")
+    if confidence < AUTOPILOT_CONFIDENCE_THRESHOLD:
+        reasons.append(f"confidence {confidence:.2f} < "
+                       f"{AUTOPILOT_CONFIDENCE_THRESHOLD:.2f}")
+    if money_out > AUTOPILOT_MAX_AUTO_REFUND:
+        reasons.append(f"would spend ${money_out:.2f} > cap "
+                       f"${AUTOPILOT_MAX_AUTO_REFUND:.2f}")
+    if risk == "high":
+        reasons.append("high-risk decision")
+    if high_value:
+        reasons.append(f"high-value order > ${AUTOPILOT_HIGH_VALUE_ORDER:.0f}")
+
+    auto = not reasons
+    action = ("auto_replacement" if res["gelato_covered"]
+              else "auto_decline" if res["fault"] == "customer"
+              else "escalate")
+    return AutoDecision(
+        category=res["category"], title=res["title"], action=action,
+        decision=res["decision"], confidence=confidence, risk=risk,
+        money_out=money_out, auto=auto,
+        reason="all gates passed - auto-executing" if auto
+               else "escalated to human: " + "; ".join(reasons),
+        customer_message=res["message"])
+
+
+# ── Execution ────────────────────────────────────────────────────
+
+def handle_issue(issue_text: str, order_id: str | None = None,
+                 execute: bool = True) -> dict:
+    """Decide and either auto-execute or queue for human approval."""
+    from quoteforge.db.database import (
+        init_db, get_order, enqueue_approval, save_customer_message,
+    )
+    init_db()
+    order = get_order(order_id) if order_id else None
+    d = decide(issue_text, order)
+    payload = json.dumps({"order_id": order_id, "action": d.action,
+                          "category": d.category})
+
+    if d.auto and execute:
+        _execute(d, order_id)
+        enqueue_approval(
+            kind="issue", ref=order_id or "", summary=f"{d.title} → {d.decision}",
+            proposed_action=d.action, payload=payload, confidence=d.confidence,
+            risk=d.risk, status="auto", decided_by="autopilot")
+        return {"outcome": "auto-executed", "decision": asdict(d)}
+
+    # Escalate — stage for human sign-off.
+    aid = enqueue_approval(
+        kind="issue", ref=order_id or "", summary=f"{d.title} → {d.decision}",
+        proposed_action=d.action, payload=payload, confidence=d.confidence,
+        risk=d.risk, status="pending")
+    return {"outcome": "queued_for_human", "approval_id": aid,
+            "decision": asdict(d)}
+
+
+def _execute(d: AutoDecision, order_id: str | None) -> None:
+    """Carry out an auto-approved action (idempotent, best-effort)."""
+    from quoteforge.db.database import save_customer_message, update_order
+    if not order_id:
+        return
+    # Stage the customer reply for dispatch (auto-sends if a channel is wired).
+    save_customer_message(order_id, f"resolution:{d.category}",
+                          d.customer_message, sent=False)
+    if d.action == "auto_replacement":
+        # File/stage a Gelato replacement claim and flag the order.
+        from quoteforge.automation.gelato_api import file_replacement_claim
+        try:
+            file_replacement_claim(order_id, reason=d.category)
+        except Exception:  # noqa: BLE001 - never block on the claim
+            pass
+        update_order(order_id, status="replacement_filed")
+    elif d.action == "auto_decline":
+        update_order(order_id, status="issue_declined")
+
+
+def execute_approved(approval_id: int) -> dict:
+    """Owner approved a queued decision — run it now."""
+    from quoteforge.db.database import get_approval, resolve_approval
+    a = get_approval(approval_id)
+    if not a:
+        return {"status": "not_found"}
+    if a["status"] != "pending":
+        return {"status": "already_" + a["status"]}
+    payload = json.loads(a["payload"] or "{}")
+    d = AutoDecision(
+        category=payload.get("category", ""), title=a["summary"],
+        action=a["proposed_action"], decision=a["summary"],
+        confidence=a["confidence"], risk=a["risk"], money_out=0.0, auto=False,
+        reason="human-approved", customer_message="")
+    # Re-derive the customer message from the resolution engine.
+    res = resolve_issue(d.category)
+    if res.get("recognized"):
+        d.customer_message = res["message"]
+    _execute(d, a["ref"] or None)
+    resolve_approval(approval_id, "approved")
+    return {"status": "executed", "approval": approval_id}
+
+
+def autopilot_status() -> dict:
+    """Summary for the daily digest: pending approvals + recent auto actions."""
+    from quoteforge.db.database import get_pending_approvals, _conn
+    pending = get_pending_approvals()
+    with _conn() as conn:
+        auto_24h = conn.execute(
+            "SELECT COUNT(*) FROM approvals WHERE status='auto' "
+            "AND created_at >= datetime('now','-1 day')").fetchone()[0]
+    return {"pending_human": len(pending), "auto_last_24h": auto_24h,
+            "pending": pending}

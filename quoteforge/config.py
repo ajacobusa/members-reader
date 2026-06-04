@@ -51,6 +51,22 @@ GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
 # margin guard flags anything that slips below it (e.g. after a fee increase).
 TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
 
+# ── Autopilot (autonomous decision bots) ─────────────────────────
+# When enabled, bots auto-execute low-risk, high-confidence decisions and only
+# escalate to the human-approval queue when money moves, confidence is low, or
+# the decision needs judgement. Tune the bar with these knobs.
+AUTOPILOT_ENABLED: bool = _env_bool("AUTOPILOT_ENABLED", True)
+# Minimum classifier confidence to auto-act (otherwise escalate to a human).
+AUTOPILOT_CONFIDENCE_THRESHOLD: float = float(
+    os.getenv("AUTOPILOT_CONFIDENCE_THRESHOLD", "0.80"))
+# Max money (USD) a bot may commit on its own. 0 = NEVER auto-refund/auto-spend.
+AUTOPILOT_MAX_AUTO_REFUND: float = float(os.getenv("AUTOPILOT_MAX_AUTO_REFUND", "0"))
+# Orders above this value always go to a human, even for routine decisions.
+AUTOPILOT_HIGH_VALUE_ORDER: float = float(
+    os.getenv("AUTOPILOT_HIGH_VALUE_ORDER", "150"))
+# Use Claude to classify free-text customer issues (falls back to keywords).
+AUTOPILOT_USE_LLM: bool = _env_bool("AUTOPILOT_USE_LLM", False)
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))

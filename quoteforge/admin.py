@@ -28,6 +28,8 @@ Usage:
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print (logs audit trail)
   python -m quoteforge.admin resolve <issue> [ID]  # decide a return/refund issue + draft the reply
+  python -m quoteforge.admin autopilot "<issue>" [ID]  # bot decides: auto-act or escalate to you
+  python -m quoteforge.admin approvals [approve|reject ID]  # your decision queue (only when needed)
 """
 import sys
 
@@ -408,6 +410,61 @@ def _cmd_healthcheck(args: list[str]) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _cmd_autopilot(args: list[str]) -> int:
+    """Run an autonomous decision on a customer issue (auto-act or escalate)."""
+    from quoteforge.automation.autopilot import handle_issue
+    if not args:
+        print('Usage: python -m quoteforge.admin autopilot "<issue text>" [ORDER_ID]')
+        return 2
+    issue = args[0]
+    order_id = args[1] if len(args) > 1 else None
+    result = handle_issue(issue, order_id)
+    d = result["decision"]
+    print("=" * 56)
+    print(f"AUTOPILOT DECISION - {d['title']}")
+    print("=" * 56)
+    print(f"  Category   : {d['category']}")
+    print(f"  Decision   : {d['decision']}")
+    print(f"  Confidence : {d['confidence']:.2f}   Risk: {d['risk']}   "
+          f"Money out: ${d['money_out']:.2f}")
+    print(f"  Outcome    : {result['outcome'].upper()}")
+    print(f"  Reason     : {d['reason']}")
+    if result["outcome"] == "queued_for_human":
+        print(f"\n  -> Needs your approval. Approve with: "
+              f"python -m quoteforge.admin approvals approve {result['approval_id']}")
+    elif d["customer_message"]:
+        print(f"\n  Customer reply staged:\n  {d['customer_message'][:160]}...")
+    print("=" * 56)
+    return 0
+
+
+def _cmd_approvals(args: list[str]) -> int:
+    """List or resolve the human-approval queue (autopilot escalations)."""
+    from quoteforge.db.database import init_db, get_pending_approvals, resolve_approval
+    init_db()
+    if args and args[0] in ("approve", "reject") and len(args) > 1:
+        aid = int(args[1])
+        if args[0] == "approve":
+            from quoteforge.automation.autopilot import execute_approved
+            res = execute_approved(aid)
+            print(f"Approval {aid}: {res['status']}")
+        else:
+            resolve_approval(aid, "rejected")
+            print(f"Approval {aid}: rejected (no action taken)")
+        return 0
+    pending = get_pending_approvals()
+    if not pending:
+        print("No pending approvals - autopilot is handling everything. [OK]")
+        return 0
+    print(f"{len(pending)} decision(s) awaiting your approval:\n")
+    for a in pending:
+        print(f"  #{a['id']} [{a['risk']}] {a['summary']}")
+        print(f"       confidence {a['confidence']:.2f} | order {a['ref'] or '-'}")
+        print(f"       approve: admin approvals approve {a['id']}   "
+              f"reject: admin approvals reject {a['id']}")
+    return 0
+
+
 def _cmd_resolve(args: list[str]) -> int:
     """Decide a customer issue (refund/replacement/claim) + draft the reply."""
     from quoteforge.etsy.resolution import (
@@ -626,6 +683,8 @@ COMMANDS = {
     "bundles": _cmd_bundles,
     "margins": _cmd_margins,
     "resolve": _cmd_resolve,
+    "autopilot": _cmd_autopilot,
+    "approvals": _cmd_approvals,
     "plan": _cmd_plan,
     "campaign": _cmd_campaign,
     "sales": _cmd_sales,

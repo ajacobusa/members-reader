@@ -110,9 +110,11 @@ def test_suggestions_flag_errored_orders():
 def test_suggestions_clean_when_healthy():
     perf = {"orders_total": 3, "stats_query_ms": 5, "db_size_kb": 50,
             "by_status": {"shipped": 3}}
-    # Isolate the "all clear" path — margins are covered by their own tests.
+    # Isolate the "all clear" path — margins/autopilot are covered by their own tests.
     with patch("quoteforge.etsy.margin_guard.audit_catalog",
-               return_value={"below_floor": 0, "offenders": [], "floor_pct": 50}):
+               return_value={"below_floor": 0, "offenders": [], "floor_pct": 50}), \
+         patch("quoteforge.automation.autopilot.autopilot_status",
+               return_value={"pending_human": 0, "auto_last_24h": 0, "pending": []}):
         tips = suggest_enhancements(perf, {"overall": "OK"})
     assert any("no issues" in t.lower() or "no action" in t.lower() for t in tips)
 

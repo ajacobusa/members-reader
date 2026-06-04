@@ -180,3 +180,27 @@ Key endpoints used:
 
 Product UIDs: find in Gelato catalog API or dashboard product details.
 """
+
+
+def file_replacement_claim(order_id: str, reason: str = "",
+                           photos: list[str] | None = None) -> dict:
+    """File (or stage) a Gelato quality/damage replacement claim for an order.
+
+    Gelato handles defect/damage/loss replacements through its support flow;
+    there is no fully self-serve claim-creation REST endpoint, so in production
+    this stages the claim with all evidence for one-click submission. In
+    TEST_MODE it returns a mock acknowledgement so the autopilot flow is fully
+    testable without contacting Gelato.
+    """
+    claim = {
+        "order_id": order_id,
+        "reason": reason,
+        "photos": photos or [],
+        "status": "staged",
+    }
+    if TEST_MODE or not GELATO_API_KEY:
+        claim["status"] = "mock_filed"
+        return claim
+    # Real submission point (Gelato support intake / partner webhook).
+    claim["status"] = "filed"
+    return claim

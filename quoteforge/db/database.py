@@ -129,6 +129,21 @@ def init_db() -> None:
             sent            INTEGER DEFAULT 0,
             created_at      TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS approvals (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind            TEXT NOT NULL,          -- e.g. 'issue', 'refund'
+            ref             TEXT,                   -- order id or related ref
+            summary         TEXT NOT NULL,          -- what the bot wants to do
+            proposed_action TEXT,                   -- machine-readable action key
+            payload         TEXT,                   -- JSON context for execution
+            confidence      REAL DEFAULT 0,
+            risk            TEXT DEFAULT 'low',
+            status          TEXT DEFAULT 'pending', -- pending|approved|rejected|auto
+            decided_by      TEXT,
+            created_at      TEXT DEFAULT (datetime('now')),
+            decided_at      TEXT
+        );
         """)
         _migrate(conn)
 
@@ -376,6 +391,53 @@ def get_pending_reviews() -> list[dict]:
 def mark_review_sent(review_id: int) -> None:
     with _conn() as conn:
         conn.execute("UPDATE reviews SET sent=1 WHERE id=?", (review_id,))
+
+
+# ── Human-approval queue (autopilot escalations) ─────────────────
+
+def enqueue_approval(kind: str, summary: str, ref: str = "",
+                     proposed_action: str = "", payload: str = "",
+                     confidence: float = 0.0, risk: str = "low",
+                     status: str = "pending", decided_by: str = "") -> int:
+    """Record a decision needing (or recording) human sign-off. status='auto'
+    logs a bot decision that was executed without a human."""
+    from datetime import datetime
+    decided_at = datetime.now().isoformat(timespec="seconds") \
+        if status != "pending" else None
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO approvals
+               (kind, ref, summary, proposed_action, payload, confidence,
+                risk, status, decided_by, decided_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (kind, ref, summary, proposed_action, payload, confidence,
+             risk, status, decided_by, decided_at))
+        return cur.lastrowid
+
+
+def get_pending_approvals() -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM approvals WHERE status='pending' ORDER BY created_at"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_approval(approval_id: int) -> Optional[dict]:
+    with _conn() as conn:
+        row = conn.execute("SELECT * FROM approvals WHERE id=?",
+                           (approval_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def resolve_approval(approval_id: int, status: str,
+                     decided_by: str = "owner") -> None:
+    from datetime import datetime
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE approvals SET status=?, decided_by=?, decided_at=? WHERE id=?",
+            (status, decided_by, datetime.now().isoformat(timespec="seconds"),
+             approval_id))
 
 
 # ── Backup / recovery ────────────────────────────────────────────

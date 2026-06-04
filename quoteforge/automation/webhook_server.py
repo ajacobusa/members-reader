@@ -299,6 +299,23 @@ if FLASK_AVAILABLE and app:
         code = 200 if result["status"] in ("ok", "ignored") else 400
         return jsonify(result), code
 
+    @app.route("/issue", methods=["POST"])
+    def receive_issue():
+        """Customer-issue intake — autopilot decides: auto-resolve or escalate."""
+        from quoteforge.automation.webhook_security import verify_signature
+        raw_body = request.get_data()
+        signature = request.headers.get("X-Webhook-Signature", "")
+        if not verify_signature(raw_body, signature):
+            return jsonify({"status": "error", "message": "Invalid signature"}), 401
+        payload = request.get_json(force=True, silent=True) or {}
+        issue_text = payload.get("issue") or payload.get("message") or ""
+        order_id = str(payload.get("order_id") or "") or None
+        if not issue_text:
+            return jsonify({"status": "error", "message": "Missing 'issue'"}), 400
+        from quoteforge.automation.autopilot import handle_issue
+        result = handle_issue(issue_text, order_id)
+        return jsonify(result), 200
+
     @app.route("/backup", methods=["POST"])
     def trigger_backup():
         """Create a database snapshot on demand (for scheduled backups)."""
