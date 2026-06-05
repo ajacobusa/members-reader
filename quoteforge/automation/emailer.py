@@ -74,6 +74,13 @@ def build_report_html() -> tuple[str, str]:
         rec_block = ("<h3>⚙️ Tier / Capacity</h3><p>All services within current "
                      "plan limits — no upgrade needed.</p>")
 
+    # Today's API spend (detailed).
+    try:
+        from quoteforge.automation.cost_tracker import cost_report, format_cost_html
+        cost_block = format_cost_html(cost_report("today"))
+    except Exception:  # noqa: BLE001
+        cost_block = ""
+
     body = f"""\
 <html><body style="font-family:Arial,sans-serif;color:#222">
   <h2 style="color:#1F4E79">QuoteForge Daily Sales Report</h2>
@@ -118,12 +125,24 @@ def build_report_html() -> tuple[str, str]:
 
   {rec_block}
 
+  {cost_block}
+
   <hr>
   <p style="font-size:12px;color:#888">
     Automated report from QuoteForge. Tier alerts are recommendations only —
     no subscription is changed automatically.</p>
 </body></html>"""
     return subject, body
+
+
+def send_cost_report(period: str = "today") -> dict:
+    """Email a standalone detailed API cost report."""
+    from quoteforge.automation.cost_tracker import cost_report, format_cost_html
+    rep = cost_report(period)
+    subject = (f"QuoteForge API Costs ({period}) — ${rep['total_cost']:.4f}, "
+               f"{rep['calls']} calls")
+    body = f"<html><body style='font-family:Arial'>{format_cost_html(rep)}</body></html>"
+    return _send_email(subject, body)
 
 
 def _send_email(subject: str, body: str) -> dict:

@@ -94,6 +94,20 @@ def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
+def _invoke(client, operation: str = "quote_generation", **kwargs):
+    """Call Claude and record the token cost of every request. Best-effort —
+    cost logging never breaks generation."""
+    message = client.messages.create(**kwargs)
+    try:
+        from quoteforge.automation.cost_tracker import record_anthropic_usage
+        record_anthropic_usage(kwargs.get("model", CLAUDE_MODEL),
+                               getattr(message, "usage", None),
+                               operation=operation)
+    except Exception:  # noqa: BLE001
+        pass
+    return message
+
+
 def _clean_lines(raw: str, count: int) -> list[str]:
     lines = raw.strip().split("\n")
     quotes = []
@@ -122,7 +136,7 @@ def generate_quotes(category: str, subcategory: str, count: int = 5) -> list[str
         f"- One quote per line, no numbering, no quotation marks\n\n"
         f"Output only the quotes, nothing else."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -217,7 +231,7 @@ def generate_personal_message(
         f"Separate each variation with '---'\n"
         f"Output only the variations, nothing else."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
@@ -246,7 +260,7 @@ def generate_life_chapter(name: str, age: int, goal: str, count: int = 3) -> lis
         f"Separate each variation with '---'\n"
         f"Output only the variations, nothing else. No numbering."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -270,7 +284,7 @@ def generate_family_legacy(family_name: str, values: str, count: int = 3) -> lis
         f"Separate each variation with '---'\n"
         f"Output only the variations, nothing else."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -312,7 +326,7 @@ def generate_heartfelt_message(
         f"Separate each variation with '---'\n"
         f"Output only the messages, nothing else."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
@@ -347,7 +361,7 @@ def generate_christian_encouragement(
         f"Separate each variation with '---'\n"
         f"Output only the letters, nothing else."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
@@ -381,7 +395,7 @@ def generate_graduation_message(
         f"Separate each variation with '---'\n"
         f"Output only the messages, nothing else."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
@@ -402,7 +416,7 @@ def generate_letter_to_future_self(context: str, count: int = 2) -> list[str]:
         f"Separate each with '---'\n"
         f"Original, print-on-demand safe, emotionally resonant. Output only the letters."
     )
-    message = client.messages.create(
+    message = _invoke(client,
         model=CLAUDE_MODEL,
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],

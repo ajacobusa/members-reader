@@ -75,6 +75,10 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "MINUTE", "/MO", "10"],
         "Polls Etsy every 10 min for new paid orders and imports them "
         "(no Make/Zapier dependency)"),
+    ScheduledJob(
+        "QuoteForge Daily API Costs", "costs today email",
+        ["/SC", "DAILY", "/ST", "07:50"],
+        "Emails a detailed daily breakdown of API (Claude) spend"),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

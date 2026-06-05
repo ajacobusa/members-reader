@@ -28,6 +28,7 @@ Usage:
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print (logs audit trail)
   python -m quoteforge.admin resolve <issue> [ID]  # decide a return/refund issue + draft the reply
+  python -m quoteforge.admin costs [today|week|month] [email]  # detailed API spend report
   python -m quoteforge.admin sample-batch [N]      # review quote quality across categories
   python -m quoteforge.admin artwork-qa            # render name/quote/size edge cases + preflight
   python -m quoteforge.admin preflight-art ART.png [size]  # artwork print-quality check
@@ -534,6 +535,18 @@ def _cmd_poll_etsy(args: list[str]) -> int:
     return 0
 
 
+def _cmd_costs(args: list[str]) -> int:
+    """Detailed API cost report (today/week/month)."""
+    from quoteforge.automation.cost_tracker import cost_report, format_cost_text
+    period = args[0] if args and args[0] in ("today", "week", "month") else "today"
+    print(format_cost_text(cost_report(period)))
+    if len(args) > 1 and args[1] == "email" or (args and args[0] == "email"):
+        from quoteforge.automation.emailer import send_cost_report
+        r = send_cost_report(period)
+        print(f"\nEmail: {r['status']}")
+    return 0
+
+
 def _cmd_policy(args: list[str]) -> int:
     """Show the Etsy + Gelato policy facts for an issue category (or all)."""
     from quoteforge.etsy.policy import POLICIES, format_policy_text
@@ -765,6 +778,7 @@ COMMANDS = {
     "margins": _cmd_margins,
     "resolve": _cmd_resolve,
     "policy": _cmd_policy,
+    "costs": _cmd_costs,
     "preflight-art": _cmd_preflight_art,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,

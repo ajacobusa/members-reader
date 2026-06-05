@@ -130,6 +130,19 @@ def init_db() -> None:
             created_at      TEXT DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS api_costs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider        TEXT NOT NULL,          -- 'anthropic', 'gelato', ...
+            model           TEXT,
+            operation       TEXT,                   -- what it was for
+            input_tokens    INTEGER DEFAULT 0,
+            output_tokens   INTEGER DEFAULT 0,
+            units           INTEGER DEFAULT 0,      -- non-token calls (e.g. images)
+            cost_usd        REAL DEFAULT 0,
+            order_id        TEXT,
+            created_at      TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS approvals (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             kind            TEXT NOT NULL,          -- e.g. 'issue', 'refund'
@@ -438,6 +451,40 @@ def resolve_approval(approval_id: int, status: str,
             "UPDATE approvals SET status=?, decided_by=?, decided_at=? WHERE id=?",
             (status, decided_by, datetime.now().isoformat(timespec="seconds"),
              approval_id))
+
+
+# ── API cost tracking ────────────────────────────────────────────
+
+def record_api_cost(provider: str, cost_usd: float, model: str = "",
+                    operation: str = "", input_tokens: int = 0,
+                    output_tokens: int = 0, units: int = 0,
+                    order_id: str = "") -> int:
+    # Store created_at in LOCAL time so the daily cost report's local-date
+    # window matches (SQLite's datetime('now') is UTC and would misbucket
+    # evening-local costs into the next day).
+    created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO api_costs
+               (provider, model, operation, input_tokens, output_tokens,
+                units, cost_usd, order_id, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (provider, model, operation, input_tokens, output_tokens,
+             units, round(cost_usd, 6), order_id, created))
+        return cur.lastrowid
+
+
+def get_api_costs(since_iso: str = "", until_iso: str = "") -> list[dict]:
+    """Return cost rows in [since, until). Both bounds optional."""
+    q = "SELECT * FROM api_costs WHERE 1=1"
+    params: list = []
+    if since_iso:
+        q += " AND created_at >= ?"; params.append(since_iso)
+    if until_iso:
+        q += " AND created_at < ?"; params.append(until_iso)
+    q += " ORDER BY created_at"
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(q, params).fetchall()]
 
 
 # ── Backup / recovery ────────────────────────────────────────────
