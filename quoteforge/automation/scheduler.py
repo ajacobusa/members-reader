@@ -81,6 +81,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Emails a detailed WEEKLY breakdown of API (Claude) spend. The daily "
         "report already shows today's at-a-glance total (both cost $0 in tokens "
         "- they only read the DB)."),
+    ScheduledJob(
+        "QuoteForge Seasonal SEO", "seasonal-seo email",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:10"],
+        "Demand-driven SEO agent: emails which listings to refresh ahead of "
+        "each calendar peak (4 wks out) + last-minute push (1 wk out)."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

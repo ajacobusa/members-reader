@@ -510,6 +510,20 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_seasonal_seo(args: list[str]) -> int:
+    """Demand-driven SEO plan: what to refresh before each calendar peak."""
+    from quoteforge.etsy.seasonal_seo import (
+        seasonal_seo_plan, format_seasonal_seo, send_seasonal_seo,
+    )
+    if args and args[0] == "email":
+        out = send_seasonal_seo()
+        print(format_seasonal_seo(out["plan"]))
+        print(f"\nEmail: {out['status']}")
+        return 0
+    print(format_seasonal_seo(seasonal_seo_plan()))
+    return 0
+
+
 def _cmd_seo(args: list[str]) -> int:
     """Per-listing Etsy SEO (title + 13 tags + attributes + description)."""
     from quoteforge.etsy.listing_seo import (
@@ -848,6 +862,7 @@ COMMANDS = {
     "preflight-art": _cmd_preflight_art,
     "listing-pack": _cmd_listing_pack,
     "seo": _cmd_seo,
+    "seasonal-seo": _cmd_seasonal_seo,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,
