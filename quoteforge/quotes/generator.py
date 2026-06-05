@@ -20,7 +20,7 @@ def _mock_personal_message(recipient_name: str, sender_name: str,
         f"Keep reaching for everything you dream of.\n"
         f"With love, {sender}"
     )
-    return [f"[TEST MODE — {output_style}] {base}" for _ in range(max(1, count))]
+    return [f"[TEST MODE - {output_style}] {base}" for _ in range(max(1, count))]
 
 # All supported output styles for custom personal messages
 OUTPUT_STYLES = [
@@ -37,9 +37,9 @@ RELATIONSHIPS = [
     # Love
     "To My Wife", "To My Husband", "To My Girlfriend", "To My Boyfriend",
     "To My Fiancée", "To My Fiancé",
-    # Family — children
+    # Family - children
     "To My Daughter", "To My Son",
-    # Family — parents
+    # Family - parents
     "To My Mom", "To My Dad", "To My Mother", "To My Father",
     # Grandparents
     "To My Grandmother", "To My Grandfather",
@@ -58,7 +58,7 @@ RELATIONSHIPS = [
     "A Prayer For", "A Blessing For",
 ]
 
-# Occasion types — comprehensive, year-round coverage. The complete taxonomy
+# Occasion types - comprehensive, year-round coverage. The complete taxonomy
 # (calendar months, religions, milestones, emotional events) lives in
 # quoteforge.etsy.occasions; this is the de-duplicated flat list the GUI uses.
 def _build_occasions() -> list[str]:
@@ -113,9 +113,9 @@ def generate_quotes(category: str, subcategory: str, count: int = 5) -> list[str
     client = _client()
     prompt = (
         f"Write {count} original, memorable, copyright-safe motivational quotes "
-        f"for the theme: {category} — specifically about {subcategory}.\n\n"
+        f"for the theme: {category} - specifically about {subcategory}.\n\n"
         f"Rules:\n"
-        f"- Each quote must be 100% original — not from any song, movie, book, or celebrity\n"
+        f"- Each quote must be 100% original - not from any song, movie, book, or celebrity\n"
         f"- Maximum 20 words per quote\n"
         f"- Emotionally resonant and professional\n"
         f"- Safe for print-on-demand wall art sold on Etsy\n"
@@ -172,7 +172,7 @@ def generate_personal_message(
         "Personal Letter": (
             "Write a short heartfelt personal letter (4-6 sentences) as if from the sender to the recipient. "
             "Format:\nLine 1: Salutation (e.g. 'Dear Emma,')\n"
-            "Lines 2-5: Letter body — warm, specific, emotionally resonant\n"
+            "Lines 2-5: Letter body - warm, specific, emotionally resonant\n"
             "Line 6: Closing (e.g. 'With all my love, Mom')"
         ),
         "Poem": (
@@ -185,10 +185,10 @@ def generate_personal_message(
         ),
         "Encouragement Letter": (
             "Write a short powerful encouragement letter (4-5 sentences) for the recipient on this milestone. "
-            "Format:\nLine 1: Salutation\nLines 2-5: Encouragement — specific, bold, uplifting\nLine 6: Closing"
+            "Format:\nLine 1: Salutation\nLines 2-5: Encouragement - specific, bold, uplifting\nLine 6: Closing"
         ),
         "Letter from Future Self": (
-            "Write a 'Letter from Future Self' — as if the recipient's future self is writing back to their present self. "
+            "Write a 'Letter from Future Self' - as if the recipient's future self is writing back to their present self. "
             "Format:\nLine 1: 'Dear [Recipient Name],'\n"
             "Lines 2-4: What their future self wants them to know (max 12 words each)\n"
             "Line 5: 'With love, Your Future Self'"
@@ -209,7 +209,7 @@ def generate_personal_message(
         f"  Output style: {output_style}\n\n"
         f"Style instructions:\n{instructions}\n\n"
         f"Rules:\n"
-        f"- 100% original — not from any song, movie, book, or celebrity\n"
+        f"- 100% original - not from any song, movie, book, or celebrity\n"
         f"- Deeply personal and emotionally resonant\n"
         f"- Safe for print-on-demand wall art sold on Etsy\n"
         f"- Weave in the memory/story naturally if provided\n"
@@ -240,7 +240,7 @@ def generate_life_chapter(name: str, age: int, goal: str, count: int = 3) -> lis
         f"  Age: {age}\n"
         f"  Current goal / milestone: {goal}\n\n"
         f"Format each variation as exactly 3 lines:\n"
-        f"Line 1: Chapter title — e.g. 'Chapter {age}: Becoming the [Role]'\n"
+        f"Line 1: Chapter title - e.g. 'Chapter {age}: Becoming the [Role]'\n"
         f"Line 2: One short motivational sentence (max 12 words) specific to their journey\n"
         f"Line 3: One closing affirmation (max 10 words)\n\n"
         f"Separate each variation with '---'\n"
@@ -305,8 +305,8 @@ def generate_heartfelt_message(
         f"Tone: {tone}\n"
         f"Length: approximately {word_count} words\n\n"
         f"Rules:\n"
-        f"- Avoid clichés — make it emotionally meaningful and specific\n"
-        f"- 100% original — safe for print-on-demand wall art\n"
+        f"- Avoid clichés - make it emotionally meaningful and specific\n"
+        f"- 100% original - safe for print-on-demand wall art\n"
         f"- Each variation should feel distinct in structure or angle\n"
         f"- Address the recipient by name\n\n"
         f"Separate each variation with '---'\n"
@@ -339,9 +339,9 @@ def generate_christian_encouragement(
         f"Favorite Bible theme: {bible_theme}\n\n"
         f"Rules:\n"
         f"- Deeply faith-based, warm, and uplifting\n"
-        f"- Weave the Bible theme naturally — do not copy exact Bible verses (paraphrase in your own words)\n"
+        f"- Weave the Bible theme naturally - do not copy exact Bible verses (paraphrase in your own words)\n"
         f"- Speak directly to the challenge with hope\n"
-        f"- 100% original — safe for print-on-demand wall art\n"
+        f"- 100% original - safe for print-on-demand wall art\n"
         f"- Address the recipient by name\n"
         f"- 100-150 words per variation\n\n"
         f"Separate each variation with '---'\n"
@@ -373,9 +373,9 @@ def generate_graduation_message(
         f"Degree: {degree}\n"
         f"Career Goal: {career_goal}\n\n"
         f"Rules:\n"
-        f"- Specific to their degree and career goal — not generic\n"
+        f"- Specific to their degree and career goal - not generic\n"
         f"- Bold, celebratory, and forward-looking\n"
-        f"- 100% original — safe for print-on-demand wall art\n"
+        f"- 100% original - safe for print-on-demand wall art\n"
         f"- Address the graduate by name\n"
         f"- 80-120 words per variation\n\n"
         f"Separate each variation with '---'\n"
