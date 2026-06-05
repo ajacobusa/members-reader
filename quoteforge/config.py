@@ -132,6 +132,8 @@ CANVA_API_KEY: str = os.getenv("CANVA_API_KEY", "")
 CANVA_BRAND_TEMPLATE_ID: str = os.getenv("CANVA_BRAND_TEMPLATE_ID", "")
 
 # Etsy API (for webhook verification + order pulling)
+# Your Etsy shop / brand name — used in customer messages and report headers.
+SHOP_NAME: str = os.getenv("SHOP_NAME", "Joffiels")
 ETSY_SHOP_ID: str = os.getenv("ETSY_SHOP_ID", "")
 ETSY_API_KEY: str = os.getenv("ETSY_API_KEY", "")
 # OAuth token for authorized shop access (orders + fulfillment). From the Etsy

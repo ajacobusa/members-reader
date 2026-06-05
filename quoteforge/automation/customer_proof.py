@@ -27,14 +27,17 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
 
     recipient = order.get("recipient_name", "your recipient")
     occasion = order.get("occasion", "your order")
+    from quoteforge.config import SHOP_NAME
 
     message = (
-        f"Hi! Thank you so much for your order. I've created the proof for your "
-        f"personalized {occasion} print for {recipient} — please review it.\n\n"
+        f"Hi! Thank you so much for your order from {SHOP_NAME}. I've created the "
+        f"proof for your personalized {occasion} print for {recipient} — please "
+        f"review it.\n\n"
         f"Take a look at the attached image and check the name, spelling, "
         f"wording, and overall design. If everything looks perfect, just reply "
         f"\"APPROVED\" and I'll send it to print right away. If you'd like any "
-        f"changes, tell me and I'll update it — no rush, and no extra charge."
+        f"changes, tell me and I'll update it — no rush, and no extra charge.\n\n"
+        f"With gratitude,\nThe {SHOP_NAME} team"
     )
 
     # Persist the proof message (so it's logged against the order)
