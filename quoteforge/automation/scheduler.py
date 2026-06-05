@@ -96,6 +96,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "MONTHLY", "/D", "1", "/ST", "08:20"],
         "Monthly growth agent: which segments to scale (add variations), which "
         "to retire, and demand gaps to fill - from real sales data."),
+    ScheduledJob(
+        "QuoteForge Delight Loop", "delight email",
+        ["/SC", "DAILY", "/ST", "09:00"],
+        "Post-delivery review + referral touches (~6 days after delivery) to "
+        "build reviews and turn happy buyers into referrers."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

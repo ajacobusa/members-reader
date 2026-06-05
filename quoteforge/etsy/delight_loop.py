@@ -1,0 +1,124 @@
+"""Delight loop - reviews + referrals in one post-delivery touch.
+
+For a brand-new shop these are the two highest-leverage growth levers:
+  * REVIEWS  drive Etsy search ranking AND buyer trust - the #1 thing a 0-review
+    shop needs. The ask must land a few days AFTER delivery, at the satisfaction
+    peak.
+  * REFERRALS are the cheapest acquisition there is - a delighted gift-buyer
+    knows other gift-buyers. A give-15 / get-15 offer turns each happy customer
+    into a (free) acquisition channel.
+
+This bundles both into ONE warm, specific message ~6 days after delivery, with a
+thank-you coupon for their own next order. Idempotent (won't re-ask the same
+order). Reads live orders so it works automatically as Joffiels grows.
+"""
+import hashlib
+from datetime import datetime, timedelta
+
+DELIGHT_LEAD_DAYS = 6          # send this many days after delivery (satisfaction peak)
+REVIEW_THANKYOU = "THANKYOU10"  # 10% off their own next order
+REFERRAL_GIVE = 15             # friend gets this %
+REFERRAL_GET = 15              # referrer gets this % on next order
+
+
+def referral_code(customer_key: str) -> str:
+    """A stable, shareable referral code unique to a customer."""
+    h = hashlib.md5((customer_key or "guest").encode("utf-8")).hexdigest()[:5].upper()
+    return f"JOFF{h}"
+
+
+def _parse_dt(s: str) -> datetime:
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime((s or "")[:19], fmt)
+        except (ValueError, TypeError):
+            continue
+    return datetime.now()
+
+
+def delight_message(order: dict) -> str:
+    customer = order.get("customer_name") or "there"
+    recipient = order.get("recipient_name") or "your recipient"
+    occ = (order.get("occasion") or "gift").lower()
+    key = order.get("customer_email") or order.get("customer_name") or "guest"
+    code = referral_code(key)
+    return (
+        f"Hi {customer}! I hope {recipient} absolutely loved their personalized "
+        f"{occ} piece.\n\n"
+        f"If it brought a smile, a quick review would mean the world to a small "
+        f"shop like Joffiels - honest reviews are what help others find us. As a "
+        f"thank-you, here's 10% off your next order with code {REVIEW_THANKYOU}.\n\n"
+        f"And if you know someone who'd love a personalized gift, share your code "
+        f"{code} - they get {REFERRAL_GIVE}% off, and you get {REFERRAL_GET}% off "
+        f"your next order too. Thank you for being part of Joffiels!"
+    )
+
+
+def _already_delighted(order_id: str) -> bool:
+    from quoteforge.db.database import get_customer_messages
+    return any(m.get("message_type") == "delight"
+               for m in get_customer_messages(order_id))
+
+
+def delight_due(orders: list[dict], now: datetime | None = None,
+                lead_days: int = DELIGHT_LEAD_DAYS) -> list[dict]:
+    """Orders delivered ~lead_days ago that haven't had the delight touch yet."""
+    now = now or datetime.now()
+    cutoff = now - timedelta(days=lead_days)
+    due = []
+    for o in orders:
+        if o.get("status") not in ("delivered", "shipped"):
+            continue
+        # Use delivery time if present, else fall back to created_at.
+        ref = _parse_dt(o.get("updated_at") or o.get("created_at", ""))
+        if ref > cutoff:
+            continue                      # not enough time since delivery
+        if _already_delighted(o.get("order_id", "")):
+            continue
+        key = o.get("customer_email") or o.get("customer_name") or "guest"
+        due.append({
+            "order_id": o.get("order_id", ""),
+            "customer": o.get("customer_name", "Customer"),
+            "recipient": o.get("recipient_name", ""),
+            "referral_code": referral_code(key),
+            "message": delight_message(o),
+        })
+    return due
+
+
+def send_delight_touches(now: datetime | None = None, record: bool = True) -> dict:
+    """Stage delight messages for all due orders (idempotent)."""
+    from quoteforge.db.database import (
+        init_db, get_all_orders, save_customer_message,
+    )
+    init_db()
+    due = delight_due(get_all_orders(limit=100000), now)
+    if record:
+        for d in due:
+            save_customer_message(d["order_id"], "delight", d["message"], sent=False)
+    return {"due": len(due), "touches": due}
+
+
+def format_delight_text(result: dict) -> str:
+    lines = ["=" * 60, "DELIGHT LOOP - reviews + referrals", "=" * 60,
+             f"{result['due']} post-delivery touch(es) ready to send:"]
+    for d in result["touches"][:15]:
+        lines.append(f"\n  Order {d['order_id']} - {d['customer']} "
+                     f"(referral {d['referral_code']})")
+        lines.append(f"    {d['message'][:140]}...")
+    if not result["touches"]:
+        lines.append("  (none due - orders need ~6 days since delivery)")
+    lines.append("=" * 60)
+    return "\n".join(lines)
+
+
+def send_delight_email(now: datetime | None = None) -> dict:
+    result = send_delight_touches(now)
+    if not result["due"]:
+        return {"status": "no_action", "result": result}
+    from quoteforge.automation.emailer import _send_email
+    subject = f"Joffiels Delight Loop: {result['due']} review+referral touch(es) to send"
+    body = (f"<html><body style='font-family:Arial'><pre style='font-size:13px'>"
+            f"{format_delight_text(result)}</pre></body></html>")
+    out = _send_email(subject, body)
+    return {"status": out["status"], "result": result}
