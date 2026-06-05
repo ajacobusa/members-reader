@@ -57,10 +57,13 @@ def _cmd_backup() -> int:
     if not path:
         print("No database found to back up.")
         return 1
-    deleted = prune_old_backups(keep=14)
+    from quoteforge.config import BACKUP_RETENTION_DAYS
+    deleted = prune_old_backups()  # age-based retention
     print(f"Backup created: {path}")
+    print(f"Retention: keeping backups from the last {BACKUP_RETENTION_DAYS} "
+          f"day(s) (newest always kept).")
     if deleted:
-        print(f"Pruned {deleted} old backup(s), keeping the most recent 14.")
+        print(f"Pruned {deleted} backup(s) older than {BACKUP_RETENTION_DAYS} days.")
     return 0
 
 

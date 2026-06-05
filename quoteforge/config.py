@@ -73,6 +73,10 @@ POLICY_DEFECT_WINDOW_DAYS: int = int(os.getenv("POLICY_DEFECT_WINDOW_DAYS", "7")
 # Window to report a lost-in-transit package (days from ship/last tracking).
 POLICY_LOST_WINDOW_DAYS: int = int(os.getenv("POLICY_LOST_WINDOW_DAYS", "30"))
 
+# Database backup retention (days). Backups older than this are pruned; the most
+# recent backup is always kept regardless of age.
+BACKUP_RETENTION_DAYS: int = int(os.getenv("BACKUP_RETENTION_DAYS", "3"))
+
 # ── Artwork preflight (print-quality gate before Gelato) ─────────
 PREFLIGHT_ENABLED: bool = _env_bool("PREFLIGHT_ENABLED", True)
 PREFLIGHT_TARGET_DPI: int = int(os.getenv("PREFLIGHT_TARGET_DPI", "300"))

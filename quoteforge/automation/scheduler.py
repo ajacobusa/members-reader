@@ -102,13 +102,17 @@ def build_delete_command(job: ScheduledJob) -> list[str]:
 
 
 def install_schedule(remove: bool = False, dry_run: bool = False,
+                     only: list[str] | None = None,
                      runner=subprocess.run) -> dict:
-    """Create (or remove) all scheduled jobs.
+    """Create (or remove) scheduled jobs.
 
+    only: restrict to these job names (used by self-heal to touch just the
+    missing/disabled ones instead of churning all of them).
     dry_run prints the commands without executing them. Returns a summary dict.
     """
+    jobs = [j for j in SCHEDULED_JOBS if (only is None or j.name in only)]
     results: list[dict] = []
-    for job in SCHEDULED_JOBS:
+    for job in jobs:
         cmd = build_delete_command(job) if remove \
             else build_create_command(job)
         if dry_run:
@@ -129,7 +133,7 @@ def install_schedule(remove: bool = False, dry_run: bool = False,
     action = "remove" if remove else "install"
     errors = [r for r in results if r["status"] == "error"]
     return {"action": action, "dry_run": dry_run,
-            "total": len(SCHEDULED_JOBS), "errors": len(errors),
+            "total": len(jobs), "errors": len(errors),
             "results": results}
 
 

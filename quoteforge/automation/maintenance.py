@@ -50,20 +50,28 @@ def measure_performance() -> dict:
 # ── Auto-remediation steps (each returns an action record) ───────
 
 def _heal_scheduled_jobs(check_detail: str, fix: bool) -> Optional[dict]:
-    """If jobs are missing/disabled, re-install the whole schedule."""
+    """Re-install ONLY the missing/disabled jobs (not all of them)."""
     if "missing" not in check_detail and "disabled" not in check_detail:
         return None
     if not fix:
         return {"action": "reinstall scheduled jobs", "status": "skipped (--check)",
                 "detail": check_detail}
-    from quoteforge.automation.scheduler import install_schedule
-    summary = install_schedule()
+    # Parse the exact job names the health check reported.
+    from quoteforge.automation.scheduler import EXPECTED_TASK_NAMES, install_schedule
+    targets = [n for n in EXPECTED_TASK_NAMES if n in check_detail]
+    summary = install_schedule(only=targets or None)
     ok = summary["errors"] == 0
-    return {"action": "reinstall scheduled jobs",
-            "status": "fixed" if ok else "failed",
-            "detail": f"{summary['total'] - summary['errors']}/{summary['total']} "
-                      f"jobs (re)created"
-                      + ("" if ok else " — run as Administrator")}
+    if ok:
+        return {"action": "reinstall scheduled jobs", "status": "fixed",
+                "detail": f"re-created {summary['total']} missing job(s): "
+                          f"{', '.join(targets)}"}
+    # Surface the real schtasks error so the cause is visible, not guessed.
+    err = next((r["detail"] for r in summary["results"]
+                if r["status"] == "error" and r["detail"]), "")
+    return {"action": "reinstall scheduled jobs", "status": "failed",
+            "detail": f"could not create: {', '.join(targets)} "
+                      f"({err or 'access denied'}). Run once in an "
+                      f"ADMINISTRATOR terminal: admin install-schedule"}
 
 
 def _heal_backup(check_status: str, fix: bool) -> Optional[dict]:
@@ -77,7 +85,7 @@ def _heal_backup(check_status: str, fix: bool) -> Optional[dict]:
     if not path:
         return {"action": "fresh backup", "status": "skipped",
                 "detail": "no database to back up yet"}
-    prune_old_backups(keep=14)
+    prune_old_backups()  # age-based: keep last BACKUP_RETENTION_DAYS days
     return {"action": "fresh backup", "status": "fixed", "detail": path.name}
 
 

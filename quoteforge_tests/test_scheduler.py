@@ -61,6 +61,19 @@ def test_install_invokes_runner_per_job():
     assert all(r["status"] == "ok" for r in summary["results"])
 
 
+def test_install_only_targets_named_jobs():
+    class FakeProc:
+        returncode = 0; stdout = "SUCCESS"; stderr = ""
+    calls = []
+    def fake_runner(cmd, **kwargs):
+        calls.append(cmd); return FakeProc()
+    summary = install_schedule(only=["QuoteForge Etsy Order Poll"],
+                               runner=fake_runner)
+    assert summary["total"] == 1
+    assert len(calls) == 1
+    assert "QuoteForge Etsy Order Poll" in " ".join(calls[0])
+
+
 def test_install_reports_failures():
     class FakeProc:
         returncode = 1

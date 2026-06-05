@@ -496,17 +496,44 @@ def backup_database(backup_dir: Optional[Path] = None) -> Optional[Path]:
     return backup_path
 
 
-def prune_old_backups(backup_dir: Optional[Path] = None, keep: int = 14) -> int:
-    """Keep only the most recent `keep` database backups. Returns count deleted."""
+def prune_old_backups(backup_dir: Optional[Path] = None,
+                      retention_days: Optional[int] = None,
+                      keep: Optional[int] = None) -> int:
+    """Prune database backups, returning the count deleted.
+
+    Age-based by default: any backup older than `retention_days` (config
+    BACKUP_RETENTION_DAYS, default 3) is deleted, but the MOST RECENT backup is
+    always kept regardless of age, so we never end up with zero backups.
+
+    `keep` (legacy count-based) still works if explicitly passed.
+    """
+    from datetime import datetime, timedelta
     if backup_dir is None:
         backup_dir = DB_PATH.parent / "db_backups"
     if not backup_dir.exists():
         return 0
-    backups = sorted(backup_dir.glob("quoteforge_*.db"), reverse=True)
+    backups = sorted(backup_dir.glob("quoteforge_*.db"), reverse=True)  # newest first
+    if not backups:
+        return 0
+
     deleted = 0
-    for old in backups[keep:]:
-        old.unlink()
-        deleted += 1
+    if keep is not None:  # legacy count-based retention
+        for old in backups[keep:]:
+            old.unlink(); deleted += 1
+        return deleted
+
+    if retention_days is None:
+        from quoteforge.config import BACKUP_RETENTION_DAYS
+        retention_days = BACKUP_RETENTION_DAYS
+    cutoff = datetime.now() - timedelta(days=retention_days)
+    # Always keep the newest backup BY MODIFICATION TIME (never end up with zero),
+    # then prune any other backup older than the cutoff.
+    newest = max(backups, key=lambda p: p.stat().st_mtime)
+    for old in backups:
+        if old == newest:
+            continue
+        if datetime.fromtimestamp(old.stat().st_mtime) < cutoff:
+            old.unlink(); deleted += 1
     return deleted
 
 

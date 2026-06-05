@@ -132,6 +132,47 @@ def test_prune_old_backups(tmp_path):
     assert len(list(bdir.glob("quoteforge_*.db"))) == 14
 
 
+def test_prune_age_based_keeps_only_3_days(tmp_path):
+    import os, time
+    with patch("quoteforge.db.database.DB_PATH", tmp_path / "t.db"), \
+         patch("quoteforge.db.database.OUTPUT_DIR", tmp_path), \
+         patch("quoteforge.config.BACKUP_RETENTION_DAYS", 3):
+        from quoteforge.db.database import prune_old_backups
+        bdir = tmp_path / "backups"
+        bdir.mkdir()
+        now = time.time()
+        # 2 recent (within 3 days) + 4 old (>3 days)
+        ages_days = [0, 1, 5, 10, 20, 40]
+        for i, d in enumerate(ages_days):
+            f = bdir / f"quoteforge_2026{i:02d}01_000000.db"
+            f.write_text("x")
+            t = now - d * 86400
+            os.utime(f, (t, t))
+        deleted = prune_old_backups(bdir)  # age-based, 3-day retention
+    remaining = list(bdir.glob("quoteforge_*.db"))
+    assert deleted == 4              # the 5/10/20/40-day-old ones
+    assert len(remaining) == 2       # only the 0 and 1-day-old
+
+
+def test_prune_age_based_always_keeps_newest(tmp_path):
+    import os, time
+    with patch("quoteforge.db.database.DB_PATH", tmp_path / "t.db"), \
+         patch("quoteforge.db.database.OUTPUT_DIR", tmp_path), \
+         patch("quoteforge.config.BACKUP_RETENTION_DAYS", 3):
+        from quoteforge.db.database import prune_old_backups
+        bdir = tmp_path / "backups"
+        bdir.mkdir()
+        now = time.time()
+        # All backups are old — newest must still survive (never zero backups).
+        for i, d in enumerate([10, 30, 90]):
+            f = bdir / f"quoteforge_2026{i:02d}01_000000.db"
+            f.write_text("x")
+            t = now - d * 86400
+            os.utime(f, (t, t))
+        prune_old_backups(bdir)
+    assert len(list(bdir.glob("quoteforge_*.db"))) == 1  # newest kept
+
+
 # ── Atomic webhook log ───────────────────────────────────────────
 
 def test_webhook_log_atomic_under_concurrency(tmp_path):
