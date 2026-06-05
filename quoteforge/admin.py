@@ -510,6 +510,54 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_briefing(args: list[str]) -> int:
+    """One consolidated daily ops read: what needs action today."""
+    from quoteforge.automation.briefing import (
+        morning_briefing, format_briefing_text, send_briefing,
+    )
+    if args and args[0] == "email":
+        out = send_briefing()
+        print(format_briefing_text(out["briefing"]))
+        print(f"\nEmail: {out['status']}")
+        return 0
+    print(format_briefing_text(morning_briefing()))
+    return 0
+
+
+def _cmd_fix_photo(args: list[str]) -> int:
+    """Attach a corrected (higher-res) photo to a held order and resume it."""
+    from pathlib import Path
+    from quoteforge.db.database import init_db, get_order
+    from quoteforge.images.photo_check import check_customer_photo
+    if len(args) < 2:
+        print("Usage: python -m quoteforge.admin fix-photo ORDER_ID PHOTO.jpg")
+        return 2
+    init_db()
+    order_id, photo = args[0], args[1]
+    order = get_order(order_id)
+    if not order:
+        print(f"Order {order_id} not found.")
+        return 1
+    if not Path(photo).exists():
+        print(f"Photo not found: {photo}")
+        return 1
+    chk = check_customer_photo(photo, order.get("product_size") or "18x24 in")
+    if not chk["ok"]:
+        print(f"That photo is still too low quality: {chk['reason']}")
+        print("Ask the buyer for the original, full-size image.")
+        return 1
+    # Resume: re-run the pipeline with the good photo, reusing the approved text.
+    from quoteforge.automation.pipeline_orchestrator import run_full_pipeline
+    data = dict(order)
+    data["custom_image"] = photo
+    if order.get("generated_quote"):
+        data["custom_text"] = order["generated_quote"]   # keep the wording verbatim
+    result = run_full_pipeline(data)
+    print(f"Order {order_id} resumed with the new photo. "
+          f"Status: {result.get('status', '?')}")
+    return 0
+
+
 def _cmd_remind(args: list[str]) -> int:
     """Manage persistent setup reminders (shown in the daily report)."""
     from quoteforge.reminders import (
@@ -964,6 +1012,8 @@ COMMANDS = {
     "check-photo": _cmd_check_photo,
     "custom-copy": _cmd_custom_copy,
     "remind": _cmd_remind,
+    "briefing": _cmd_briefing,
+    "fix-photo": _cmd_fix_photo,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,

@@ -34,6 +34,11 @@ class ScheduledJob:
 # Times are local. Reports run after the US morning; ops jobs run off-peak.
 SCHEDULED_JOBS: list[ScheduledJob] = [
     ScheduledJob(
+        "QuoteForge Morning Briefing", "briefing email",
+        ["/SC", "DAILY", "/ST", "07:25"],
+        "One consolidated daily ops read: everything needing action today "
+        "(orders, approvals, photo holds, growth actions, reminders, health)."),
+    ScheduledJob(
         "QuoteForge Daily Report", "report daily email",
         ["/SC", "DAILY", "/ST", "07:30"],
         "Emails the daily sales report"),
