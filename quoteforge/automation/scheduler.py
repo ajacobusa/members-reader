@@ -86,6 +86,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:10"],
         "Demand-driven SEO agent: emails which listings to refresh ahead of "
         "each calendar peak (4 wks out) + last-minute push (1 wk out)."),
+    ScheduledJob(
+        "QuoteForge Retention Engine", "retention email",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:15"],
+        "Retention/LTV agent: emails repeat-gift outreach (gift the same "
+        "recipient again), cross-sell, and lapsed-customer win-backs."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.
