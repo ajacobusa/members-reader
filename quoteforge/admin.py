@@ -510,6 +510,13 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_shop_plan(args: list[str]) -> int:
+    """Storefront blueprint: shop sections, listing assignments + polish checklist."""
+    from quoteforge.etsy.shop_layout import format_shop_text
+    print(format_shop_text())
+    return 0
+
+
 def _cmd_briefing(args: list[str]) -> int:
     """One consolidated daily ops read: what needs action today."""
     from quoteforge.automation.briefing import (
@@ -1013,6 +1020,7 @@ COMMANDS = {
     "custom-copy": _cmd_custom_copy,
     "remind": _cmd_remind,
     "briefing": _cmd_briefing,
+    "shop-plan": _cmd_shop_plan,
     "fix-photo": _cmd_fix_photo,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
