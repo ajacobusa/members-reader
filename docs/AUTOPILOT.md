@@ -17,6 +17,16 @@ A decision auto-executes when **all** of these hold:
 Otherwise the decision is **staged in your approval queue** with its full
 rationale — you just approve or reject.
 
+## Absolute rule: returns & refunds always need you
+
+Independent of every setting above, **any return or money-back request is always
+escalated to a human** — never auto-executed. This fires when the issue is a
+cancellation/refund, or when the customer's message contains refund/return
+language ("refund", "return", "money back", "chargeback", …) — even if the
+underlying issue would otherwise auto-resolve (e.g. "it's damaged, I want a
+refund" goes to you, not the bot). Raising `AUTOPILOT_MAX_AUTO_REFUND` does **not**
+override this; bots offer free *replacements*, but money back is always your call.
+
 ## What the bots handle automatically
 
 - **Damage / defect / poor quality / lost package** → files a Gelato replacement

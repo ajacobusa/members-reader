@@ -50,7 +50,34 @@ def test_cancellation_refund_escalates_to_human():
     d = decide("please cancel my order", {"sale_price": 40.0})
     assert d.auto is False
     assert d.risk == "high"
-    assert "spend" in d.reason or "high-risk" in d.reason
+
+
+def test_any_refund_request_always_escalates():
+    # Even a normally-auto damage case must escalate if the customer asks for
+    # money back — returns/refunds are ALWAYS a human decision.
+    d = decide("my print is damaged and I want a refund")
+    assert d.auto is False
+    assert "human approval" in d.reason.lower()
+
+
+def test_return_keyword_escalates():
+    d = decide("I want to return this item")
+    assert d.auto is False
+    assert d.action == "escalate"
+
+
+def test_money_back_overrides_high_confidence_and_cap():
+    # Even with a generous refund cap and high confidence, money back stays human.
+    with patch.object(autopilot, "AUTOPILOT_MAX_AUTO_REFUND", 1000.0), \
+         patch.object(autopilot, "AUTOPILOT_CONFIDENCE_THRESHOLD", 0.0):
+        d = decide("please refund my order")
+    assert d.auto is False
+
+
+def test_involves_money_back_helper():
+    assert autopilot.involves_money_back("can I get my money back", "") is True
+    assert autopilot.involves_money_back("", "cancellation") is True
+    assert autopilot.involves_money_back("it arrived broken", "damaged_package") is False
 
 
 def test_high_value_order_escalates():

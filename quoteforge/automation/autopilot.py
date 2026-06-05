@@ -114,10 +114,40 @@ def _risk_and_money(res: dict, order: dict | None) -> tuple[str, float]:
     return ("medium", 0.0)
 
 
+# Categories whose outcome can involve money back / accepting a return.
+# These ALWAYS require human approval, regardless of any other setting.
+MONEY_BACK_CATEGORIES = {"cancellation"}
+# Words that signal the customer is asking for money back / a return, even if
+# the issue is otherwise classified (e.g. "it's damaged, I want a refund").
+REFUND_KEYWORDS = ("refund", "return", "money back", "money-back",
+                   "chargeback", "reimburse", "my money", "give me back")
+
+
+def involves_money_back(issue_text: str, category: str) -> bool:
+    """True if this is a refund/return — which is ALWAYS a human decision."""
+    if category in MONEY_BACK_CATEGORIES:
+        return True
+    low = (issue_text or "").lower()
+    return any(k in low for k in REFUND_KEYWORDS)
+
+
 def decide(issue_text: str, order: dict | None = None) -> AutoDecision:
     """Full decision: classify, resolve, and apply the auto/escalate policy."""
     category, confidence = classify_issue(issue_text)
     res = resolve_issue(category, order) if category else {"recognized": False}
+
+    # HARD RULE: any return or money-back request is never automated. This fires
+    # even for unrecognised issues and overrides confidence/caps/everything.
+    if involves_money_back(issue_text, res.get("category", "")):
+        return AutoDecision(
+            category=res.get("category", "refund_or_return"),
+            title="Return / refund request",
+            action="escalate", decision="Refund/return - human approval required",
+            confidence=confidence, risk="high",
+            money_out=(order or {}).get("sale_price") or DEFAULT_SALE_PRICE,
+            auto=False,
+            reason="returns and money-back ALWAYS require human approval",
+            customer_message=res.get("message", ""))
 
     if not res.get("recognized"):
         return AutoDecision(
