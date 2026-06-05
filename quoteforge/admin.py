@@ -28,6 +28,8 @@ Usage:
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print (logs audit trail)
   python -m quoteforge.admin resolve <issue> [ID]  # decide a return/refund issue + draft the reply
+  python -m quoteforge.admin sample-batch [N]      # review quote quality across categories
+  python -m quoteforge.admin artwork-qa            # render name/quote/size edge cases + preflight
   python -m quoteforge.admin preflight-art ART.png [size]  # artwork print-quality check
   python -m quoteforge.admin poll-etsy             # pull new paid Etsy orders (no Make/Zapier)
   python -m quoteforge.admin autopilot "<issue>" [ID]  # bot decides: auto-act or escalate to you
@@ -475,6 +477,33 @@ def _cmd_approvals(args: list[str]) -> int:
     return 0
 
 
+def _cmd_sample_batch(args: list[str]) -> int:
+    """Generate representative sample quotes across the emotional categories."""
+    from quoteforge import config
+    from quoteforge.quotes.sample_batch import (
+        generate_sample_batch, format_batch_text,
+    )
+    real = bool(config.ANTHROPIC_API_KEY) and "--mock" not in args
+    per = next((int(a) for a in args if a.isdigit()), 1)
+    results = generate_sample_batch(force_real=real, per_scenario=per)
+    text = format_batch_text(results, real)
+    print(text)
+    # Save for side-by-side review.
+    out = config.OUTPUT_DIR / "samples" / "quote_samples.txt"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    print(f"\nSaved: {out}")
+    return 0
+
+
+def _cmd_artwork_qa(args: list[str]) -> int:
+    """Render the edge-case artwork matrix and preflight each for visual review."""
+    from quoteforge.images.artwork_qa import run_artwork_qa, format_qa_text
+    report = run_artwork_qa(sizes="--quick" not in args)
+    print(format_qa_text(report))
+    return 0 if report["failed"] == 0 else 1
+
+
 def _cmd_preflight_art(args: list[str]) -> int:
     """Run the artwork print-quality preflight on a file for a product size."""
     from quoteforge.images.preflight import run_preflight, format_preflight_text
@@ -734,6 +763,8 @@ COMMANDS = {
     "resolve": _cmd_resolve,
     "policy": _cmd_policy,
     "preflight-art": _cmd_preflight_art,
+    "sample-batch": _cmd_sample_batch,
+    "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,
     "autopilot": _cmd_autopilot,
     "approvals": _cmd_approvals,
