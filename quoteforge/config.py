@@ -6,7 +6,10 @@ try:
     from dotenv import load_dotenv
     _env_path = Path(__file__).resolve().parent.parent / ".env"
     if _env_path.exists():
-        load_dotenv(_env_path)
+        # override=True makes the .env file authoritative. Without it, an empty
+        # OS environment variable (e.g. ANTHROPIC_API_KEY="") silently wins over
+        # the value in .env and keys appear "not set".
+        load_dotenv(_env_path, override=True)
 except ImportError:
     pass  # dotenv not installed — environment variables still work
 
