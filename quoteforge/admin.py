@@ -510,6 +510,16 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_build_batch(args: list[str]) -> int:
+    """Bulk-build the next N listing packages (SEO + optional art) to scale."""
+    from quoteforge.etsy.bulk_builder import build_batch, format_batch_text
+    batch = next((int(a) for a in args if a.isdigit()), 30)
+    with_art = "--art" in args
+    report = build_batch(batch=batch, with_art=with_art)
+    print(format_batch_text(report))
+    return 0
+
+
 def _cmd_growth(args: list[str]) -> int:
     """Growth intelligence: what to scale, retire, and which demand gaps to fill."""
     from quoteforge.etsy.growth_intel import (
@@ -893,6 +903,7 @@ COMMANDS = {
     "seasonal-seo": _cmd_seasonal_seo,
     "retention": _cmd_retention,
     "growth": _cmd_growth,
+    "build-batch": _cmd_build_batch,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,

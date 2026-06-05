@@ -99,11 +99,24 @@ def next_additions(current_count: int, batch: int = 10) -> list[dict]:
     strong_occasions = ["Graduation", "Birthday", "Christmas", "Mother's Day",
                         "Father's Day", "Anniversary", "Just Because",
                         "Memorial / In Memory Of"]
+    # Occasions only valid for specific relationships (no "Son Mother's Day Gift").
+    _occ_only = {
+        "Mother's Day": {"Mother", "Grandmother", "Wife"},
+        "Father's Day": {"Father", "Grandfather", "Husband"},
+        "Anniversary": {"Wife", "Husband"},
+    }
+
+    def _ok(rel: str, occ: str) -> bool:
+        allowed = _occ_only.get(occ)
+        return allowed is None or rel in allowed
+
     pool: list[dict] = []
-    # 1) proven relationships across strong occasions
+    # 1) proven relationships across COMPATIBLE strong occasions
     for rel in ["Daughter", "Son", "Mother", "Father", "Grandmother",
                 "Grandfather", "Wife", "Husband", "Best Friend", "Sister", "Brother"]:
         for occ in strong_occasions:
+            if not _ok(rel, occ):
+                continue
             pool.append({"title": f"Personalized {rel} {occ} Gift",
                          "relationship": rel, "occasion": occ, "tier": "proven"})
     # 2) career-specific (premium)
