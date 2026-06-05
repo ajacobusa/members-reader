@@ -81,6 +81,13 @@ def build_report_html() -> tuple[str, str]:
     except Exception:  # noqa: BLE001
         cost_block = ""
 
+    # Pending owner setup reminders (resurface daily until cleared).
+    try:
+        from quoteforge.reminders import reminders_html
+        cost_block += reminders_html()
+    except Exception:  # noqa: BLE001
+        pass
+
     body = f"""\
 <html><body style="font-family:Arial,sans-serif;color:#222">
   <h2 style="color:#1F4E79">QuoteForge Daily Sales Report</h2>
@@ -145,19 +152,26 @@ def send_cost_report(period: str = "today") -> dict:
     return _send_email(subject, body)
 
 
-def _send_email(subject: str, body: str) -> dict:
+def _send_email(subject: str, body: str, to: str = "") -> dict:
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         return {"status": "skipped",
                 "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}
+    recipient = to or REPORT_RECIPIENT
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = GMAIL_ADDRESS
-    msg["To"] = REPORT_RECIPIENT
+    msg["To"] = recipient
     msg.attach(MIMEText(body, "html"))
+    # The owner (REPORT_RECIPIENT) is BCC'd on EVERY email — including
+    # customer-facing auto-replies — so all communications are visible to you.
+    envelope = [recipient]
+    if REPORT_RECIPIENT and REPORT_RECIPIENT != recipient:
+        envelope.append(REPORT_RECIPIENT)
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-        server.sendmail(GMAIL_ADDRESS, [REPORT_RECIPIENT], msg.as_string())
-    return {"status": "sent", "to": REPORT_RECIPIENT, "subject": subject}
+        server.sendmail(GMAIL_ADDRESS, envelope, msg.as_string())
+    return {"status": "sent", "to": recipient, "bcc": REPORT_RECIPIENT,
+            "subject": subject}
 
 
 def send_period_report(period: str) -> dict:

@@ -100,6 +100,9 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
         "output_style": item.get("output_style", "Personal Letter"),
         "product_size": item.get("product_size") or item.get("size", ""),
         "quantity": int(item.get("quantity", 1) or 1),
+        # Buyer-provided custom content (verbatim text + their own photo).
+        "custom_text": item.get("custom_text") or item.get("custom_quote", ""),
+        "custom_image": item.get("custom_image") or item.get("custom_photo", ""),
         "sale_price": _parse_money(
             item.get("sale_price") or item.get("price") or item.get("item_total")
             or item.get("total") or item.get("order_total") or item.get("grandtotal")),

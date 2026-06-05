@@ -56,6 +56,21 @@ STATUS_MAP = {
 }
 
 
+def _auto_email_customer(order_data: dict, message: str) -> None:
+    """Auto-reply to the buyer (e.g. a photo-quality request), best-effort."""
+    from quoteforge.config import AUTO_EMAIL_CUSTOMER
+    email = order_data.get("customer_email", "")
+    if not (AUTO_EMAIL_CUSTOMER and email):
+        return
+    try:
+        from quoteforge.automation.emailer import _send_email
+        _send_email("A quick note about your Joffiels order",
+                    f"<html><body style='font-family:Arial'><pre>{message}</pre>"
+                    f"</body></html>", to=email)
+    except Exception:  # noqa: BLE001 - never fail the pipeline on an email
+        pass
+
+
 def _render_test_artwork(order_id: str, quote: str, recipient: str) -> Optional[Path]:
     """Render a simple placeholder poster PNG locally for TEST_MODE runs.
 
@@ -149,21 +164,29 @@ def run_full_pipeline(
     _log(order_id, "order_intake", "success", f"Order {order_id} created")
 
     try:
-        # ── Stage 2: AI Quote Generation ────────────────────────
-        _notify("quote_generation", "Generating personalized quote...")
-        from quoteforge.automation.retry import retry_call
-        variations = retry_call(
-            generate_personal_message,
-            relationship=order_data.get("relationship", "To My Friend"),
-            recipient_name=order_data.get("recipient_name", ""),
-            sender_name=order_data.get("sender_name", ""),
-            occasion=order_data.get("occasion", ""),
-            memory_or_story=order_data.get("memory", ""),
-            scenery=order_data.get("scenery", "Mountains"),
-            output_style=order_data.get("output_style", "Personal Letter"),
-            count=1,
-        )
-        quote = variations[0] if variations else ""
+        # ── Stage 2: Quote (verbatim custom text OR AI-generated) ──
+        # If the buyer supplied their OWN exact wording, use it verbatim and skip
+        # AI generation entirely. Otherwise generate a personalized quote.
+        custom_text = (order_data.get("custom_text")
+                       or order_data.get("custom_quote") or "").strip()
+        if custom_text:
+            _notify("quote_generation", "Using buyer's custom text (verbatim)...")
+            quote = custom_text
+        else:
+            _notify("quote_generation", "Generating personalized quote...")
+            from quoteforge.automation.retry import retry_call
+            variations = retry_call(
+                generate_personal_message,
+                relationship=order_data.get("relationship", "To My Friend"),
+                recipient_name=order_data.get("recipient_name", ""),
+                sender_name=order_data.get("sender_name", ""),
+                occasion=order_data.get("occasion", ""),
+                memory_or_story=order_data.get("memory", ""),
+                scenery=order_data.get("scenery", "Mountains"),
+                output_style=order_data.get("output_style", "Personal Letter"),
+                count=1,
+            )
+            quote = variations[0] if variations else ""
         update_order(order_id, generated_quote=quote)
         _log(order_id, "quote_generation", "success", f"{len(quote)} chars generated")
         _notify("quote_generation", f"Quote generated: {quote[:60]}...")
@@ -180,25 +203,69 @@ def run_full_pipeline(
                                             order_data.get("recipient_name", ""))
             artwork_url = png_path.as_uri() if png_path else ""
 
-        # Free local renderer (default) — composite quote over Unsplash bg with Pillow
+        # Free local renderer (default) — composite quote over background with Pillow.
         if not artwork_url and RENDERER == "local":
             from quoteforge.images.local_renderer import render_local_poster
-            category = order_data.get("category", "Motivation & Mindset")
-            scenery = order_data.get("scenery", "Mountains")
-            mood = get_mood(category, "")
-            keyword = get_unsplash_keyword(mood)
-            bg_url = fetch_background_url(keyword) or fetch_background_url(scenery)
             out_dir = OUTPUT_DIR / "pipeline" / order_id
-            # Render at the ORDERED product's exact 300-DPI dimensions so an
-            # 11x14 / canvas / etc. has the right proportions (no reprints).
+            # If the buyer supplied their OWN photo, use it as the background;
+            # otherwise fetch a scenic Unsplash image for the chosen mood.
+            custom_image = (order_data.get("custom_image")
+                            or order_data.get("custom_photo") or "")
             from quoteforge.etsy.gelato_catalog import dimensions_for
             size_key = (order_data.get("product_size")
                         or order_data.get("size") or gelato_product_uid)
+            bg_url = None
+            bg_path = None
+            if custom_image:
+                # Resolve to a local file so we can verify print quality first.
+                local = None
+                if str(custom_image).startswith(("http://", "https://")):
+                    local = download_png(custom_image, out_dir, "custom_photo")
+                elif Path(str(custom_image)).exists():
+                    local = Path(str(custom_image))
+                # QUALITY GATE: a low-res buyer photo must NEVER reach print.
+                if local:
+                    from quoteforge.images.photo_check import (
+                        check_customer_photo, photo_request_message)
+                    chk = check_customer_photo(local, size_key)
+                    if not chk["ok"]:
+                        msg = photo_request_message(
+                            chk, order_data.get("customer_name", "there"),
+                            order_data.get("recipient_name", "your order"))
+                        from quoteforge.db.database import (
+                            save_customer_message, enqueue_approval)
+                        save_customer_message(order_id, "photo_request", msg, sent=False)
+                        _log(order_id, "photo_check", "fail", chk["reason"])
+                        # set AFTER _log (which resets status to the stage name)
+                        update_order(order_id, status="needs_better_photo")
+                        _notify("artwork_generation",
+                                f"Buyer photo too low quality: {chk['reason']}")
+                        _auto_email_customer(order_data, msg)
+                        try:
+                            enqueue_approval(
+                                kind="photo", ref=order_id,
+                                summary=f"Buyer photo too low-res ({chk['reason']}) "
+                                        f"- auto-reply sent asking for a better one",
+                                proposed_action="await_better_photo", risk="medium",
+                                status="pending")
+                        except Exception:  # noqa: BLE001
+                            pass
+                        return get_order(order_id) or {}
+                    bg_path = local
+                    _notify("artwork_generation", "Buyer photo verified - using it.")
+            else:
+                category = order_data.get("category", "Motivation & Mindset")
+                scenery = order_data.get("scenery", "Mountains")
+                mood = get_mood(category, "")
+                keyword = get_unsplash_keyword(mood)
+                bg_url = fetch_background_url(keyword) or fetch_background_url(scenery)
+            # Render at the ORDERED product's exact 300-DPI dimensions.
             render_size = dimensions_for(size_key)
             png_path = render_local_poster(
                 quote=quote,
                 output_path=out_dir / "artwork.png",
                 background_url=bg_url,  # None → solid color fallback
+                background_path=bg_path,
                 size=render_size,
             )
             artwork_url = png_path.as_uri()

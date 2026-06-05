@@ -91,6 +91,13 @@ PREFLIGHT_DIMENSION_TOLERANCE: float = float(
 PREFLIGHT_ASPECT_TOLERANCE: float = float(
     os.getenv("PREFLIGHT_ASPECT_TOLERANCE", "0.06"))
 
+# ── Customer-supplied photo quality gate ─────────────────────────
+# Minimum effective DPI a buyer's own photo must meet for the ordered print
+# size. Below this the order is held and an auto-reply asks for a better photo.
+CUSTOMER_PHOTO_MIN_DPI: int = int(os.getenv("CUSTOMER_PHOTO_MIN_DPI", "120"))
+# Auto-email the buyer (when their email is known) on a bad photo.
+AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))

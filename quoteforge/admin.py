@@ -510,6 +510,46 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_remind(args: list[str]) -> int:
+    """Manage persistent setup reminders (shown in the daily report)."""
+    from quoteforge.reminders import (
+        add_reminder, done_reminder, format_reminders_text,
+    )
+    if args and args[0] == "add" and len(args) > 1:
+        rid = add_reminder(" ".join(args[1:]))
+        print(f"Reminder #{rid} added.")
+    elif args and args[0] == "done" and len(args) > 1:
+        ok = done_reminder(int(args[1]))
+        print(f"Reminder #{args[1]} {'cleared.' if ok else 'not found.'}")
+    else:
+        print(format_reminders_text())
+    return 0
+
+
+def _cmd_custom_copy(args: list[str]) -> int:
+    """Print ready-to-paste listing copy for custom quotes + photo requirements."""
+    from quoteforge.etsy.custom_copy import format_custom_copy
+    print(format_custom_copy())
+    return 0
+
+
+def _cmd_check_photo(args: list[str]) -> int:
+    """Check a customer-supplied photo's print quality for a given size."""
+    from quoteforge.images.photo_check import check_customer_photo, photo_request_message
+    if not args:
+        print("Usage: python -m quoteforge.admin check-photo PHOTO.jpg [size]")
+        return 2
+    size = args[1] if len(args) > 1 else "18x24 in"
+    chk = check_customer_photo(args[0], size)
+    print(f"Photo: {chk['actual_px'][0]}x{chk['actual_px'][1]}px  "
+          f"effective {chk['effective_dpi']} DPI  (min {chk['min_dpi']})")
+    print(f"Result: {'OK - print quality' if chk['ok'] else 'TOO LOW: ' + chk['reason']}")
+    if not chk["ok"]:
+        print("\nAuto-reply that would be sent to the buyer:\n")
+        print(photo_request_message(chk))
+    return 0 if chk["ok"] else 1
+
+
 def _cmd_delight(args: list[str]) -> int:
     """Post-delivery review + referral touches (the delight loop)."""
     from quoteforge.etsy.delight_loop import (
@@ -921,6 +961,9 @@ COMMANDS = {
     "growth": _cmd_growth,
     "build-batch": _cmd_build_batch,
     "delight": _cmd_delight,
+    "check-photo": _cmd_check_photo,
+    "custom-copy": _cmd_custom_copy,
+    "remind": _cmd_remind,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,
