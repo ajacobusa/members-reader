@@ -33,6 +33,7 @@ Usage:
   python -m quoteforge.admin artwork-qa            # render name/quote/size edge cases + preflight
   python -m quoteforge.admin preflight-art ART.png [size]  # artwork print-quality check
   python -m quoteforge.admin listing-pack POSTER.png [out]  # 5 Etsy gallery images from a design
+  python -m quoteforge.admin seo [N|export]        # per-listing Etsy SEO (title+13 tags+desc)
   python -m quoteforge.admin poll-etsy             # pull new paid Etsy orders (no Make/Zapier)
   python -m quoteforge.admin autopilot "<issue>" [ID]  # bot decides: auto-act or escalate to you
   python -m quoteforge.admin approvals [approve|reject ID]  # your decision queue (only when needed)
@@ -509,6 +510,54 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_seo(args: list[str]) -> int:
+    """Per-listing Etsy SEO (title + 13 tags + attributes + description)."""
+    from quoteforge.etsy.listing_seo import (
+        build_launch_seo, format_seo_text, export_seo_excel,
+        profession_seo, all_profession_seo, relationship_seo,
+    )
+    if args and args[0] == "prof" and len(args) > 1:
+        print(format_seo_text(profession_seo(" ".join(args[1:]))))
+        return 0
+    if args and args[0] == "rel" and len(args) > 1:
+        rel = args[1]
+        occ = " ".join(args[2:]) if len(args) > 2 else "Birthday"
+        print(format_seo_text(relationship_seo(rel, occ)))
+        return 0
+    if args and args[0] == "professions":
+        bundles = all_profession_seo()
+        bad = [b for b in bundles if b.warnings]
+        print(f"Profession SEO coverage - {len(bundles) - len(bad)}/{len(bundles)} "
+              f"job fields clean:")
+        for b in bundles:
+            flag = "[OK]" if not b.warnings else "[!!]"
+            print(f"  {flag} {b.niche:18} title {len(b.title)}/140, {len(b.tags)} tags")
+        return 0 if not bad else 1
+    if args and args[0] == "export":
+        path = export_seo_excel()
+        print(f"All 20 listings' SEO exported to:\n  {path}")
+        return 0
+    bundles = build_launch_seo()
+    if args and args[0].isdigit():
+        n = int(args[0])
+        match = next((b for b in bundles if b.listing_n == n), None)
+        if not match:
+            print(f"No launch listing #{n}.")
+            return 1
+        print(format_seo_text(match))
+        return 0
+    # summary: validate all + show first as example
+    bad = [b for b in bundles if b.warnings]
+    print(f"Generated SEO for {len(bundles)} launch listings - "
+          f"{len(bundles) - len(bad)}/{len(bundles)} clean.")
+    for b in bundles:
+        flag = "[OK]" if not b.warnings else "[!!]"
+        print(f"  {flag} #{b.listing_n:>2} {b.category:11} "
+              f"title {len(b.title)}/140, {len(b.tags)} tags  ({b.niche})")
+    print("\nView one:  admin seo 1     Export all:  admin seo export")
+    return 0 if not bad else 1
+
+
 def _cmd_listing_pack(args: list[str]) -> int:
     """Generate the full Etsy gallery image set from a print design."""
     from pathlib import Path
@@ -798,6 +847,7 @@ COMMANDS = {
     "costs": _cmd_costs,
     "preflight-art": _cmd_preflight_art,
     "listing-pack": _cmd_listing_pack,
+    "seo": _cmd_seo,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,
