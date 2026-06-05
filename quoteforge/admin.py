@@ -429,6 +429,14 @@ def _cmd_autopilot(args: list[str]) -> int:
           f"Money out: ${d['money_out']:.2f}")
     print(f"  Outcome    : {result['outcome'].upper()}")
     print(f"  Reason     : {d['reason']}")
+    pol = d.get("policy") or {}
+    if pol.get("known"):
+        print(f"\n  Etsy/Gelato policy:")
+        print(f"    Etsy returnable     : {pol['etsy_returnable']}  "
+              f"(Purchase-Protection risk: {pol['etsy_protection_risk']})")
+        print(f"    Gelato covers reprint: {pol['gelato_covered']}  "
+              f"(report window: {pol['report_window_days']} days)")
+        print(f"    Recommended         : {pol['recommended']}")
     if result["outcome"] == "queued_for_human":
         print(f"\n  -> Needs your approval. Approve with: "
               f"python -m quoteforge.admin approvals approve {result['approval_id']}")
@@ -462,6 +470,18 @@ def _cmd_approvals(args: list[str]) -> int:
         print(f"       confidence {a['confidence']:.2f} | order {a['ref'] or '-'}")
         print(f"       approve: admin approvals approve {a['id']}   "
               f"reject: admin approvals reject {a['id']}")
+    return 0
+
+
+def _cmd_policy(args: list[str]) -> int:
+    """Show the Etsy + Gelato policy facts for an issue category (or all)."""
+    from quoteforge.etsy.policy import POLICIES, format_policy_text
+    if args:
+        print(format_policy_text(args[0]))
+        return 0
+    for cat in POLICIES:
+        print(format_policy_text(cat))
+        print()
     return 0
 
 
@@ -683,6 +703,7 @@ COMMANDS = {
     "bundles": _cmd_bundles,
     "margins": _cmd_margins,
     "resolve": _cmd_resolve,
+    "policy": _cmd_policy,
     "autopilot": _cmd_autopilot,
     "approvals": _cmd_approvals,
     "plan": _cmd_plan,

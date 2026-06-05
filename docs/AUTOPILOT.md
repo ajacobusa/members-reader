@@ -27,6 +27,19 @@ underlying issue would otherwise auto-resolve (e.g. "it's damaged, I want a
 refund" goes to you, not the bot). Raising `AUTOPILOT_MAX_AUTO_REFUND` does **not**
 override this; bots offer free *replacements*, but money back is always your call.
 
+Every escalated return/refund carries the **Etsy + Gelato policy facts** so you
+can decide in seconds — whether Etsy considers it returnable, whether Etsy
+Purchase Protection could force a refund, whether Gelato covers a free reprint,
+and the reporting window. See `admin policy [issue]` for the full matrix; it's
+grounded in `docs/ETSY_RETURN_POLICY.md`:
+
+- Personalized remorse (changed mind / wrong personalization / approved-then-regret):
+  not returnable, not Gelato-covered → decline.
+- Damage / defect / poor quality / lost: Gelato-covered free reprint, **and**
+  Etsy Protection risk → resolve fast with a replacement to avoid a forced refund.
+- Wrong address: buyer's error, not covered → paid reprint only.
+- Cancellation: refund only before production starts.
+
 ## What the bots handle automatically
 
 - **Damage / defect / poor quality / lost package** → files a Gelato replacement

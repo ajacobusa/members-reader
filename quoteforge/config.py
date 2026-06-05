@@ -66,6 +66,12 @@ AUTOPILOT_HIGH_VALUE_ORDER: float = float(
     os.getenv("AUTOPILOT_HIGH_VALUE_ORDER", "150"))
 # Use Claude to classify free-text customer issues (falls back to keywords).
 AUTOPILOT_USE_LLM: bool = _env_bool("AUTOPILOT_USE_LLM", False)
+# Defect/damage reporting window the shop honours (days from delivery). Buyers
+# must report with a photo inside this window for a free replacement. Matches the
+# published Etsy return policy; keep <= Gelato's own claim window.
+POLICY_DEFECT_WINDOW_DAYS: int = int(os.getenv("POLICY_DEFECT_WINDOW_DAYS", "7"))
+# Window to report a lost-in-transit package (days from ship/last tracking).
+POLICY_LOST_WINDOW_DAYS: int = int(os.getenv("POLICY_LOST_WINDOW_DAYS", "30"))
 
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation

@@ -20,7 +20,7 @@ What is NEVER automated (by design, regardless of settings):
   * flipping TEST_MODE / going live and physical sample sign-off
 """
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 from quoteforge.config import (
     AUTOPILOT_ENABLED, AUTOPILOT_CONFIDENCE_THRESHOLD,
@@ -42,6 +42,7 @@ class AutoDecision:
     auto: bool             # will it execute without a human?
     reason: str            # why auto / why escalated
     customer_message: str
+    policy: dict = field(default_factory=dict)  # Etsy/Gelato policy facts
 
 
 # ── Classifier ───────────────────────────────────────────────────
@@ -136,18 +137,23 @@ def decide(issue_text: str, order: dict | None = None) -> AutoDecision:
     category, confidence = classify_issue(issue_text)
     res = resolve_issue(category, order) if category else {"recognized": False}
 
+    from quoteforge.etsy.policy import policy_facts
+    cat = res.get("category", "")
+
     # HARD RULE: any return or money-back request is never automated. This fires
     # even for unrecognised issues and overrides confidence/caps/everything.
-    if involves_money_back(issue_text, res.get("category", "")):
+    # The Etsy/Gelato policy facts ride along so the human can decide quickly.
+    if involves_money_back(issue_text, cat):
         return AutoDecision(
-            category=res.get("category", "refund_or_return"),
+            category=cat or "refund_or_return",
             title="Return / refund request",
             action="escalate", decision="Refund/return - human approval required",
             confidence=confidence, risk="high",
             money_out=(order or {}).get("sale_price") or DEFAULT_SALE_PRICE,
             auto=False,
             reason="returns and money-back ALWAYS require human approval",
-            customer_message=res.get("message", ""))
+            customer_message=res.get("message", ""),
+            policy=policy_facts(cat) if cat else {})
 
     if not res.get("recognized"):
         return AutoDecision(
@@ -185,7 +191,7 @@ def decide(issue_text: str, order: dict | None = None) -> AutoDecision:
         money_out=money_out, auto=auto,
         reason="all gates passed - auto-executing" if auto
                else "escalated to human: " + "; ".join(reasons),
-        customer_message=res["message"])
+        customer_message=res["message"], policy=policy_facts(res["category"]))
 
 
 # ── Execution ────────────────────────────────────────────────────
@@ -210,11 +216,15 @@ def handle_issue(issue_text: str, order_id: str | None = None,
             risk=d.risk, status="auto", decided_by="autopilot")
         return {"outcome": "auto-executed", "decision": asdict(d)}
 
-    # Escalate — stage for human sign-off.
+    # Escalate — stage for human sign-off, with the policy recommendation inline.
+    rec = d.policy.get("recommended", "") if d.policy else ""
+    summary = f"{d.title} → {d.decision}" + (f" | Policy: {rec}" if rec else "")
     aid = enqueue_approval(
-        kind="issue", ref=order_id or "", summary=f"{d.title} → {d.decision}",
-        proposed_action=d.action, payload=payload, confidence=d.confidence,
-        risk=d.risk, status="pending")
+        kind="issue", ref=order_id or "", summary=summary,
+        proposed_action=d.action,
+        payload=json.dumps({"order_id": order_id, "action": d.action,
+                            "category": d.category, "policy": d.policy}),
+        confidence=d.confidence, risk=d.risk, status="pending")
     return {"outcome": "queued_for_human", "approval_id": aid,
             "decision": asdict(d)}
 
