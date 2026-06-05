@@ -322,14 +322,6 @@ def get_templates_by_scenery(scenery_type: str) -> list[dict]:
         return [dict(r) for r in rows]
 
 
-def get_all_orders() -> list[dict]:
-    """Return every order, newest first (for retention / LTV analysis)."""
-    with _conn() as conn:
-        rows = conn.execute(
-            "SELECT * FROM orders ORDER BY created_at DESC").fetchall()
-        return [dict(r) for r in rows]
-
-
 def get_order_stats() -> dict:
     """Return aggregate order statistics for the dashboard."""
     with _conn() as conn:

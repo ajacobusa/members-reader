@@ -91,6 +91,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:15"],
         "Retention/LTV agent: emails repeat-gift outreach (gift the same "
         "recipient again), cross-sell, and lapsed-customer win-backs."),
+    ScheduledJob(
+        "QuoteForge Growth Intelligence", "growth email",
+        ["/SC", "MONTHLY", "/D", "1", "/ST", "08:20"],
+        "Monthly growth agent: which segments to scale (add variations), which "
+        "to retire, and demand gaps to fill - from real sales data."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

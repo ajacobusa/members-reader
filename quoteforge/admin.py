@@ -510,6 +510,20 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_growth(args: list[str]) -> int:
+    """Growth intelligence: what to scale, retire, and which demand gaps to fill."""
+    from quoteforge.etsy.growth_intel import (
+        growth_actions, format_growth_text, send_growth_report,
+    )
+    if args and args[0] == "email":
+        out = send_growth_report()
+        print(format_growth_text(out["growth"]))
+        print(f"\nEmail: {out['status']}")
+        return 0
+    print(format_growth_text(growth_actions()))
+    return 0
+
+
 def _cmd_retention(args: list[str]) -> int:
     """Retention/LTV actions: repeat-gift outreach, cross-sell, win-backs."""
     from quoteforge.etsy.retention import (
@@ -878,6 +892,7 @@ COMMANDS = {
     "seo": _cmd_seo,
     "seasonal-seo": _cmd_seasonal_seo,
     "retention": _cmd_retention,
+    "growth": _cmd_growth,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,

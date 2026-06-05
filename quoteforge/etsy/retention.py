@@ -192,7 +192,7 @@ def retention_digest(now: datetime | None = None) -> dict:
     from quoteforge.db.database import init_db, get_all_orders
     init_db()
     now = now or datetime.now()
-    orders = get_all_orders()
+    orders = get_all_orders(limit=100000)
     billable = [o for o in orders if o.get("status") not in (None, "error")]
     outreach = repeat_gift_outreach(billable, now)
     cross = [complete_the_story(o) for o in billable
