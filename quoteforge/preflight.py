@@ -169,7 +169,7 @@ def check_software() -> list[CheckResult]:
             import waitress  # noqa: F401
             return "waitress installed"
         except ImportError:
-            raise RuntimeError("waitress not installed — `pip install waitress`")
+            raise RuntimeError("waitress not installed - `pip install waitress`")
     ok, detail = _safe(_waitress)
     results.append(CheckResult("Production WSGI server (waitress)",
                                "PASS" if ok else "CONFIG", detail))
@@ -184,12 +184,12 @@ def check_config() -> list[CheckResult]:
 
     results.append(CheckResult(
         "TEST_MODE", "PASS" if config.TEST_MODE else "CONFIG",
-        "true (safe)" if config.TEST_MODE else "FALSE — live mode!"))
+        "true (safe)" if config.TEST_MODE else "FALSE - live mode!"))
 
     env_path = Path(__file__).resolve().parent.parent / ".env"
     results.append(CheckResult(
         ".env file", "PASS" if env_path.exists() else "CONFIG",
-        "present" if env_path.exists() else "missing — copy .env.example"))
+        "present" if env_path.exists() else "missing - copy .env.example"))
 
     keys = {
         "ANTHROPIC_API_KEY": config.ANTHROPIC_API_KEY,
@@ -248,14 +248,14 @@ def _print_report(report: dict) -> None:
     print("\nCredentials / Settings (configure before live):")
     for r in report["config"]:
         print(line(r))
-    print("\nManual — physical verification required (cannot automate):")
+    print("\nManual - physical verification required (cannot automate):")
     for m in report["manual"]:
         print(f"  [MANUAL] {m}")
     print("\n" + "=" * 64)
     if report["software_passed"]:
         print("SOFTWARE: ALL CHECKS PASSED")
     else:
-        print("SOFTWARE: SOME CHECKS FAILED — see [FAIL] above")
+        print("SOFTWARE: SOME CHECKS FAILED - see [FAIL] above")
     print("Physical print verification (Phase 4) is the remaining go-live gate.")
     print("=" * 64)
 
