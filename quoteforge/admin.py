@@ -32,6 +32,7 @@ Usage:
   python -m quoteforge.admin sample-batch [N]      # review quote quality across categories
   python -m quoteforge.admin artwork-qa            # render name/quote/size edge cases + preflight
   python -m quoteforge.admin preflight-art ART.png [size]  # artwork print-quality check
+  python -m quoteforge.admin listing-pack POSTER.png [out]  # 5 Etsy gallery images from a design
   python -m quoteforge.admin poll-etsy             # pull new paid Etsy orders (no Make/Zapier)
   python -m quoteforge.admin autopilot "<issue>" [ID]  # bot decides: auto-act or escalate to you
   python -m quoteforge.admin approvals [approve|reject ID]  # your decision queue (only when needed)
@@ -508,6 +509,22 @@ def _cmd_artwork_qa(args: list[str]) -> int:
     return 0 if report["failed"] == 0 else 1
 
 
+def _cmd_listing_pack(args: list[str]) -> int:
+    """Generate the full Etsy gallery image set from a print design."""
+    from pathlib import Path
+    from quoteforge.images.listing_pack import build_listing_pack, format_pack_text
+    if not args:
+        print("Usage: python -m quoteforge.admin listing-pack POSTER.png [out_dir]")
+        return 2
+    if not Path(args[0]).exists():
+        print(f"Poster not found: {args[0]}")
+        return 1
+    out = args[1] if len(args) > 1 else None
+    report = build_listing_pack(args[0], out)
+    print(format_pack_text(report))
+    return 0 if report["failed"] == 0 else 1
+
+
 def _cmd_preflight_art(args: list[str]) -> int:
     """Run the artwork print-quality preflight on a file for a product size."""
     from quoteforge.images.preflight import run_preflight, format_preflight_text
@@ -780,6 +797,7 @@ COMMANDS = {
     "policy": _cmd_policy,
     "costs": _cmd_costs,
     "preflight-art": _cmd_preflight_art,
+    "listing-pack": _cmd_listing_pack,
     "sample-batch": _cmd_sample_batch,
     "artwork-qa": _cmd_artwork_qa,
     "poll-etsy": _cmd_poll_etsy,
