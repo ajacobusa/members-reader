@@ -70,6 +70,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "DAILY", "/ST", "06:00"],
         "Self-healing agent: checks infra, auto-fixes ops issues, "
         "measures performance, emails a digest with enhancement suggestions"),
+    ScheduledJob(
+        "QuoteForge Etsy Order Poll", "poll-etsy",
+        ["/SC", "MINUTE", "/MO", "10"],
+        "Polls Etsy every 10 min for new paid orders and imports them "
+        "(no Make/Zapier dependency)"),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

@@ -28,6 +28,8 @@ Usage:
   python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
   python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print (logs audit trail)
   python -m quoteforge.admin resolve <issue> [ID]  # decide a return/refund issue + draft the reply
+  python -m quoteforge.admin preflight-art ART.png [size]  # artwork print-quality check
+  python -m quoteforge.admin poll-etsy             # pull new paid Etsy orders (no Make/Zapier)
   python -m quoteforge.admin autopilot "<issue>" [ID]  # bot decides: auto-act or escalate to you
   python -m quoteforge.admin approvals [approve|reject ID]  # your decision queue (only when needed)
 """
@@ -473,6 +475,33 @@ def _cmd_approvals(args: list[str]) -> int:
     return 0
 
 
+def _cmd_preflight_art(args: list[str]) -> int:
+    """Run the artwork print-quality preflight on a file for a product size."""
+    from quoteforge.images.preflight import run_preflight, format_preflight_text
+    if not args:
+        print("Usage: python -m quoteforge.admin preflight-art ART.png [size]")
+        return 2
+    product = args[1] if len(args) > 1 else ""
+    report = run_preflight(args[0], product)
+    print(format_preflight_text(report))
+    return 0 if report["ok"] else 1
+
+
+def _cmd_poll_etsy(args: list[str]) -> int:
+    """Poll Etsy for new paid orders and import them (scheduled intake)."""
+    from quoteforge.automation.etsy_poller import poll_once
+    res = poll_once()
+    if res.get("mock"):
+        print("Etsy polling is in TEST/mock mode (no credentials) — no orders "
+              "pulled. Set ETSY_OAUTH_TOKEN + ETSY_SHOP_ID to go live.")
+        return 0
+    print(f"Polled {res['polled']} receipt(s): imported {len(res['imported'])}, "
+          f"skipped {res['skipped']}.")
+    for oid in res["imported"]:
+        print(f"  + imported order {oid}")
+    return 0
+
+
 def _cmd_policy(args: list[str]) -> int:
     """Show the Etsy + Gelato policy facts for an issue category (or all)."""
     from quoteforge.etsy.policy import POLICIES, format_policy_text
@@ -704,6 +733,8 @@ COMMANDS = {
     "margins": _cmd_margins,
     "resolve": _cmd_resolve,
     "policy": _cmd_policy,
+    "preflight-art": _cmd_preflight_art,
+    "poll-etsy": _cmd_poll_etsy,
     "autopilot": _cmd_autopilot,
     "approvals": _cmd_approvals,
     "plan": _cmd_plan,

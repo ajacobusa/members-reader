@@ -229,7 +229,25 @@ def process_gelato_callback(payload: dict) -> dict:
                 "reference": ref}
     update_order(ref, **fields)
     logger.info(f"Gelato callback applied to {ref}: {fields}")
-    return {"status": "ok", "reference": ref, "updated": fields}
+
+    # Highest-value automation: when Gelato reports tracking, push it straight
+    # onto the Etsy receipt so the buyer sees "Shipped" + tracking automatically.
+    etsy_push = None
+    if tracking:
+        try:
+            from quoteforge.automation.etsy_api import create_receipt_shipment
+            order = get_order(ref)
+            receipt_id = (order or {}).get("etsy_order_id") or ref
+            carrier = (payload.get("trackingCarrier")
+                       or payload.get("carrier") or "other")
+            etsy_push = create_receipt_shipment(receipt_id, tracking, carrier)
+            logger.info(f"Pushed tracking to Etsy receipt {receipt_id}: "
+                        f"{etsy_push.get('status')}")
+        except Exception as exc:  # noqa: BLE001 - never fail the callback on this
+            logger.error(f"Etsy tracking push failed for {ref}: {exc}")
+            etsy_push = {"status": "error", "detail": str(exc)}
+    return {"status": "ok", "reference": ref, "updated": fields,
+            "etsy_tracking_push": etsy_push}
 
 
 if FLASK_AVAILABLE and app:

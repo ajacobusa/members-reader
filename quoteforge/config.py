@@ -73,6 +73,17 @@ POLICY_DEFECT_WINDOW_DAYS: int = int(os.getenv("POLICY_DEFECT_WINDOW_DAYS", "7")
 # Window to report a lost-in-transit package (days from ship/last tracking).
 POLICY_LOST_WINDOW_DAYS: int = int(os.getenv("POLICY_LOST_WINDOW_DAYS", "30"))
 
+# ── Artwork preflight (print-quality gate before Gelato) ─────────
+PREFLIGHT_ENABLED: bool = _env_bool("PREFLIGHT_ENABLED", True)
+PREFLIGHT_TARGET_DPI: int = int(os.getenv("PREFLIGHT_TARGET_DPI", "300"))
+PREFLIGHT_MIN_DPI: int = int(os.getenv("PREFLIGHT_MIN_DPI", "150"))
+# Allowed shortfall vs the product's required pixel dimensions (0.05 = 5%).
+PREFLIGHT_DIMENSION_TOLERANCE: float = float(
+    os.getenv("PREFLIGHT_DIMENSION_TOLERANCE", "0.05"))
+# Allowed aspect-ratio drift vs the product's spec.
+PREFLIGHT_ASPECT_TOLERANCE: float = float(
+    os.getenv("PREFLIGHT_ASPECT_TOLERANCE", "0.06"))
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))
@@ -119,6 +130,11 @@ CANVA_BRAND_TEMPLATE_ID: str = os.getenv("CANVA_BRAND_TEMPLATE_ID", "")
 # Etsy API (for webhook verification + order pulling)
 ETSY_SHOP_ID: str = os.getenv("ETSY_SHOP_ID", "")
 ETSY_API_KEY: str = os.getenv("ETSY_API_KEY", "")
+# OAuth token for authorized shop access (orders + fulfillment). From the Etsy
+# OAuth flow; refresh token lets the poller renew it without re-auth.
+ETSY_OAUTH_TOKEN: str = os.getenv("ETSY_OAUTH_TOKEN", "")
+ETSY_REFRESH_TOKEN: str = os.getenv("ETSY_REFRESH_TOKEN", "")
+ETSY_API_BASE: str = os.getenv("ETSY_API_BASE", "https://openapi.etsy.com/v3")
 ETSY_WEBHOOK_SECRET: str = os.getenv("ETSY_WEBHOOK_SECRET", "")
 # Shared secret Gelato signs its status/tracking callbacks with (set the same
 # value in the Gelato dashboard webhook config). Empty = verification disabled.
