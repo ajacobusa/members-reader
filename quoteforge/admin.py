@@ -629,6 +629,21 @@ def _cmd_delight(args: list[str]) -> int:
     return 0
 
 
+def _cmd_launch_kit(args: list[str]) -> int:
+    """Build the COMPLETE ready-to-upload kit for the 20 launch listings."""
+    from quoteforge.etsy.bulk_builder import build_launch_kit
+    with_art = "--no-art" not in args
+    print("Building launch kit for the 20 listings"
+          + (" with designs + gallery images..." if with_art else " (SEO only)..."))
+    r = build_launch_kit(with_art=with_art)
+    print(f"\nDone: {r['count']} listing package(s), SEO clean {r['seo_clean']}/"
+          f"{r['count']}, designs {r['art_generated']}/{r['count']}.")
+    print(f"Folder        : {r['output_dir']}")
+    print(f"Master SEO     : {r['master_excel']}")
+    print(f"Upload checklist: {r['output_dir']}\\UPLOAD_CHECKLIST.txt")
+    return 0
+
+
 def _cmd_build_batch(args: list[str]) -> int:
     """Bulk-build the next N listing packages (SEO + optional art) to scale."""
     from quoteforge.etsy.bulk_builder import build_batch, format_batch_text
@@ -1024,6 +1039,7 @@ COMMANDS = {
     "retention": _cmd_retention,
     "growth": _cmd_growth,
     "build-batch": _cmd_build_batch,
+    "launch-kit": _cmd_launch_kit,
     "delight": _cmd_delight,
     "check-photo": _cmd_check_photo,
     "custom-copy": _cmd_custom_copy,

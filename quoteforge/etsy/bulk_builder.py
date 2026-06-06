@@ -64,14 +64,83 @@ def build_batch(batch: int = 30, start_count: int | None = None,
             "seo_clean": clean, "with_art": with_art, "listings": results}
 
 
-def _generate_art(listing: LaunchListing, folder: Path) -> None:
+# Tasteful sample first-names so launch gallery photos look real (not "[Name]").
+_SAMPLE_NAME = {
+    "daughter": "Emma", "son": "Liam", "mother": "Mom", "mom": "Mom",
+    "father": "Dad", "dad": "Dad", "grandmother": "Grandma",
+    "grandfather": "Grandpa", "wife": "Sarah", "husband": "James",
+    "best friend": "Grace", "family": "Our Family", "pet": "Buddy",
+}
+
+
+def build_launch_kit(with_art: bool = True, output_dir=None) -> dict:
+    """Produce ready-to-upload packages for the ACTUAL 20 launch listings:
+    SEO bundle + a real sample design + 5 gallery images + section + checklist."""
+    from quoteforge.config import OUTPUT_DIR
+    from quoteforge.etsy.shop_layout import assign_listings
+    out_dir = Path(output_dir) if output_dir else (OUTPUT_DIR / "launch_kit")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Which section each title belongs to.
+    section_of = {}
+    for sec, titles in assign_listings().items():
+        for t in titles:
+            section_of[t] = sec
+
+    results, bundles = [], []
+    for l in LAUNCH_PACK_20:
+        bundle = optimize_listing(l)
+        bundles.append(bundle)
+        folder = out_dir / f"{l.n:02d}_{_slug(l.title)}"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "seo.txt").write_text(
+            f"SECTION: {section_of.get(l.title, 'Best Sellers')}\n\n"
+            + format_seo_text(bundle), encoding="utf-8")
+        rec = {"n": l.n, "title": l.title,
+               "section": section_of.get(l.title, "Best Sellers"),
+               "art": False, "warnings": bundle.warnings}
+        if with_art:
+            try:
+                _generate_art(l, folder, _SAMPLE_NAME.get(l.relationship.lower(), "Emma"))
+                rec["art"] = True
+            except Exception as exc:  # noqa: BLE001
+                rec["art_error"] = f"{type(exc).__name__}: {exc}"
+        results.append(rec)
+
+    master = _export_master(bundles, out_dir)
+    _write_checklist(results, out_dir)
+    clean = sum(1 for r in results if not r["warnings"])
+    arted = sum(1 for r in results if r["art"])
+    return {"count": len(results), "output_dir": str(out_dir),
+            "master_excel": str(master), "seo_clean": clean,
+            "art_generated": arted, "with_art": with_art, "listings": results}
+
+
+def _write_checklist(results: list[dict], out_dir: Path) -> None:
+    lines = ["JOFFIELS LAUNCH UPLOAD CHECKLIST", "=" * 40,
+             "For EACH listing below, in Etsy: create listing -> paste title/tags/",
+             "description from seo.txt -> upload the 5 gallery images -> set the",
+             "section -> price ladder -> personalization ON -> publish.\n"]
+    by_section: dict[str, list[dict]] = {}
+    for r in results:
+        by_section.setdefault(r["section"], []).append(r)
+    for sec, items in by_section.items():
+        lines.append(f"\n## SECTION: {sec}")
+        for r in items:
+            lines.append(f"  [ ] #{r['n']:02d} {r['title']}"
+                         + ("  (+images)" if r["art"] else ""))
+    (out_dir / "UPLOAD_CHECKLIST.txt").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _generate_art(listing: LaunchListing, folder: Path,
+                  sample_name: str = "Emma") -> None:
     """Generate a poster design + the 5-image listing pack for one listing."""
     from quoteforge.quotes.generator import generate_personal_message
     from quoteforge.images.local_renderer import render_local_poster
     from quoteforge.images.listing_pack import build_listing_pack
     from quoteforge.config import ANTHROPIC_API_KEY
     quote = generate_personal_message(
-        relationship=listing.relationship, recipient_name="[Name]",
+        relationship=listing.relationship, recipient_name=sample_name,
         sender_name="", occasion=listing.occasion, memory_or_story="",
         scenery="Mountains", output_style="Custom Quote", count=1,
         force_real=bool(ANTHROPIC_API_KEY))[0]

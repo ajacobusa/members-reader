@@ -60,3 +60,36 @@ def test_cli_build_batch(tmp_path, capsys):
     assert rc == 0
     assert "BULK LISTING BUILDER" in out
     assert "6 listing package" in out
+
+
+# ── Launch kit (the actual 20 launch listings) ───────────────────
+
+def test_launch_kit_builds_all_20(tmp_path):
+    from quoteforge.etsy.bulk_builder import build_launch_kit
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    r = build_launch_kit(with_art=False, output_dir=tmp_path)
+    assert r["count"] == len(LAUNCH_PACK_20)
+    assert r["seo_clean"] == r["count"]                 # all SEO valid
+    # per-listing folder with seo.txt + section label
+    folders = [p for p in Path(tmp_path).iterdir() if p.is_dir()]
+    assert len(folders) == len(LAUNCH_PACK_20)
+    sample = (folders[0] / "seo.txt").read_text(encoding="utf-8")
+    assert "SECTION:" in sample and "TITLE" in sample
+
+
+def test_launch_kit_writes_checklist_and_master(tmp_path):
+    from quoteforge.etsy.bulk_builder import build_launch_kit
+    build_launch_kit(with_art=False, output_dir=tmp_path)
+    assert (tmp_path / "UPLOAD_CHECKLIST.txt").exists()
+    assert (tmp_path / "batch_seo_master.xlsx").exists()
+    checklist = (tmp_path / "UPLOAD_CHECKLIST.txt").read_text(encoding="utf-8")
+    assert "SECTION:" in checklist
+
+
+def test_cli_launch_kit_no_art(tmp_path, capsys):
+    import quoteforge.config as config
+    from unittest.mock import patch
+    with patch.object(config, "OUTPUT_DIR", tmp_path):
+        rc = admin.main(["launch-kit", "--no-art"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "20 listing package" in out
