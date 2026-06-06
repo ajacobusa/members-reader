@@ -5,12 +5,133 @@ description) from a launch-kit listing, with all images base64-embedded so the
 single .html file opens anywhere via a file:// URL - for review/comment.
 """
 import base64
+import hashlib
+from io import BytesIO
 from pathlib import Path
 
 
 def _b64(path: Path) -> str:
     data = base64.b64encode(path.read_bytes()).decode("ascii")
     return f"data:image/png;base64,{data}"
+
+
+def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
+    """Downscaled JPEG data-URI so the shared page loads fast (small payload)."""
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    buf = BytesIO()
+    im.save(buf, "JPEG", quality=quality, optimize=True)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
+                    out_path=None) -> Path:
+    """A polished, password-gated shop-home landing page with logo/banner + the
+    full listing grid - customer-presentable and shareable as one link."""
+    from quoteforge.config import OUTPUT_DIR, ETSY_DEFAULT_LISTING_PRICE, SHOP_NAME
+    from quoteforge.etsy.listing_seo import build_launch_seo
+
+    kit_dir = Path(kit_dir) if kit_dir else (OUTPUT_DIR / "launch_kit")
+    brand = Path("brand")
+    bundles = build_launch_seo()
+    if numbers:
+        bundles = [b for b in bundles if b.listing_n in numbers]
+
+    cards = []
+    for b in bundles:
+        hero = next(iter(kit_dir.glob(f"{b.listing_n:02d}_*/gallery/1_hero_room.png")), None)
+        if not hero:
+            continue
+        cards.append(f"""
+   <div class="card">
+     <img class="hero" src="{_web_img(hero)}" alt="{b.title[:60]}">
+     <div class="cap">
+       <div class="ttl">{b.title.split(' | ')[0]}</div>
+       <div class="pr">from ${ETSY_DEFAULT_LISTING_PRICE:.2f}</div>
+     </div>
+   </div>""")
+
+    logo = brand / "joffiels_logo_green_gold.png"
+    banner = brand / "joffiels_banner.png"
+    logo_src = _web_img(logo, 240) if logo.exists() else ""
+    banner_src = _web_img(banner, 1400) if banner.exists() else ""
+    pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
+
+    gate = "" if not password else f"""
+<div id="gate">
+  <div class="gatebox">
+    {f'<img src="{logo_src}" class="glogo">' if logo_src else ''}
+    <h2>{SHOP_NAME}</h2>
+    <p>This preview is private. Please enter the password to view.</p>
+    <input id="pw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')check()">
+    <button onclick="check()">View</button>
+    <div id="err">Incorrect password - please try again.</div>
+  </div>
+</div>
+<script>
+ const H="{pw_hash}";
+ async function sha(s){{const b=await crypto.subtle.digest('SHA-256',
+   new TextEncoder().encode(s));return [...new Uint8Array(b)].map(
+   x=>x.toString(16).padStart(2,'0')).join('');}}
+ async function check(){{const v=document.getElementById('pw').value;
+   if(await sha(v)===H){{sessionStorage.setItem('jf','1');show();}}
+   else{{document.getElementById('err').style.display='block';}}}}
+ function show(){{document.getElementById('gate').style.display='none';
+   document.getElementById('site').style.display='block';}}
+ if(sessionStorage.getItem('jf')==='1')show();
+</script>"""
+
+    site_style = "display:none" if password else "display:block"
+    html = f"""<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{SHOP_NAME} - Personalized Wall Art</title>
+<style>
+ *{{box-sizing:border-box}} body{{font-family:'Helvetica Neue',Arial,sans-serif;
+   margin:0;background:#f6f3ee;color:#23302b}}
+ /* gate */
+ #gate{{position:fixed;inset:0;background:#0f3d2e;display:flex;align-items:center;
+   justify-content:center;z-index:99}}
+ .gatebox{{background:#fff;border-radius:14px;padding:34px;max-width:360px;
+   text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)}}
+ .glogo{{width:120px;margin-bottom:8px}}
+ .gatebox h2{{font-family:Georgia,serif;color:#0f3d2e;margin:6px 0}}
+ .gatebox p{{color:#666;font-size:14px}}
+ #pw{{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;
+   font-size:16px;margin:10px 0}}
+ .gatebox button{{background:#0f3d2e;color:#fff;border:none;padding:12px 0;
+   width:100%;border-radius:24px;font-size:16px;cursor:pointer}}
+ #err{{display:none;color:#b3261e;font-size:13px;margin-top:10px}}
+ /* hero */
+ .hero-banner{{width:100%;display:block}}
+ .ribbon{{background:#0f3d2e;color:#e8d8a8;text-align:center;padding:14px;
+   font-family:Georgia,serif;font-size:18px}}
+ .tag{{text-align:center;color:#5a6b62;margin:18px 16px;font-size:16px;line-height:1.5}}
+ .grid{{max-width:1180px;margin:10px auto 40px;display:grid;
+   grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 16px}}
+ .card{{background:#fff;border:1px solid #e6e0d6;border-radius:12px;overflow:hidden;
+   transition:transform .15s,box-shadow .15s}}
+ .card:hover{{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.10)}}
+ .card .hero{{width:100%;display:block;aspect-ratio:1/1;object-fit:cover}}
+ .cap{{padding:12px 14px}}
+ .ttl{{font-size:14px;line-height:1.45;height:60px;overflow:hidden;color:#2b3a33}}
+ .pr{{margin-top:8px;font-weight:bold;color:#0f3d2e;font-size:16px}}
+ .foot{{text-align:center;color:#9aa39d;font-size:12px;margin:30px 16px}}
+</style></head><body>
+{gate}
+<div id="site" style="{site_style}">
+ {f'<img class="hero-banner" src="{banner_src}">' if banner_src else f'<div class="ribbon">{SHOP_NAME}</div>'}
+ <div class="ribbon">Personalized wall art for life's most meaningful moments</div>
+ <p class="tag">Every piece is custom-made for your recipient - a name, an occasion,
+   their story. A free digital proof is sent before anything is printed.</p>
+ <div class="grid">{''.join(cards)}</div>
+ <div class="foot">{SHOP_NAME} - sample preview for review. Prices shown are starting
+   prices; every item is personalized to order.</div>
+</div>
+</body></html>"""
+    out = Path(out_path) if out_path else (kit_dir / "shop_home.html")
+    out.write_text(html, encoding="utf-8")
+    return out
 
 
 def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
