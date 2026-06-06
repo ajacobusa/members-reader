@@ -1085,6 +1085,30 @@ def _cmd_pinterest(args: list[str]) -> int:
     return 0
 
 
+def _cmd_pinterest_publish(args: list[str]) -> int:
+    """Generate AND auto-post the pin pack. `pinterest-publish [--live] [N ...]`.
+    Posts only when --live AND Pinterest is configured AND PINTEREST_AUTOPILOT=true;
+    otherwise generates images + pins.csv for manual upload (safe dry-run)."""
+    from quoteforge.marketing.pinterest_publisher import publish_pins
+    live = "--live" in args
+    nums = [int(a) for a in args if a.isdigit()] or None
+    r = publish_pins(numbers=nums, live=live)
+    print(r.get("message", ""))
+    print(f"  Generated: {r['generated']}  Posted: {r['posted']}  "
+          f"Failed: {r['failed']}  (configured={r['configured']}, live={r['live']})")
+    return 0 if r["failed"] == 0 else 1
+
+
+def _cmd_rebuild_site(args: list[str]) -> int:
+    """Rebuild the public GitHub Pages shop-home page (docs/index.html) with the
+    latest listings + analytics tags. Run by backup-all's push, fully hands-free."""
+    from pathlib import Path
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(out_path=Path("docs/index.html"))
+    print(f"Rebuilt {out} ({out.stat().st_size // 1024} KB)")
+    return 0
+
+
 def _cmd_email_capture(args: list[str]) -> int:
     """Build the email-capture kit (QR, announcement, Linktree, signup snippet)."""
     from quoteforge.marketing.email_capture import build_capture_kit
@@ -1114,6 +1138,8 @@ def _cmd_subscribers(args: list[str]) -> int:
 
 COMMANDS = {
     "pinterest": _cmd_pinterest,
+    "pinterest-publish": _cmd_pinterest_publish,
+    "rebuild-site": _cmd_rebuild_site,
     "email-capture": _cmd_email_capture,
     "subscribers": _cmd_subscribers,
     "gen-secret": lambda args: _cmd_gen_secret(),

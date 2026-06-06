@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from quoteforge.marketing import pinterest, email_capture
+from quoteforge.marketing import pinterest, email_capture, pinterest_publisher
 from quoteforge.etsy.listing_preview import _analytics_snippet, build_shop_home
 
 
@@ -75,6 +75,54 @@ def test_subscriber_add_and_dedupe(tmp_path, monkeypatch):
     assert db.add_subscriber("fan@example.com") is False   # dedupe (case-insensitive)
     assert db.add_subscriber("not-an-email") is False
     assert db.subscriber_count() == 1
+
+
+# ── Pinterest auto-publish (dry-run safe) ────────────────────────
+
+def test_publish_pins_dry_run_does_not_post(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.config.PINTEREST_ACCESS_TOKEN", "tok", raising=False)
+    monkeypatch.setattr("quoteforge.config.PINTEREST_BOARD_ID", "b1", raising=False)
+    monkeypatch.setattr("quoteforge.config.PINTEREST_AUTOPILOT", True, raising=False)
+    _seed_kit(tmp_path)
+    r = pinterest_publisher.publish_pins(kit_dir=tmp_path, out_dir=tmp_path / "p",
+                                         live=False)
+    assert r["generated"] > 0 and r["posted"] == 0 and r["live"] is False
+
+
+def test_publish_pins_no_post_when_unconfigured(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.config.PINTEREST_ACCESS_TOKEN", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.PINTEREST_BOARD_ID", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.PINTEREST_AUTOPILOT", False, raising=False)
+    _seed_kit(tmp_path)
+    r = pinterest_publisher.publish_pins(kit_dir=tmp_path, out_dir=tmp_path / "p",
+                                         live=True)
+    assert r["configured"] is False and r["posted"] == 0 and r["live"] is False
+
+
+# ── Auto-enroll buyer emails on order ────────────────────────────
+
+def test_order_auto_enrolls_subscriber(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    from quoteforge.db import database as db
+    db.init_db()
+    from quoteforge.automation import webhook_server
+    # Make the pipeline a no-op so we isolate the enrollment side-effect.
+    monkeypatch.setattr(webhook_server, "_run_one",
+                        lambda payload, oid: {"status": "duplicate"})
+    webhook_server.process_webhook_payload(
+        {"order_id": "X1", "customer_email": "Buyer@Shop.com"})
+    assert db.subscriber_count() == 1
+    assert db.get_subscribers()[0]["source"] == "etsy"
+
+
+# ── Admin command registration ───────────────────────────────────
+
+def test_new_commands_registered():
+    from quoteforge import admin
+    for c in ("pinterest", "pinterest-publish", "rebuild-site",
+              "email-capture", "subscribers"):
+        assert c in admin.COMMANDS
 
 
 # ── Analytics injection ──────────────────────────────────────────

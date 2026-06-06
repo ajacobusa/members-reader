@@ -118,6 +118,14 @@ SIGNUP_URL: str = os.getenv("SIGNUP_URL", "").strip()
 # Optional public Linktree/landing URL to print on inserts.
 LINKTREE_URL: str = os.getenv("LINKTREE_URL", "").strip()
 
+# ── Pinterest auto-publish (optional) ────────────────────────────
+# With a Pinterest API token + board id, scheduled pin packs are posted
+# automatically. Without them, `pinterest-publish` stays a dry-run (it still
+# generates the images + pins.csv for manual upload). No-op safe default.
+PINTEREST_ACCESS_TOKEN: str = os.getenv("PINTEREST_ACCESS_TOKEN", "").strip()
+PINTEREST_BOARD_ID: str = os.getenv("PINTEREST_BOARD_ID", "").strip()
+PINTEREST_AUTOPILOT: bool = _env_bool("PINTEREST_AUTOPILOT", False)
+
 # ── Web analytics (injected into the GitHub Pages shop-home page) ─
 # Both are no-ops when blank. Etsy Shop Stats needs no code (enable in Etsy).
 GA_MEASUREMENT_ID: str = os.getenv("GA_MEASUREMENT_ID", "").strip()   # e.g. G-XXXXXXX

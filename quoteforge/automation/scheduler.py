@@ -107,6 +107,22 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "DAILY", "/ST", "09:00"],
         "Post-delivery review + referral touches (~6 days after delivery) to "
         "build reviews and turn happy buyers into referrers."),
+    ScheduledJob(
+        "QuoteForge Pinterest Pins", "pinterest-publish --live",
+        ["/SC", "WEEKLY", "/D", "TUE", "/ST", "08:25"],
+        "Regenerates the Pinterest pin pack and auto-posts it (when Pinterest "
+        "is configured + PINTEREST_AUTOPILOT=true); otherwise refreshes the "
+        "images + pins.csv for manual upload."),
+    ScheduledJob(
+        "QuoteForge Email Capture Refresh", "email-capture",
+        ["/SC", "WEEKLY", "/D", "TUE", "/ST", "08:30"],
+        "Refreshes the email-capture kit (QR, announcement, Linktree, signup "
+        "snippet, insert card) so the audience-building assets stay current."),
+    ScheduledJob(
+        "QuoteForge Site Rebuild", "rebuild-site",
+        ["/SC", "DAILY", "/ST", "01:50"],
+        "Rebuilds the public shop-home page (docs/index.html) with the latest "
+        "listings + analytics; the 02:00 backup-all then pushes it live."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

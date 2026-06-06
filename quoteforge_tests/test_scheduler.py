@@ -8,7 +8,7 @@ from quoteforge import admin
 
 
 def test_all_jobs_defined_with_unique_names():
-    assert len(SCHEDULED_JOBS) == 16
+    assert len(SCHEDULED_JOBS) == 19
     # All names are unique
     assert len(EXPECTED_TASK_NAMES) == len({j.name for j in SCHEDULED_JOBS})
     assert "QuoteForge Daily Maintenance" in EXPECTED_TASK_NAMES
@@ -40,7 +40,7 @@ def test_install_dry_run_executes_nothing():
     calls = []
     summary = install_schedule(dry_run=True, runner=lambda *a, **k: calls.append(a))
     assert summary["dry_run"] is True
-    assert summary["total"] == 16
+    assert summary["total"] == len(SCHEDULED_JOBS)
     assert calls == []  # runner never invoked on a dry run
 
 
@@ -56,7 +56,7 @@ def test_install_invokes_runner_per_job():
         return FakeProc()
 
     summary = install_schedule(runner=fake_runner)
-    assert len(calls) == 16
+    assert len(calls) == len(SCHEDULED_JOBS)
     assert summary["errors"] == 0
     assert all(r["status"] == "ok" for r in summary["results"])
 
@@ -80,7 +80,7 @@ def test_install_reports_failures():
         stdout = ""
         stderr = "Access is denied"
     summary = install_schedule(runner=lambda *a, **k: FakeProc())
-    assert summary["errors"] == 16
+    assert summary["errors"] == len(SCHEDULED_JOBS)
     assert "denied" in format_install_text(summary).lower()
 
 

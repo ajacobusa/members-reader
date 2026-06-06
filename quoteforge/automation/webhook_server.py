@@ -150,6 +150,16 @@ def process_webhook_payload(payload: dict) -> dict:
     base_id = str(payload.get("order_id") or payload.get("etsy_order_id") or "")
     items = payload.get("items")
 
+    # Auto-grow the owned audience: enroll the buyer's email (idempotent, never
+    # fatal). This is the automated counterpart to the email-capture kit.
+    try:
+        email = payload.get("customer_email", "")
+        if email:
+            from quoteforge.db.database import add_subscriber
+            add_subscriber(email, source="etsy")
+    except Exception:  # noqa: BLE001 — list-building must never block an order
+        pass
+
     try:
         # ── Multi-item order ────────────────────────────────────
         if isinstance(items, list) and items:

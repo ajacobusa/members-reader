@@ -1,8 +1,20 @@
 # Pre-Launch Marketing — Email Capture, Pinterest, Analytics
 
-Three nice-to-haves that meaningfully lift launch results. All are wired into
-the CLI; the only manual steps are creating the external accounts and pasting
-the IDs/URLs into `.env`.
+Three nice-to-haves that meaningfully lift launch results. **All recurring work
+is automated by the scheduler** — the *only* human steps are the one-time
+external-account signups + pasting IDs/URLs into `.env` (code cannot create a
+Pinterest/Mailchimp/GA account for you).
+
+## Automated (scheduled) — nothing to run by hand
+| Job (Windows Task Scheduler) | When | What |
+|---|---|---|
+| `QuoteForge Site Rebuild` | daily 01:50 | rebuilds `docs/index.html` (listings + analytics) |
+| `QuoteForge Daily Backup` | daily 02:00 | pushes the rebuilt site live + backs everything up |
+| `QuoteForge Pinterest Pins` | Tue 08:25 | regenerates **and auto-posts** the pin pack (if configured) |
+| `QuoteForge Email Capture Refresh` | Tue 08:30 | refreshes the capture kit assets |
+| *(order intake)* | every 10 min | **auto-enrolls each buyer's email** into the list |
+
+Install once (as admin): `python -m quoteforge.admin install-schedule`.
 
 ## 1. Email capture — build an audience you own
 Set your signup form URL, then generate the kit:
