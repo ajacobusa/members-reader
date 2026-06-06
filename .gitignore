@@ -36,3 +36,13 @@ coverage.xml
 # OS
 .DS_Store
 Thumbs.db
+
+# Personal / non-project workspace dirs (NEVER publish to the public repo)
+/Resume Job/
+/Joffiels/
+/backups/
+/cache/
+/.superpowers/
+*.pdf
+~$*
+.~lock.*#
