@@ -54,6 +54,14 @@ def _cmd_gen_secret() -> int:
     return 0
 
 
+def _cmd_backup_all(args: list[str]) -> int:
+    """Full backup: DB snapshot + auto-commit + push to GitHub + bundle."""
+    from quoteforge.automation.full_backup import run_full_backup, format_backup_text
+    r = run_full_backup(push="--no-push" not in args)
+    print(format_backup_text(r))
+    return 0 if "fail" not in str(r.get("push", "")) else 1
+
+
 def _cmd_backup() -> int:
     from quoteforge.db.database import backup_database, prune_old_backups
     path = backup_database()
@@ -991,6 +999,7 @@ def _cmd_sample_quote() -> int:
 COMMANDS = {
     "gen-secret": lambda args: _cmd_gen_secret(),
     "backup": lambda args: _cmd_backup(),
+    "backup-all": _cmd_backup_all,
     "restore": _cmd_restore,
     "list-backups": lambda args: _cmd_list_backups(),
     "daily-report": lambda args: _cmd_daily_report(),

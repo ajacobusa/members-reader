@@ -55,9 +55,10 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "MONTHLY", "/MO", "JAN", "/D", "1", "/ST", "07:45"],
         "Emails the yearly sales report (Jan 1)"),
     ScheduledJob(
-        "QuoteForge Daily Backup", "backup",
+        "QuoteForge Daily Backup", "backup-all",
         ["/SC", "DAILY", "/ST", "02:00"],
-        "Snapshots the database and prunes old backups"),
+        "Full nightly backup: DB snapshot + auto-commit + push to GitHub + "
+        "refresh the local bundle (keeps everything off-machine, hands-free)"),
     ScheduledJob(
         "QuoteForge Health Check", "healthcheck",
         ["/SC", "HOURLY", "/MO", "5"],

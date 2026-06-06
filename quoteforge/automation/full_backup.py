@@ -1,0 +1,87 @@
+"""One-shot full backup: database + code (commit + push to GitHub) + bundle.
+
+Keeps everything safe off-machine with zero effort:
+  1. snapshot the database (+ prune to the retention window)
+  2. commit any tracked code changes (auto-backup commit)
+  3. push to GitHub so the work is off-disk
+  4. refresh a complete local git bundle (offline restore)
+
+Designed to run nightly (scheduled) and on demand (admin backup-all). Git steps
+are best-effort and only touch ALREADY-TRACKED files (git add -u), so untracked
+junk/secrets are never committed; .env stays gitignored.
+"""
+import subprocess
+from datetime import datetime
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _git(args: list[str], runner=subprocess.run) -> tuple[int, str]:
+    try:
+        p = runner(["git", *args], cwd=str(PROJECT_ROOT),
+                   capture_output=True, text=True, timeout=120)
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+    except Exception as exc:  # noqa: BLE001
+        return 1, f"{type(exc).__name__}: {exc}"
+
+
+def run_full_backup(push: bool = True, auto_commit: bool = True,
+                    runner=subprocess.run) -> dict:
+    result = {"timestamp": datetime.now().isoformat(timespec="seconds")}
+
+    # 1. Database snapshot + prune.
+    try:
+        from quoteforge.db.database import backup_database, prune_old_backups
+        dbpath = backup_database()
+        pruned = prune_old_backups()
+        result["db_backup"] = str(dbpath) if dbpath else "no database"
+        result["db_pruned"] = pruned
+    except Exception as exc:  # noqa: BLE001
+        result["db_backup"] = f"error: {exc}"
+
+    # 2. Auto-commit tracked changes (modifications/deletions only).
+    if auto_commit:
+        _git(["add", "-u"], runner)
+        code, _ = _git(["diff", "--cached", "--quiet"], runner)  # 1 = staged changes
+        if code == 1:
+            msg = f"chore: auto-backup {datetime.now():%Y-%m-%d %H:%M}"
+            c, out = _git(["commit", "-m", msg], runner)
+            result["auto_commit"] = "committed" if c == 0 else f"failed: {out[:120]}"
+        else:
+            result["auto_commit"] = "nothing to commit"
+
+    # 3. Push to GitHub.
+    if push:
+        c, out = _git(["push", "origin", "HEAD"], runner)
+        result["push"] = "pushed" if c == 0 else f"failed: {out.strip()[:160]}"
+
+    # 4. Refresh the complete local bundle.
+    try:
+        bundles = PROJECT_ROOT / "backups"
+        bundles.mkdir(exist_ok=True)
+        bundle = bundles / "joffiels_full_backup.bundle"
+        c, out = _git(["bundle", "create", str(bundle), "--all"], runner)
+        result["bundle"] = str(bundle) if c == 0 else f"failed: {out[:120]}"
+    except Exception as exc:  # noqa: BLE001
+        result["bundle"] = f"error: {exc}"
+
+    # Flag any UNTRACKED files the user may want to add manually.
+    _, st = _git(["status", "--porcelain", "--untracked-files=normal"], runner)
+    untracked = [l for l in st.splitlines() if l.startswith("??")]
+    result["untracked_count"] = len(untracked)
+    return result
+
+
+def format_backup_text(r: dict) -> str:
+    return "\n".join([
+        "=" * 56, f"FULL BACKUP - {r['timestamp']}", "=" * 56,
+        f"  Database : {r.get('db_backup', '-')}"
+        + (f" (pruned {r['db_pruned']})" if r.get("db_pruned") else ""),
+        f"  Code     : {r.get('auto_commit', 'skipped')}",
+        f"  Push     : {r.get('push', 'skipped')}",
+        f"  Bundle   : {r.get('bundle', '-')}",
+        f"  Untracked: {r.get('untracked_count', 0)} file(s) not in git "
+        f"(add manually if needed)",
+        "=" * 56,
+    ])
