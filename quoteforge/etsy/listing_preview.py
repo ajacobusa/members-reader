@@ -26,15 +26,25 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
 
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
-                    out_path=None, uat: bool = True) -> Path:
+                    out_path=None, uat: bool = True,
+                    feedback_form_url=None) -> Path:
     """A polished, password-gated shop-home / UAT page: logo+banner, a 20-listing
-    grid, a per-listing detail modal (all 5 images + description), and one-click
-    feedback (mailto to the owner). Shareable as one link."""
+    grid, a per-listing detail modal (all 5 images + description), a per-listing
+    star rating, and one-click feedback. Shareable as one link.
+
+    Feedback routing: if ``feedback_form_url`` (or config FEEDBACK_FORM_URL) is
+    set, buttons open that Google Form / survey with the listing title + star
+    rating in the URL fragment so responses auto-aggregate; otherwise a mailto
+    to the owner (with the rating in the body) is used."""
     import json
     from quoteforge.config import (
         OUTPUT_DIR, ETSY_DEFAULT_LISTING_PRICE, SHOP_NAME, REPORT_RECIPIENT,
+        FEEDBACK_FORM_URL,
     )
     from quoteforge.etsy.listing_seo import build_launch_seo
+
+    form_url = (feedback_form_url if feedback_form_url is not None
+                else FEEDBACK_FORM_URL) or ""
 
     kit_dir = Path(kit_dir) if kit_dir else (OUTPUT_DIR / "launch_kit")
     brand = Path("brand")
@@ -146,6 +156,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .closex{{float:right;font-size:24px;cursor:pointer;color:#888;padding:8px 14px}}
  .fbbtn{{display:block;background:#c9a84c;color:#22301e;text-align:center;
    text-decoration:none;padding:12px;border-radius:24px;font-weight:bold;margin:12px 0}}
+ /* star rating */
+ .rate{{margin:10px 0 4px}} .rate .lbl{{font-size:13px;color:#555;margin-bottom:4px}}
+ .stars2{{font-size:30px;line-height:1;cursor:pointer;user-select:none}}
+ .stars2 span{{color:#d8cdb6;transition:color .1s}}
+ .stars2 span.on{{color:#c9a84c}}
+ .ratemsg{{font-size:12px;color:#0f3d2e;min-height:16px;margin-top:2px}}
 </style></head><body>
 {gate}
 <div id="site" style="{site_style}">
@@ -170,6 +186,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="mleft"><img id="mmain"><div class="mthumbs" id="mthumbs"></div></div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
+       <div class="rate" id="mrate" style="display:none">
+         <div class="lbl">How likely are you to buy this as a gift?</div>
+         <div class="stars2" id="mstars">
+           <span data-v="1">&#9733;</span><span data-v="2">&#9733;</span><span data-v="3">&#9733;</span><span data-v="4">&#9733;</span><span data-v="5">&#9733;</span>
+         </div>
+         <div class="ratemsg" id="mratemsg"></div>
+       </div>
        <a id="mfb" class="fbbtn" href="#">💬 Tell us what you think</a>
        <div class="mdesc" id="mdesc"></div>
      </div>
@@ -181,14 +204,35 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const DATA = {data_json};
  const OWNER = "{owner}";
  const UAT = {str(bool(uat)).lower()};
+ const FORM_URL = "{form_url}";
+ let RATING = 0;          // current modal star rating
  function fbLink(t){{
+   const r = RATING ? RATING + "/5" : "(not rated)";
+   if(FORM_URL){{
+     const sep = FORM_URL.indexOf('#')>=0 ? '&' : '#';
+     return FORM_URL + sep + "listing=" + encodeURIComponent(t) +
+            "&rating=" + encodeURIComponent(r);
+   }}
    const s = encodeURIComponent("Joffiels feedback: " + t);
    const body = encodeURIComponent(
+     "Star rating (buy as a gift): " + r + "\\n\\n" +
      "Would you buy this as a gift?  (yes / maybe / no)\\n\\n" +
      "Does the price feel right?\\n\\n" +
      "Anything to change about the design or wording?\\n\\n");
    return "mailto:" + OWNER + "?subject=" + s + "&body=" + body;
  }}
+ function paintStars(){{
+   document.querySelectorAll('#mstars span').forEach(function(el){{
+     el.classList.toggle('on', parseInt(el.dataset.v) <= RATING);
+   }});
+ }}
+ function setRating(v){{
+   RATING = v; paintStars();
+   document.getElementById('mratemsg').textContent =
+     "Thanks! " + v + "/5 recorded - tap below to send it.";
+   document.getElementById('mfb').href = fbLink(DATA[CUR].title);
+ }}
+ let CUR = 0;
  function render(){{
    const g = document.getElementById('grid');
    g.innerHTML = DATA.map((d,i) => `
@@ -201,6 +245,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      </div>`).join('');
  }}
  function openM(i){{
+   CUR = i; RATING = 0; paintStars();
    const d = DATA[i];
    document.getElementById('mmain').src = d.imgs[0];
    document.getElementById('mthumbs').innerHTML = d.imgs.map(
@@ -208,11 +253,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mtitle').textContent = d.full_title;
    document.getElementById('mprice').textContent = "from $" + d.price;
    document.getElementById('mdesc').textContent = d.desc;
+   document.getElementById('mratemsg').textContent = "";
+   document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
-   fb.href = fbLink(d.title); fb.style.display = UAT ? 'block':'none';
+   fb.href = fbLink(d.title);
+   fb.textContent = FORM_URL ? "📝 Give feedback (1 min)" : "💬 Tell us what you think";
+   fb.style.display = UAT ? 'block':'none';
    document.getElementById('modal').style.display='flex';
  }}
  function closeM(){{document.getElementById('modal').style.display='none';}}
+ document.querySelectorAll('#mstars span').forEach(function(el){{
+   el.addEventListener('click', function(){{ setRating(parseInt(el.dataset.v)); }});
+ }});
  render();
 </script>
 </body></html>"""

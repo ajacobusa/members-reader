@@ -58,6 +58,33 @@ def upload_png_to_drive(file_path: Path, filename: str) -> Optional[str]:
         return None
 
 
+def upload_file_to_drive(file_path: Path, filename: str,
+                         mimetype: str = "application/octet-stream") -> Optional[str]:
+    """Upload any file (DB snapshot, git bundle) to Drive. Returns the file URL,
+    or None if Drive isn't configured / the upload fails. Best-effort, never
+    raises — off-site backup must never break the local backup."""
+    if not is_configured():
+        return None
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+
+        creds = service_account.Credentials.from_service_account_file(
+            GOOGLE_SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/drive.file"],
+        )
+        service = build("drive", "v3", credentials=creds)
+        media = MediaFileUpload(str(file_path), mimetype=mimetype, resumable=True)
+        uploaded = service.files().create(
+            body={"name": filename, "parents": [GOOGLE_DRIVE_FOLDER_ID]},
+            media_body=media, fields="id,webViewLink",
+        ).execute()
+        return uploaded.get("webViewLink", "")
+    except Exception:
+        return None
+
+
 def get_google_drive_setup() -> str:
     return """
 GOOGLE DRIVE API SETUP

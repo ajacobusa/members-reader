@@ -46,6 +46,34 @@ def test_no_gate_when_password_empty(tmp_path):
     assert 'id="gate"' not in out.read_text(encoding="utf-8")
 
 
+def test_uat_has_star_rating_widget(tmp_path):
+    _seed_kit(tmp_path)
+    out = build_shop_home(kit_dir=tmp_path, out_path=tmp_path / "h.html", uat=True)
+    h = out.read_text(encoding="utf-8")
+    assert 'id="mstars"' in h          # star widget markup
+    assert "function setRating" in h   # rating handler
+    assert "RATING" in h
+
+
+def test_feedback_form_url_routes_to_form(tmp_path):
+    _seed_kit(tmp_path)
+    url = "https://docs.google.com/forms/d/e/ABC/viewform"
+    out = build_shop_home(kit_dir=tmp_path, out_path=tmp_path / "h.html",
+                          feedback_form_url=url)
+    h = out.read_text(encoding="utf-8")
+    assert f'FORM_URL = "{url}"' in h
+    assert "listing=" in h and "rating=" in h
+
+
+def test_no_form_url_falls_back_to_mailto(tmp_path):
+    _seed_kit(tmp_path)
+    out = build_shop_home(kit_dir=tmp_path, out_path=tmp_path / "h.html",
+                          feedback_form_url="")
+    h = out.read_text(encoding="utf-8")
+    assert 'FORM_URL = ""' in h
+    assert "mailto:" in h
+
+
 def test_showroom_still_builds(tmp_path):
     _seed_kit(tmp_path)
     out = build_showroom(numbers=[1, 2], kit_dir=tmp_path,

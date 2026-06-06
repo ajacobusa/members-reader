@@ -66,6 +66,30 @@ def run_full_backup(push: bool = True, auto_commit: bool = True,
     except Exception as exc:  # noqa: BLE001
         result["bundle"] = f"error: {exc}"
 
+    # 5. Off-site copy to Google Drive (optional, best-effort).
+    try:
+        from quoteforge.config import BACKUP_TO_DRIVE
+        if BACKUP_TO_DRIVE:
+            from quoteforge.automation.google_drive_client import (
+                upload_file_to_drive, is_configured)
+            if not is_configured():
+                result["offsite"] = "skipped (Drive not configured)"
+            else:
+                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                links = []
+                db = result.get("db_backup", "")
+                if db and Path(db).exists():
+                    if upload_file_to_drive(Path(db), f"db_{stamp}.sqlite3"):
+                        links.append("db")
+                bnd = result.get("bundle", "")
+                if bnd and Path(bnd).exists():
+                    if upload_file_to_drive(Path(bnd), f"backup_{stamp}.bundle"):
+                        links.append("bundle")
+                result["offsite"] = (
+                    "uploaded " + "+".join(links) if links else "upload failed")
+    except Exception as exc:  # noqa: BLE001
+        result["offsite"] = f"error: {exc}"
+
     # Flag any UNTRACKED files the user may want to add manually.
     _, st = _git(["status", "--porcelain", "--untracked-files=normal"], runner)
     untracked = [l for l in st.splitlines() if l.startswith("??")]
@@ -81,6 +105,7 @@ def format_backup_text(r: dict) -> str:
         f"  Code     : {r.get('auto_commit', 'skipped')}",
         f"  Push     : {r.get('push', 'skipped')}",
         f"  Bundle   : {r.get('bundle', '-')}",
+        f"  Off-site : {r.get('offsite', 'disabled')}",
         f"  Untracked: {r.get('untracked_count', 0)} file(s) not in git "
         f"(add manually if needed)",
         "=" * 56,

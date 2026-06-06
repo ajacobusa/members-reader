@@ -386,6 +386,13 @@ def run_server(host: str = "0.0.0.0", port: int = 5050, debug: bool = False) -> 
     logger.info(f"QuoteForge Webhook Server starting on {host}:{port}")
     logger.info("Zapier/Make.com: POST to http://YOUR-IP:5050/order")
 
+    try:
+        from quoteforge.automation.monitoring import init_monitoring
+        if init_monitoring():
+            logger.info("Sentry error monitoring active")
+    except Exception:  # noqa: BLE001
+        pass
+
     # Prefer a production WSGI server. waitress works on Windows (gunicorn does
     # not). Falls back to the Flask dev server only if waitress isn't installed.
     if not debug:

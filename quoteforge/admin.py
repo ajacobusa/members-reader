@@ -1128,6 +1128,11 @@ COMMANDS = {
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        from quoteforge.automation.monitoring import init_monitoring
+        init_monitoring()
+    except Exception:  # noqa: BLE001 — monitoring is never load-bearing
+        pass
     argv = argv if argv is not None else sys.argv[1:]
     if not argv or argv[0] not in COMMANDS:
         print(__doc__)

@@ -98,6 +98,24 @@ CUSTOMER_PHOTO_MIN_DPI: int = int(os.getenv("CUSTOMER_PHOTO_MIN_DPI", "120"))
 # Auto-email the buyer (when their email is known) on a bad photo.
 AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
 
+# ── UAT / feedback collection ────────────────────────────────────
+# Optional Google Form (or any survey) URL. When set, the UAT shop-home page
+# routes its feedback buttons to this form (with the listing + star rating in
+# the URL fragment) instead of a mailto link, so responses auto-aggregate to a
+# sheet. Leave blank to use the built-in mailto-to-owner feedback.
+FEEDBACK_FORM_URL: str = os.getenv("FEEDBACK_FORM_URL", "").strip()
+
+# ── Off-site backup (Google Drive) ───────────────────────────────
+# When true, `backup-all` also uploads the DB snapshot + bundle to Google Drive
+# (requires a configured Drive client). Off by default; a no-op without creds.
+BACKUP_TO_DRIVE: bool = _env_bool("BACKUP_TO_DRIVE", False)
+BACKUP_DRIVE_FOLDER: str = os.getenv("BACKUP_DRIVE_FOLDER", "Joffiels-Backups").strip()
+
+# ── Error monitoring (optional) ──────────────────────────────────
+# Set a Sentry DSN to capture unhandled errors in the webhook server + admin.
+# No-op (zero overhead) when blank. Install `sentry-sdk` to enable.
+SENTRY_DSN: str = os.getenv("SENTRY_DSN", "").strip()
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))
