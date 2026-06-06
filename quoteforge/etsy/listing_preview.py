@@ -89,6 +89,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
 
+    # Product range + frame note for the detail modal.
+    try:
+        from quoteforge.etsy.variations import price_range, materials_offered
+        _lo, _hi = price_range()
+        materials_line = (" · ".join(m.split(" (")[0] for m in materials_offered())
+                          + f" — ${_lo:.0f}–${_hi:.0f}")
+    except Exception:  # noqa: BLE001
+        materials_line = ""
+
     logo = brand / "joffiels_logo_green_gold.png"
     banner = brand / "joffiels_banner.png"
     logo_src = _web_img(logo, 240) if logo.exists() else ""
@@ -207,6 +216,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="mleft"><img id="mmain"><div class="mthumbs" id="mthumbs"></div></div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
+       <div style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
+         Available as: {materials_line}<br>
+         <b>Frame not included</b> unless you choose a Framed option
+         (frame color: Black / White / Natural Oak). Canvas is gallery-wrapped (open).
+       </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>
          <div class="stars2" id="mstars">

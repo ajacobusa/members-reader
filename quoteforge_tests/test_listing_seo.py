@@ -166,11 +166,9 @@ def test_description_states_frame_not_included():
 
 
 def test_description_lists_real_product_options():
-    from quoteforge.etsy.listing_seo import build_launch_seo
-    from quoteforge.config import PRODUCTS
     desc = build_launch_seo()[0].description
     assert "CHOOSE YOUR PRODUCT" in desc
-    # every material in the catalog is surfaced
-    materials = {name.split(" ")[0] for name in PRODUCTS}
-    for m in materials:
+    for m in ("Poster", "Framed", "Canvas", "Acrylic", "Metal"):
         assert m in desc
+    for color in ("Black", "White", "Natural Oak"):
+        assert color in desc

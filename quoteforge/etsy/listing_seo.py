@@ -110,17 +110,10 @@ def _build_title(base_title: str, niche: str) -> str:
 
 
 def _product_options_block() -> str:
-    """A truthful 'choose your product' section built from the real catalog
-    (config.PRODUCTS), grouped by material with the available sizes."""
-    from quoteforge.config import PRODUCTS
-    groups: dict[str, list[str]] = {}
-    for name in PRODUCTS:
-        material, _, size = name.partition(" ")   # 'Poster 18x24 in'
-        groups.setdefault(material, []).append(size.replace(" in", "").strip())
-    lines = ["CHOOSE YOUR PRODUCT (select at checkout)"]
-    for material, sizes in groups.items():
-        lines.append(f"- {material}: {', '.join(sizes)}")
-    return "\n".join(lines) + "\n"
+    """The 'choose your product' section, built from the variation model so it
+    reflects real materials, sizes, frame colors and 60%-floor entry prices."""
+    from quoteforge.etsy.variations import options_block
+    return options_block() + "\n"
 
 
 def _build_description(listing, niche: str) -> str:
@@ -142,10 +135,11 @@ def _build_description(listing, niche: str) -> str:
         f"- Free digital proof before printing\n"
         f"- Your chosen print, made to order on premium materials\n\n"
         f"{_product_options_block()}\n"
-        f"FRAME NOT INCLUDED\n"
-        f"Unframed paper prints and canvas/metal/acrylic options do NOT come "
-        f"with a frame - the frame shown in the photos is for display only. "
-        f"If you'd like it framed, choose a \"Framed\" option at checkout.\n\n"
+        f"FRAME NOT INCLUDED (unless you choose a Framed option)\n"
+        f"Poster prints ship unframed and Canvas/Acrylic/Metal are frameless - "
+        f"the frame shown in the photos is for display only. Want it framed? "
+        f"Choose the \"Framed print\" material and your frame color "
+        f"(Black, White, or Natural Oak) at checkout.\n\n"
         f"POLICIES\n"
         f"Personalized items are made to order and final sale. If your order "
         f"arrives damaged or with a printing error, message us within 7 days "

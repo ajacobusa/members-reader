@@ -1099,6 +1099,37 @@ def _cmd_pinterest_publish(args: list[str]) -> int:
     return 0 if r["failed"] == 0 else 1
 
 
+def _cmd_variations(args: list[str]) -> int:
+    """Show the product/frame variation matrix + 60%-floor pricing, and write an
+    Etsy inventory CSV (Material/Size/Frame -> price + Gelato SKU). `variations`."""
+    import csv
+    from quoteforge.config import OUTPUT_DIR
+    from quoteforge.etsy.variations import (
+        build_variations, price_range, upsell_ladder, MATERIAL_LABELS)
+    vs = build_variations()
+    lo, hi = price_range()
+    ladder = upsell_ladder()
+    print(f"Variations: {len(vs)} | all clear 60%: {all(v.margin_pct>=60 for v in vs)}")
+    print(f"Price range: ${lo:.2f} - ${hi:.2f}")
+    print(f"Upsell ladder (lowest price/tier): entry ${ladder.get('entry',0):.2f}"
+          f" -> mid(framed) ${ladder.get('mid',0):.2f}"
+          f" -> top(canvas/acrylic/metal) ${ladder.get('top',0):.2f}")
+    out = OUTPUT_DIR / "etsy_inventory.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["material", "size", "frame_color", "price", "margin_pct",
+                    "gelato_sku", "gelato_cost", "tier"])
+        for v in vs:
+            w.writerow([MATERIAL_LABELS[v.material], v.size, v.frame_color,
+                        f"{v.price:.2f}", v.margin_pct, v.gelato_sku,
+                        f"{v.gelato_cost:.2f}", v.tier])
+    print(f"Etsy inventory CSV -> {out}")
+    print("Apply these as Variations on each listing (Material, Size, Frame "
+          "color). Frame colors apply to the Framed material only.")
+    return 0
+
+
 def _cmd_rebuild_site(args: list[str]) -> int:
     """Rebuild the public GitHub Pages shop-home page (docs/index.html) with the
     latest listings + analytics tags. Run by backup-all's push, fully hands-free."""
@@ -1137,6 +1168,7 @@ def _cmd_subscribers(args: list[str]) -> int:
 
 
 COMMANDS = {
+    "variations": _cmd_variations,
     "pinterest": _cmd_pinterest,
     "pinterest-publish": _cmd_pinterest_publish,
     "rebuild-site": _cmd_rebuild_site,
