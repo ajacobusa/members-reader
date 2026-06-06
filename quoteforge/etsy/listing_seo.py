@@ -109,6 +109,20 @@ def _build_title(base_title: str, niche: str) -> str:
     return base_title[:140].strip()
 
 
+def _product_options_block() -> str:
+    """A truthful 'choose your product' section built from the real catalog
+    (config.PRODUCTS), grouped by material with the available sizes."""
+    from quoteforge.config import PRODUCTS
+    groups: dict[str, list[str]] = {}
+    for name in PRODUCTS:
+        material, _, size = name.partition(" ")   # 'Poster 18x24 in'
+        groups.setdefault(material, []).append(size.replace(" in", "").strip())
+    lines = ["CHOOSE YOUR PRODUCT (select at checkout)"]
+    for material, sizes in groups.items():
+        lines.append(f"- {material}: {', '.join(sizes)}")
+    return "\n".join(lines) + "\n"
+
+
 def _build_description(listing, niche: str) -> str:
     from quoteforge.config import SHOP_NAME
     data = KEYWORD_DB.get(niche, {})
@@ -126,8 +140,12 @@ def _build_description(listing, niche: str) -> str:
         f"WHAT'S INCLUDED\n"
         f"- A one-of-a-kind, personalized design written for your {recipient.lower()}\n"
         f"- Free digital proof before printing\n"
-        f"- Premium paper, framed, and canvas options\n"
-        f"- Ready-to-frame standard sizes (8x10, 11x14, 16x20, 18x24)\n\n"
+        f"- Your chosen print, made to order on premium materials\n\n"
+        f"{_product_options_block()}\n"
+        f"FRAME NOT INCLUDED\n"
+        f"Unframed paper prints and canvas/metal/acrylic options do NOT come "
+        f"with a frame - the frame shown in the photos is for display only. "
+        f"If you'd like it framed, choose a \"Framed\" option at checkout.\n\n"
         f"POLICIES\n"
         f"Personalized items are made to order and final sale. If your order "
         f"arrives damaged or with a printing error, message us within 7 days "

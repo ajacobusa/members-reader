@@ -156,3 +156,21 @@ def test_cli_seo_single(capsys):
     out = capsys.readouterr().out
     assert rc == 0
     assert "TITLE" in out and "TAGS (13)" in out
+
+
+def test_description_states_frame_not_included():
+    from quoteforge.etsy.listing_seo import build_launch_seo
+    desc = build_launch_seo()[0].description
+    assert "FRAME NOT INCLUDED" in desc
+    assert "frame shown in the photos is for display only" in desc
+
+
+def test_description_lists_real_product_options():
+    from quoteforge.etsy.listing_seo import build_launch_seo
+    from quoteforge.config import PRODUCTS
+    desc = build_launch_seo()[0].description
+    assert "CHOOSE YOUR PRODUCT" in desc
+    # every material in the catalog is surfaced
+    materials = {name.split(" ")[0] for name in PRODUCTS}
+    for m in materials:
+        assert m in desc
