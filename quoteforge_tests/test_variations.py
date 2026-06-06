@@ -12,10 +12,16 @@ def test_min_price_clears_floor():
     assert V.net_margin_pct(round(price - 5.00, 2), 28.0) < 60
 
 
-def test_all_variations_clear_60():
+def test_all_variations_clear_the_configured_floor():
+    # The guarantee follows config.TARGET_MARGIN_PCT - it can't silently drift.
+    from quoteforge.config import TARGET_MARGIN_PCT
     vs = V.build_variations()
     assert len(vs) > 0
-    assert all(v.margin_pct >= 60 for v in vs)
+    assert all(v.margin_pct >= TARGET_MARGIN_PCT for v in vs)
+    # exact-cost recomputation (not the rounded display %) also clears the floor
+    assert all(
+        V.net_margin_pct(v.price, v.gelato_cost) >= TARGET_MARGIN_PCT
+        for v in vs)
 
 
 def test_framed_expands_into_six_frames():

@@ -70,7 +70,7 @@ def audit_catalog(floor_pct: float = None) -> dict:
 
 def format_audit_text(audit: dict) -> str:
     lines = ["=" * 60,
-             f"MARGIN GUARD — floor {audit['floor_pct']:.0f}% "
+             f"MARGIN GUARD - floor {audit['floor_pct']:.0f}% "
              f"({audit['checked']} items checked)", "=" * 60]
     if not audit["below_floor"]:
         lines.append(f"[OK] All {audit['checked']} items meet the "
