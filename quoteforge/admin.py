@@ -1069,7 +1069,53 @@ def _cmd_sample_quote() -> int:
     return 0
 
 
+def _cmd_pinterest(args: list[str]) -> int:
+    """Generate the Pinterest pin pack (images + pins.csv). `pinterest [N ...]`."""
+    from quoteforge.marketing.pinterest import build_pin_pack
+    nums = [int(a) for a in args if a.isdigit()] or None
+    pins = build_pin_pack(nums)
+    if not pins:
+        print("No launch-kit gallery images found. Run: launch-kit first.")
+        return 1
+    from quoteforge.config import OUTPUT_DIR
+    out = OUTPUT_DIR / "pinterest"
+    print(f"Pinterest pack: {len(pins)} pins -> {out}")
+    print(f"  Schedule CSV : {out / 'pins.csv'}")
+    print("Bulk-upload the images and paste titles/descriptions from pins.csv.")
+    return 0
+
+
+def _cmd_email_capture(args: list[str]) -> int:
+    """Build the email-capture kit (QR, announcement, Linktree, signup snippet)."""
+    from quoteforge.marketing.email_capture import build_capture_kit
+    r = build_capture_kit()
+    print(f"Email-capture kit -> {r['dir']}")
+    print(f"  Signup URL : {r['signup_url'] or '(set SIGNUP_URL in .env)'}")
+    print(f"  QR         : {r['qr_status']}")
+    for f in r["files"]:
+        print(f"  - {f}")
+    return 0
+
+
+def _cmd_subscribers(args: list[str]) -> int:
+    """List subscribers, or `subscribers add EMAIL [source]`."""
+    from quoteforge.db import database as db
+    db.init_db()
+    if args and args[0] == "add" and len(args) >= 2:
+        ok = db.add_subscriber(args[1], args[2] if len(args) > 2 else "manual")
+        print("Added." if ok else "Skipped (duplicate or invalid email).")
+        return 0 if ok else 1
+    subs = db.get_subscribers()
+    print(f"Subscribers: {len(subs)}")
+    for s in subs[:50]:
+        print(f"  {s['created_at']}  {s['email']}  ({s['source']})")
+    return 0
+
+
 COMMANDS = {
+    "pinterest": _cmd_pinterest,
+    "email-capture": _cmd_email_capture,
+    "subscribers": _cmd_subscribers,
     "gen-secret": lambda args: _cmd_gen_secret(),
     "backup": lambda args: _cmd_backup(),
     "backup-all": _cmd_backup_all,

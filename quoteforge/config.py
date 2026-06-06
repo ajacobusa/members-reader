@@ -111,6 +111,18 @@ FEEDBACK_FORM_URL: str = os.getenv("FEEDBACK_FORM_URL", "").strip()
 BACKUP_TO_DRIVE: bool = _env_bool("BACKUP_TO_DRIVE", False)
 BACKUP_DRIVE_FOLDER: str = os.getenv("BACKUP_DRIVE_FOLDER", "Joffiels-Backups").strip()
 
+# ── Audience / email capture ─────────────────────────────────────
+# Where the email-capture QR code + Linktree + announcement CTA point. Set this
+# to your mailing-list signup form (Mailchimp/MailerLite/Google Form/website).
+SIGNUP_URL: str = os.getenv("SIGNUP_URL", "").strip()
+# Optional public Linktree/landing URL to print on inserts.
+LINKTREE_URL: str = os.getenv("LINKTREE_URL", "").strip()
+
+# ── Web analytics (injected into the GitHub Pages shop-home page) ─
+# Both are no-ops when blank. Etsy Shop Stats needs no code (enable in Etsy).
+GA_MEASUREMENT_ID: str = os.getenv("GA_MEASUREMENT_ID", "").strip()   # e.g. G-XXXXXXX
+CLARITY_PROJECT_ID: str = os.getenv("CLARITY_PROJECT_ID", "").strip()  # Microsoft Clarity
+
 # ── Error monitoring (optional) ──────────────────────────────────
 # Set a Sentry DSN to capture unhandled errors in the webhook server + admin.
 # No-op (zero overhead) when blank. Install `sentry-sdk` to enable.

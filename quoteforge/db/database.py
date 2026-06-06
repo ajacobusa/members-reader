@@ -158,6 +158,14 @@ def init_db() -> None:
             decided_at      TEXT
         );
         """)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS subscribers (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            email       TEXT NOT NULL UNIQUE,
+            source      TEXT DEFAULT 'manual',   -- insert|linktree|website|etsy
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+        """)
         _migrate(conn)
 
 
@@ -404,6 +412,32 @@ def get_pending_reviews() -> list[dict]:
 def mark_review_sent(review_id: int) -> None:
     with _conn() as conn:
         conn.execute("UPDATE reviews SET sent=1 WHERE id=?", (review_id,))
+
+
+# ── Mailing-list subscribers (audience you own) ──────────────────
+
+def add_subscriber(email: str, source: str = "manual") -> bool:
+    """Add an email to the list. Returns True if newly added, False if duplicate
+    or invalid. Idempotent — safe to call repeatedly."""
+    email = (email or "").strip().lower()
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return False
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO subscribers (email, source) VALUES (?,?)",
+            (email, source))
+        return cur.rowcount > 0
+
+
+def get_subscribers() -> list[dict]:
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM subscribers ORDER BY created_at DESC")]
+
+
+def subscriber_count() -> int:
+    with _conn() as conn:
+        return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
 
 
 # ── Human-approval queue (autopilot escalations) ─────────────────

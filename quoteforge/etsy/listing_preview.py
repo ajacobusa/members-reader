@@ -15,6 +15,26 @@ def _b64(path: Path) -> str:
     return f"data:image/png;base64,{data}"
 
 
+def _analytics_snippet() -> str:
+    """Google Analytics + Microsoft Clarity tags, from config. Empty if unset."""
+    from quoteforge.config import GA_MEASUREMENT_ID, CLARITY_PROJECT_ID
+    parts = []
+    if GA_MEASUREMENT_ID:
+        parts.append(
+            f'<script async src="https://www.googletagmanager.com/gtag/js?id='
+            f'{GA_MEASUREMENT_ID}"></script><script>window.dataLayer=window.'
+            f'dataLayer||[];function gtag(){{dataLayer.push(arguments);}}'
+            f"gtag('js',new Date());gtag('config','{GA_MEASUREMENT_ID}');</script>")
+    if CLARITY_PROJECT_ID:
+        parts.append(
+            '<script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){'
+            '(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);'
+            't.async=1;t.src="https://www.clarity.ms/tag/"+i;'
+            'y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})'
+            f'(window,document,"clarity","script","{CLARITY_PROJECT_ID}");</script>')
+    return "".join(parts)
+
+
 def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
     """Downscaled JPEG data-URI so the shared page loads fast (small payload)."""
     from PIL import Image
@@ -103,6 +123,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{SHOP_NAME} - Personalized Wall Art</title>
+{_analytics_snippet()}
 <style>
  *{{box-sizing:border-box}} body{{font-family:'Helvetica Neue',Arial,sans-serif;
    margin:0;background:#f6f3ee;color:#23302b}}
