@@ -640,6 +640,35 @@ def _cmd_publish_listings(args: list[str]) -> int:
     return 1 if (live and r["missing_prereqs"]) else 0
 
 
+def _cmd_showroom(args: list[str]) -> int:
+    """Combine several listings into ONE shareable HTML file (email it to review)."""
+    from quoteforge.etsy.listing_preview import build_showroom
+    nums = [int(a) for a in args if a.isdigit()] or None
+    out = build_showroom(nums)
+    print("Showroom (one file, all listings) generated:")
+    print(f"  File: {out}")
+    print(f"  URL : {out.resolve().as_uri()}")
+    print("Email/share this single .html file - it opens in any browser, offline.")
+    return 0
+
+
+def _cmd_preview_listing(args: list[str]) -> int:
+    """Generate a self-contained HTML preview of a listing (open via file:// URL)."""
+    from quoteforge.etsy.listing_preview import build_preview
+    n = next((int(a) for a in args if a.isdigit()), 1)
+    try:
+        out = build_preview(n)
+    except FileNotFoundError as exc:
+        print(f"{exc}")
+        return 1
+    url = out.resolve().as_uri()
+    print(f"Listing #{n} preview generated:")
+    print(f"  File: {out}")
+    print(f"  URL : {url}")
+    print("Open that URL in your browser to review.")
+    return 0
+
+
 def _cmd_listing_video(args: list[str]) -> int:
     """Make a short premium MP4 (slow zoom) from a mockup/image for Etsy."""
     from pathlib import Path
@@ -1070,6 +1099,8 @@ COMMANDS = {
     "build-batch": _cmd_build_batch,
     "launch-kit": _cmd_launch_kit,
     "listing-video": _cmd_listing_video,
+    "preview-listing": _cmd_preview_listing,
+    "showroom": _cmd_showroom,
     "publish-listings": _cmd_publish_listings,
     "delight": _cmd_delight,
     "check-photo": _cmd_check_photo,
