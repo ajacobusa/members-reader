@@ -26,10 +26,14 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
 
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
-                    out_path=None) -> Path:
-    """A polished, password-gated shop-home landing page with logo/banner + the
-    full listing grid - customer-presentable and shareable as one link."""
-    from quoteforge.config import OUTPUT_DIR, ETSY_DEFAULT_LISTING_PRICE, SHOP_NAME
+                    out_path=None, uat: bool = True) -> Path:
+    """A polished, password-gated shop-home / UAT page: logo+banner, a 20-listing
+    grid, a per-listing detail modal (all 5 images + description), and one-click
+    feedback (mailto to the owner). Shareable as one link."""
+    import json
+    from quoteforge.config import (
+        OUTPUT_DIR, ETSY_DEFAULT_LISTING_PRICE, SHOP_NAME, REPORT_RECIPIENT,
+    )
     from quoteforge.etsy.listing_seo import build_launch_seo
 
     kit_dir = Path(kit_dir) if kit_dir else (OUTPUT_DIR / "launch_kit")
@@ -38,19 +42,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     if numbers:
         bundles = [b for b in bundles if b.listing_n in numbers]
 
-    cards = []
+    # Build a compact JS data array (each image embedded once).
+    listings = []
     for b in bundles:
-        hero = next(iter(kit_dir.glob(f"{b.listing_n:02d}_*/gallery/1_hero_room.png")), None)
-        if not hero:
+        gallery = sorted((kit_dir).glob(f"{b.listing_n:02d}_*/gallery/*.png"))
+        if not gallery:
             continue
-        cards.append(f"""
-   <div class="card">
-     <img class="hero" src="{_web_img(hero)}" alt="{b.title[:60]}">
-     <div class="cap">
-       <div class="ttl">{b.title.split(' | ')[0]}</div>
-       <div class="pr">from ${ETSY_DEFAULT_LISTING_PRICE:.2f}</div>
-     </div>
-   </div>""")
+        listings.append({
+            "n": b.listing_n,
+            "title": b.title.split(" | ")[0],
+            "full_title": b.title,
+            "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
+            "desc": b.description,
+            "imgs": [_web_img(p) for p in gallery],
+        })
+    data_json = json.dumps(listings)
+    owner = REPORT_RECIPIENT or "owner@example.com"
 
     logo = brand / "joffiels_logo_green_gold.png"
     banner = brand / "joffiels_banner.png"
@@ -116,18 +123,98 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .cap{{padding:12px 14px}}
  .ttl{{font-size:14px;line-height:1.45;height:60px;overflow:hidden;color:#2b3a33}}
  .pr{{margin-top:8px;font-weight:bold;color:#0f3d2e;font-size:16px}}
+ .fb{{display:inline-block;margin-top:8px;font-size:12px;color:#0f3d2e;
+   text-decoration:none;border:1px solid #0f3d2e;border-radius:14px;padding:3px 10px}}
+ .uatbar{{background:#fff7e6;border:1px solid #f0e0b8;color:#6b5a2b;
+   margin:16px;padding:12px 16px;border-radius:8px;font-size:14px;text-align:center}}
+ .uatbar a{{color:#0f3d2e;font-weight:bold}}
  .foot{{text-align:center;color:#9aa39d;font-size:12px;margin:30px 16px}}
+ /* modal */
+ #modal{{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;
+   align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:20px}}
+ .mbox{{background:#fff;border-radius:12px;max-width:820px;width:100%;margin:20px;
+   overflow:hidden}}
+ .mbody{{display:flex;flex-wrap:wrap;gap:18px;padding:18px}}
+ .mleft{{flex:1;min-width:280px}} .mright{{flex:1;min-width:260px}}
+ #mmain{{width:100%;border-radius:8px}}
+ .mthumbs{{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}}
+ .mthumbs img{{width:60px;height:60px;object-fit:cover;border:1px solid #d8cdb6;
+   border-radius:5px;cursor:pointer}}
+ .mbox h2{{font-size:18px;margin:0 0 6px}} .mprice{{font-weight:bold;
+   color:#0f3d2e;font-size:22px;margin:6px 0}}
+ .mdesc{{font-size:13px;line-height:1.6;color:#444;white-space:pre-wrap}}
+ .closex{{float:right;font-size:24px;cursor:pointer;color:#888;padding:8px 14px}}
+ .fbbtn{{display:block;background:#c9a84c;color:#22301e;text-align:center;
+   text-decoration:none;padding:12px;border-radius:24px;font-weight:bold;margin:12px 0}}
 </style></head><body>
 {gate}
 <div id="site" style="{site_style}">
  {f'<img class="hero-banner" src="{banner_src}">' if banner_src else f'<div class="ribbon">{SHOP_NAME}</div>'}
  <div class="ribbon">Personalized wall art for life's most meaningful moments</div>
+ {"<div class='uatbar'>👋 Thanks for helping review " + SHOP_NAME +
+  "! <b>Tap any item</b> to see all its photos &amp; details, then tap "
+  "<b>“Tell us what you think”</b> to send quick feedback. "
+  "<a href='mailto:" + owner + "?subject=Joffiels%20overall%20feedback'>"
+  "Send overall feedback</a></div>" if uat else ""}
  <p class="tag">Every piece is custom-made for your recipient - a name, an occasion,
    their story. A free digital proof is sent before anything is printed.</p>
- <div class="grid">{''.join(cards)}</div>
+ <div class="grid" id="grid"></div>
  <div class="foot">{SHOP_NAME} - sample preview for review. Prices shown are starting
    prices; every item is personalized to order.</div>
 </div>
+
+<div id="modal" onclick="if(event.target.id==='modal')closeM()">
+ <div class="mbox">
+   <span class="closex" onclick="closeM()">&times;</span>
+   <div class="mbody">
+     <div class="mleft"><img id="mmain"><div class="mthumbs" id="mthumbs"></div></div>
+     <div class="mright">
+       <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
+       <a id="mfb" class="fbbtn" href="#">💬 Tell us what you think</a>
+       <div class="mdesc" id="mdesc"></div>
+     </div>
+   </div>
+ </div>
+</div>
+
+<script>
+ const DATA = {data_json};
+ const OWNER = "{owner}";
+ const UAT = {str(bool(uat)).lower()};
+ function fbLink(t){{
+   const s = encodeURIComponent("Joffiels feedback: " + t);
+   const body = encodeURIComponent(
+     "Would you buy this as a gift?  (yes / maybe / no)\\n\\n" +
+     "Does the price feel right?\\n\\n" +
+     "Anything to change about the design or wording?\\n\\n");
+   return "mailto:" + OWNER + "?subject=" + s + "&body=" + body;
+ }}
+ function render(){{
+   const g = document.getElementById('grid');
+   g.innerHTML = DATA.map((d,i) => `
+     <div class="card" onclick="openM(${{i}})">
+       <img class="hero" src="${{d.imgs[0]}}" alt="">
+       <div class="cap"><div class="ttl">${{d.title}}</div>
+         <div class="pr">from $${{d.price}}</div>
+         ${{UAT?`<span class="fb">Tap to view &amp; review</span>`:``}}
+       </div>
+     </div>`).join('');
+ }}
+ function openM(i){{
+   const d = DATA[i];
+   document.getElementById('mmain').src = d.imgs[0];
+   document.getElementById('mthumbs').innerHTML = d.imgs.map(
+     s=>`<img src="${{s}}" onclick="document.getElementById('mmain').src=this.src">`).join('');
+   document.getElementById('mtitle').textContent = d.full_title;
+   document.getElementById('mprice').textContent = "from $" + d.price;
+   document.getElementById('mdesc').textContent = d.desc;
+   const fb = document.getElementById('mfb');
+   fb.href = fbLink(d.title); fb.style.display = UAT ? 'block':'none';
+   document.getElementById('modal').style.display='flex';
+ }}
+ function closeM(){{document.getElementById('modal').style.display='none';}}
+ render();
+</script>
 </body></html>"""
     out = Path(out_path) if out_path else (kit_dir / "shop_home.html")
     out.write_text(html, encoding="utf-8")
