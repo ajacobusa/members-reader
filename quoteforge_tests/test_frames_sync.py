@@ -74,3 +74,25 @@ def test_hero_room_stamps_badge(tmp_path):
     assert out.exists()
     # the badge function runs without error and the image is still valid
     assert Image.open(out).size == listing_pack.SIZE
+
+
+# ── See-it-before-you-buy frame preview ──────────────────────────
+
+def test_format_previews_cover_all_options(tmp_path):
+    from quoteforge.images import frame_preview
+    poster = tmp_path / "p.png"
+    Image.new("RGB", (1000, 1250), (245, 245, 240)).save(poster)
+    previews = frame_preview.build_format_previews(poster, out_dir=tmp_path / "fp")
+    # poster + 6 frames + canvas + acrylic + metal = 10 format images
+    assert len(previews) == 10
+    assert any("Framed - Premium Solid Oak" == k for k in previews)
+    assert all(p.exists() for p in previews.values())
+
+
+def test_preview_page_is_interactive(tmp_path):
+    from quoteforge.images import frame_preview
+    poster = tmp_path / "p.png"
+    Image.new("RGB", (1000, 1250), (245, 245, 240)).save(poster)
+    out = frame_preview.build_preview_page(poster, out_path=tmp_path / "try.html")
+    h = out.read_text(encoding="utf-8")
+    assert "function pick" in h and "Framed - Premium Solid Oak" in h

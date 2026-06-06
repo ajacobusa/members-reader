@@ -63,3 +63,18 @@ def test_cli_variations_writes_inventory(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert rc == 0 and "Price range" in out
     assert (tmp_path / "etsy_inventory.csv").exists()
+
+
+def test_tier_floors_never_below_global_target():
+    from quoteforge.config import TARGET_MARGIN_PCT
+    for tier in ("entry", "mid", "top"):
+        assert V.floor_for_tier(tier) >= TARGET_MARGIN_PCT
+
+
+def test_raising_a_tier_floor_lifts_only_that_tier(monkeypatch):
+    monkeypatch.setattr("quoteforge.config.MARGIN_FLOOR_TOP", 70.0, raising=False)
+    vs = V.build_variations()
+    top = [v for v in vs if v.tier == "top"]
+    entry = [v for v in vs if v.tier == "entry"]
+    assert top and all(v.margin_pct >= 70 for v in top)     # top lifted to 70%
+    assert all(v.margin_pct >= 60 for v in entry)           # entry still >=60%

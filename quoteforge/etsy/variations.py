@@ -36,6 +36,15 @@ TIER = {"poster": "entry", "framed": "mid",
         "canvas": "top", "acrylic": "top", "metal": "top"}
 
 
+def floor_for_tier(tier: str) -> float:
+    """The configured net-margin floor for an upsell tier (never below target)."""
+    from quoteforge.config import (
+        MARGIN_FLOOR_ENTRY, MARGIN_FLOOR_MID, MARGIN_FLOOR_TOP, TARGET_MARGIN_PCT)
+    floor = {"entry": MARGIN_FLOOR_ENTRY, "mid": MARGIN_FLOOR_MID,
+             "top": MARGIN_FLOOR_TOP}.get(tier, TARGET_MARGIN_PCT)
+    return max(floor, TARGET_MARGIN_PCT)   # global 60% is an absolute floor
+
+
 @dataclass
 class Variation:
     material: str
@@ -101,19 +110,22 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
         if ov and ov.get("available") is False:
             continue                              # discontinued -> drop
         cost = _live_cost(p.gelato_sku, p.gelato_cost_usd)
-        price = min_price_for_margin(cost, floor_pct)
+        tier = TIER[p.category]
+        floor = floor_pct if floor_pct is not None else floor_for_tier(tier)
+        price = min_price_for_margin(cost, floor)
         out.append(Variation(
             material=p.category, size=p.size, frame_color="",
             gelato_sku=p.gelato_sku, gelato_cost=cost,
             price=price, margin_pct=net_margin_pct(price, cost),
-            tier=TIER[p.category]))
+            tier=tier))
 
     # Framed = poster print + a chosen frame (only frames Gelato can fulfill).
     for size, p in posters.items():
         base = _live_cost(p.gelato_sku, p.gelato_cost_usd)
         for fr in available_frames():
             cost = round(base + fr.upcharge, 2)
-            price = min_price_for_margin(cost, floor_pct)
+            floor = floor_pct if floor_pct is not None else floor_for_tier("mid")
+            price = min_price_for_margin(cost, floor)
             out.append(Variation(
                 material="framed", size=size, frame_color=fr.name,
                 gelato_sku=f"{p.gelato_sku}+{fr.gelato_sku}", gelato_cost=cost,

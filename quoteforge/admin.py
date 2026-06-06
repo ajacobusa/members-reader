@@ -1130,6 +1130,34 @@ def _cmd_variations(args: list[str]) -> int:
     return 0
 
 
+def _cmd_frame_preview(args: list[str]) -> int:
+    """Render a 'see it before you buy' preview (one mockup per frame/material)
+    + an interactive page. `frame-preview [N|POSTER.png]`."""
+    from pathlib import Path
+    from quoteforge.config import OUTPUT_DIR
+    from quoteforge.images.frame_preview import build_preview_page
+    arg = args[0] if args else "1"
+    if arg.isdigit():
+        kit = OUTPUT_DIR / "launch_kit"
+        posters = sorted(kit.glob(f"{int(arg):02d}_*/poster.png")) or \
+            sorted(kit.glob(f"{int(arg):02d}_*/*.png"))
+        if not posters:
+            print(f"No poster for listing {arg}. Run: launch-kit")
+            return 1
+        poster = posters[0]
+    else:
+        poster = Path(arg)
+        if not poster.exists():
+            print(f"Not found: {poster}")
+            return 1
+    out = build_preview_page(poster)
+    print("Frame/material preview built:")
+    print(f"  File: {out}")
+    print(f"  URL : {out.resolve().as_uri()}")
+    print("Open it: tap each frame to see the exact look before buying.")
+    return 0
+
+
 def _cmd_gelato_sync(args: list[str]) -> int:
     """Sync prices + availability from Gelato into catalog_state (auto-reprices
     to 60% and disables discontinued frames/products). `gelato-sync`."""
@@ -1178,6 +1206,7 @@ def _cmd_subscribers(args: list[str]) -> int:
 
 COMMANDS = {
     "variations": _cmd_variations,
+    "frame-preview": _cmd_frame_preview,
     "gelato-sync": _cmd_gelato_sync,
     "pinterest": _cmd_pinterest,
     "pinterest-publish": _cmd_pinterest_publish,

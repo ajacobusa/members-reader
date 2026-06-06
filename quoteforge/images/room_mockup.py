@@ -34,6 +34,16 @@ FRAME_STYLES = {
     "white": ((248, 248, 246), (252, 252, 250), 0.045),
     "oak":   ((178, 142, 96), (250, 248, 244), 0.05),
     "walnut": ((92, 64, 48), (250, 248, 244), 0.05),
+    "gold":  ((198, 160, 82), (250, 248, 244), 0.05),
+    "black_slim": ((28, 28, 30), (252, 252, 250), 0.022),
+    # Frameless looks (poster/canvas/acrylic/metal): thin edge, no mat.
+    "none":  ((232, 228, 220), (255, 255, 255), 0.012),
+}
+
+# Map a frame catalog id -> a renderer style.
+FRAME_ID_TO_STYLE = {
+    "oak_premium": "oak", "walnut_premium": "walnut", "gold_gallery": "gold",
+    "black_wood": "black", "white_wood": "white", "slim_black": "black_slim",
 }
 
 

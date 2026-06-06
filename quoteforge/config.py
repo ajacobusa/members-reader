@@ -53,6 +53,12 @@ GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
 # Set to 60%: every product and gallery set is priced to clear this, and the
 # margin guard flags anything that slips below it (e.g. after a fee increase).
 TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
+# Per-tier net-margin floors for the upsell ladder (entry=Poster, mid=Framed,
+# top=Canvas/Acrylic/Metal). Default each to the global target so we never sell
+# below 60%; raise a tier as sales data justifies more margin on it.
+MARGIN_FLOOR_ENTRY: float = float(os.getenv("MARGIN_FLOOR_ENTRY", str(TARGET_MARGIN_PCT)))
+MARGIN_FLOOR_MID: float = float(os.getenv("MARGIN_FLOOR_MID", str(TARGET_MARGIN_PCT)))
+MARGIN_FLOOR_TOP: float = float(os.getenv("MARGIN_FLOOR_TOP", str(TARGET_MARGIN_PCT)))
 
 # ── Autopilot (autonomous decision bots) ─────────────────────────
 # When enabled, bots auto-execute low-risk, high-confidence decisions and only
