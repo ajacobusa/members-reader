@@ -629,6 +629,35 @@ def _cmd_delight(args: list[str]) -> int:
     return 0
 
 
+def _cmd_publish_listings(args: list[str]) -> int:
+    """Auto-create Etsy DRAFT listings from the launch kit (dry-run by default)."""
+    from quoteforge.automation.etsy_publisher import (
+        publish_launch_kit, format_publish_text,
+    )
+    live = "--live" in args
+    r = publish_launch_kit(live=live)
+    print(format_publish_text(r))
+    return 1 if (live and r["missing_prereqs"]) else 0
+
+
+def _cmd_listing_video(args: list[str]) -> int:
+    """Make a short premium MP4 (slow zoom) from a mockup/image for Etsy."""
+    from pathlib import Path
+    from quoteforge.images.listing_video import make_listing_video
+    if not args:
+        print("Usage: python -m quoteforge.admin listing-video IMAGE.png [out.mp4]")
+        return 2
+    if not Path(args[0]).exists():
+        print(f"Image not found: {args[0]}")
+        return 1
+    out = args[1] if len(args) > 1 else str(Path(args[0]).with_suffix(".mp4"))
+    path = make_listing_video(args[0], out)
+    kb = path.stat().st_size // 1024
+    print(f"Listing video saved: {path} ({kb} KB)")
+    print("Upload it to the listing (Etsy ranks video higher).")
+    return 0
+
+
 def _cmd_launch_kit(args: list[str]) -> int:
     """Build the COMPLETE ready-to-upload kit for the 20 launch listings."""
     from quoteforge.etsy.bulk_builder import build_launch_kit
@@ -1040,6 +1069,8 @@ COMMANDS = {
     "growth": _cmd_growth,
     "build-batch": _cmd_build_batch,
     "launch-kit": _cmd_launch_kit,
+    "listing-video": _cmd_listing_video,
+    "publish-listings": _cmd_publish_listings,
     "delight": _cmd_delight,
     "check-photo": _cmd_check_photo,
     "custom-copy": _cmd_custom_copy,

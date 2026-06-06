@@ -151,6 +151,12 @@ ETSY_API_KEY: str = os.getenv("ETSY_API_KEY", "")
 ETSY_OAUTH_TOKEN: str = os.getenv("ETSY_OAUTH_TOKEN", "")
 ETSY_REFRESH_TOKEN: str = os.getenv("ETSY_REFRESH_TOKEN", "")
 ETSY_API_BASE: str = os.getenv("ETSY_API_BASE", "https://openapi.etsy.com/v3")
+# Required to auto-create listings via the Etsy API (from your shop):
+#   taxonomy id for wall-art prints, your shipping profile id, default price.
+ETSY_TAXONOMY_ID: str = os.getenv("ETSY_TAXONOMY_ID", "")
+ETSY_SHIPPING_PROFILE_ID: str = os.getenv("ETSY_SHIPPING_PROFILE_ID", "")
+ETSY_DEFAULT_LISTING_PRICE: float = float(
+    os.getenv("ETSY_DEFAULT_LISTING_PRICE", "36.99"))
 ETSY_WEBHOOK_SECRET: str = os.getenv("ETSY_WEBHOOK_SECRET", "")
 # Shared secret Gelato signs its status/tracking callbacks with (set the same
 # value in the Gelato dashboard webhook config). Empty = verification disabled.
