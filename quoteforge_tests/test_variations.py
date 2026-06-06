@@ -18,12 +18,15 @@ def test_all_variations_clear_60():
     assert all(v.margin_pct >= 60 for v in vs)
 
 
-def test_framed_expands_into_frame_colors():
+def test_framed_expands_into_six_frames():
+    from quoteforge.etsy.frames import FRAMES
     vs = V.build_variations()
     framed = [v for v in vs if v.material == "framed"]
     assert framed
-    assert {v.frame_color for v in framed} == set(V.FRAME_COLORS)
-    # non-framed materials carry no frame color
+    # every frame in the 6-tier ladder appears, with its tier set
+    assert {v.frame_color for v in framed} == {f.name for f in FRAMES}
+    assert {v.frame_tier for v in framed} == {"high", "mid", "low"}
+    # non-framed materials carry no frame
     assert all(v.frame_color == "" for v in vs if v.material != "framed")
 
 
@@ -43,7 +46,7 @@ def test_options_block_lists_materials_and_open_canvas():
     for m in ("Poster", "Framed", "Canvas", "Acrylic", "Metal"):
         assert m in block
     assert "open" in block.lower()           # canvas described as open
-    assert "Natural Oak" in block            # frame colors
+    assert "Premium Solid Oak" in block and "Slim Black" in block   # frame ladder
 
 
 def test_cli_variations_writes_inventory(tmp_path, monkeypatch, capsys):

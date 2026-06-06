@@ -51,9 +51,33 @@ def _check_image(img: Image.Image, name: str) -> dict:
 
 # ── Image 1: hero room scene ─────────────────────────────────────
 
+def _stamp_frame_badge(path: Path) -> Path:
+    """Burn a small 'FRAME NOT INCLUDED' badge onto a framed mockup so shoppers
+    who skim photos (not the description) aren't misled into expecting a frame."""
+    img = Image.open(path).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    text = "FRAME NOT INCLUDED"
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype("arialbd.ttf", max(14, w // 36))
+    except OSError:
+        from PIL import ImageFont
+        font = ImageFont.load_default()
+    tw = draw.textlength(text, font=font)
+    pad = max(8, w // 90)
+    bh = (font.size if hasattr(font, "size") else 16) + pad * 2
+    bw = tw + pad * 2
+    x, y = w - bw - pad, h - bh - pad           # bottom-right corner
+    draw.rectangle([x, y, x + bw, y + bh], fill=(15, 61, 46))
+    draw.text((x + pad, y + pad), text, font=font, fill=(232, 216, 168))
+    img.save(path, "PNG")
+    return path
+
+
 def hero_room(poster_path: Path, out: Path) -> Path:
-    return render_room_mockup(poster_path, out, wall="sage",
-                              frame_style="oak", size=SIZE)
+    render_room_mockup(poster_path, out, wall="sage", frame_style="oak", size=SIZE)
+    return _stamp_frame_badge(out)
 
 
 # ── Image 2: close-up detail ─────────────────────────────────────

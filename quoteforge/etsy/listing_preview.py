@@ -219,7 +219,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
-         (frame color: Black / White / Natural Oak). Canvas is gallery-wrapped (open).
+         (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
        </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>

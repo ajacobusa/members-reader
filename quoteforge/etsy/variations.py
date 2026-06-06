@@ -22,7 +22,6 @@ from quoteforge.config import TARGET_MARGIN_PCT
 
 ETSY_FEE_PCT = 0.065          # Etsy transaction + payment processing (approx)
 ETSY_LISTING_FEE = 0.20       # per-sale listing cost
-FRAME_COLORS = ["Black", "White", "Natural Oak"]
 
 # How each material is presented + whether a frame applies.
 MATERIAL_LABELS = {
@@ -41,12 +40,13 @@ TIER = {"poster": "entry", "framed": "mid",
 class Variation:
     material: str
     size: str
-    frame_color: str          # "" when not applicable
+    frame_color: str          # frame NAME for framed, else ""
     gelato_sku: str
     gelato_cost: float
     price: float
     margin_pct: int
     tier: str
+    frame_tier: str = ""      # "high"|"mid"|"low" for framed, else ""
 
 
 def min_price_for_margin(cost: float, floor_pct: int = None,
@@ -71,22 +71,54 @@ def net_margin_pct(price: float, cost: float, fee: float = ETSY_FEE_PCT,
     return round(profit / price * 100) if price else 0
 
 
+def _live_cost(sku: str, base: float) -> float:
+    """Base Gelato cost with any live override from the sync applied."""
+    from quoteforge.etsy.catalog_state import sku_override
+    ov = sku_override(sku)
+    return ov.get("cost", base) if ov else base
+
+
 def build_variations(floor_pct: int = None) -> list[Variation]:
-    """All sellable variations across the catalog, each priced at the 60% floor.
-    Framed expands into one row per frame color (same price)."""
+    """All sellable variations, each priced at the 60% floor.
+
+    - Poster / Canvas / Acrylic / Metal come from the catalog (costs may be
+      live-overridden by the Gelato sync; unavailable SKUs are dropped).
+    - Framed expands into Poster size × AVAILABLE frame (6-tier ladder); a
+      framed variation's cost = base print cost + the frame's upcharge.
+    """
     from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
+    from quoteforge.etsy.catalog_state import sku_override
+    from quoteforge.etsy.frames import available_frames
     out: list[Variation] = []
+
+    posters = {}
     for p in GELATO_CATALOG:
-        if p.category not in MATERIAL_LABELS:    # skip mugs / unknowns
+        if p.category == "poster":
+            posters[p.size] = p
+        if p.category not in MATERIAL_LABELS or p.category == "framed":
             continue
-        price = min_price_for_margin(p.gelato_cost_usd, floor_pct)
-        margin = net_margin_pct(price, p.gelato_cost_usd)
-        colors = FRAME_COLORS if p.category == "framed" else [""]
-        for color in colors:
+        ov = sku_override(p.gelato_sku)
+        if ov and ov.get("available") is False:
+            continue                              # discontinued -> drop
+        cost = _live_cost(p.gelato_sku, p.gelato_cost_usd)
+        price = min_price_for_margin(cost, floor_pct)
+        out.append(Variation(
+            material=p.category, size=p.size, frame_color="",
+            gelato_sku=p.gelato_sku, gelato_cost=cost,
+            price=price, margin_pct=net_margin_pct(price, cost),
+            tier=TIER[p.category]))
+
+    # Framed = poster print + a chosen frame (only frames Gelato can fulfill).
+    for size, p in posters.items():
+        base = _live_cost(p.gelato_sku, p.gelato_cost_usd)
+        for fr in available_frames():
+            cost = round(base + fr.upcharge, 2)
+            price = min_price_for_margin(cost, floor_pct)
             out.append(Variation(
-                material=p.category, size=p.size, frame_color=color,
-                gelato_sku=p.gelato_sku, gelato_cost=p.gelato_cost_usd,
-                price=price, margin_pct=margin, tier=TIER[p.category]))
+                material="framed", size=size, frame_color=fr.name,
+                gelato_sku=f"{p.gelato_sku}+{fr.gelato_sku}", gelato_cost=cost,
+                price=price, margin_pct=net_margin_pct(price, cost),
+                tier="mid", frame_tier=fr.tier))
     return out
 
 
@@ -105,7 +137,8 @@ def materials_offered() -> list[str]:
 
 def options_block() -> str:
     """Human-readable 'choose your product' block for the listing description,
-    grouped by material with sizes, frame colors, and the entry price each."""
+    grouped by material with sizes, frame tiers, and the entry price each."""
+    from quoteforge.etsy.frames import frames_by_tier
     vs = build_variations()
     by_mat: dict[str, list[Variation]] = {}
     for v in vs:
@@ -118,11 +151,21 @@ def options_block() -> str:
             continue
         sizes = sorted({r.size.replace(" in", "") for r in rows})
         low = min(r.price for r in rows)
-        extra = (f" - frame color: {', '.join(FRAME_COLORS)}"
-                 if mat == "framed" else "")
         lines.append(f"- {MATERIAL_LABELS[mat]}: {', '.join(sizes)} "
-                     f"(from ${low:.2f}){extra}")
-    lines.append("Canvas is gallery-wrapped (\"open\") - ready to hang as-is.")
+                     f"(from ${low:.2f})")
+    # Frame ladder (only what Gelato can currently fulfill).
+    tiers = frames_by_tier()
+    label = {"high": "Premium frames", "mid": "Classic frames", "low": "Essential frame"}
+    frame_lines = []
+    for t in ("high", "mid", "low"):
+        names = [f.name for f in tiers.get(t, [])]
+        if names:
+            frame_lines.append(f"  - {label[t]}: {', '.join(names)}")
+    if frame_lines:
+        lines.append("Frame options (for the Framed material):")
+        lines.extend(frame_lines)
+    lines.append("Canvas is gallery-wrapped (\"open\") - ready to hang as-is. "
+                 "You can order as many pieces as you like.")
     return "\n".join(lines)
 
 

@@ -170,5 +170,6 @@ def test_description_lists_real_product_options():
     assert "CHOOSE YOUR PRODUCT" in desc
     for m in ("Poster", "Framed", "Canvas", "Acrylic", "Metal"):
         assert m in desc
-    for color in ("Black", "White", "Natural Oak"):
-        assert color in desc
+    # the 6-frame ladder is surfaced (3 high / 2 mid / 1 low)
+    for frame in ("Premium Solid Oak", "Classic Black Wood", "Slim Black"):
+        assert frame in desc

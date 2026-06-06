@@ -1130,6 +1130,15 @@ def _cmd_variations(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_sync(args: list[str]) -> int:
+    """Sync prices + availability from Gelato into catalog_state (auto-reprices
+    to 60% and disables discontinued frames/products). `gelato-sync`."""
+    from quoteforge.automation.gelato_sync import sync_catalog, format_sync_text
+    r = sync_catalog()
+    print(format_sync_text(r))
+    return 0
+
+
 def _cmd_rebuild_site(args: list[str]) -> int:
     """Rebuild the public GitHub Pages shop-home page (docs/index.html) with the
     latest listings + analytics tags. Run by backup-all's push, fully hands-free."""
@@ -1169,6 +1178,7 @@ def _cmd_subscribers(args: list[str]) -> int:
 
 COMMANDS = {
     "variations": _cmd_variations,
+    "gelato-sync": _cmd_gelato_sync,
     "pinterest": _cmd_pinterest,
     "pinterest-publish": _cmd_pinterest_publish,
     "rebuild-site": _cmd_rebuild_site,

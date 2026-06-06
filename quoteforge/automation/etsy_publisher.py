@@ -68,6 +68,59 @@ def create_draft_listing(bundle, price: float, runner=requests) -> dict:
             "title": bundle.title}
 
 
+# Etsy custom-property slots (a listing allows at most TWO variation axes).
+_PROP_SIZE = 513
+_PROP_FORMAT = 514
+
+
+def _format_value(v) -> str:
+    """One 'Format' axis value combining material + frame (Etsy's 2-axis limit
+    means Material and Frame can't be separate axes alongside Size)."""
+    from quoteforge.etsy.variations import MATERIAL_LABELS
+    if v.material == "framed":
+        return f"Framed - {v.frame_color}"
+    return MATERIAL_LABELS[v.material].split(" (")[0]
+
+
+def build_inventory_payload(floor_pct: int = None) -> dict:
+    """Etsy inventory structure (2 axes: Size + Format) from the variation model,
+    each offering priced at the 60% floor. Ready to PUT to the inventory API."""
+    from quoteforge.etsy.variations import build_variations
+    products = []
+    for v in build_variations(floor_pct):
+        products.append({
+            "sku": v.gelato_sku,
+            "property_values": [
+                {"property_id": _PROP_SIZE, "property_name": "Size",
+                 "values": [v.size]},
+                {"property_id": _PROP_FORMAT, "property_name": "Format",
+                 "values": [_format_value(v)]},
+            ],
+            "offerings": [{"price": round(v.price, 2), "quantity": 999,
+                           "is_enabled": True}],
+        })
+    return {"products": products,
+            "price_on_property": [_PROP_SIZE, _PROP_FORMAT],
+            "quantity_on_property": [],
+            "sku_on_property": [_PROP_SIZE, _PROP_FORMAT]}
+
+
+def apply_variations(listing_id, live: bool = False, floor_pct: int = None,
+                     runner=requests) -> dict:
+    """Push the Size×Format variation matrix onto an Etsy listing.
+    Dry-run unless live AND credentials present."""
+    payload = build_inventory_payload(floor_pct)
+    n = len(payload["products"])
+    if not live or TEST_MODE or prerequisites() or not listing_id:
+        return {"status": "dry-run", "variations": n,
+                "axes": ["Size", "Format"]}
+    url = f"{ETSY_API_BASE}/application/listings/{listing_id}/inventory"
+    resp = runner.put(url, headers=_headers(), json=payload, timeout=60)
+    ok = resp.status_code in (200, 201)
+    return {"status": "applied" if ok else f"error {resp.status_code}",
+            "variations": n}
+
+
 def upload_image(listing_id, image_path: Path, rank: int, runner=requests) -> bool:
     if TEST_MODE or prerequisites() or not listing_id:
         return False

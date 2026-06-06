@@ -119,6 +119,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Refreshes the email-capture kit (QR, announcement, Linktree, signup "
         "snippet, insert card) so the audience-building assets stay current."),
     ScheduledJob(
+        "QuoteForge Gelato Catalog Sync", "gelato-sync",
+        ["/SC", "DAILY", "/ST", "01:30"],
+        "Pulls live Gelato prices + availability: auto-reprices every variation "
+        "to hold the 60% margin floor and disables discontinued frames/products "
+        "before the daily site rebuild publishes."),
+    ScheduledJob(
         "QuoteForge Site Rebuild", "rebuild-site",
         ["/SC", "DAILY", "/ST", "01:50"],
         "Rebuilds the public shop-home page (docs/index.html) with the latest "
