@@ -67,6 +67,30 @@ KB = [
      "Yes - we offer wholesale pricing for corporate gifts, weddings, realtors, "
      "churches and schools. Use the 'Corporate & bulk gifting' form and we'll "
      "send a quote."),
+    (["pet", "dog", "cat", "memorial", "remembrance", "loss"],
+     "Can you make a pet or memorial piece?",
+     "Yes - pet portraits and memorial keepsakes are some of our most loved "
+     "pieces. Upload a clear photo and add your words; we'll send a free proof."),
+    (["color", "colour", "background", "font", "change colors"],
+     "Can I choose colors and fonts?",
+     "Yes! On each product you can preview different background colors, text "
+     "colors and fonts live, and we confirm everything on your free proof."),
+    (["subscription", "membership", "monthly", "club"],
+     "Do you offer a subscription?",
+     "We do - a membership delivers a fresh personalized piece on a schedule "
+     "(quarterly, half-year or annual). A lovely ongoing gift."),
+    (["track", "tracking", "where is", "status"],
+     "Can I track my order?",
+     "Yes, every order ships with tracking. For the status of a specific order, "
+     "message the team and we'll look it up for you."),
+    (["digital", "download", "printable", "file"],
+     "Do you sell digital downloads?",
+     "Selected designs are available as instant printable digital files - a "
+     "great budget or last-minute option. Check the product options."),
+    (["international", "worldwide", "country", "outside us"],
+     "Do you ship internationally?",
+     "Yes - we ship worldwide with tracking via our global print network, so "
+     "your order is produced close to the destination where possible."),
 ]
 
 FALLBACK = ("Great question! I'm Ange, the {shop} assistant. For anything "

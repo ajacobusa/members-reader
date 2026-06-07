@@ -338,6 +338,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         ange_kb_json = json.dumps(kb_for_web())
     except Exception:  # noqa: BLE001
         ange_kb_json = "[]"
+    try:
+        from quoteforge.config import ASK_ANGE_API_URL as ask_api_url
+    except Exception:  # noqa: BLE001
+        ask_api_url = ""
 
     gate = "" if not password else f"""
 <div id="gate">
@@ -929,6 +933,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <script>
  const ANGE_KB = {ange_kb_json};
  const ANGE_OWNER = "{owner}";
+ const ANGE_API = "{ask_api_url}";
  function toggleAnge(){{const p=document.getElementById('angePanel');
    const open=p.style.display!=='block'; p.style.display=open?'block':'none';
    if(open && !document.getElementById('angeMsgs').dataset.init){{
@@ -949,13 +954,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return "Great question! For anything order-specific or a refund/return, the "
      +"best step is to message our team - tap the button below and a real person "
      +"will help. 💚";}}
+ function angeMsgUs(){{const m=document.getElementById('angeMsgs');
+   const a=document.createElement('a');
+   a.href="mailto:"+ANGE_OWNER+"?subject=Question%20for%20{SHOP_NAME}";
+   a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#0f3d2e";
+   m.appendChild(a); m.scrollTop=m.scrollHeight;}}
  function angeSend(){{const inp=document.getElementById('angeIn');
    const q=(inp.value||'').trim(); if(!q)return; angeMsg(q,'me'); inp.value='';
-   setTimeout(()=>{{angeBot(angeAnswer(q));
-     const m=document.getElementById('angeMsgs'); const a=document.createElement('a');
-     a.href="mailto:"+ANGE_OWNER+"?subject=Question%20for%20{SHOP_NAME}";
-     a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#0f3d2e";
-     m.appendChild(a); m.scrollTop=m.scrollHeight;}},250);}}
+   if(ANGE_API){{
+     fetch(ANGE_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{q:q}})}}).then(r=>r.json())
+       .then(d=>{{angeBot(d.answer||angeAnswer(q)); angeMsgUs();}})
+       .catch(()=>{{angeBot(angeAnswer(q)); angeMsgUs();}});
+   }} else {{ setTimeout(()=>{{angeBot(angeAnswer(q)); angeMsgUs();}},250); }}
+ }}
 </script>
 </body></html>"""
     out.write_text(html, encoding="utf-8")

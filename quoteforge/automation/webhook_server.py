@@ -323,6 +323,22 @@ if FLASK_AVAILABLE and app:
             "timestamp": datetime.now().isoformat(),
         }), code
 
+    @app.route("/ask", methods=["GET", "POST"])
+    def ask():
+        """Ask Ange (AI assistant) - grounded answers for the on-page widget.
+        GET /ask?q=... or POST {"q": "..."}. CORS-open so the static site can call it."""
+        q = (request.args.get("q") if request.method == "GET"
+             else (request.get_json(force=True, silent=True) or {}).get("q", ""))
+        try:
+            from quoteforge.ai.ange import ask_ange
+            result = ask_ange(q or "")
+        except Exception as exc:  # noqa: BLE001
+            result = {"answer": "Sorry, I'm having trouble - please message the team.",
+                      "error": str(exc)}
+        resp = jsonify(result)
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+
     @app.route("/order", methods=["POST"])
     def receive_order():
         from quoteforge.automation.webhook_security import verify_signature

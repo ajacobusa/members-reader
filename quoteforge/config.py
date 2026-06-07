@@ -166,6 +166,11 @@ CLARITY_PROJECT_ID: str = os.getenv("CLARITY_PROJECT_ID", "").strip()  # Microso
 # No-op (zero overhead) when blank. Install `sentry-sdk` to enable.
 SENTRY_DSN: str = os.getenv("SENTRY_DSN", "").strip()
 
+# Optional public URL of the webhook server's /ask endpoint. When set, the
+# on-page "Ask Ange" widget calls it for full Claude answers; otherwise it uses
+# the built-in knowledge base (no API key is ever exposed on the static site).
+ASK_ANGE_API_URL: str = os.getenv("ASK_ANGE_API_URL", "").strip()
+
 # Cost-of-ownership inputs (used by the `tco` command)
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))

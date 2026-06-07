@@ -1222,6 +1222,16 @@ def _cmd_reviews(args: list[str]) -> int:
     return 0
 
 
+def _cmd_collage(args: list[str]) -> int:
+    """Build the homepage hero collage from brand/collage_src/ -> brand/hero.jpg."""
+    from quoteforge.images.collage import build_collage
+    out = build_collage()
+    print(f"Hero collage built: {out}")
+    print("Drop JPG/PNGs into brand/collage_src/ (dog, scenery, your family "
+          "photo), rerun, then rebuild-site to use it as the hero.")
+    return 0
+
+
 def _cmd_ask(args: list[str]) -> int:
     """Ask Ange (the AI assistant) a customer question. `ask "your question"`."""
     if not args:
@@ -1447,6 +1457,7 @@ COMMANDS = {
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,
     "ask": _cmd_ask,
+    "collage": _cmd_collage,
     "order-by": _cmd_order_by,
     "ai-review": _cmd_ai_review,
     "add-product": _cmd_add_product,
