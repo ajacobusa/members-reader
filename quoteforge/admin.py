@@ -1242,6 +1242,13 @@ def _cmd_ask(args: list[str]) -> int:
     return 0
 
 
+def _cmd_track_orders(args: list[str]) -> int:
+    """Sync Gelato tracking -> mark shipped/delivered + push tracking to Etsy buyers."""
+    from quoteforge.automation.fulfillment_tracker import sync_tracking, format_tracking_text
+    print(format_tracking_text(sync_tracking()))
+    return 0
+
+
 def _cmd_order_by(args: list[str]) -> int:
     """Show the next gift order-by deadline. `order-by`."""
     from quoteforge.etsy.shipping_cutoff import upcoming_cutoff, banner_text
@@ -1459,6 +1466,7 @@ COMMANDS = {
     "ask": _cmd_ask,
     "collage": _cmd_collage,
     "order-by": _cmd_order_by,
+    "track-orders": _cmd_track_orders,
     "ai-review": _cmd_ai_review,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,
