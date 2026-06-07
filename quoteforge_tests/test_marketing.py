@@ -194,3 +194,27 @@ def test_delight_email_includes_affiliate_when_configured(monkeypatch):
                         '{"Flowers":"https://aff/f"}', raising=False)
     m = delight_loop.delight_message(order)
     assert "Complete the gift" in m and "aff/f" in m and "affiliate links" in m
+
+
+# ── Gift e-card + recipient capture ──────────────────────────────
+
+def test_gift_ecard_captures_recipient_and_sends(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    sent = {}
+    monkeypatch.setattr("quoteforge.automation.emailer._send_email",
+                        lambda subject, body, to="": sent.update(to=to, subject=subject))
+    from quoteforge.etsy import gift_ecard
+    r = gift_ecard.send_gift_ecard({
+        "customer_name": "Sam", "gift_recipient_name": "Mom",
+        "gift_recipient_email": "Mom@Example.com", "gift_message": "Love you!"})
+    assert r["sent"] and r["captured"]
+    assert sent["to"] == "Mom@Example.com" and "gift" in sent["subject"].lower()
+    from quoteforge.db import database as db
+    subs = db.get_subscribers()
+    assert subs and subs[0]["source"] == "gift_recipient" and subs[0]["consent"] == "pending"
+
+
+def test_gift_ecard_noop_without_recipient():
+    from quoteforge.etsy import gift_ecard
+    assert gift_ecard.send_gift_ecard({"customer_name": "Sam"})["sent"] is False

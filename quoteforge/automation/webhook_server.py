@@ -160,6 +160,14 @@ def process_webhook_payload(payload: dict) -> dict:
     except Exception:  # noqa: BLE001 — list-building must never block an order
         pass
 
+    # Gift e-card: notify the recipient + capture their email (growth loop).
+    try:
+        if payload.get("gift_recipient_email"):
+            from quoteforge.etsy.gift_ecard import send_gift_ecard
+            send_gift_ecard(payload)
+    except Exception:  # noqa: BLE001
+        pass
+
     try:
         # ── Multi-item order ────────────────────────────────────
         if isinstance(items, list) and items:

@@ -59,6 +59,9 @@ TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
 MARGIN_FLOOR_ENTRY: float = float(os.getenv("MARGIN_FLOOR_ENTRY", str(TARGET_MARGIN_PCT)))
 MARGIN_FLOOR_MID: float = float(os.getenv("MARGIN_FLOOR_MID", str(TARGET_MARGIN_PCT)))
 MARGIN_FLOOR_TOP: float = float(os.getenv("MARGIN_FLOOR_TOP", str(TARGET_MARGIN_PCT)))
+# Single items LIST at this margin (the anchor); bundle/quantity discounts reduce
+# toward - but never below - TARGET_MARGIN_PCT (the hard floor).
+LIST_MARGIN_PCT: float = float(os.getenv("LIST_MARGIN_PCT", "68"))
 
 # ── Autopilot (autonomous decision bots) ─────────────────────────
 # When enabled, bots auto-execute low-risk, high-confidence decisions and only

@@ -78,3 +78,24 @@ def test_raising_a_tier_floor_lifts_only_that_tier(monkeypatch):
     entry = [v for v in vs if v.tier == "entry"]
     assert top and all(v.margin_pct >= 70 for v in top)     # top lifted to 70%
     assert all(v.margin_pct >= 60 for v in entry)           # entry still >=60%
+
+
+def test_bundle_discount_holds_60_floor():
+    # An item listed above the floor gets a real discount but never below 60%.
+    cost = 11.0
+    from quoteforge.etsy.variations import min_price_for_margin
+    listp = min_price_for_margin(cost, 68)           # list at 68%
+    for row in V.bundle_table(listp, cost, "entry"):
+        assert row["margin_pct"] >= 60               # floor always held
+        assert row["holds_floor"] is True
+    # buying 4 gives a bigger discount than buying 2
+    q2 = V.bundle_quote(listp, cost, 2, "entry")
+    q4 = V.bundle_quote(listp, cost, 4, "entry")
+    assert q4["discount_pct"] >= q2["discount_pct"] >= 0
+
+
+def test_bundle_never_below_floor_even_on_thin_margin():
+    cost = 40.0
+    listp = V.floor_price(cost, "top")               # priced exactly at floor
+    q = V.bundle_quote(listp, cost, 4, "top")
+    assert q["unit"] >= listp - 0.01 and q["margin_pct"] >= 60   # can't discount below floor

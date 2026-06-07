@@ -45,6 +45,53 @@ def floor_for_tier(tier: str) -> float:
     return max(floor, TARGET_MARGIN_PCT)   # global 60% is an absolute floor
 
 
+def list_floor_for_tier(tier: str) -> float:
+    """The LIST (anchor) margin for single-item pricing - the higher of the list
+    target and the tier floor. Bundles discount from here down to floor_for_tier."""
+    from quoteforge.config import LIST_MARGIN_PCT
+    return max(LIST_MARGIN_PCT, floor_for_tier(tier))
+
+
+# Quantity-discount ladder: (min qty, target discount). Discounts are CAPPED so
+# the unit price never drops below the 60% net floor.
+QTY_DISCOUNT = [(4, 0.15), (3, 0.12), (2, 0.08), (1, 0.0)]
+
+
+def tier_discount(qty: int) -> float:
+    for threshold, disc in QTY_DISCOUNT:
+        if qty >= threshold:
+            return disc
+    return 0.0
+
+
+def floor_price(cost: float, tier: str = "entry") -> float:
+    """Lowest price that still clears the tier's net-margin floor (60%)."""
+    return min_price_for_margin(cost, floor_for_tier(tier))
+
+
+def bundle_quote(list_price: float, cost: float, qty: int,
+                 tier: str = "entry") -> dict:
+    """Per-unit + total price for `qty`, applying the quantity discount but never
+    breaking the 60% floor. Returns the effective discount, savings and margin."""
+    target = tier_discount(qty)
+    fp = floor_price(cost, tier)
+    unit = max(round(list_price * (1 - target), 2), fp)   # cap at the floor
+    eff = round((list_price - unit) / list_price * 100) if list_price else 0
+    total = round(unit * qty, 2)
+    return {
+        "qty": qty, "unit": unit, "total": total,
+        "list_total": round(list_price * qty, 2),
+        "savings": round((list_price - unit) * qty, 2),
+        "discount_pct": eff, "margin_pct": net_margin_pct(unit, cost),
+        "holds_floor": net_margin_pct(unit, cost) >= floor_for_tier(tier),
+    }
+
+
+def bundle_table(list_price: float, cost: float, tier: str = "entry") -> list[dict]:
+    """Quote rows for 1-4 units (the 'buy more, save more' ladder)."""
+    return [bundle_quote(list_price, cost, q, tier) for q in (1, 2, 3, 4)]
+
+
 @dataclass
 class Variation:
     material: str
@@ -111,7 +158,7 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
             continue                              # discontinued -> drop
         cost = _live_cost(p.gelato_sku, p.gelato_cost_usd)
         tier = TIER[p.category]
-        floor = floor_pct if floor_pct is not None else floor_for_tier(tier)
+        floor = floor_pct if floor_pct is not None else list_floor_for_tier(tier)
         price = min_price_for_margin(cost, floor)
         out.append(Variation(
             material=p.category, size=p.size, frame_color="",
@@ -124,7 +171,7 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
         base = _live_cost(p.gelato_sku, p.gelato_cost_usd)
         for fr in available_frames():
             cost = round(base + fr.upcharge, 2)
-            floor = floor_pct if floor_pct is not None else floor_for_tier("mid")
+            floor = floor_pct if floor_pct is not None else list_floor_for_tier("mid")
             price = min_price_for_margin(cost, floor)
             out.append(Variation(
                 material="framed", size=size, frame_color=fr.name,
@@ -176,8 +223,13 @@ def options_block() -> str:
     if frame_lines:
         lines.append("Frame options (for the Framed material):")
         lines.extend(frame_lines)
-    lines.append("Canvas is gallery-wrapped (\"open\") - ready to hang as-is. "
-                 "You can order as many pieces as you like.")
+    lines.append("Canvas is gallery-wrapped (\"open\") - ready to hang as-is.")
+    # Buy-more-save-more ladder (from the quantity-discount tiers).
+    tiers = sorted([(q, d) for q, d in QTY_DISCOUNT if d > 0])
+    if tiers:
+        parts = [f"{q}+ = {int(d*100)}% off" for q, d in tiers]
+        lines.append("BUY MORE, SAVE MORE (gallery sets): " + ", ".join(parts)
+                     + " - bundle a set for multiple rooms or gifts.")
     return "\n".join(lines)
 
 

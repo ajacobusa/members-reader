@@ -162,7 +162,8 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS subscribers (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             email       TEXT NOT NULL UNIQUE,
-            source      TEXT DEFAULT 'manual',   -- insert|linktree|website|etsy
+            source      TEXT DEFAULT 'manual',   -- insert|linktree|website|etsy|gift_recipient
+            consent     TEXT DEFAULT 'pending',  -- pending|yes|no (marketing opt-in)
             created_at  TEXT DEFAULT (datetime('now'))
         );
         """)
@@ -182,6 +183,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN mockup_url TEXT")
     if "proof_approved_at" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN proof_approved_at TEXT")
+    subcols = {row["name"] for row in conn.execute("PRAGMA table_info(subscribers)")}
+    if subcols and "consent" not in subcols:
+        conn.execute("ALTER TABLE subscribers ADD COLUMN consent TEXT DEFAULT 'pending'")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -416,16 +420,18 @@ def mark_review_sent(review_id: int) -> None:
 
 # ── Mailing-list subscribers (audience you own) ──────────────────
 
-def add_subscriber(email: str, source: str = "manual") -> bool:
+def add_subscriber(email: str, source: str = "manual",
+                   consent: str = "pending") -> bool:
     """Add an email to the list. Returns True if newly added, False if duplicate
-    or invalid. Idempotent — safe to call repeatedly."""
+    or invalid. Idempotent. `consent` tracks marketing opt-in (pending|yes|no);
+    only target consent='yes' (or your own buyers) in marketing sends."""
     email = (email or "").strip().lower()
     if "@" not in email or "." not in email.split("@")[-1]:
         return False
     with _conn() as conn:
         cur = conn.execute(
-            "INSERT OR IGNORE INTO subscribers (email, source) VALUES (?,?)",
-            (email, source))
+            "INSERT OR IGNORE INTO subscribers (email, source, consent) VALUES (?,?,?)",
+            (email, source, consent))
         return cur.rowcount > 0
 
 

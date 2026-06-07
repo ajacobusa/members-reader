@@ -1127,6 +1127,15 @@ def _cmd_variations(args: list[str]) -> int:
     print(f"Etsy inventory CSV -> {out}")
     print("Apply these as Variations on each listing (Material, Size, Frame "
           "color). Frame colors apply to the Framed material only.")
+    # Bundle / quantity-discount ladder (holds the 60% floor).
+    from quoteforge.etsy.variations import bundle_table
+    entry = next((v for v in vs if v.tier == "entry"), vs[0])
+    print(f"\nBUY MORE, SAVE MORE (e.g. {MATERIAL_LABELS[entry.material]} "
+          f"{entry.size}, list ${entry.price:.2f}):")
+    for row in bundle_table(entry.price, entry.gelato_cost, entry.tier):
+        print(f"  {row['qty']}x  unit ${row['unit']:.2f}  ({row['discount_pct']}% off)"
+              f"  total ${row['total']:.2f}  margin {row['margin_pct']}%"
+              f"  {'OK' if row['holds_floor'] else 'FLOOR!'}")
     return 0
 
 
