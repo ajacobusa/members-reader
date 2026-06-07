@@ -1257,6 +1257,15 @@ def _cmd_order_by(args: list[str]) -> int:
     return 0
 
 
+def _cmd_analytics(args: list[str]) -> int:
+    """Show the analytics block (Etsy stats + GA + Clarity) - also in the daily
+    briefing. `analytics`."""
+    from quoteforge.automation.analytics_report import (analytics_summary,
+                                                        format_analytics_text)
+    print(format_analytics_text(analytics_summary()))
+    return 0
+
+
 def _cmd_golive_pdf(args: list[str]) -> int:
     """Generate the Go-Live checklist PDF (ordered steps + commands). `golive-pdf`."""
     from quoteforge.etsy.golive_doc import build_golive_pdf
@@ -1525,6 +1534,7 @@ COMMANDS = {
     "exec-report": _cmd_exec_report,
     "workflow-pdf": _cmd_workflow_pdf,
     "golive-pdf": _cmd_golive_pdf,
+    "analytics": _cmd_analytics,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,
     "add-income": _cmd_add_income,

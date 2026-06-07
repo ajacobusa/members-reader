@@ -84,6 +84,10 @@ def morning_briefing(now: datetime | None = None) -> dict:
         "reminders": [r["text"] for r in reminders],
         "health": health["overall"],
         "api_cost_today": cost["total_cost"], "api_calls_today": cost["calls"],
+        "analytics": _safe(
+            lambda: __import__("quoteforge.automation.analytics_report",
+                               fromlist=["analytics_summary"]).analytics_summary(),
+            {}),
     }
 
 
@@ -103,6 +107,10 @@ def format_briefing_text(b: dict) -> str:
     lines.append(f"  Win-back lapsed      : {b['lapsed']}")
     lines.append(f"  Seasonal SEO due     : {b['seasonal_due']}")
     lines.append(f"  Review/referral due  : {b['delight_due']}")
+    if b.get("analytics"):
+        lines.append("")
+        from quoteforge.automation.analytics_report import format_analytics_text
+        lines.append(format_analytics_text(b["analytics"]))
     if b["reminders"]:
         lines.append("\nSETUP REMINDERS:")
         for r in b["reminders"]:
