@@ -91,6 +91,31 @@ KB = [
      "Do you ship internationally?",
      "Yes - we ship worldwide with tracking via our global print network, so "
      "your order is produced close to the destination where possible."),
+    (["care", "clean", "wash", "maintain", "fade", "last"],
+     "How do I care for it?",
+     "Wipe gently with a soft, dry (or barely damp) cloth - no harsh cleaners. "
+     "Hang out of direct, harsh sunlight to keep colors vivid for years. "
+     "Canvas and acrylic just need an occasional light dusting."),
+    (["when", "in time", "deadline", "order by", "before christmas", "rush",
+      "how soon"],
+     "Will it arrive in time?",
+     "We send your proof within ~1 day; after you approve, it prints and ships "
+     "(typically 3-6 business days). Near big holidays, watch the 'order by' "
+     "date on the site, and message us if it's urgent - we'll do our best."),
+    (["what size", "which size", "how big should", "wall", "room", "recommend size"],
+     "What size should I get?",
+     "For a desk, nightstand or gallery wall, 8x10-11x14 is perfect. For above a "
+     "sofa, bed or as a statement piece, go 16x20-24x36. Tell me the spot and "
+     "I'll suggest a size!"),
+    (["pay", "payment", "paypal", "card", "afterpay", "klarna"],
+     "What payment methods can I use?",
+     "Checkout is secure through Etsy - credit/debit cards, PayPal, Apple Pay, "
+     "Google Pay, Etsy gift cards, and (where available) Klarna/Afterpay."),
+    (["how long", "processing", "make time", "production"],
+     "How long does it take to make?",
+     "Because each piece is personalized and made to order: proof within ~1 day, "
+     "then production + tracked shipping, usually 3-6 business days after you "
+     "approve the proof."),
 ]
 
 FALLBACK = ("Great question! I'm Ange, the {shop} assistant. For anything "
