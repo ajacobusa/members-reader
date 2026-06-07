@@ -1257,6 +1257,32 @@ def _cmd_order_by(args: list[str]) -> int:
     return 0
 
 
+def _cmd_exec_report(args: list[str]) -> int:
+    """Build the executive report workbook (summary + charts + infra + roadmap).
+    `exec-report [today|week|month|year|all]`."""
+    from quoteforge.etsy.exec_report import build_exec_report
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "month")
+    out = build_exec_report(period)
+    print(f"Executive report: {out}")
+    print("Tabs: Executive Summary (KPIs + charts) | P&L | Breakdown | "
+          "Infrastructure (current state, AI workload, roadmap, opportunities).")
+    return 0
+
+
+def _cmd_monthly_review(args: list[str]) -> int:
+    """Prior-month packet: reconciliation + ledger + exec report, archived +
+    emailed. `monthly-review [email]`."""
+    from quoteforge.automation.weekly_review import monthly_review
+    r = monthly_review(email=("email" in args))
+    print(f"Monthly report ({r['period']}) - {len(r['archive'])} file(s) archived:")
+    for p in r["archive"]:
+        print(f"  {p}")
+    if r.get("emailed_to"):
+        print(f"Emailed to {r['emailed_to']}.")
+    return 0
+
+
 def _cmd_weekly_review(args: list[str]) -> int:
     """Friday business review: TCO + key metrics + AI summary. `weekly-review [email]`."""
     from quoteforge.automation.weekly_review import weekly_review, format_review_text
@@ -1479,6 +1505,8 @@ COMMANDS = {
     "track-orders": _cmd_track_orders,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
+    "monthly-review": _cmd_monthly_review,
+    "exec-report": _cmd_exec_report,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,
     "add-income": _cmd_add_income,

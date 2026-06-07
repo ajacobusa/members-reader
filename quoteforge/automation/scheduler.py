@@ -125,6 +125,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Refreshes the email-capture kit (QR, announcement, Linktree, signup "
         "snippet, insert card) so the audience-building assets stay current."),
     ScheduledJob(
+        "QuoteForge Monthly Exec Report", "monthly-review email",
+        ["/SC", "MONTHLY", "/D", "1", "/ST", "07:00"],
+        "1st of month: prior-month reconciliation + full ledger + executive "
+        "report (summary, charts, infrastructure & roadmap) archived to the "
+        "dated cost folder and emailed."),
+    ScheduledJob(
         "QuoteForge Friday Business Review", "weekly-review email",
         ["/SC", "WEEKLY", "/D", "FRI", "/ST", "16:00"],
         "Every Friday: AI reviews TCO + key metrics (P&L, margin, AOV, orders, "

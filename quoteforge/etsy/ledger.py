@@ -253,8 +253,30 @@ def export_ledger_excel(period: str = "all", out_path=None):
     from quoteforge.config import OUTPUT_DIR
     led = build_ledger(period)
     wb = Workbook()
-    ws = wb.active
-    ws.title = "General Ledger"
+    # Summary tab (front) - exec KPIs + cost-mix chart.
+    led_t = led["totals"]
+    su = wb.active
+    su.title = "Summary"
+    su["A1"] = f"General Ledger - Summary ({period})"
+    su["A1"].font = Font(bold=True, size=14)
+    kpis = [("Revenue", led_t["revenue"]), ("COGS (Gelato)", led_t["cogs"]),
+            ("Etsy fees", led_t["etsy_fees"]), ("API cost", led_t["api_cost"]),
+            ("Overhead", led_t["opex"]), ("Net profit", led_t["net_profit"]),
+            ("Net margin %", led_t["margin_pct"]), ("Orders", led_t["orders"])]
+    for i, (lbl, val) in enumerate(kpis, start=3):
+        su.cell(i, 1, lbl); su.cell(i, 2, val)
+    try:
+        from openpyxl.chart import PieChart, Reference
+        # cost rows are at A4:A7 (COGS, Etsy fees, API, Overhead)
+        pie = PieChart(); pie.title = "Cost mix"
+        pie.add_data(Reference(su, min_col=2, min_row=4, max_row=7))
+        pie.set_categories(Reference(su, min_col=1, min_row=4, max_row=7))
+        su.add_chart(pie, "D3")
+    except Exception:  # noqa: BLE001
+        pass
+    su.column_dimensions["A"].width = 18
+
+    ws = wb.create_sheet("General Ledger")
     headers = ["Date", "Revenue", "COGS (Gelato)", "Etsy Fees", "API Cost",
                "OpEx", "Net Profit", "Orders"]
     ws.append(headers)

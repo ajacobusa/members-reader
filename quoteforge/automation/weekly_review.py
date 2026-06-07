@@ -132,6 +132,69 @@ def archive_cost_report(report: dict) -> list:
     return paths
 
 
+def monthly_review(email: bool = False) -> dict:
+    """1st-of-month packet for the PRIOR month: reconciliation + full ledger +
+    executive report, archived to a dated monthly cost folder and emailed."""
+    import shutil
+    from datetime import date
+    from quoteforge.config import OUTPUT_DIR, SHOP_NAME
+    from quoteforge.etsy.reconciliation import export_reconciliation
+    from quoteforge.etsy.financials import month_financials
+    from quoteforge.etsy.ledger import export_ledger_excel
+    from quoteforge.etsy.exec_report import build_exec_report
+
+    today = date.today()
+    y, m = (today.year, today.month - 1) if today.month > 1 else (today.year - 1, 12)
+    tag = f"{y}-{m:02d}"
+    folder = OUTPUT_DIR / "cost" / str(y) / f"{tag}_monthly"
+    folder.mkdir(parents=True, exist_ok=True)
+    paths = []
+    try:
+        rec = export_reconciliation(y, m)
+        dest = folder / f"reconciliation_{tag}.xlsx"; shutil.copy2(rec, dest)
+        paths.append(str(dest))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        led = export_ledger_excel("all")
+        dest = folder / f"general_ledger_{tag}.xlsx"; shutil.copy2(led, dest)
+        paths.append(str(dest))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        ex = build_exec_report("all")
+        dest = folder / f"executive_report_{tag}.xlsx"; shutil.copy2(ex, dest)
+        paths.append(str(dest))
+    except Exception:  # noqa: BLE001
+        pass
+
+    fin = {}
+    try:
+        fin = month_financials(y, m)
+    except Exception:  # noqa: BLE001
+        pass
+    body = (f"<html><body style='font-family:Arial'>"
+            f"<h2>{SHOP_NAME} - Monthly Report ({tag})</h2>"
+            f"<p>Revenue ${fin.get('revenue', 0):.2f} &middot; Gelato cost "
+            f"${fin.get('gelato_cost', 0):.2f} &middot; Etsy fees "
+            f"${fin.get('etsy_fees', 0):.2f} &middot; <b>Net profit "
+            f"${fin.get('net_profit', 0):.2f}</b> across {fin.get('order_count', 0)} "
+            f"orders.</p><p>Attached: reconciliation, full general ledger, and the "
+            f"executive report (summary, charts, infrastructure &amp; roadmap).</p>"
+            f"<p>Archived to: {folder}</p></body></html>")
+    out = {"period": tag, "archive": paths, "financials": fin}
+    if email:
+        try:
+            from quoteforge.automation.emailer import _send_email
+            from quoteforge.config import REPORT_RECIPIENT
+            _send_email(f"{SHOP_NAME} - Monthly Report ({tag})", body,
+                        to=REPORT_RECIPIENT, attachments=paths or None)
+            out["emailed_to"] = REPORT_RECIPIENT
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
 def format_review_text(r: dict) -> str:
     m = r["metrics"]
     p = m.get("pnl_month", {})
