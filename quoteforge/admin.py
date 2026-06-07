@@ -1257,6 +1257,16 @@ def _cmd_order_by(args: list[str]) -> int:
     return 0
 
 
+def _cmd_weekly_review(args: list[str]) -> int:
+    """Friday business review: TCO + key metrics + AI summary. `weekly-review [email]`."""
+    from quoteforge.automation.weekly_review import weekly_review, format_review_text
+    r = weekly_review(email=("email" in args))
+    print(format_review_text(r))
+    if r.get("emailed_to"):
+        print(f"\nEmailed to {r['emailed_to']}.")
+    return 0
+
+
 def _cmd_ai_review(args: list[str]) -> int:
     """AI ops review: audit every step, flag issues, suggest improvements.
     `ai-review [email]`."""
@@ -1468,6 +1478,7 @@ COMMANDS = {
     "order-by": _cmd_order_by,
     "track-orders": _cmd_track_orders,
     "ai-review": _cmd_ai_review,
+    "weekly-review": _cmd_weekly_review,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,
     "add-income": _cmd_add_income,

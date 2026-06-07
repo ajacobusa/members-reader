@@ -242,6 +242,20 @@ def export_ledger_excel(period: str = "all", out_path=None):
                t["opex"], t["net_profit"], t["orders"]])
     for c in ws[ws.max_row]:
         c.font = Font(bold=True)
+
+    # Breakdown tabs: by channel, vendor, product type.
+    bd = build_breakdown(period)
+    for title, key in (("By Channel", "by_channel"), ("By Vendor", "by_vendor"),
+                       ("By Product", "by_product")):
+        sh = wb.create_sheet(title)
+        sh.append([title.replace("By ", ""), "Revenue", "Cost", "Net Profit", "Orders"])
+        for c in sh[1]:
+            c.font = Font(bold=True)
+        rows = bd[key]
+        for k in sorted(rows, key=lambda x: -rows[x]["net"]):
+            r = rows[k]
+            sh.append([k, r["revenue"], r["cost"], r["net"], r["orders"]])
+
     out = out_path or (OUTPUT_DIR / "general_ledger.xlsx")
     from pathlib import Path
     out = Path(out)
