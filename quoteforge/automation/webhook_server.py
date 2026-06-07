@@ -24,6 +24,7 @@ Zapier JSON format expected:
 """
 import json
 import logging
+import os
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -430,7 +431,10 @@ if FLASK_AVAILABLE and app:
         return jsonify(result)
 
 
-def run_server(host: str = "0.0.0.0", port: int = 5050, debug: bool = False) -> None:
+def run_server(host: str = "0.0.0.0", port: int = None, debug: bool = False) -> None:
+    # Hosts (Render/Railway/Fly/Heroku) inject the port via $PORT.
+    if port is None:
+        port = int(os.getenv("PORT", "5050"))
     if not FLASK_AVAILABLE:
         print("Flask not installed. Run: pip install flask")
         return

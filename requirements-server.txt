@@ -1,0 +1,7 @@
+# Production hosting deps (web service). Install on the host:
+#   pip install -r requirements.txt -r requirements-server.txt
+-r requirements.txt
+flask>=3.0.0
+gunicorn>=21.2.0       # Linux WSGI server (Render/Railway/Fly/VPS)
+waitress>=3.0.0        # cross-platform fallback (Windows)
+sentry-sdk>=1.40.0     # optional error monitoring (only used if SENTRY_DSN set)

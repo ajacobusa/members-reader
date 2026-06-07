@@ -27,8 +27,10 @@ ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 UNSPLASH_ACCESS_KEY: str = os.getenv("UNSPLASH_ACCESS_KEY", "")
 BANNERBEAR_API_KEY: str = os.getenv("BANNERBEAR_API_KEY", "")
 
-# Output
-OUTPUT_DIR: Path = Path.home() / "Desktop" / "QuoteForge-Output"
+# Output / data directory. Override with OUTPUT_DIR env on a server (e.g. a
+# persistent disk like /data) so the SQLite DB + assets survive redeploys.
+OUTPUT_DIR: Path = (Path(os.environ["OUTPUT_DIR"]) if os.getenv("OUTPUT_DIR")
+                    else Path.home() / "Desktop" / "QuoteForge-Output")
 
 # Claude models.
 # Quote/message/SEO generation is short and simple — Haiku 4.5 does it well at

@@ -1,0 +1,52 @@
+# Render.com blueprint - 24/7 webhook + Ask Ange server, with scheduled jobs.
+# Deploy: push to GitHub -> Render -> New + Blueprint -> pick this repo.
+services:
+  - type: web
+    name: joffiels-server
+    runtime: python
+    plan: starter            # smallest paid; free plan sleeps (use starter for 24/7)
+    buildCommand: pip install -r requirements.txt -r requirements-server.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /health
+    disk:
+      name: data
+      mountPath: /data       # persistent SQLite + assets
+      sizeGB: 1
+    envVars:
+      - key: OUTPUT_DIR
+        value: /data
+      - key: TEST_MODE
+        value: "true"        # flip to "false" after the sample is approved
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set in the Render dashboard (secret)
+      - key: GELATO_API_KEY
+        sync: false
+      - key: ETSY_API_KEY
+        sync: false
+      - key: ETSY_OAUTH_TOKEN
+        sync: false
+      - key: ETSY_WEBHOOK_SECRET
+        sync: false
+
+  # ── Scheduled jobs (mirror the Windows Task Scheduler set) ──
+  - type: cron
+    name: poll-etsy
+    runtime: python
+    schedule: "*/10 * * * *"      # every 10 min
+    buildCommand: pip install -r requirements.txt -r requirements-server.txt
+    startCommand: python -m quoteforge.admin poll-etsy
+    envVars: [{key: OUTPUT_DIR, value: /data}]
+  - type: cron
+    name: track-orders
+    runtime: python
+    schedule: "0 */6 * * *"       # every 6h
+    buildCommand: pip install -r requirements.txt -r requirements-server.txt
+    startCommand: python -m quoteforge.admin track-orders
+    envVars: [{key: OUTPUT_DIR, value: /data}]
+  - type: cron
+    name: daily-ops
+    runtime: python
+    schedule: "20 7 * * *"        # 07:20 daily: briefing + ledger + backup
+    buildCommand: pip install -r requirements.txt -r requirements-server.txt
+    startCommand: sh -c "python -m quoteforge.admin briefing email && python -m quoteforge.admin ledger month email && python -m quoteforge.admin track-orders"
+    envVars: [{key: OUTPUT_DIR, value: /data}]
