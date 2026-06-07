@@ -208,7 +208,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 {_analytics_snippet()}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet">
 <style>
  :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
    --cream:#f7f4ee;--ink:#23302b;--muted:#6b7a72;--line:#e7e1d6}}
@@ -313,6 +313,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .perso input,.perso textarea{{width:100%;border:1px solid #cdbf98;border-radius:8px;
    padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px}}
  .perso .note{{font-size:11px;color:var(--muted)}}
+ .perso .cc{{font-size:11px;color:var(--muted);text-align:right;margin:-2px 0 4px}}
+ .fonts{{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}}
+ .fonts .fchip{{font-size:14px}}
  .perso .swrow{{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:8px;background:#0f3d2e}}
@@ -399,11 +402,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="sw" id="mbg"></div>
          <div class="swrow">Text color</div>
          <div class="sw" id="mtxt"></div>
-         <input id="mtext" type="text" maxlength="120" oninput="drawArt()"
-           placeholder="Type your own wording (optional) - it previews live">
-         <div class="note">Pick any background &amp; text color to match your space -
-           the preview updates instantly. Final colors &amp; wording are confirmed on
-           your FREE digital proof before printing. No extra charge.</div>
+         <div class="swrow">Your wording</div>
+         <textarea id="mtext" maxlength="250" rows="3" oninput="onText()"
+           placeholder="Type your own message (optional) - previews live"></textarea>
+         <div class="cc"><span id="mcc">0 / 250</span> characters</div>
+         <div class="swrow">Font</div>
+         <div class="fonts" id="mfonts"></div>
+         <div class="note">Background, text color, font &amp; wording are all free -
+           the preview updates instantly and final details are confirmed on your
+           FREE digital proof before printing.</div>
        </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>
@@ -482,9 +489,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mdesc').textContent = d.desc;
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
+   SELFONT = FONTS[0][1];
    CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
-   renderBg(); renderTxt(); drawArt();
+   var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
+   renderBg(); renderTxt(); renderFonts(); drawArt();
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
    fb.href = fbLink(d.title);
@@ -494,7 +503,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  const BGCOLORS = ["#0f3d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#dcd6c8","#c9a84c"];
  const TXTCOLORS = ["#f4efe6","#ffffff","#c9a84c","#1b1b1f","#0f3d2e","#7a2e2e"];
- let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], CURQUOTE="";
+ const FONTS = [["Cormorant","'Cormorant Garamond',serif"],
+   ["Playfair","'Playfair Display',serif"],["Montserrat","'Montserrat',sans-serif"],
+   ["Lora","'Lora',serif"],["Script","'Dancing Script',cursive"],
+   ["Oswald","'Oswald',sans-serif"]];
+ const MAXCHARS = 250;
+ let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
+ function renderFonts(){{
+   document.getElementById('mfonts').innerHTML = FONTS.map(f=>
+     `<span class="fchip ${{f[1]===SELFONT?'sel':''}}" style="font-family:${{f[1]}}" onclick="pickFont('${{f[1]}}',this)">${{f[0]}}</span>`).join('');
+ }}
+ function pickFont(f,el){{ SELFONT=f;
+   document.querySelectorAll('#mfonts .fchip').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
+ function onText(){{
+   const v=(document.getElementById('mtext').value||'');
+   document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;
+   drawArt();
+ }}
  function renderBg(){{
    document.getElementById('mbg').innerHTML = BGCOLORS.map((c,k)=>
      `<span style="background:${{c}}" class="${{c===SELBG?'sel':''}}" onclick="pickBg('${{c}}',this)" title="${{c}}"></span>`).join('');
@@ -539,7 +564,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
    const maxW=w*0.84; let fs=Math.round(h*0.10);
-   function wrap(f){{ctx.font='600 '+f+"px 'Cormorant Garamond',Georgia,serif";
+   function wrap(f){{ctx.font='600 '+f+'px '+SELFONT;
      const words=text.split(/\\s+/); let lines=[],cur='';
      for(const wd of words){{const tt=(cur+' '+wd).trim();
        if(ctx.measureText(tt).width<=maxW){{cur=tt;}}else{{lines.push(cur);cur=wd;}}}}
