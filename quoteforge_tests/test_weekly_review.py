@@ -58,9 +58,9 @@ def test_cost_folder_archive_dated(tmp_path, monkeypatch):
     from quoteforge.automation.weekly_review import weekly_review
     r = weekly_review(email=False)
     arch = r.get("archive")
-    assert arch and arch.endswith(".xlsx")
+    assert arch and isinstance(arch, list) and arch[0].endswith(".xlsx")
     from pathlib import Path
-    p = Path(arch)
+    p = Path(arch[0])
     assert p.exists()
     today = date.today().isoformat()
     # cost/<YYYY>/<YYYY-MM-DD>/ structure
@@ -82,3 +82,35 @@ def test_email_attaches_ledger(tmp_path, monkeypatch):
     from quoteforge.automation.weekly_review import weekly_review
     weekly_review(email=True)
     assert sent.get("att") and str(sent["att"][0]).endswith(".xlsx")
+
+
+def test_weekly_trend_four_weeks():
+    from quoteforge.etsy.ledger import weekly_trend
+    t = weekly_trend(4)
+    assert len(t) == 4 and all("week_of" in w and "net" in w for w in t)
+
+
+def test_archive_includes_reconciliation(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.etsy.reconciliation.OUTPUT_DIR", tmp_path, raising=False)
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", True, raising=False)
+    from quoteforge.db import database as db
+    db.init_db()
+    from quoteforge.automation.weekly_review import weekly_review
+    r = weekly_review(email=False)
+    names = [p.split("/")[-1].split("\\")[-1] for p in r["archive"]]
+    assert any("general_ledger" in n for n in names)
+    assert any("reconciliation" in n for n in names)
+
+
+def test_ledger_excel_has_trend_tab(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    from quoteforge.db import database as db
+    db.init_db()
+    from quoteforge.etsy.ledger import export_ledger_excel
+    import openpyxl
+    out = export_ledger_excel("all", out_path=tmp_path / "gl.xlsx")
+    assert "Trend (4 wks)" in openpyxl.load_workbook(out).sheetnames

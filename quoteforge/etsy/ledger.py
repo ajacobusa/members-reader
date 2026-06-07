@@ -115,6 +115,32 @@ def build_ledger(period: str = "month") -> dict:
             "days": rows, "totals": tot}
 
 
+def weekly_trend(weeks: int = 4) -> list[dict]:
+    """Revenue / net / orders for the last `weeks` weeks (oldest -> newest)."""
+    led = build_ledger("year")
+    today = date.today()
+    buckets = {i: {"revenue": 0.0, "net": 0.0, "orders": 0} for i in range(weeks)}
+    for r in led["days"]:
+        try:
+            d = date.fromisoformat(r["day"][:10])
+        except Exception:  # noqa: BLE001
+            continue
+        delta = (today - d).days
+        if 0 <= delta < weeks * 7:
+            b = delta // 7
+            buckets[b]["revenue"] += r["revenue"]
+            buckets[b]["net"] += r["net_profit"]
+            buckets[b]["orders"] += r["orders"]
+    out = []
+    for i in range(weeks - 1, -1, -1):
+        ws = today - timedelta(days=i * 7 + 6)
+        out.append({"week_of": ws.isoformat(),
+                    "revenue": round(buckets[i]["revenue"], 2),
+                    "net": round(buckets[i]["net"], 2),
+                    "orders": buckets[i]["orders"]})
+    return out
+
+
 def build_breakdown(period: str = "month") -> dict:
     """Revenue / cost / profit grouped by channel, vendor, and product type."""
     from quoteforge.db.database import (
@@ -255,6 +281,29 @@ def export_ledger_excel(period: str = "all", out_path=None):
         for k in sorted(rows, key=lambda x: -rows[x]["net"]):
             r = rows[k]
             sh.append([k, r["revenue"], r["cost"], r["net"], r["orders"]])
+
+    # Trend tab: last 4 weeks + a native line chart (no extra deps).
+    try:
+        from openpyxl.chart import LineChart, Reference
+        tr = wb.create_sheet("Trend (4 wks)")
+        tr.append(["Week of", "Revenue", "Net Profit", "Orders"])
+        for c in tr[1]:
+            c.font = Font(bold=True)
+        rows = weekly_trend(4)
+        for r in rows:
+            tr.append([r["week_of"], r["revenue"], r["net"], r["orders"]])
+        if rows:
+            chart = LineChart()
+            chart.title = "Revenue & Net Profit - last 4 weeks"
+            chart.y_axis.title = "$"
+            data = Reference(tr, min_col=2, max_col=3, min_row=1,
+                             max_row=len(rows) + 1)
+            cats = Reference(tr, min_col=1, min_row=2, max_row=len(rows) + 1)
+            chart.add_data(data, titles_from_data=True)
+            chart.set_categories(cats)
+            tr.add_chart(chart, "F2")
+    except Exception:  # noqa: BLE001
+        pass
 
     out = out_path or (OUTPUT_DIR / "general_ledger.xlsx")
     from pathlib import Path

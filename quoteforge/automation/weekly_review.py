@@ -76,44 +76,60 @@ def weekly_review(email: bool = False) -> dict:
         "that matter, 2 wins, 2 risks, and 3 prioritized actions for next week. "
         f"Be concrete.\n\nMETRICS:\n{json.dumps(m, default=str)}",
         operation="weekly_review", max_tokens=500, mock=fallback)
-    report = {"metrics": m, "summary": summary}
-    # Archive a dated copy of the ledger + review to the cost folder.
     try:
-        report["archive"] = archive_cost_report(report)
+        from quoteforge.etsy.ledger import weekly_trend
+        m["trend"] = weekly_trend(4)
     except Exception:  # noqa: BLE001
-        report["archive"] = None
+        m["trend"] = []
+    report = {"metrics": m, "summary": summary}
+    # Archive dated copies of the ledger + reconciliation + review to cost folder.
+    try:
+        report["archive"] = archive_cost_report(report)   # list of file paths
+    except Exception:  # noqa: BLE001
+        report["archive"] = []
     if email:
         try:
             from quoteforge.automation.emailer import _send_email
             from quoteforge.config import REPORT_RECIPIENT
-            attach = [report["archive"]] if report.get("archive") else None
             _send_email(f"{SHOP_NAME} - Friday Business Review",
                         format_review_html(report), to=REPORT_RECIPIENT,
-                        attachments=attach)
+                        attachments=report.get("archive") or None)
             report["emailed_to"] = REPORT_RECIPIENT
         except Exception:  # noqa: BLE001
             pass
     return report
 
 
-def archive_cost_report(report: dict) -> str:
-    """Save the ledger .xlsx + the review text into a dated cost folder:
-    OUTPUT_DIR/cost/<YYYY>/<YYYY-MM-DD>/ . Returns the archived .xlsx path."""
+def archive_cost_report(report: dict) -> list:
+    """Save ledger.xlsx + reconciliation.xlsx + review.txt into a dated cost
+    folder OUTPUT_DIR/cost/<YYYY>/<YYYY-MM-DD>/. Returns the archived file paths."""
     import shutil
     from datetime import date
-    from pathlib import Path
     from quoteforge.config import OUTPUT_DIR
     from quoteforge.etsy.ledger import export_ledger_excel
     today = date.today().isoformat()
     folder = OUTPUT_DIR / "cost" / today[:4] / today
     folder.mkdir(parents=True, exist_ok=True)
-    # Fresh ledger workbook, then archive a dated copy.
-    src = export_ledger_excel("all")
-    dest = folder / f"general_ledger_{today}.xlsx"
-    shutil.copy2(src, dest)
+    paths = []
+
+    led = export_ledger_excel("all")
+    led_dest = folder / f"general_ledger_{today}.xlsx"
+    shutil.copy2(led, led_dest)
+    paths.append(str(led_dest))
+
+    try:
+        from quoteforge.etsy.reconciliation import export_reconciliation
+        d = date.today()
+        rec = export_reconciliation(d.year, d.month)
+        rec_dest = folder / f"reconciliation_{d.year}-{d.month:02d}.xlsx"
+        shutil.copy2(rec, rec_dest)
+        paths.append(str(rec_dest))
+    except Exception:  # noqa: BLE001
+        pass
+
     (folder / f"business_review_{today}.txt").write_text(
         format_review_text(report), encoding="utf-8")
-    return str(dest)
+    return paths
 
 
 def format_review_text(r: dict) -> str:
@@ -131,8 +147,14 @@ def format_review_text(r: dict) -> str:
              f"  Active subs   : {c.get('active_subscriptions', 0)}",
              f"  Reviews       : {c.get('reviews', {})}",
              f"  Pending appr. : {c.get('pending_approvals', 0)}",
-             f"  Margins < 60% : {m.get('margins', {}).get('below_floor', 0)}",
-             "=" * 62]
+             f"  Margins < 60% : {m.get('margins', {}).get('below_floor', 0)}"]
+    trend = m.get("trend") or []
+    if trend:
+        lines.append("\n4-WEEK TREND (week of -> revenue / net / orders):")
+        for w in trend:
+            lines.append(f"  {w['week_of']}: ${w['revenue']} / ${w['net']} / "
+                         f"{w['orders']}")
+    lines.append("=" * 62)
     return "\n".join(lines)
 
 
