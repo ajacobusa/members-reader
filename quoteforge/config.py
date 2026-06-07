@@ -111,6 +111,16 @@ AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
 # sheet. Leave blank to use the built-in mailto-to-owner feedback.
 FEEDBACK_FORM_URL: str = os.getenv("FEEDBACK_FORM_URL", "").strip()
 
+# ── Affiliate "complete the gift" + B2B (off-Etsy, on your own site) ──
+# Paste your affiliate links (flowers / gift cards / gifts). Each is shown only
+# if set. FTC disclosure is added automatically. These are referral links - you
+# earn a commission; do NOT use these on Etsy (Etsy bans off-site links).
+AFFILIATE_FLOWERS_URL: str = os.getenv("AFFILIATE_FLOWERS_URL", "").strip()
+AFFILIATE_GIFTCARD_URL: str = os.getenv("AFFILIATE_GIFTCARD_URL", "").strip()
+AFFILIATE_GIFTS_URL: str = os.getenv("AFFILIATE_GIFTS_URL", "").strip()
+# Where B2B / wholesale / corporate-gifting inquiries should be sent.
+B2B_CONTACT_EMAIL: str = os.getenv("B2B_CONTACT_EMAIL", "").strip()
+
 # ── Off-site backup (Google Drive) ───────────────────────────────
 # When true, `backup-all` also uploads the DB snapshot + bundle to Google Drive
 # (requires a configured Drive client). Off by default; a no-op without creds.

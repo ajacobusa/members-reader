@@ -120,3 +120,26 @@ def test_external_assets_lazy_mode(tmp_path):
     # listing gallery/format images are NOT inlined (only the small logo/banner);
     # if they were, a single listing would inline ~11 images.
     assert h.count("data:image/jpeg") <= 4
+
+
+def test_b2b_always_shows_affiliate_conditional(tmp_path, monkeypatch):
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+    from PIL import Image
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    # no affiliate links -> gift cards absent, B2B present
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_FLOWERS_URL", "", raising=False)
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=False)
+    h = out.read_text(encoding="utf-8")
+    assert "Corporate &amp; bulk gifting" in h and "b2bSend" in h
+    assert "Complete the gift" not in h
+    # with a flowers link -> gift card + FTC disclosure appear
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_FLOWERS_URL",
+                        "https://aff.example/flowers", raising=False)
+    out2 = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                           out_path=tmp_path / "h2.html", frame_picker=False)
+    h2 = out2.read_text(encoding="utf-8")
+    assert "Complete the gift" in h2 and "aff.example/flowers" in h2
+    assert "affiliate links" in h2 and 'rel="sponsored noopener nofollow"' in h2

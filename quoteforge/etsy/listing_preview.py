@@ -45,6 +45,52 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _gift_and_b2b_section(owner: str) -> str:
+    """'Complete the gift' affiliate cards (off-Etsy) + a B2B/wholesale inquiry
+    block. Affiliate cards appear only for links that are configured; B2B always
+    shows. FTC disclosure is included automatically."""
+    from quoteforge.config import (
+        AFFILIATE_FLOWERS_URL, AFFILIATE_GIFTCARD_URL, AFFILIATE_GIFTS_URL,
+        B2B_CONTACT_EMAIL, SHOP_NAME,
+    )
+    cards = []
+    for label, emoji, url in (
+        ("Add fresh flowers", "🌸", AFFILIATE_FLOWERS_URL),
+        ("Add a gift card", "🎁", AFFILIATE_GIFTCARD_URL),
+        ("More gift ideas", "✨", AFFILIATE_GIFTS_URL),
+    ):
+        if url:
+            cards.append(
+                f'<a class="gcard" href="{url}" target="_blank" '
+                f'rel="sponsored noopener nofollow"><div class="ge">{emoji}</div>'
+                f'<div class="gl">{label}</div></a>')
+    gift_html = ""
+    if cards:
+        gift_html = (
+            '<div class="giftsec"><h2>Complete the gift</h2>'
+            '<p class="gsub">Pair your personalized art with flowers or a gift '
+            'card - delivered by trusted partners.</p>'
+            f'<div class="gcards">{"".join(cards)}</div>'
+            '<p class="ftc">Some links are affiliate links - we may earn a small '
+            'commission at no extra cost to you.</p></div>')
+
+    b2b_to = B2B_CONTACT_EMAIL or owner
+    b2b_html = (
+        '<div class="b2b"><h2>Corporate &amp; bulk gifting</h2>'
+        '<p class="gsub">Personalized art for employee recognition, client gifts, '
+        'weddings, realtor closings, churches &amp; schools - wholesale pricing on '
+        'volume orders.</p>'
+        '<div class="b2bform">'
+        '<input id="bz_name" placeholder="Your name">'
+        '<input id="bz_co" placeholder="Company / organization">'
+        '<input id="bz_email" placeholder="Your email">'
+        '<input id="bz_qty" placeholder="Approx. quantity">'
+        '<textarea id="bz_msg" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea>'
+        f'<button onclick="b2bSend(\'{b2b_to}\')">Request a wholesale quote</button>'
+        '</div></div>')
+    return gift_html + b2b_html
+
+
 def _save_web_jpg(src: Path, dest: Path, max_dim: int = 900, quality: int = 80) -> None:
     """Write an optimized JPEG copy of src to dest (for lazy-loaded assets)."""
     from PIL import Image
@@ -278,6 +324,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
+ .giftsec,.b2b{{max-width:1000px;margin:30px auto;padding:0 20px;text-align:center}}
+ .giftsec h2,.b2b h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
+ .gsub{{color:var(--muted);font-size:15px;margin:0 auto 16px;max-width:620px}}
+ .gcards{{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}}
+ .gcard{{background:#fff;border:1px solid var(--line);border-radius:14px;
+   padding:22px 28px;min-width:170px;text-decoration:none;color:var(--green);
+   transition:.18s}}
+ .gcard:hover{{transform:translateY(-4px);box-shadow:0 12px 28px rgba(16,61,46,.14)}}
+ .gcard .ge{{font-size:34px}} .gcard .gl{{font-weight:600;margin-top:6px}}
+ .ftc{{font-size:11px;color:#9aa39d;margin-top:12px}}
+ .b2b{{background:#f3efe6;border:1px solid var(--line);border-radius:16px;
+   padding:26px 20px}}
+ .b2bform{{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:620px;
+   margin:0 auto}}
+ .b2bform input,.b2bform textarea{{padding:11px 13px;border:1px solid #cdbf98;
+   border-radius:9px;font-size:14px;font-family:inherit}}
+ .b2bform textarea,.b2bform button{{grid-column:1/3}}
+ .b2bform button{{background:var(--green);color:#fff;border:none;padding:13px;
+   border-radius:26px;font-size:15px;font-weight:600;cursor:pointer}}
+ .b2bform button:hover{{background:var(--green-d)}}
+ @media(max-width:520px){{.b2bform{{grid-template-columns:1fr}}
+   .b2bform textarea,.b2bform button{{grid-column:1}}}}
  .foot{{background:var(--green-d);color:#cfe0d6;text-align:center;
    padding:34px 20px;font-size:13px;line-height:1.7;margin-top:30px}}
  .foot .fbn{{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold);
@@ -368,6 +436,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      digital proof is sent before anything is printed.</p>
  </div>
  <div class="grid" id="grid"></div>
+ {_gift_and_b2b_section(owner)}
  <div class="foot">
    <div class="fbn">{SHOP_NAME}</div>
    <p>Personalized wall art, made to order - free proof before printing.<br>
@@ -580,6 +649,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
    CURFMT = f.name; drawArt();      // final-product preview shows this frame + colors
+ }}
+ function b2bSend(to){{
+   const g=id=>(document.getElementById(id)||{{}}).value||'';
+   const body=encodeURIComponent(
+     "Name: "+g('bz_name')+"\\nCompany: "+g('bz_co')+"\\nEmail: "+g('bz_email')+
+     "\\nQuantity: "+g('bz_qty')+"\\n\\nDetails:\\n"+g('bz_msg'));
+   window.location.href="mailto:"+to+"?subject="+
+     encodeURIComponent("Wholesale / bulk gifting inquiry")+"&body="+body;
  }}
  function closeM(){{document.getElementById('modal').style.display='none';}}
  document.querySelectorAll('#mstars span').forEach(function(el){{
