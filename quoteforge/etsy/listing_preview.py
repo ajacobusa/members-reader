@@ -201,6 +201,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
 
+    # Size -> price map per format (sizes/prices are the same across designs).
+    sizemap: dict = {}
+    try:
+        from quoteforge.etsy.variations import build_variations as _bv
+        _mn = {"poster": "Poster (unframed)", "canvas": "Canvas (gallery-wrapped)",
+               "acrylic": "Acrylic", "metal": "Metal"}
+        for v in _bv():
+            key = (f"Framed - {v.frame_color}" if v.material == "framed"
+                   else _mn.get(v.material))
+            if key:
+                sizemap.setdefault(key, []).append(
+                    {"size": v.size.replace(" in", ""), "price": v.price})
+        for k in sizemap:   # de-dup + sort by price
+            seen = {}
+            for r in sizemap[k]:
+                seen[r["size"]] = r
+            sizemap[k] = sorted(seen.values(), key=lambda r: r["price"])
+    except Exception:  # noqa: BLE001
+        sizemap = {}
+    sizemap_json = json.dumps(sizemap)
+
     # Product range + frame note for the detail modal.
     try:
         from quoteforge.etsy.variations import price_range, materials_offered
@@ -380,6 +401,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .perso .swrow{{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:8px;background:#0f3d2e}}
+ .orderbox{{margin-top:14px;background:#fff;border:1px solid var(--line);
+   border-radius:12px;padding:12px}}
+ .orderbox .lbl{{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}}
+ .orow{{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:8px}}
+ .orow label{{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px}}
+ .orow select{{padding:8px;border:1px solid #cdbf98;border-radius:8px;font-size:13px}}
+ .addbtn{{background:var(--green);color:#fff;border:none;border-radius:18px;
+   padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}}
+ .addbtn:hover{{background:var(--green-d)}}
+ .cart{{font-size:13px}} .cart .line{{display:flex;justify-content:space-between;
+   padding:4px 0;border-bottom:1px dashed #e7e1d6}}
+ .cart .rm{{color:#b3261e;cursor:pointer;margin-left:8px}}
+ .cart .tot{{font-weight:700;color:var(--green);padding-top:6px}}
+ .uploadbox{{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}}
+ .uploadbox input[type=file]{{font-size:12px}}
+ .upok{{color:#0f7a3d}} .upbad{{color:#b3261e}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -474,6 +511,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            the preview updates instantly and final details are confirmed on your
            FREE digital proof before printing.</div>
        </div>
+       <div class="orderbox">
+         <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)</div>
+         <div class="orow">
+           <label>Size <select id="msize"></select></label>
+           <label>Qty <select id="mqty"></select></label>
+           <button class="addbtn" onclick="addToOrder()">Add to order</button>
+         </div>
+         <div id="mcart" class="cart"></div>
+         <div class="uploadbox">
+           <div class="lbl">📷 Add your own photo (optional)</div>
+           <input type="file" id="mupload"
+             accept="image/jpeg,image/png,application/pdf,image/tiff"
+             onchange="checkUpload()">
+           <div id="muploadmsg" class="note"></div>
+           <div class="note">High-resolution JPG/PNG/PDF/TIFF only - we auto-check
+             quality and ask for a better photo if needed before printing.</div>
+         </div>
+       </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>
          <div class="stars2" id="mstars">
@@ -556,6 +611,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
    renderBg(); renderTxt(); renderFonts(); drawArt();
+   fillQty(); fillSizes(); renderCart();
+   var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
    fb.href = fbLink(d.title);
@@ -570,6 +627,42 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ["Lora","'Lora',serif"],["Script","'Dancing Script',cursive"],
    ["Oswald","'Oswald',sans-serif"]];
  const MAXCHARS = 250;
+ const SIZEMAP = {sizemap_json};
+ let CART = [];
+ const QD = [[4,0.15],[3,0.12],[2,0.08],[1,0]];
+ function qdisc(q){{for(const t of QD){{if(q>=t[0])return t[1];}}return 0;}}
+ function fillQty(){{const s=document.getElementById('mqty'); if(s&&!s.options.length){{
+   for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
+ function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
+   const rows=SIZEMAP[CURFMT]||[];
+   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}} in - $${{r.price}}</option>`).join('');}}
+ function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
+   const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
+   CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty}}); renderCart();}}
+ function rmLine(i){{CART.splice(i,1);renderCart();}}
+ function renderCart(){{const c=document.getElementById('mcart'); if(!c)return;
+   if(!CART.length){{c.innerHTML='<div class="note">No items yet - choose size + qty, then Add.</div>';return;}}
+   let tot=0; c.innerHTML=CART.map((l,i)=>{{const d=qdisc(l.qty);
+     const unit=+(l.unit*(1-d)).toFixed(2); const sub=+(unit*l.qty).toFixed(2); tot+=sub;
+     return `<div class="line"><span>${{l.qty}}x ${{l.fmt}} ${{l.size}}${{d?` (${{Math.round(d*100)}}% off)`:''}}</span>`+
+       `<span>$${{sub.toFixed(2)}} <span class="rm" onclick="rmLine(${{i}})">remove</span></span></div>`;}}).join('')+
+     `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
+ function checkUpload(){{const inp=document.getElementById('mupload'),msg=document.getElementById('muploadmsg');
+   const f=inp.files&&inp.files[0]; if(!f){{msg.textContent='';return;}}
+   if(!/(jpe?g|png|pdf|tiff?)$/i.test(f.name)){{msg.className='note upbad';
+     msg.textContent='Unsupported format. Use JPG, PNG, PDF or TIFF.';return;}}
+   if(/pdf$/i.test(f.name)){{msg.className='note upok';msg.textContent="PDF received - we'll verify print quality.";return;}}
+   const inches=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0].split('x').map(parseFloat);
+   const img=new Image();
+   img.onload=function(){{const nw=(inches[0]||18)*150, nh=(inches[1]||24)*150;
+     const big=Math.max(img.width,img.height), small=Math.min(img.width,img.height);
+     if(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)){{msg.className='note upok';
+       msg.textContent=`Great - ${{img.width}}x${{img.height}}px works for ${{inches[0]}}x${{inches[1]}}".`;}}
+     else{{msg.className='note upbad';
+       msg.textContent=`Only ${{img.width}}x${{img.height}}px - too low for a sharp ${{inches[0]}}x${{inches[1]}}" print. Please upload a higher-resolution original.`;}}
+     URL.revokeObjectURL(img.src);}};
+   img.onerror=function(){{msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
+   img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  function renderFonts(){{
    document.getElementById('mfonts').innerHTML = FONTS.map((f,k)=>
@@ -641,7 +734,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
-   CURFMT = f.name; drawArt();      // final-product preview shows this frame + colors
+   CURFMT = f.name; drawArt(); fillSizes();   // update sizes for this format
  }}
  function b2bSend(to){{
    const g=id=>(document.getElementById(id)||{{}}).value||'';

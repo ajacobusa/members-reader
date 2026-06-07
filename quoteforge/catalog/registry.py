@@ -94,9 +94,19 @@ def add_product(name: str, vendor: str = "gelato", sku: str = "",
     if vendor not in vendor_ids():
         raise ValueError(f"Unknown vendor '{vendor}'. Known: {sorted(vendor_ids())}. "
                          "Add it to VENDORS in catalog/registry.py first.")
+    # Auto-price to clear this vendor's margin floor if no price was given.
+    if not price:
+        price = suggested_price(cost, vendor)
     from quoteforge.db.database import add_catalog_item
     item_id = add_catalog_item(name, vendor, sku, category, item_type, cost, price)
-    return {"id": item_id, "vendor": vendor, "name": name, "type": item_type}
+    return {"id": item_id, "vendor": vendor, "name": name, "type": item_type,
+            "price": price, "floor_pct": floor_for_vendor(vendor)}
+
+
+def suggested_price(cost: float, vendor: str = "gelato") -> float:
+    """Lowest .99 price that clears this vendor's net-margin floor."""
+    from quoteforge.etsy.variations import min_price_for_margin
+    return min_price_for_margin(float(cost or 0), floor_for_vendor(vendor))
 
 
 def vendor_summary() -> str:

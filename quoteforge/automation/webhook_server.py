@@ -168,6 +168,15 @@ def process_webhook_payload(payload: dict) -> dict:
     except Exception:  # noqa: BLE001
         pass
 
+    # Per-customer folder: persist this customer's info under their customer ID.
+    try:
+        cust_email = payload.get("customer_email", "")
+        if cust_email:
+            from quoteforge.customers import record_order
+            record_order(cust_email, payload, payload.get("customer_name", ""))
+    except Exception:  # noqa: BLE001
+        pass
+
     # Subscription order: create the membership record + welcome email.
     try:
         if payload.get("subscription_plan"):
