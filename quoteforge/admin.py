@@ -1222,6 +1222,16 @@ def _cmd_reviews(args: list[str]) -> int:
     return 0
 
 
+def _cmd_ask(args: list[str]) -> int:
+    """Ask Ange (the AI assistant) a customer question. `ask "your question"`."""
+    if not args:
+        print('Usage: ask "How long does shipping take?"')
+        return 2
+    from quoteforge.ai.ange import ask_ange
+    print("Ange: " + ask_ange(" ".join(args))["answer"])
+    return 0
+
+
 def _cmd_order_by(args: list[str]) -> int:
     """Show the next gift order-by deadline. `order-by`."""
     from quoteforge.etsy.shipping_cutoff import upcoming_cutoff, banner_text
@@ -1436,6 +1446,7 @@ COMMANDS = {
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,
+    "ask": _cmd_ask,
     "order-by": _cmd_order_by,
     "ai-review": _cmd_ai_review,
     "add-product": _cmd_add_product,

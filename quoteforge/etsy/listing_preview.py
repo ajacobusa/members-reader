@@ -333,6 +333,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         reviews_html = _reviews_section()
     except Exception:  # noqa: BLE001
         reviews_html = ""
+    try:
+        from quoteforge.ai.ange import kb_for_web
+        ange_kb_json = json.dumps(kb_for_web())
+    except Exception:  # noqa: BLE001
+        ange_kb_json = "[]"
 
     gate = "" if not password else f"""
 <div id="gate">
@@ -435,6 +440,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
+ /* Ask Ange chat */
+ #angeBtn{{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--green);
+   color:#fff;border:none;border-radius:30px;padding:13px 20px;font-size:15px;
+   font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(16,61,46,.35)}}
+ #angeBtn:hover{{background:var(--green-d)}}
+ #angePanel{{position:fixed;right:20px;bottom:78px;z-index:61;width:340px;
+   max-width:92vw;background:#fff;border:1px solid var(--line);border-radius:16px;
+   box-shadow:0 20px 50px rgba(0,0,0,.3);display:none;overflow:hidden}}
+ .angehdr{{background:var(--green);color:#e8d8a8;padding:13px 16px;
+   font-family:'Cormorant Garamond',serif;font-size:20px}}
+ .angehdr small{{display:block;font-family:Inter,sans-serif;font-size:11px;
+   color:#cfe0d6}}
+ #angeMsgs{{height:300px;overflow:auto;padding:12px;background:#f7f4ee}}
+ .amsg{{margin:6px 0;padding:9px 12px;border-radius:12px;font-size:13.5px;
+   line-height:1.5;max-width:85%}}
+ .amsg.bot{{background:#fff;border:1px solid var(--line)}}
+ .amsg.me{{background:var(--green);color:#fff;margin-left:auto}}
+ .achips{{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px;background:#f7f4ee}}
+ .achip{{background:#fff;border:1px solid #cdbf98;border-radius:14px;padding:5px 10px;
+   font-size:12px;cursor:pointer}}
+ .angein{{display:flex;border-top:1px solid var(--line)}}
+ .angein input{{flex:1;border:none;padding:12px;font-size:14px;outline:none}}
+ .angein button{{background:var(--gold);border:none;padding:0 16px;cursor:pointer;
+   font-weight:700;color:#22301e}}
  .cutoff{{background:#7a2e2e;color:#ffe9cf;text-align:center;padding:11px 16px;
    font-size:14px;font-weight:600;letter-spacing:.3px}}
  .reviews{{max-width:1100px;margin:34px auto;padding:0 20px;text-align:center}}
@@ -884,6 +913,49 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    el.addEventListener('click', function(){{ setRating(parseInt(el.dataset.v)); }});
  }});
  render();
+</script>
+
+<button id="angeBtn" onclick="toggleAnge()">💬 Ask Ange</button>
+<div id="angePanel">
+  <div class="angehdr">Ask Ange<small>{SHOP_NAME} assistant - quick answers</small></div>
+  <div id="angeMsgs"></div>
+  <div class="achips" id="angeChips"></div>
+  <div class="angein">
+    <input id="angeIn" placeholder="Ask about frames, sizes, shipping..."
+      onkeydown="if(event.key==='Enter')angeSend()">
+    <button onclick="angeSend()">Send</button>
+  </div>
+</div>
+<script>
+ const ANGE_KB = {ange_kb_json};
+ const ANGE_OWNER = "{owner}";
+ function toggleAnge(){{const p=document.getElementById('angePanel');
+   const open=p.style.display!=='block'; p.style.display=open?'block':'none';
+   if(open && !document.getElementById('angeMsgs').dataset.init){{
+     angeBot("Hi, I'm Ange 👋 Ask me anything about frames, sizes, personalizing, "
+       +"shipping or gifts!"); renderChips();
+     document.getElementById('angeMsgs').dataset.init='1';}}}}
+ function renderChips(){{document.getElementById('angeChips').innerHTML=
+   ANGE_KB.slice(0,4).map(e=>`<span class="achip" onclick="angeAsk('${{e.q.replace(/'/g,"")}}')">${{e.q}}</span>`).join('');}}
+ function angeMsg(t,who){{const m=document.getElementById('angeMsgs');
+   const d=document.createElement('div'); d.className='amsg '+who; d.textContent=t;
+   m.appendChild(d); m.scrollTop=m.scrollHeight;}}
+ function angeBot(t){{angeMsg(t,'bot');}}
+ function angeAsk(q){{document.getElementById('angeIn').value=q; angeSend();}}
+ function angeAnswer(q){{const s=q.toLowerCase(); let best=null,bs=0;
+   for(const e of ANGE_KB){{let sc=0; for(const k of e.k){{if(s.indexOf(k)>=0)sc++;}}
+     if(sc>bs){{bs=sc;best=e;}}}}
+   if(best&&bs>=1)return best.a;
+   return "Great question! For anything order-specific or a refund/return, the "
+     +"best step is to message our team - tap the button below and a real person "
+     +"will help. 💚";}}
+ function angeSend(){{const inp=document.getElementById('angeIn');
+   const q=(inp.value||'').trim(); if(!q)return; angeMsg(q,'me'); inp.value='';
+   setTimeout(()=>{{angeBot(angeAnswer(q));
+     const m=document.getElementById('angeMsgs'); const a=document.createElement('a');
+     a.href="mailto:"+ANGE_OWNER+"?subject=Question%20for%20{SHOP_NAME}";
+     a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#0f3d2e";
+     m.appendChild(a); m.scrollTop=m.scrollHeight;}},250);}}
 </script>
 </body></html>"""
     out.write_text(html, encoding="utf-8")
