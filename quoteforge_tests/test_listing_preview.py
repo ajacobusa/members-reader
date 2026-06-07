@@ -101,3 +101,22 @@ def test_frame_picker_off_skips_formats(tmp_path):
     out = build_shop_home(numbers=[1], kit_dir=tmp_path,
                           out_path=tmp_path / "h.html", frame_picker=False)
     assert '"formats"' not in out.read_text(encoding="utf-8")
+
+
+def test_external_assets_lazy_mode(tmp_path):
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    folder = tmp_path / f"{l.n:02d}_x"
+    g = folder / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (400, 400), (15, 61, 46)).save(g / "1_hero.png")
+    Image.new("RGB", (800, 1000), (240, 238, 232)).save(folder / "poster_18x24.png")
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "index.html", external_assets=True)
+    h = out.read_text(encoding="utf-8")
+    assert "assets/" in h                          # listing images referenced by URL
+    assert (tmp_path / "assets").is_dir() and any((tmp_path / "assets").iterdir())
+    assert 'loading="lazy"' in h                   # grid lazy-loads
+    # listing gallery/format images are NOT inlined (only the small logo/banner);
+    # if they were, a single listing would inline ~11 images.
+    assert h.count("data:image/jpeg") <= 4

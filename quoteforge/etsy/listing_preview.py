@@ -45,9 +45,18 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _save_web_jpg(src: Path, dest: Path, max_dim: int = 900, quality: int = 80) -> None:
+    """Write an optimized JPEG copy of src to dest (for lazy-loaded assets)."""
+    from PIL import Image
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.open(src).convert("RGB")
+    im.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    im.save(dest, "JPEG", quality=quality, optimize=True)
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
-                    out_path=None, uat: bool = True,
-                    feedback_form_url=None, frame_picker: bool = True) -> Path:
+                    out_path=None, uat: bool = True, feedback_form_url=None,
+                    frame_picker: bool = True, external_assets: bool = False) -> Path:
     """A polished, password-gated shop-home / UAT page: logo+banner, a 20-listing
     grid, a per-listing detail modal (all 5 images + description), a per-listing
     star rating, and one-click feedback. Shareable as one link.
@@ -72,7 +81,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     if numbers:
         bundles = [b for b in bundles if b.listing_n in numbers]
 
-    # Build a compact JS data array (each image embedded once).
+    out = Path(out_path) if out_path else (kit_dir / "shop_home.html")
+    assets = out.parent / "assets" if external_assets else None
+
+    def _emit(src: Path, fname: str) -> str:
+        """Return a data-URI (inline mode) or a lazy-loaded relative URL."""
+        if external_assets:
+            _save_web_jpg(src, assets / fname)
+            return f"assets/{fname}"
+        return _web_img(src)
+
+    # Build a compact JS data array.
     listings = []
     for b in bundles:
         gallery = sorted((kit_dir).glob(f"{b.listing_n:02d}_*/gallery/*.png"))
@@ -84,7 +103,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             "full_title": b.title,
             "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
             "desc": b.description,
-            "imgs": [_web_img(p) for p in gallery],
+            "imgs": [_emit(p, f"{b.listing_n:02d}_g{i:02d}.jpg")
+                     for i, p in enumerate(gallery)],
         }
         # Real per-frame / per-material previews (tap a frame -> see the look).
         if frame_picker:
@@ -92,10 +112,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 kit_dir.glob(f"{b.listing_n:02d}_*/poster*.png"))), None)
             if poster:
                 try:
-                    from quoteforge.images.frame_preview import format_preview_datauris
-                    fmts = format_preview_datauris(poster)
-                    if fmts:
-                        entry["formats"] = [{"name": n, "img": d} for n, d in fmts]
+                    if external_assets:
+                        from quoteforge.images.frame_preview import format_preview_files
+                        files = format_preview_files(
+                            poster, assets, f"{b.listing_n:02d}f")
+                        if files:
+                            entry["formats"] = [
+                                {"name": n, "img": f"assets/{fn}"} for n, fn in files]
+                    else:
+                        from quoteforge.images.frame_preview import format_preview_datauris
+                        fmts = format_preview_datauris(poster)
+                        if fmts:
+                            entry["formats"] = [{"name": n, "img": d}
+                                                for n, d in fmts]
                 except Exception:  # noqa: BLE001
                     pass
         listings.append(entry)
@@ -366,7 +395,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const g = document.getElementById('grid');
    g.innerHTML = DATA.map((d,i) => `
      <div class="card" onclick="openM(${{i}})">
-       <img class="hero" src="${{d.imgs[0]}}" alt="">
+       <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="">
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">from $${{d.price}}</div>
          ${{UAT?`<span class="fb">Tap to view &amp; review</span>`:``}}
@@ -409,7 +438,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  render();
 </script>
 </body></html>"""
-    out = Path(out_path) if out_path else (kit_dir / "shop_home.html")
     out.write_text(html, encoding="utf-8")
     return out
 

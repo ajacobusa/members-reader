@@ -69,6 +69,34 @@ def format_preview_datauris(poster_path, max_dim=460, quality=68,
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def format_preview_files(poster_path, dest_dir, prefix, max_dim=560,
+                         quality=72, subset=None) -> list:
+    """Render the Format mockups and write optimized JPEGs into dest_dir.
+    Returns [(name, filename)] (filenames relative to dest_dir). [] on failure.
+    Used for the lazy-loaded site so images are fetched on demand, not inlined."""
+    import tempfile
+    import shutil
+    from PIL import Image
+    dest_dir = Path(dest_dir)
+    tmp = Path(tempfile.mkdtemp(prefix="jf_fpf_"))
+    out = []
+    try:
+        previews = build_format_previews(poster_path, out_dir=tmp,
+                                         size=(620, 620), subset=subset)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for i, (name, p) in enumerate(previews.items()):
+            fn = f"{prefix}_{i:02d}.jpg"
+            im = Image.open(p).convert("RGB")
+            im.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            im.save(dest_dir / fn, "JPEG", quality=quality, optimize=True)
+            out.append((name, fn))
+        return out
+    except Exception:  # noqa: BLE001
+        return []
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def build_preview_page(poster_path, out_path=None, title="Preview your frame") -> Path:
     """Interactive page: click a Format to see that exact mockup before buying."""
     import json

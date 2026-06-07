@@ -1172,8 +1172,8 @@ def _cmd_rebuild_site(args: list[str]) -> int:
     latest listings + analytics tags. Run by backup-all's push, fully hands-free."""
     from pathlib import Path
     from quoteforge.etsy.listing_preview import build_shop_home
-    out = build_shop_home(out_path=Path("docs/index.html"))
-    print(f"Rebuilt {out} ({out.stat().st_size // 1024} KB)")
+    out = build_shop_home(out_path=Path("docs/index.html"), external_assets=True)
+    print(f"Rebuilt {out} ({out.stat().st_size // 1024} KB, lazy-loaded assets)")
     return 0
 
 
