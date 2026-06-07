@@ -1167,6 +1167,54 @@ def _cmd_frame_preview(args: list[str]) -> int:
     return 0
 
 
+def _cmd_subscriptions(args: list[str]) -> int:
+    """Manage subscriptions. `subscriptions` (list) |
+    `subscriptions add EMAIL END_DATE [name] [plan]` | `subscriptions remind [days]`."""
+    from quoteforge.db import database as db
+    db.init_db()
+    if args and args[0] == "add" and len(args) >= 3:
+        sid = db.add_subscription(args[1], args[2],
+                                  customer_name=args[3] if len(args) > 3 else "",
+                                  plan=args[4] if len(args) > 4 else "monthly")
+        print(f"Added subscription #{sid} for {args[1]} ending {args[2]}.")
+        return 0
+    if args and args[0] == "remind":
+        from quoteforge.etsy.subscriptions import send_expiry_reminders, format_reminders_text
+        days = int(args[1]) if len(args) > 1 and args[1].isdigit() else 7
+        print(format_reminders_text(send_expiry_reminders(within_days=days)))
+        return 0
+    subs = db.get_subscriptions()
+    print(f"Subscriptions: {len(subs)}")
+    for s in subs[:50]:
+        print(f"  #{s['id']} {s['customer_email']}  {s['plan']}  ends {s['end_date']}"
+              f"  [{s['status']}]")
+    return 0
+
+
+def _cmd_gift_note(args: list[str]) -> int:
+    """AI-write a free personal gift note. `gift-note RECIPIENT FROM OCCASION [msg]`."""
+    from quoteforge.ai.assistant import gift_note
+    if len(args) < 3:
+        print('Usage: gift-note "Recipient" "From" "Occasion" ["optional message"]')
+        return 2
+    note = gift_note(args[0], args[1], args[2], args[3] if len(args) > 3 else "")
+    print(note)
+    return 0
+
+
+def _cmd_gift_addon_listing(args: list[str]) -> int:
+    """Print the ready-to-publish Etsy 'Add a gift e-card & free note' listing."""
+    from quoteforge.etsy.gift_ecard import build_addon_listing
+    l = build_addon_listing()
+    print("=== ETSY ADD-ON LISTING: GIFT E-CARD + FREE NOTE ===")
+    print(f"PRICE: ${l['price']:.2f}  (digital add-on)\n")
+    print("TITLE:\n" + l["title"] + "\n")
+    print("TAGS (13):\n" + ", ".join(l["tags"]) + "\n")
+    print("PERSONALIZATION PROMPT:\n" + l["personalization"] + "\n")
+    print("DESCRIPTION:\n" + l["description"])
+    return 0
+
+
 def _cmd_affiliates(args: list[str]) -> int:
     """Print the apply-ready directory of major affiliate programs/networks,
     marking which you've already configured. `affiliates`."""
@@ -1225,6 +1273,9 @@ COMMANDS = {
     "variations": _cmd_variations,
     "frame-preview": _cmd_frame_preview,
     "affiliates": _cmd_affiliates,
+    "subscriptions": _cmd_subscriptions,
+    "gift-note": _cmd_gift_note,
+    "gift-addon-listing": _cmd_gift_addon_listing,
     "gelato-sync": _cmd_gelato_sync,
     "pinterest": _cmd_pinterest,
     "pinterest-publish": _cmd_pinterest_publish,

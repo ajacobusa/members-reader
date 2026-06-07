@@ -167,6 +167,19 @@ def init_db() -> None:
             created_at  TEXT DEFAULT (datetime('now'))
         );
         """)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_email TEXT NOT NULL,
+            customer_name TEXT,
+            plan          TEXT DEFAULT 'monthly',
+            start_date    TEXT,
+            end_date      TEXT NOT NULL,          -- ISO date the subscription ends
+            status        TEXT DEFAULT 'active',  -- active|expired|cancelled|renewed
+            reminded_at   TEXT,                   -- last expiry reminder sent
+            created_at    TEXT DEFAULT (datetime('now'))
+        );
+        """)
         _migrate(conn)
 
 
@@ -444,6 +457,57 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Subscriptions (memberships / recurring plans) ────────────────
+
+def add_subscription(customer_email: str, end_date: str, customer_name: str = "",
+                     plan: str = "monthly", start_date: str = "") -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO subscriptions
+               (customer_email, customer_name, plan, start_date, end_date)
+               VALUES (?,?,?,?,?)""",
+            ((customer_email or "").strip().lower(), customer_name, plan,
+             start_date, end_date))
+        return cur.lastrowid
+
+
+def get_subscriptions(status: str = "") -> list[dict]:
+    q = "SELECT * FROM subscriptions"
+    args: tuple = ()
+    if status:
+        q += " WHERE status=?"
+        args = (status,)
+    q += " ORDER BY end_date ASC"
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(q, args)]
+
+
+def get_expiring_subscriptions(within_days: int = 7) -> list[dict]:
+    """Active subscriptions ending within `within_days` (incl. already past),
+    that haven't been reminded for this end_date yet."""
+    from datetime import date, timedelta
+    cutoff = (date.today() + timedelta(days=within_days)).isoformat()
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT * FROM subscriptions
+               WHERE status='active' AND date(end_date) <= date(?)
+               ORDER BY end_date ASC""", (cutoff,))
+        # Only those not yet reminded (reset reminded_at on renewal to re-enable).
+        return [dict(r) for r in rows if not dict(r).get("reminded_at")]
+
+
+def mark_subscription_reminded(sub_id: int) -> None:
+    from datetime import datetime
+    with _conn() as conn:
+        conn.execute("UPDATE subscriptions SET reminded_at=? WHERE id=?",
+                     (datetime.now().isoformat(timespec="seconds"), sub_id))
+
+
+def set_subscription_status(sub_id: int, status: str) -> None:
+    with _conn() as conn:
+        conn.execute("UPDATE subscriptions SET status=? WHERE id=?", (status, sub_id))
 
 
 # ── Human-approval queue (autopilot escalations) ─────────────────

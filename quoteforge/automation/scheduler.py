@@ -119,6 +119,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Refreshes the email-capture kit (QR, announcement, Linktree, signup "
         "snippet, insert card) so the audience-building assets stay current."),
     ScheduledJob(
+        "QuoteForge Subscription Reminders", "subscriptions remind 7",
+        ["/SC", "DAILY", "/ST", "08:35"],
+        "Emails each client an AI-personalized renewal reminder when their "
+        "subscription is ending (within 7 days). Idempotent per end date."),
+    ScheduledJob(
         "QuoteForge Gelato Catalog Sync", "gelato-sync",
         ["/SC", "DAILY", "/ST", "01:30"],
         "Pulls live Gelato prices + availability: auto-reprices every variation "
