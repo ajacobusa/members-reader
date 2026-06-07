@@ -196,7 +196,7 @@
  .fonts .fchip{font-size:14px}
  .perso .swrow{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}
  #mcanvas{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
-   margin-bottom:8px;background:#0f3d2e}
+   margin-bottom:8px;background:#103d2e}
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px}
  .orderbox .lbl{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}
@@ -441,8 +441,8 @@
    fb.style.display = UAT ? 'block':'none';
    document.getElementById('modal').style.display='flex';
  }
- const BGCOLORS = ["#0f3d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#dcd6c8","#c9a84c"];
- const TXTCOLORS = ["#f4efe6","#ffffff","#c9a84c","#1b1b1f","#0f3d2e","#7a2e2e"];
+ const BGCOLORS = ["#103d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#dcd6c8","#c9a84c"];
+ const TXTCOLORS = ["#f4efe6","#ffffff","#c9a84c","#1b1b1f","#103d2e","#7a2e2e"];
  const FONTS = [["Cormorant","'Cormorant Garamond',serif"],
    ["Playfair","'Playfair Display',serif"],["Montserrat","'Montserrat',sans-serif"],
    ["Lora","'Lora',serif"],["Script","'Dancing Script',cursive"],
@@ -610,7 +610,7 @@
  function angeMsgUs(){const m=document.getElementById('angeMsgs');
    const a=document.createElement('a');
    a.href="mailto:"+ANGE_OWNER+"?subject=Question%20for%20Joffiels";
-   a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#0f3d2e";
+   a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#103d2e";
    m.appendChild(a); m.scrollTop=m.scrollHeight;}
  function angeSend(){const inp=document.getElementById('angeIn');
    const q=(inp.value||'').trim(); if(!q)return; angeMsg(q,'me'); inp.value='';

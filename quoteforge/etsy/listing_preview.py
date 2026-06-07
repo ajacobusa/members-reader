@@ -579,7 +579,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .fonts .fchip{{font-size:14px}}
  .perso .swrow{{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
-   margin-bottom:8px;background:#0f3d2e}}
+   margin-bottom:8px;background:#103d2e}}
  .orderbox{{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px}}
  .orderbox .lbl{{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}}
@@ -806,8 +806,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    fb.style.display = UAT ? 'block':'none';
    document.getElementById('modal').style.display='flex';
  }}
- const BGCOLORS = ["#0f3d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#dcd6c8","#c9a84c"];
- const TXTCOLORS = ["#f4efe6","#ffffff","#c9a84c","#1b1b1f","#0f3d2e","#7a2e2e"];
+ const BGCOLORS = ["#103d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#dcd6c8","#c9a84c"];
+ const TXTCOLORS = ["#f4efe6","#ffffff","#c9a84c","#1b1b1f","#103d2e","#7a2e2e"];
  const FONTS = [["Cormorant","'Cormorant Garamond',serif"],
    ["Playfair","'Playfair Display',serif"],["Montserrat","'Montserrat',sans-serif"],
    ["Lora","'Lora',serif"],["Script","'Dancing Script',cursive"],
@@ -975,7 +975,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function angeMsgUs(){{const m=document.getElementById('angeMsgs');
    const a=document.createElement('a');
    a.href="mailto:"+ANGE_OWNER+"?subject=Question%20for%20{SHOP_NAME}";
-   a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#0f3d2e";
+   a.textContent="✉ Message us"; a.style="display:inline-block;margin:6px 0;font-size:12px;color:#103d2e";
    m.appendChild(a); m.scrollTop=m.scrollHeight;}}
  function angeSend(){{const inp=document.getElementById('angeIn');
    const q=(inp.value||'').trim(); if(!q)return; angeMsg(q,'me'); inp.value='';
@@ -1018,7 +1018,7 @@ def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
 <title>{SHOP_NAME} - {bundle.title[:60]}</title>
 <style>
  body{{font-family:Arial,Helvetica,sans-serif;color:#222;margin:0;background:#faf8f4}}
- .top{{background:#0f3d2e;color:#e8d8a8;padding:10px 24px;font-size:20px;
+ .top{{background:#103d2e;color:#e8d8a8;padding:10px 24px;font-size:20px;
    font-family:Georgia,serif}}
  .wrap{{max-width:1100px;margin:24px auto;display:flex;gap:32px;padding:0 16px}}
  .gallery{{flex:1}} .main{{width:100%;border-radius:8px;border:1px solid #e3ddd2}}
@@ -1026,14 +1026,14 @@ def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
  .thumb{{width:72px;height:72px;object-fit:cover;border:2px solid #d8cdb6;
    border-radius:6px;cursor:pointer}}
  .info{{flex:1}}
- .shop{{color:#0f3d2e;font-weight:bold}} .stars{{color:#c9a84c}}
+ .shop{{color:#103d2e;font-weight:bold}} .stars{{color:#c9a84c}}
  h1{{font-size:20px;line-height:1.4;margin:6px 0}}
  .price{{font-size:28px;font-weight:bold;margin:10px 0}}
  .box{{border:1px solid #d8cdb6;border-radius:8px;padding:12px;margin:14px 0;
    background:#fff}}
  .box label{{font-size:13px;color:#555}} textarea{{width:100%;height:70px;
    margin-top:6px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}}
- .btn{{background:#0f3d2e;color:#fff;border:none;padding:14px;width:100%;
+ .btn{{background:#103d2e;color:#fff;border:none;padding:14px;width:100%;
    border-radius:24px;font-size:16px;cursor:pointer;margin-top:8px}}
  .tags{{margin-top:16px}} .tag{{display:inline-block;background:#eef0ea;
    color:#33503f;border-radius:14px;padding:4px 10px;margin:3px;font-size:12px}}
@@ -1105,14 +1105,14 @@ def build_showroom(numbers=None, kit_dir=None, out_path=None) -> Path:
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <title>{SHOP_NAME} - Sample Listings</title><style>
  body{{font-family:Arial,sans-serif;background:#faf8f4;color:#222;margin:0}}
- .top{{background:#0f3d2e;color:#e8d8a8;padding:18px 24px;font-family:Georgia,serif}}
+ .top{{background:#103d2e;color:#e8d8a8;padding:18px 24px;font-family:Georgia,serif}}
  .top h1{{margin:0;font-size:24px}} .top p{{margin:4px 0 0;opacity:.85}}
  .grid{{max-width:1200px;margin:24px auto;display:grid;
    grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px;padding:0 16px}}
  .card{{background:#fff;border:1px solid #e3ddd2;border-radius:10px;overflow:hidden}}
  .hero{{width:100%;display:block}}
  .cap{{padding:12px}} .ttl{{font-size:14px;line-height:1.4;height:58px;overflow:hidden}}
- .pr{{font-weight:bold;font-size:20px;margin:6px 0;color:#0f3d2e}}
+ .pr{{font-weight:bold;font-size:20px;margin:6px 0;color:#103d2e}}
  .th{{display:flex;gap:5px;margin:6px 0}}
  .t{{width:48px;height:48px;object-fit:cover;border:1px solid #d8cdb6;
    border-radius:4px;cursor:pointer}}
