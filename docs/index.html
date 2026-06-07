@@ -324,11 +324,11 @@
  const MAXCHARS = 250;
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  function renderFonts(){
-   document.getElementById('mfonts').innerHTML = FONTS.map(f=>
-     `<span class="fchip ${f[1]===SELFONT?'sel':''}" style="font-family:${f[1]}" onclick="pickFont('${f[1]}',this)">${f[0]}</span>`).join('');
+   document.getElementById('mfonts').innerHTML = FONTS.map((f,k)=>
+     `<span class="fchip ${f[1]===SELFONT?'sel':''}" style="font-family:${f[1]}" onclick="pickFont(${k})">${f[0]}</span>`).join('');
  }
- function pickFont(f,el){ SELFONT=f;
-   document.querySelectorAll('#mfonts .fchip').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }
+ function pickFont(k){ SELFONT=FONTS[k][1];
+   document.querySelectorAll('#mfonts .fchip').forEach((e,m)=>e.classList.toggle('sel',m===k)); drawArt(); }
  function onText(){
    const v=(document.getElementById('mtext').value||'');
    document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;
