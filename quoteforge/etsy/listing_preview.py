@@ -392,8 +392,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
        </div>
        <div class="perso">
-         <div class="lbl">🎨 See it in YOUR colors (free - match your room)</div>
+         <div class="lbl">🎨 Your final product - frame + colors update together</div>
          <canvas id="mcanvas" width="320" height="410"></canvas>
+         <div class="note" style="margin-bottom:8px">Pick a frame above and your
+           colors below - this preview shows the finished piece.</div>
          <div class="swrow">Background</div>
          <div class="sw" id="mbg"></div>
          <div class="swrow">Text color</div>
@@ -480,6 +482,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mdesc').textContent = d.desc;
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
+   CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    renderBg(); renderTxt(); drawArt();
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
@@ -504,24 +507,47 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
  function pickTxt(c,el){{ SELTXT=c;
    document.querySelectorAll('#mtxt span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
+ const FRAMECOLOR = {{"Premium Solid Oak":"#b28e60","Premium Walnut":"#5c4030",
+   "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
+   "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"}};
+ let CURFMT="";
+ function frameSpec(){{
+   if(CURFMT.indexOf('Framed - ')===0){{
+     const n=CURFMT.slice(9);
+     return {{t:(n==='Slim Black'?0.028:0.06), color:FRAMECOLOR[n]||'#1c1c1e', mat:true}};
+   }}
+   if(CURFMT.indexOf('Acrylic')===0||CURFMT.indexOf('Metal')===0)
+     return {{t:0.014, color:'#c9ccce', mat:false}};
+   return null;  // Poster / Canvas = unframed
+ }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
-   ctx.fillStyle=SELBG; ctx.fillRect(0,0,W,H);
+   ctx.fillStyle="#ece7dd"; ctx.fillRect(0,0,W,H);            // wall
+   const m=16, spec=frameSpec();
+   let x=m,y=m,w=W-2*m,h=H-2*m;
+   // drop shadow for depth
+   ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h);
+   if(spec){{ const t=spec.t*w;
+     ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame
+     x+=t; y+=t; w-=2*t; h-=2*t;
+     if(spec.mat){{ const mm=0.05*w; ctx.fillStyle="#f7f5ef";
+       ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }}
+   }}
+   ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h);                 // art background
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
-   // fit font so the text fits the canvas
-   let fs=30; const maxW=W*0.82;
+   const maxW=w*0.84; let fs=Math.round(h*0.10);
    function wrap(f){{ctx.font='600 '+f+"px 'Cormorant Garamond',Georgia,serif";
-     const words=text.split(' '); let lines=[],cur='';
-     for(const w of words){{const t=(cur+' '+w).trim();
-       if(ctx.measureText(t).width<=maxW){{cur=t;}}else{{lines.push(cur);cur=w;}}}}
+     const words=text.split(/\\s+/); let lines=[],cur='';
+     for(const wd of words){{const tt=(cur+' '+wd).trim();
+       if(ctx.measureText(tt).width<=maxW){{cur=tt;}}else{{lines.push(cur);cur=wd;}}}}
      if(cur)lines.push(cur); return lines;}}
    let lines=wrap(fs);
-   while((lines.length*fs*1.32)>H*0.8 && fs>12){{fs-=2; lines=wrap(fs);}}
-   const lh=fs*1.34; let y=(H-lines.length*lh)/2+fs;
-   for(const ln of lines){{ctx.fillText(ln,W/2,y); y+=lh;}}
+   while((lines.length*fs*1.32)>h*0.82 && fs>9){{fs-=1; lines=wrap(fs);}}
+   const lh=fs*1.34; let ty=y+(h-lines.length*lh)/2+fs*0.9;
+   for(const ln of lines){{ctx.fillText(ln,x+w/2,ty); ty+=lh;}}
  }}
  function pickFmt(i,j){{
    const f = DATA[i].formats[j];
@@ -529,6 +555,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
+   CURFMT = f.name; drawArt();      // final-product preview shows this frame + colors
  }}
  function closeM(){{document.getElementById('modal').style.display='none';}}
  document.querySelectorAll('#mstars span').forEach(function(el){{
