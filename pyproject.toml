@@ -43,7 +43,7 @@ Homepage = "https://github.com/ajacobusa/members-reader"
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/test_reader.py", "tests/test_cli.py"]
 
 [tool.coverage.run]
 source = ["members_reader"]
