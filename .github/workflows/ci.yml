@@ -23,6 +23,26 @@ jobs:
           cache: pip
       - name: Install package + dev dependencies
         run: pip install -e ".[dev]"
+      - name: Syntax-check all Python sources
+        run: |
+          python - <<'EOF'
+          import ast, glob, sys
+          errors = []
+          for path in sorted(glob.glob("quoteforge/**/*.py", recursive=True)
+                             + glob.glob("quoteforge/*.py")
+                             + glob.glob("quoteforge_tests/**/*.py", recursive=True)
+                             + glob.glob("src/**/*.py", recursive=True)):
+              try:
+                  ast.parse(open(path, encoding="utf-8").read())
+              except SyntaxError as e:
+                  errors.append(f"{path}:{e.lineno}: {e.msg}")
+          if errors:
+              print("Truncated or broken files detected:")
+              for err in errors:
+                  print(" ", err)
+              sys.exit(1)
+          print(f"All Python files parse cleanly.")
+          EOF
       - name: Run tests with coverage
         run: pytest --cov=members_reader --cov-report=term-missing --cov-fail-under=80
 
