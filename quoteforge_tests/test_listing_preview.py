@@ -143,3 +143,13 @@ def test_b2b_always_shows_affiliate_conditional(tmp_path, monkeypatch):
     h2 = out2.read_text(encoding="utf-8")
     assert "Complete the gift" in h2 and "aff.example/flowers" in h2
     assert "affiliate links" in h2 and 'rel="sponsored noopener nofollow"' in h2
+
+
+def test_competitive_sections_present(tmp_path):
+    _seed_kit(tmp_path)
+    out = build_shop_home(numbers=[1], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=False)
+    h = out.read_text(encoding="utf-8")
+    assert "Why" in h and "Happiness Guarantee" in h
+    assert "Shop by occasion" in h and "<details" in h   # FAQ accordion
+    assert "Build your order" in h and "function checkUpload" in h

@@ -23,6 +23,41 @@ def ai_text(prompt: str, operation: str, max_tokens: int = 400,
         return mock
 
 
+def ai_vision_check(image_path) -> dict:
+    """Optional Claude vision QC of a finished design. Returns
+    {'ok': bool, 'note': str}. Safe: in TEST_MODE / no key / any error it returns
+    ok=True (the deterministic preflight is the real gate; AI only adds a flag)."""
+    from quoteforge.config import TEST_MODE, ANTHROPIC_API_KEY, CLAUDE_MODEL
+    from pathlib import Path
+    p = Path(image_path)
+    if TEST_MODE or not ANTHROPIC_API_KEY or not p.exists():
+        return {"ok": True, "note": "AI vision skipped"}
+    try:
+        import base64
+        from quoteforge.quotes.generator import _client, _invoke
+        ext = p.suffix.lower().lstrip(".")
+        media = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+                 "webp": "image/webp", "gif": "image/gif"}.get(ext, "image/png")
+        b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+        msg = _invoke(
+            _client(), operation="ai_vision_qc", model=CLAUDE_MODEL, max_tokens=200,
+            messages=[{"role": "user", "content": [
+                {"type": "image", "source": {"type": "base64",
+                 "media_type": media, "data": b64}},
+                {"type": "text", "content": (
+                    "You are a print-quality reviewer for personalized wall art. "
+                    "Check for obvious defects: cut-off or overflowing text, "
+                    "misspellings, blurriness, low contrast, or empty/broken design. "
+                    "Reply with ONLY 'OK' if it looks good to send to the customer, "
+                    "or 'ISSUE: <short reason>' if not.")}]}])
+        text = "".join(getattr(b, "text", "") for b in msg.content).strip()
+        if text.upper().startswith("ISSUE"):
+            return {"ok": False, "note": text}
+        return {"ok": True, "note": text or "OK"}
+    except Exception as exc:  # noqa: BLE001 — never block on AI failure
+        return {"ok": True, "note": f"AI vision unavailable ({type(exc).__name__})"}
+
+
 def gift_note(recipient: str, sender: str, occasion: str,
               buyer_message: str = "") -> str:
     """A warm, free personal gift-note card (Claude, with a graceful fallback)."""

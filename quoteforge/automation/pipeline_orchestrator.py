@@ -323,6 +323,32 @@ def run_full_pipeline(
         _log(order_id, "drive_upload", "success" if drive_url else "skipped",
              drive_url or "local only")
 
+        # ── Stage 4.9: Final QC BEFORE the customer proof ────────
+        # Quality must pass before anything reaches the customer. Combines the
+        # deterministic print preflight with an optional Claude vision review.
+        if PREFLIGHT_ENABLED and not TEST_MODE and png_path and png_path.exists():
+            from quoteforge.images.final_qc import final_qc
+            size_key = (order_data.get("product_size")
+                        or order_data.get("size") or gelato_product_uid)
+            qc = final_qc(png_path, size_key)
+            if not qc["ok"]:
+                fails = qc["fails"]
+                _log(order_id, "preflight", "fail", "; ".join(fails))
+                update_order(order_id, status="preflight_failed")
+                _notify("proof", f"QC FAILED before proof: {', '.join(fails)}")
+                try:
+                    from quoteforge.db.database import enqueue_approval
+                    enqueue_approval(
+                        kind="preflight", ref=order_id,
+                        summary=f"Final QC failed ({', '.join(fails)}) - fix before "
+                                f"sending the customer proof",
+                        proposed_action="fix_artwork", risk="high", status="pending")
+                except Exception:  # noqa: BLE001
+                    pass
+                return get_order(order_id) or {}
+            _log(order_id, "preflight", "pass",
+                 "Final QC passed - safe to send proof")
+
         # ── Stage 5: Proof ───────────────────────────────────────
         if not skip_proof and not PIPELINE_AUTO_APPROVE_PROOF:
             if CUSTOMER_PROOF_APPROVAL:
@@ -347,34 +373,7 @@ def run_full_pipeline(
             log_pipeline_stage(order_id, "proof", "auto_approved",
                                "Proof skipped per configuration")
 
-        # ── Stage 5.5: Artwork preflight (print-quality gate) ────
-        # A technically-complete order can still print badly. Validate the file
-        # against the product's print spec and BLOCK before spending on Gelato.
-        # Skipped in TEST_MODE (the placeholder isn't a real print file and no
-        # real Gelato order is placed).
-        if PREFLIGHT_ENABLED and not TEST_MODE and png_path and png_path.exists():
-            from quoteforge.images.preflight import run_preflight
-            size_key = (order_data.get("product_size")
-                        or order_data.get("size") or gelato_product_uid)
-            pf = run_preflight(png_path, size_key)
-            if not pf["ok"]:
-                fails = [c["name"] for c in pf["checks"] if not c["ok"]]
-                _log(order_id, "preflight", "fail", "; ".join(fails))
-                # set AFTER _log (which would otherwise reset status to the stage)
-                update_order(order_id, status="preflight_failed")
-                _notify("preflight", f"Artwork preflight FAILED: {', '.join(fails)}")
-                try:
-                    from quoteforge.db.database import enqueue_approval
-                    enqueue_approval(
-                        kind="preflight", ref=order_id,
-                        summary=f"Artwork failed preflight ({', '.join(fails)}) "
-                                f"- fix before printing",
-                        proposed_action="fix_artwork", risk="high",
-                        status="pending")
-                except Exception:  # noqa: BLE001
-                    pass
-                return get_order(order_id) or {}
-            _log(order_id, "preflight", "pass", "Artwork meets print spec")
+        # (QC now runs at Stage 4.9, before the proof is ever sent.)
 
         # ── Stage 6: Fulfillment (vendor-routed) ─────────────────
         gelato_order_id = ""

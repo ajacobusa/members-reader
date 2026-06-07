@@ -45,6 +45,52 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _competitive_sections() -> str:
+    """Conversion sections that beat mass printers: why-us comparison, a real
+    happiness guarantee, and an FAQ. (Honest: no fabricated reviews pre-launch.)"""
+    from quoteforge.config import SHOP_NAME
+    rows = [
+        ("Designed by a real person for your story", "Templated, mass-produced"),
+        ("FREE digital proof - approve before we print", "What you upload is what prints"),
+        ("Made to order, museum-quality materials", "Bulk factory runs"),
+        ("Custom wording, colors &amp; frame - you preview it live", "Limited presets"),
+        ("Personal note + gift e-card included free", "Add-on fees"),
+        ("Happiness guarantee - we make it right", "Rigid return windows"),
+    ]
+    cmp_rows = "".join(
+        f'<tr><td class="us">✓ {u}</td><td class="them">{t}</td></tr>' for u, t in rows)
+    faqs = [
+        ("Is the frame included?",
+         "Poster, canvas, acrylic and metal ship without a frame. Choose a "
+         "\"Framed\" option to add a real wood frame (6 styles)."),
+        ("Can I use my own photo or exact wording?",
+         "Yes! Upload a high-resolution photo and type your own words - we "
+         "auto-check quality and send a free proof before printing."),
+        ("How fast will it arrive?",
+         "We send your proof within ~24h; once approved it's printed and shipped "
+         "with tracking, typically within 3-5 business days."),
+        ("What if I don't love it?",
+         "Message us - our happiness guarantee means we'll fix or remake it. "
+         "Personalized items are made to order, so approval happens on the proof."),
+    ]
+    faq_html = "".join(
+        f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
+        for q, a in faqs)
+    occ = ["Graduation", "Birthday", "Wedding", "Anniversary", "Mother's Day",
+           "Father's Day", "Memorial", "New Home", "Faith", "Christmas"]
+    chips = "".join(f'<span class="occhip">{o}</span>' for o in occ)
+    return (
+        f'<div class="shopocc"><div class="lbl">Shop by occasion</div>'
+        f'<div class="occrow">{chips}</div></div>'
+        f'<div class="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
+        f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
+        f'{cmp_rows}</table></div>'
+        f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is '
+        f'made to order and approved by you on a free proof. If something isn\'t '
+        f'right, we\'ll make it right.</div>'
+        f'<div class="faqs"><h2>Questions, answered</h2>{faq_html}</div>')
+
+
 def _gift_and_b2b_section(owner: str) -> str:
     """'Complete the gift' affiliate cards (off-Etsy) + a B2B/wholesale inquiry
     block. Affiliate cards appear only for links that are configured; B2B always
@@ -338,6 +384,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
+ .shopocc{{max-width:1000px;margin:18px auto 0;padding:0 20px;text-align:center}}
+ .shopocc .lbl{{font-size:13px;color:var(--muted);margin-bottom:8px}}
+ .occrow{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}}
+ .occhip{{background:#fff;border:1px solid var(--line);border-radius:18px;
+   padding:7px 14px;font-size:13px;color:var(--green)}}
+ .why{{max-width:760px;margin:34px auto 10px;padding:0 20px;text-align:center}}
+ .why h2{{font-size:28px;color:var(--green);margin:0 0 12px}}
+ .cmp{{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
+   border-radius:12px;overflow:hidden}}
+ .cmp th{{background:var(--green);color:#fff;padding:10px;font-size:14px}}
+ .cmp td{{padding:10px 12px;font-size:13px;border-top:1px solid var(--line);
+   text-align:left;width:50%}}
+ .cmp td.us{{color:#15633f;font-weight:600}} .cmp td.them{{color:#9aa39d}}
+ .guarantee{{max-width:760px;margin:18px auto;padding:16px 20px;text-align:center;
+   background:#eaf3ee;border:1px solid #cfe3d6;border-radius:12px;color:#22463a;
+   font-size:15px}}
+ .faqs{{max-width:760px;margin:24px auto;padding:0 20px}}
+ .faqs h2{{font-size:26px;color:var(--green);text-align:center;margin:0 0 12px}}
+ .faq{{background:#fff;border:1px solid var(--line);border-radius:10px;
+   padding:12px 16px;margin-bottom:8px}}
+ .faq summary{{font-weight:600;color:var(--ink);cursor:pointer}}
+ .faq p{{color:var(--muted);font-size:14px;margin:8px 0 0}}
  .giftsec,.b2b{{max-width:1000px;margin:30px auto;padding:0 20px;text-align:center}}
  .giftsec h2,.b2b h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
  .gsub{{color:var(--muted);font-size:15px;margin:0 auto 16px;max-width:620px}}
@@ -466,6 +534,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      digital proof is sent before anything is printed.</p>
  </div>
  <div class="grid" id="grid"></div>
+ {_competitive_sections()}
  {_gift_and_b2b_section(owner)}
  <div class="foot">
    <div class="fbn">{SHOP_NAME}</div>
