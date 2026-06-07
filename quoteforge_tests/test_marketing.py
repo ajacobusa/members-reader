@@ -179,3 +179,18 @@ def test_cli_affiliates(capsys):
     from quoteforge import admin
     rc = admin.main(["affiliates"])
     assert rc == 0 and "APPLY DIRECTORY" in capsys.readouterr().out
+
+
+def test_delight_email_includes_affiliate_when_configured(monkeypatch):
+    from quoteforge.etsy import delight_loop
+    order = {"customer_name": "Sam", "recipient_name": "Mom", "occasion": "Birthday",
+             "customer_email": "sam@x.com"}
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_FLOWERS_URL", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_GIFTCARD_URL", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_GIFTS_URL", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_LINKS_JSON", "", raising=False)
+    assert "Complete the gift" not in delight_loop.delight_message(order)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_LINKS_JSON",
+                        '{"Flowers":"https://aff/f"}', raising=False)
+    m = delight_loop.delight_message(order)
+    assert "Complete the gift" in m and "aff/f" in m and "affiliate links" in m

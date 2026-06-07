@@ -42,7 +42,7 @@ def delight_message(order: dict) -> str:
     occ = (order.get("occasion") or "gift").lower()
     key = order.get("customer_email") or order.get("customer_name") or "guest"
     code = referral_code(key)
-    return (
+    msg = (
         f"Hi {customer}! I hope {recipient} absolutely loved their personalized "
         f"{occ} piece.\n\n"
         f"If it brought a smile, a quick review would mean the world to a small "
@@ -52,6 +52,24 @@ def delight_message(order: dict) -> str:
         f"{code} - they get {REFERRAL_GIVE}% off, and you get {REFERRAL_GET}% off "
         f"your next order too. Thank you for being part of Joffiels!"
     )
+    return msg + _affiliate_block()
+
+
+def _affiliate_block() -> str:
+    """Optional 'complete the gift' affiliate links for the next occasion.
+    Empty unless affiliate links are configured. Includes FTC disclosure."""
+    try:
+        from quoteforge.marketing.affiliate_programs import configured_links
+        links = configured_links()
+    except Exception:  # noqa: BLE001
+        links = {}
+    if not links:
+        return ""
+    lines = "\n".join(f"  - {label}: {url}" for label, url in links.items())
+    return ("\n\n--\nPlanning the next celebration? Complete the gift:\n"
+            f"{lines}\n"
+            "(Some links are affiliate links - we may earn a small commission "
+            "at no extra cost to you.)")
 
 
 def _already_delighted(order_id: str) -> bool:
