@@ -23,7 +23,7 @@ def test_weekly_review_emails_owner(tmp_path, monkeypatch):
     _seed(tmp_path, monkeypatch)
     sent = {}
     monkeypatch.setattr("quoteforge.automation.emailer._send_email",
-                        lambda s, b, to="": sent.update(to=to, subj=s))
+                        lambda s, b, to="", attachments=None: sent.update(to=to, subj=s, att=attachments))
     from quoteforge.automation.weekly_review import weekly_review
     r = weekly_review(email=True)
     assert r.get("emailed_to") and sent["to"] == r["emailed_to"]
@@ -45,3 +45,40 @@ def test_ledger_excel_has_breakdown_tabs(tmp_path, monkeypatch):
 def test_weekly_review_command_registered():
     from quoteforge import admin
     assert "weekly-review" in admin.COMMANDS
+
+
+def test_cost_folder_archive_dated(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", True, raising=False)
+    from quoteforge.db import database as db
+    db.init_db()
+    from datetime import date
+    from quoteforge.automation.weekly_review import weekly_review
+    r = weekly_review(email=False)
+    arch = r.get("archive")
+    assert arch and arch.endswith(".xlsx")
+    from pathlib import Path
+    p = Path(arch)
+    assert p.exists()
+    today = date.today().isoformat()
+    # cost/<YYYY>/<YYYY-MM-DD>/ structure
+    assert p.parent.name == today and p.parent.parent.name == today[:4]
+    assert p.parent.parent.parent.name == "cost"
+    assert (p.parent / f"business_review_{today}.txt").exists()
+
+
+def test_email_attaches_ledger(tmp_path, monkeypatch):
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", True, raising=False)
+    from quoteforge.db import database as db
+    db.init_db()
+    sent = {}
+    monkeypatch.setattr("quoteforge.automation.emailer._send_email",
+        lambda s, b, to="", attachments=None: sent.update(att=attachments))
+    from quoteforge.automation.weekly_review import weekly_review
+    weekly_review(email=True)
+    assert sent.get("att") and str(sent["att"][0]).endswith(".xlsx")

@@ -77,16 +77,43 @@ def weekly_review(email: bool = False) -> dict:
         f"Be concrete.\n\nMETRICS:\n{json.dumps(m, default=str)}",
         operation="weekly_review", max_tokens=500, mock=fallback)
     report = {"metrics": m, "summary": summary}
+    # Archive a dated copy of the ledger + review to the cost folder.
+    try:
+        report["archive"] = archive_cost_report(report)
+    except Exception:  # noqa: BLE001
+        report["archive"] = None
     if email:
         try:
             from quoteforge.automation.emailer import _send_email
             from quoteforge.config import REPORT_RECIPIENT
+            attach = [report["archive"]] if report.get("archive") else None
             _send_email(f"{SHOP_NAME} - Friday Business Review",
-                        format_review_html(report), to=REPORT_RECIPIENT)
+                        format_review_html(report), to=REPORT_RECIPIENT,
+                        attachments=attach)
             report["emailed_to"] = REPORT_RECIPIENT
         except Exception:  # noqa: BLE001
             pass
     return report
+
+
+def archive_cost_report(report: dict) -> str:
+    """Save the ledger .xlsx + the review text into a dated cost folder:
+    OUTPUT_DIR/cost/<YYYY>/<YYYY-MM-DD>/ . Returns the archived .xlsx path."""
+    import shutil
+    from datetime import date
+    from pathlib import Path
+    from quoteforge.config import OUTPUT_DIR
+    from quoteforge.etsy.ledger import export_ledger_excel
+    today = date.today().isoformat()
+    folder = OUTPUT_DIR / "cost" / today[:4] / today
+    folder.mkdir(parents=True, exist_ok=True)
+    # Fresh ledger workbook, then archive a dated copy.
+    src = export_ledger_excel("all")
+    dest = folder / f"general_ledger_{today}.xlsx"
+    shutil.copy2(src, dest)
+    (folder / f"business_review_{today}.txt").write_text(
+        format_review_text(report), encoding="utf-8")
+    return str(dest)
 
 
 def format_review_text(r: dict) -> str:

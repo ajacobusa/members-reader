@@ -152,16 +152,34 @@ def send_cost_report(period: str = "today") -> dict:
     return _send_email(subject, body)
 
 
-def _send_email(subject: str, body: str, to: str = "") -> dict:
+def _send_email(subject: str, body: str, to: str = "", attachments=None) -> dict:
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         return {"status": "skipped",
                 "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}
     recipient = to or REPORT_RECIPIENT
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = GMAIL_ADDRESS
     msg["To"] = recipient
-    msg.attach(MIMEText(body, "html"))
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(body, "html"))
+    msg.attach(alt)
+    for path in (attachments or []):
+        try:
+            from email.mime.base import MIMEBase
+            from email import encoders
+            from pathlib import Path as _P
+            p = _P(path)
+            if not p.exists():
+                continue
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(p.read_bytes())
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition",
+                            f'attachment; filename="{p.name}"')
+            msg.attach(part)
+        except Exception:  # noqa: BLE001 — never let an attachment block the email
+            pass
     # The owner (REPORT_RECIPIENT) is BCC'd on EVERY email — including
     # customer-facing auto-replies — so all communications are visible to you.
     envelope = [recipient]
