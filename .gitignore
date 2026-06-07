@@ -46,3 +46,6 @@ Thumbs.db
 *.pdf
 ~$*
 .~lock.*#
+
+# keep generated doc PDFs in docs/
+!docs/*.pdf

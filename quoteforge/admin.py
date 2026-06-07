@@ -1257,6 +1257,14 @@ def _cmd_order_by(args: list[str]) -> int:
     return 0
 
 
+def _cmd_workflow_pdf(args: list[str]) -> int:
+    """Generate the end-to-end workflow PDF (Etsy order -> delivery). `workflow-pdf`."""
+    from quoteforge.etsy.workflow_doc import build_workflow_pdf
+    out = build_workflow_pdf()
+    print(f"Workflow PDF: {out} ({out.stat().st_size // 1024} KB)")
+    return 0
+
+
 def _cmd_exec_report(args: list[str]) -> int:
     """Build the executive report workbook (summary + charts + infra + roadmap).
     `exec-report [today|week|month|year|all]`."""
@@ -1507,6 +1515,7 @@ COMMANDS = {
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,
     "exec-report": _cmd_exec_report,
+    "workflow-pdf": _cmd_workflow_pdf,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,
     "add-income": _cmd_add_income,
