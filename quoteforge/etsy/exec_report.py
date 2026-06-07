@@ -244,6 +244,24 @@ def build_exec_report(period: str = "month", out_path=None):
     inf.column_dimensions["A"].width = 32
     inf.column_dimensions["B"].width = 90
 
+    # ── Tab 5: Workflow (Etsy order -> delivery) ──
+    try:
+        from quoteforge.etsy.workflow_doc import STAGES
+        wf = wb.create_sheet("Workflow")
+        wf.append(["Stage", "Customer experience", "Behind the scenes", "AI",
+                   "Status"])
+        for cc in wf[1]:
+            cc.font = BOLDW; cc.fill = HDR
+        for st in STAGES:
+            wf.append(list(st))
+        for col, w in zip("ABCDE", (16, 34, 46, 30, 9)):
+            wf.column_dimensions[col].width = w
+        for row in wf.iter_rows(min_row=2):
+            for cc in row:
+                cc.alignment = Alignment(wrap_text=True, vertical="top")
+    except Exception:  # noqa: BLE001
+        pass
+
     from pathlib import Path
     out = Path(out_path) if out_path else (OUTPUT_DIR / "executive_report.xlsx")
     out.parent.mkdir(parents=True, exist_ok=True)

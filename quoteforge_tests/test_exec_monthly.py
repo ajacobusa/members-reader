@@ -19,7 +19,8 @@ def test_exec_report_tabs_and_summary(tmp_path, monkeypatch):
     out = build_exec_report("all", out_path=tmp_path / "exec.xlsx")
     wb = openpyxl.load_workbook(out)
     assert wb.sheetnames == ["Executive Summary", "P&L (daily)", "Breakdown",
-                             "Infrastructure"]
+                             "Infrastructure", "Workflow"]
+    assert wb["Workflow"].max_row >= 16   # header + 15 stages
     inf = wb["Infrastructure"]
     text = " ".join(str(c.value) for row in inf.iter_rows() for c in row if c.value)
     for kw in ("CURRENT STATE", "AI WORKLOAD", "FUTURE-STATE",
