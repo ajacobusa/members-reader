@@ -49,21 +49,14 @@ def _gift_and_b2b_section(owner: str) -> str:
     """'Complete the gift' affiliate cards (off-Etsy) + a B2B/wholesale inquiry
     block. Affiliate cards appear only for links that are configured; B2B always
     shows. FTC disclosure is included automatically."""
-    from quoteforge.config import (
-        AFFILIATE_FLOWERS_URL, AFFILIATE_GIFTCARD_URL, AFFILIATE_GIFTS_URL,
-        B2B_CONTACT_EMAIL, SHOP_NAME,
-    )
+    from quoteforge.config import B2B_CONTACT_EMAIL
+    from quoteforge.marketing.affiliate_programs import configured_links, emoji_for
     cards = []
-    for label, emoji, url in (
-        ("Add fresh flowers", "🌸", AFFILIATE_FLOWERS_URL),
-        ("Add a gift card", "🎁", AFFILIATE_GIFTCARD_URL),
-        ("More gift ideas", "✨", AFFILIATE_GIFTS_URL),
-    ):
-        if url:
-            cards.append(
-                f'<a class="gcard" href="{url}" target="_blank" '
-                f'rel="sponsored noopener nofollow"><div class="ge">{emoji}</div>'
-                f'<div class="gl">{label}</div></a>')
+    for label, url in configured_links().items():
+        cards.append(
+            f'<a class="gcard" href="{url}" target="_blank" '
+            f'rel="sponsored noopener nofollow"><div class="ge">{emoji_for(label)}</div>'
+            f'<div class="gl">{label}</div></a>')
     gift_html = ""
     if cards:
         gift_html = (

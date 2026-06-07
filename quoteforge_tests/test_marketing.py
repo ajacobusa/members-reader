@@ -141,3 +141,41 @@ def test_analytics_injected_when_set(tmp_path, monkeypatch):
     _seed_kit(tmp_path)
     out = build_shop_home(kit_dir=tmp_path, out_path=tmp_path / "h.html")
     assert "G-TEST123" in out.read_text(encoding="utf-8")
+
+
+# ── Affiliate programs directory ─────────────────────────────────
+
+def test_affiliate_catalog_and_signup_urls():
+    from quoteforge.marketing import affiliate_programs as ap
+    assert len(ap.PROGRAMS) >= 20
+    # every program maps to a known network with a signup URL
+    assert all(p.signup_url.startswith("http") for p in ap.PROGRAMS)
+    cats = {p.category for p in ap.PROGRAMS}
+    assert {"flowers", "giftcards", "gifts", "marketplace", "home"} <= cats
+
+
+def test_configured_links_merges_json(monkeypatch):
+    from quoteforge.marketing import affiliate_programs as ap
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_FLOWERS_URL", "https://f", raising=False)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_GIFTCARD_URL", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_GIFTS_URL", "", raising=False)
+    monkeypatch.setattr("quoteforge.config.AFFILIATE_LINKS_JSON",
+                        '{"1-800-Flowers":"https://aff/flowers","Amazon":"https://aff/amz"}',
+                        raising=False)
+    links = ap.configured_links()
+    assert links["1-800-Flowers"] == "https://aff/flowers"
+    assert links["Amazon"] == "https://aff/amz" and links["Fresh flowers"] == "https://f"
+
+
+def test_apply_checklist_lists_networks_and_programs():
+    from quoteforge.marketing import affiliate_programs as ap
+    txt = ap.apply_checklist()
+    assert "Amazon Associates" in txt and "1-800-Flowers" in txt
+    assert "NETWORKS" in txt and "impact.com" in txt
+    assert "NEVER on Etsy" in txt
+
+
+def test_cli_affiliates(capsys):
+    from quoteforge import admin
+    rc = admin.main(["affiliates"])
+    assert rc == 0 and "APPLY DIRECTORY" in capsys.readouterr().out

@@ -1158,6 +1158,14 @@ def _cmd_frame_preview(args: list[str]) -> int:
     return 0
 
 
+def _cmd_affiliates(args: list[str]) -> int:
+    """Print the apply-ready directory of major affiliate programs/networks,
+    marking which you've already configured. `affiliates`."""
+    from quoteforge.marketing.affiliate_programs import apply_checklist
+    print(apply_checklist())
+    return 0
+
+
 def _cmd_gelato_sync(args: list[str]) -> int:
     """Sync prices + availability from Gelato into catalog_state (auto-reprices
     to 60% and disables discontinued frames/products). `gelato-sync`."""
@@ -1207,6 +1215,7 @@ def _cmd_subscribers(args: list[str]) -> int:
 COMMANDS = {
     "variations": _cmd_variations,
     "frame-preview": _cmd_frame_preview,
+    "affiliates": _cmd_affiliates,
     "gelato-sync": _cmd_gelato_sync,
     "pinterest": _cmd_pinterest,
     "pinterest-publish": _cmd_pinterest_publish,

@@ -118,6 +118,9 @@ FEEDBACK_FORM_URL: str = os.getenv("FEEDBACK_FORM_URL", "").strip()
 AFFILIATE_FLOWERS_URL: str = os.getenv("AFFILIATE_FLOWERS_URL", "").strip()
 AFFILIATE_GIFTCARD_URL: str = os.getenv("AFFILIATE_GIFTCARD_URL", "").strip()
 AFFILIATE_GIFTS_URL: str = os.getenv("AFFILIATE_GIFTS_URL", "").strip()
+# Add ANY number of programs as a JSON dict, e.g.
+# AFFILIATE_LINKS_JSON={"1-800-Flowers":"https://...","Amazon":"https://..."}
+AFFILIATE_LINKS_JSON: str = os.getenv("AFFILIATE_LINKS_JSON", "").strip()
 # Where B2B / wholesale / corporate-gifting inquiries should be sent.
 B2B_CONTACT_EMAIL: str = os.getenv("B2B_CONTACT_EMAIL", "").strip()
 
