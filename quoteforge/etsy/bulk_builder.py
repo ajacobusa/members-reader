@@ -145,6 +145,7 @@ def _generate_art(listing: LaunchListing, folder: Path,
         scenery="Mountains", output_style="Custom Quote", count=1,
         force_real=bool(ANTHROPIC_API_KEY))[0]
     poster = folder / "poster_18x24.png"
+    (folder / "quote.txt").write_text(quote, encoding="utf-8")  # for live color preview
     render_local_poster(quote=quote, output_path=poster, size=(5400, 7200))
     build_listing_pack(poster, folder / "gallery")
 

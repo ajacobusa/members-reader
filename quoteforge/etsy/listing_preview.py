@@ -113,8 +113,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         gallery = sorted((kit_dir).glob(f"{b.listing_n:02d}_*/gallery/*.png"))
         if not gallery:
             continue
+        qf = next(iter(sorted(kit_dir.glob(f"{b.listing_n:02d}_*/quote.txt"))), None)
+        quote_txt = ""
+        if qf:
+            try:
+                import re as _re
+                quote_txt = _re.sub(r"^\s*\[TEST MODE[^\]]*\]\s*", "",
+                                    qf.read_text(encoding="utf-8")).strip()
+            except Exception:  # noqa: BLE001
+                quote_txt = ""
+        if not quote_txt:
+            quote_txt = ("You make every day brighter. "
+                         "Today, and always - with all my love.")
         entry = {
             "n": b.listing_n,
+            "quote": quote_txt,
             "title": b.title.split(" | ")[0],
             "full_title": b.title,
             "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
@@ -300,6 +313,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .perso input,.perso textarea{{width:100%;border:1px solid #cdbf98;border-radius:8px;
    padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px}}
  .perso .note{{font-size:11px;color:var(--muted)}}
+ .perso .swrow{{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}}
+ #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
+   margin-bottom:8px;background:#0f3d2e}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -376,12 +392,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
        </div>
        <div class="perso">
-         <div class="lbl">🎨 Personalize it (free - applied on your proof)</div>
+         <div class="lbl">🎨 See it in YOUR colors (free - match your room)</div>
+         <canvas id="mcanvas" width="320" height="410"></canvas>
+         <div class="swrow">Background</div>
          <div class="sw" id="mbg"></div>
-         <input id="mtext" type="text" maxlength="120"
-           placeholder="Your exact wording (optional) - e.g. names, date, quote">
-         <div class="note">Background color &amp; your wording are set on your FREE
-           digital proof before printing - no extra charge.</div>
+         <div class="swrow">Text color</div>
+         <div class="sw" id="mtxt"></div>
+         <input id="mtext" type="text" maxlength="120" oninput="drawArt()"
+           placeholder="Type your own wording (optional) - it previews live">
+         <div class="note">Pick any background &amp; text color to match your space -
+           the preview updates instantly. Final colors &amp; wording are confirmed on
+           your FREE digital proof before printing. No extra charge.</div>
        </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>
@@ -458,8 +479,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mprice').textContent = "from $" + d.price;
    document.getElementById('mdesc').textContent = d.desc;
    document.getElementById('mratemsg').textContent = "";
-   renderBg();
+   CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
+   renderBg(); renderTxt(); drawArt();
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
    fb.href = fbLink(d.title);
@@ -467,13 +489,39 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    fb.style.display = UAT ? 'block':'none';
    document.getElementById('modal').style.display='flex';
  }}
- const BGCOLORS = ["#0f3d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#c9a84c"];
+ const BGCOLORS = ["#0f3d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#dcd6c8","#c9a84c"];
+ const TXTCOLORS = ["#f4efe6","#ffffff","#c9a84c","#1b1b1f","#0f3d2e","#7a2e2e"];
+ let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], CURQUOTE="";
  function renderBg(){{
    document.getElementById('mbg').innerHTML = BGCOLORS.map((c,k)=>
-     `<span style="background:${{c}}" class="${{k===0?'sel':''}}" onclick="pickBg(${{k}})" title="${{c}}"></span>`).join('');
+     `<span style="background:${{c}}" class="${{c===SELBG?'sel':''}}" onclick="pickBg('${{c}}',this)" title="${{c}}"></span>`).join('');
  }}
- function pickBg(k){{
-   document.querySelectorAll('#mbg span').forEach((e,m)=>e.classList.toggle('sel',m===k));
+ function renderTxt(){{
+   document.getElementById('mtxt').innerHTML = TXTCOLORS.map((c,k)=>
+     `<span style="background:${{c}}" class="${{c===SELTXT?'sel':''}}" onclick="pickTxt('${{c}}',this)" title="${{c}}"></span>`).join('');
+ }}
+ function pickBg(c,el){{ SELBG=c;
+   document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
+ function pickTxt(c,el){{ SELTXT=c;
+   document.querySelectorAll('#mtxt span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
+ function drawArt(){{
+   const cv=document.getElementById('mcanvas'); if(!cv) return;
+   const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+   ctx.fillStyle=SELBG; ctx.fillRect(0,0,W,H);
+   const typed=(document.getElementById('mtext')||{{}}).value;
+   const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
+   ctx.fillStyle=SELTXT; ctx.textAlign='center';
+   // fit font so the text fits the canvas
+   let fs=30; const maxW=W*0.82;
+   function wrap(f){{ctx.font='600 '+f+"px 'Cormorant Garamond',Georgia,serif";
+     const words=text.split(' '); let lines=[],cur='';
+     for(const w of words){{const t=(cur+' '+w).trim();
+       if(ctx.measureText(t).width<=maxW){{cur=t;}}else{{lines.push(cur);cur=w;}}}}
+     if(cur)lines.push(cur); return lines;}}
+   let lines=wrap(fs);
+   while((lines.length*fs*1.32)>H*0.8 && fs>12){{fs-=2; lines=wrap(fs);}}
+   const lh=fs*1.34; let y=(H-lines.length*lh)/2+fs;
+   for(const ln of lines){{ctx.fillText(ln,W/2,y); y+=lh;}}
  }}
  function pickFmt(i,j){{
    const f = DATA[i].formats[j];
