@@ -272,6 +272,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                                                 for n, d in fmts]
                 except Exception:  # noqa: BLE001
                     pass
+        # Card "from" price = the real lowest variation price (not a flat default).
+        prices = [f["price"] for f in entry.get("formats", []) if f.get("price")]
+        if prices:
+            entry["price"] = f"{min(prices):.2f}"
         listings.append(entry)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
