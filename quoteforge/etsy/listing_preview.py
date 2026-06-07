@@ -302,13 +302,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     sizemap_json = json.dumps(sizemap)
 
     # Product range + frame note for the detail modal.
+    _hi = 0
+    mat_short = "Poster · Framed · Canvas · Acrylic · Metal"
     try:
         from quoteforge.etsy.variations import price_range, materials_offered
         _lo, _hi = price_range()
-        materials_line = (" · ".join(m.split(" (")[0] for m in materials_offered())
-                          + f" — ${_lo:.0f}–${_hi:.0f}")
+        mats = [m.split(" (")[0] for m in materials_offered()]
+        mat_short = " · ".join(mats)
+        materials_line = mat_short + f" — ${_lo:.0f}–${_hi:.0f}"
     except Exception:  # noqa: BLE001
         materials_line = ""
+    price_hi = f"{_hi:.0f}"
 
     logo = brand / "joffiels_logo_green_gold.png"
     banner = brand / "joffiels_banner.png"
@@ -440,6 +444,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .ttl{{font-size:15px;line-height:1.5;height:66px;overflow:hidden;color:#2b3a33}}
  .pr{{margin-top:10px;font-weight:600;color:var(--green);font-size:17px}}
  .pr small{{color:var(--muted);font-weight:400;font-size:12px}}
+ .prsub{{font-size:11px;color:var(--muted);margin-top:2px}}
  .fb{{display:inline-block;margin-top:10px;font-size:12px;color:var(--green);
    text-decoration:none;border:1px solid var(--green);border-radius:16px;
    padding:5px 12px;transition:.15s}}
@@ -718,6 +723,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <script>
  const DATA = {data_json};
  const OWNER = "{owner}";
+ const PRICE_HI = "{price_hi}";
+ const MAT_SHORT = "{mat_short}";
  const UAT = {str(bool(uat)).lower()};
  const FORM_URL = "{form_url}";
  let RATING = 0;          // current modal star rating
@@ -755,6 +762,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="">
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">from $${{d.price}}</div>
+         <div class="prsub">${{MAT_SHORT}} &mdash; up to $${{PRICE_HI}}</div>
          <span class="fb">Tap to choose frame / canvas &amp; see it</span>
        </div>
      </div>`).join('');
