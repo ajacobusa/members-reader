@@ -90,6 +90,13 @@ def build_ledger(period: str = "month") -> dict:
         _row(cur.isoformat())["opex"] += opex
         cur += timedelta(days=1)
 
+    # For 'all', don't pad thousands of empty pre-history days: start at the
+    # first day that actually has revenue or orders.
+    if period == "all":
+        active = [d for d, r in days.items() if r["revenue"] or r["orders"]]
+        first = min(active) if active else end.isoformat()
+        days = {d: r for d, r in days.items() if d >= first}
+
     rows = []
     for d in sorted(days):
         r = days[d]
