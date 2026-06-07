@@ -42,6 +42,26 @@ The blueprint mounts a **persistent disk at `/data`** and sets `OUTPUT_DIR=/data
 so the SQLite DB + assets survive redeploys, and runs cron jobs for `poll-etsy`,
 `track-orders`, and a daily ops batch.
 
+## Option C — FREE (live Ask Ange at $0/mo)
+Render's **Free** plan can host the Ask Ange `/ask` endpoint for $0 - the only
+cost is convenience (it sleeps when idle).
+
+1. Render → **New + → Blueprint** → pick this repo → choose **`render-free.yaml`**.
+2. (Optional) add `ANTHROPIC_API_KEY` in the dashboard for full Claude answers
+   (leave it off and Ange still answers from the built-in knowledge base).
+3. Deploy → URL like `https://joffiels-ange-free.onrender.com`.
+4. Set `ASK_ANGE_API_URL=https://joffiels-ange-free.onrender.com/ask` → `rebuild-site`.
+
+Caveats of free: **sleeps after ~15 min idle** (first question wakes in ~30-60s),
+and **no persistent disk**. So this free service runs ONLY the stateless Ask
+Ange/health endpoints - keep order intake, the SQLite DB, and all scheduled jobs
+on your PC (`install-schedule`). Upgrade to Option B (~$7/mo) only when you want
+always-on + a persistent disk + cloud cron.
+
+> Note: deploying requires YOUR Render login - it can't be done for you. But the
+> on-page Ask Ange already works free with no server; hosting only upgrades it
+> to full Claude answers.
+
 ### Other hosts
 - **Railway / Fly.io / Heroku:** use the included `Procfile`
   (`web: gunicorn wsgi:app ...`). Set a persistent volume + `OUTPUT_DIR`.

@@ -1,0 +1,18 @@
+# FREE Render blueprint - live Ask Ange (/ask) + /health at $0/mo.
+# Caveats: free web services SLEEP after ~15 min idle (first hit wakes in
+# ~30-60s) and have NO persistent disk. So this hosts ONLY the stateless
+# Ask Ange / health endpoints; keep order intake, the database, and scheduled
+# jobs on your PC (Windows Task Scheduler) where they already run.
+services:
+  - type: web
+    name: joffiels-ange-free
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt -r requirements-server.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: TEST_MODE
+        value: "true"
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set in the Render dashboard for full Claude answers
