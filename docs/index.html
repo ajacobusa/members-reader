@@ -365,6 +365,7 @@
  const OWNER = "ajacobusa@gmail.com";
  const PRICE_HI = "256";
  const MAT_SHORT = "Poster · Framed print · Canvas · Acrylic · Metal";
+ const OPT_COUNT = "46";
  const UAT = true;
  const FORM_URL = "";
  let RATING = 0;          // current modal star rating
@@ -401,8 +402,8 @@
      <div class="card" onclick="openM(${i})">
        <img class="hero" loading="lazy" src="${d.imgs[0]}" alt="">
        <div class="cap"><div class="ttl">${d.title}</div>
-         <div class="pr">from $${d.price}</div>
-         <div class="prsub">${MAT_SHORT} &mdash; up to $${PRICE_HI}</div>
+         <div class="pr">Starting at $${d.price}</div>
+         <div class="prsub">${MAT_SHORT} &middot; ${OPT_COUNT} options to $${PRICE_HI}</div>
          <span class="fb">Tap to choose frame / canvas &amp; see it</span>
        </div>
      </div>`).join('');

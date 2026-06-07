@@ -313,6 +313,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         materials_line = ""
     price_hi = f"{_hi:.0f}"
+    try:
+        from quoteforge.etsy.variations import build_variations as _bvc
+        opt_count = len(_bvc())
+    except Exception:  # noqa: BLE001
+        opt_count = 0
 
     logo = brand / "joffiels_logo_green_gold.png"
     banner = brand / "joffiels_banner.png"
@@ -725,6 +730,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const OWNER = "{owner}";
  const PRICE_HI = "{price_hi}";
  const MAT_SHORT = "{mat_short}";
+ const OPT_COUNT = "{opt_count}";
  const UAT = {str(bool(uat)).lower()};
  const FORM_URL = "{form_url}";
  let RATING = 0;          // current modal star rating
@@ -761,8 +767,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="card" onclick="openM(${{i}})">
        <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="">
        <div class="cap"><div class="ttl">${{d.title}}</div>
-         <div class="pr">from $${{d.price}}</div>
-         <div class="prsub">${{MAT_SHORT}} &mdash; up to $${{PRICE_HI}}</div>
+         <div class="pr">Starting at $${{d.price}}</div>
+         <div class="prsub">${{MAT_SHORT}} &middot; ${{OPT_COUNT}} options to $${{PRICE_HI}}</div>
          <span class="fb">Tap to choose frame / canvas &amp; see it</span>
        </div>
      </div>`).join('');
