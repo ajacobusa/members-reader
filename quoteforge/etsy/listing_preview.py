@@ -47,7 +47,7 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True,
-                    feedback_form_url=None) -> Path:
+                    feedback_form_url=None, frame_picker: bool = True) -> Path:
     """A polished, password-gated shop-home / UAT page: logo+banner, a 20-listing
     grid, a per-listing detail modal (all 5 images + description), a per-listing
     star rating, and one-click feedback. Shareable as one link.
@@ -78,14 +78,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         gallery = sorted((kit_dir).glob(f"{b.listing_n:02d}_*/gallery/*.png"))
         if not gallery:
             continue
-        listings.append({
+        entry = {
             "n": b.listing_n,
             "title": b.title.split(" | ")[0],
             "full_title": b.title,
             "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
             "desc": b.description,
             "imgs": [_web_img(p) for p in gallery],
-        })
+        }
+        # Real per-frame / per-material previews (tap a frame -> see the look).
+        if frame_picker:
+            poster = next(iter(sorted(
+                kit_dir.glob(f"{b.listing_n:02d}_*/poster*.png"))), None)
+            if poster:
+                try:
+                    from quoteforge.images.frame_preview import format_preview_datauris
+                    fmts = format_preview_datauris(poster)
+                    if fmts:
+                        entry["formats"] = [{"name": n, "img": d} for n, d in fmts]
+                except Exception:  # noqa: BLE001
+                    pass
+        listings.append(entry)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
 
@@ -221,6 +234,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .mthumbs img{{width:62px;height:62px;object-fit:cover;border:1px solid #d8cdb6;
    border-radius:7px;cursor:pointer;transition:.12s}}
  .mthumbs img:hover{{border-color:var(--gold)}}
+ .fpick{{margin-top:12px}}
+ .fpick .lbl{{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}}
+ .fchips{{display:flex;flex-wrap:wrap;gap:6px}}
+ .fchip{{border:1px solid #cdbf98;background:#fff;border-radius:16px;padding:5px 11px;
+   font-size:12px;cursor:pointer;transition:.12s;white-space:nowrap}}
+ .fchip:hover{{border-color:var(--gold)}}
+ .fchip.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -282,7 +302,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="mbox">
    <span class="closex" onclick="closeM()">&times;</span>
    <div class="mbody">
-     <div class="mleft"><img id="mmain"><div class="mthumbs" id="mthumbs"></div></div>
+     <div class="mleft"><img id="mmain"><div class="mthumbs" id="mthumbs"></div>
+       <div class="fpick" id="mfpick" style="display:none">
+         <div class="lbl">See it in your frame / material:</div>
+         <div class="fchips" id="mfchips"></div>
+       </div>
+     </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
        <div style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
@@ -354,6 +379,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mmain').src = d.imgs[0];
    document.getElementById('mthumbs').innerHTML = d.imgs.map(
      s=>`<img src="${{s}}" onclick="document.getElementById('mmain').src=this.src">`).join('');
+   const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
+   if(d.formats && d.formats.length){{
+     fc.innerHTML=d.formats.map((f,j)=>
+       `<span class="fchip" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{f.name}}</span>`).join('');
+     fp.style.display='block';
+   }} else {{ fp.style.display='none'; }}
    document.getElementById('mtitle').textContent = d.full_title;
    document.getElementById('mprice').textContent = "from $" + d.price;
    document.getElementById('mdesc').textContent = d.desc;
@@ -364,6 +395,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    fb.textContent = FORM_URL ? "📝 Give feedback (1 min)" : "💬 Tell us what you think";
    fb.style.display = UAT ? 'block':'none';
    document.getElementById('modal').style.display='flex';
+ }}
+ function pickFmt(i,j){{
+   const f = DATA[i].formats[j];
+   document.getElementById('mmain').src = f.img;
+   document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
+     e.classList.toggle('sel', k===j));
  }}
  function closeM(){{document.getElementById('modal').style.display='none';}}
  document.querySelectorAll('#mstars span').forEach(function(el){{

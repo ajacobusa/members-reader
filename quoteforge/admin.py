@@ -1139,7 +1139,7 @@ def _cmd_frame_preview(args: list[str]) -> int:
     arg = args[0] if args else "1"
     if arg.isdigit():
         kit = OUTPUT_DIR / "launch_kit"
-        posters = sorted(kit.glob(f"{int(arg):02d}_*/poster.png")) or \
+        posters = sorted(kit.glob(f"{int(arg):02d}_*/poster*.png")) or \
             sorted(kit.glob(f"{int(arg):02d}_*/*.png"))
         if not posters:
             print(f"No poster for listing {arg}. Run: launch-kit")

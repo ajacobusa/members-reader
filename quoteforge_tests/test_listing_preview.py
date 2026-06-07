@@ -79,3 +79,25 @@ def test_showroom_still_builds(tmp_path):
     out = build_showroom(numbers=[1, 2], kit_dir=tmp_path,
                          out_path=tmp_path / "s.html")
     assert out.exists() and out.read_text(encoding="utf-8").count('class="card"') >= 1
+
+
+def test_modal_has_frame_picker_when_poster_exists(tmp_path):
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    folder = tmp_path / f"{l.n:02d}_x"
+    g = folder / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (400, 400), (15, 61, 46)).save(g / "1_hero.png")
+    Image.new("RGB", (800, 1000), (240, 238, 232)).save(folder / "poster.png")
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=True)
+    h = out.read_text(encoding="utf-8")
+    assert 'id="mfpick"' in h and "function pickFmt" in h
+    assert '"formats"' in h            # per-listing format previews embedded
+
+
+def test_frame_picker_off_skips_formats(tmp_path):
+    _seed_kit(tmp_path)
+    out = build_shop_home(numbers=[1], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=False)
+    assert '"formats"' not in out.read_text(encoding="utf-8")

@@ -28,8 +28,10 @@ def _format_values() -> list[tuple[str, str, str]]:
     return out
 
 
-def build_format_previews(poster_path, out_dir=None) -> dict:
-    """Render one mockup per Format. Returns {format_value: Path}."""
+def build_format_previews(poster_path, out_dir=None, size=(1000, 1000),
+                          subset=None) -> dict:
+    """Render one mockup per Format. Returns {format_value: Path}.
+    `subset` (list of format_value) limits which are rendered."""
     from quoteforge.config import OUTPUT_DIR
     from quoteforge.images.room_mockup import render_room_mockup
     poster_path = Path(poster_path)
@@ -37,13 +39,34 @@ def build_format_previews(poster_path, out_dir=None) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     result = {}
     for value, style, wall in _format_values():
+        if subset and value not in subset:
+            continue
         slug = value.lower().replace(" ", "_").replace("(", "").replace(")", "")
         slug = slug.replace("-", "").replace("__", "_")
         out = out_dir / f"{slug}.png"
-        render_room_mockup(poster_path, out, wall=wall, frame_style=style,
-                           size=(1000, 1000))
+        render_room_mockup(poster_path, out, wall=wall, frame_style=style, size=size)
         result[value] = out
     return result
+
+
+def format_preview_datauris(poster_path, max_dim=460, quality=68,
+                            subset=None) -> list:
+    """Render the Format mockups and return [(name, data_uri)] - small JPEGs for
+    embedding an in-page frame picker without bloating the file. Renders to a
+    temp dir (cleaned up). Returns [] if rendering fails."""
+    import tempfile
+    import shutil
+    from quoteforge.etsy.listing_preview import _web_img
+    tmp = Path(tempfile.mkdtemp(prefix="jf_fp_"))
+    try:
+        previews = build_format_previews(poster_path, out_dir=tmp,
+                                         size=(620, 620), subset=subset)
+        return [(name, _web_img(p, max_dim, quality))
+                for name, p in previews.items()]
+    except Exception:  # noqa: BLE001 — never break the page build
+        return []
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def build_preview_page(poster_path, out_path=None, title="Preview your frame") -> Path:
