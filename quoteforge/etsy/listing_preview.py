@@ -84,6 +84,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     out = Path(out_path) if out_path else (kit_dir / "shop_home.html")
     assets = out.parent / "assets" if external_assets else None
 
+    # Per-format "from" price (min across sizes), keyed to the preview names,
+    # so the displayed price updates when a buyer picks a frame / material.
+    fmt_price = {}
+    try:
+        from quoteforge.etsy.variations import build_variations
+        _mat_name = {"poster": "Poster (unframed)",
+                     "canvas": "Canvas (gallery-wrapped)",
+                     "acrylic": "Acrylic", "metal": "Metal"}
+        for v in build_variations():
+            k = (f"Framed - {v.frame_color}" if v.material == "framed"
+                 else _mat_name.get(v.material))
+            if k:
+                fmt_price[k] = min(fmt_price.get(k, 1e9), v.price)
+    except Exception:  # noqa: BLE001
+        fmt_price = {}
+
     def _emit(src: Path, fname: str) -> str:
         """Return a data-URI (inline mode) or a lazy-loaded relative URL."""
         if external_assets:
@@ -118,12 +134,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                             poster, assets, f"{b.listing_n:02d}f")
                         if files:
                             entry["formats"] = [
-                                {"name": n, "img": f"assets/{fn}"} for n, fn in files]
+                                {"name": n, "img": f"assets/{fn}",
+                                 "price": fmt_price.get(n)} for n, fn in files]
                     else:
                         from quoteforge.images.frame_preview import format_preview_datauris
                         fmts = format_preview_datauris(poster)
                         if fmts:
-                            entry["formats"] = [{"name": n, "img": d}
+                            entry["formats"] = [{"name": n, "img": d,
+                                                 "price": fmt_price.get(n)}
                                                 for n, d in fmts]
                 except Exception:  # noqa: BLE001
                     pass
@@ -272,6 +290,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .fchip:hover{{border-color:var(--gold);background:#fffaf0}}
  .fchip.sel{{background:var(--green);color:#fff;border-color:var(--green);
    box-shadow:0 2px 8px rgba(16,61,46,.25)}}
+ .perso{{margin-top:14px;background:#f3efe6;border:1px solid var(--line);
+   border-radius:12px;padding:12px}}
+ .perso .lbl{{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}}
+ .sw{{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}}
+ .sw span{{width:26px;height:26px;border-radius:50%;cursor:pointer;
+   border:2px solid #fff;box-shadow:0 0 0 1px #cdbf98;transition:.12s}}
+ .sw span.sel{{box-shadow:0 0 0 2px var(--green);transform:scale(1.12)}}
+ .perso input,.perso textarea{{width:100%;border:1px solid #cdbf98;border-radius:8px;
+   padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px}}
+ .perso .note{{font-size:11px;color:var(--muted)}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -347,6 +375,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <b>Frame not included</b> unless you choose a Framed option
          (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
        </div>
+       <div class="perso">
+         <div class="lbl">🎨 Personalize it (free - applied on your proof)</div>
+         <div class="sw" id="mbg"></div>
+         <input id="mtext" type="text" maxlength="120"
+           placeholder="Your exact wording (optional) - e.g. names, date, quote">
+         <div class="note">Background color &amp; your wording are set on your FREE
+           digital proof before printing - no extra charge.</div>
+       </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>
          <div class="stars2" id="mstars">
@@ -414,13 +450,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
      fc.innerHTML=d.formats.map((f,j)=>
-       `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{f.name}}</span>`).join('');
+       `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join('');
      fp.style.display='block';
+     if(d.formats[0].price) document.getElementById('mprice').textContent="from $"+d.formats[0].price;
    }} else {{ fp.style.display='none'; }}
    document.getElementById('mtitle').textContent = d.full_title;
    document.getElementById('mprice').textContent = "from $" + d.price;
    document.getElementById('mdesc').textContent = d.desc;
    document.getElementById('mratemsg').textContent = "";
+   renderBg();
+   var mt=document.getElementById('mtext'); if(mt) mt.value="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
    fb.href = fbLink(d.title);
@@ -428,9 +467,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    fb.style.display = UAT ? 'block':'none';
    document.getElementById('modal').style.display='flex';
  }}
+ const BGCOLORS = ["#0f3d2e","#1b1b1f","#3a2e24","#7a2e2e","#2e3a55","#f4efe6","#c9a84c"];
+ function renderBg(){{
+   document.getElementById('mbg').innerHTML = BGCOLORS.map((c,k)=>
+     `<span style="background:${{c}}" class="${{k===0?'sel':''}}" onclick="pickBg(${{k}})" title="${{c}}"></span>`).join('');
+ }}
+ function pickBg(k){{
+   document.querySelectorAll('#mbg span').forEach((e,m)=>e.classList.toggle('sel',m===k));
+ }}
  function pickFmt(i,j){{
    const f = DATA[i].formats[j];
    document.getElementById('mmain').src = f.img;
+   if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
  }}
