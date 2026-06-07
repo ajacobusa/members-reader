@@ -74,6 +74,19 @@
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}
  .uatbar a{color:var(--green);font-weight:600}
+ .cutoff{background:#7a2e2e;color:#ffe9cf;text-align:center;padding:11px 16px;
+   font-size:14px;font-weight:600;letter-spacing:.3px}
+ .reviews{max-width:1100px;margin:34px auto;padding:0 20px;text-align:center}
+ .reviews h2{font-size:28px;color:var(--green);margin:0 0 8px}
+ .rvsum{display:flex;gap:10px;justify-content:center;align-items:baseline;margin-bottom:16px}
+ .rvbig{font-size:34px;font-weight:700;color:var(--green)}
+ .rvsum .rvstars{color:var(--gold);font-size:20px} .rvn{color:var(--muted);font-size:14px}
+ .rvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+ .rvcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:left}
+ .rvcard .rvstars{color:var(--gold)} .rvimg{width:100%;border-radius:8px;margin:8px 0}
+ .rvtext{font-size:14px;color:#3a463f;line-height:1.5}
+ .rvname{font-size:12px;color:var(--muted);margin-top:8px}
+ .vrf{color:#15633f;font-weight:600}
  .shopocc{max-width:1000px;margin:18px auto 0;padding:0 20px;text-align:center}
  .shopocc .lbl{font-size:13px;color:var(--muted);margin-bottom:8px}
  .occrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
@@ -234,6 +247,7 @@
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
+ <div class="cutoff">⏰ Only 5 days left - order by Jun 12 to get it in time for Father's Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div class="intro">
    <h2>Gifts they'll keep forever</h2>
@@ -242,6 +256,7 @@
      digital proof is sent before anything is printed.</p>
  </div>
  <div class="grid" id="grid"></div>
+ 
  <div class="shopocc"><div class="lbl">Shop by occasion</div><div class="occrow"><span class="occhip">Graduation</span><span class="occhip">Birthday</span><span class="occhip">Wedding</span><span class="occhip">Anniversary</span><span class="occhip">Mother's Day</span><span class="occhip">Father's Day</span><span class="occhip">Memorial</span><span class="occhip">New Home</span><span class="occhip">Faith</span><span class="occhip">Christmas</span></div></div><div class="why"><h2>Why Joffiels (not a mass printer)</h2><table class="cmp"><tr><th>Joffiels</th><th>Big-box printers</th></tr><tr><td class="us">✓ Designed by a real person for your story</td><td class="them">Templated, mass-produced</td></tr><tr><td class="us">✓ FREE digital proof - approve before we print</td><td class="them">What you upload is what prints</td></tr><tr><td class="us">✓ Made to order, museum-quality materials</td><td class="them">Bulk factory runs</td></tr><tr><td class="us">✓ Custom wording, colors &amp; frame - you preview it live</td><td class="them">Limited presets</td></tr><tr><td class="us">✓ Personal note + gift e-card included free</td><td class="them">Add-on fees</td></tr><tr><td class="us">✓ Happiness guarantee - we make it right</td><td class="them">Rigid return windows</td></tr></table></div><div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is made to order and approved by you on a free proof. If something isn't right, we'll make it right.</div><div class="faqs"><h2>Questions, answered</h2><details class="faq"><summary>Is the frame included?</summary><p>Poster, canvas, acrylic and metal ship without a frame. Choose a "Framed" option to add a real wood frame (6 styles).</p></details><details class="faq"><summary>Can I use my own photo or exact wording?</summary><p>Yes! Upload a high-resolution photo and type your own words - we auto-check quality and send a free proof before printing.</p></details><details class="faq"><summary>How fast will it arrive?</summary><p>We send your proof within ~24h; once approved it's printed and shipped with tracking, typically within 3-5 business days.</p></details><details class="faq"><summary>What if I don't love it?</summary><p>Message us - our happiness guarantee means we'll fix or remake it. Personalized items are made to order, so approval happens on the proof.</p></details></div>
  <div class="b2b"><h2>Corporate &amp; bulk gifting</h2><p class="gsub">Personalized art for employee recognition, client gifts, weddings, realtor closings, churches &amp; schools - wholesale pricing on volume orders.</p><div class="b2bform"><input id="bz_name" placeholder="Your name"><input id="bz_co" placeholder="Company / organization"><input id="bz_email" placeholder="Your email"><input id="bz_qty" placeholder="Approx. quantity"><textarea id="bz_msg" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea><button onclick="b2bSend('ajacobusa@gmail.com')">Request a wholesale quote</button></div></div>
  <div class="foot">

@@ -45,6 +45,35 @@ def _web_img(path: Path, max_dim: int = 900, quality: int = 82) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _reviews_section() -> str:
+    """Real, verified reviews only. Empty until you have published reviews
+    (no fabricated social proof)."""
+    from quoteforge.db.database import init_db, get_published_reviews, review_stats
+    init_db()
+    revs = get_published_reviews(12)
+    if not revs:
+        return ""
+    st = review_stats()
+    stars = "★" * int(round(st["avg"])) + "☆" * (5 - int(round(st["avg"])))
+    cards = []
+    for r in revs:
+        rs = "★" * int(r["rating"]) + "☆" * (5 - int(r["rating"]))
+        photo = (f'<img class="rvimg" src="{r["photo_url"]}" alt="">'
+                 if r.get("photo_url") else "")
+        vb = '<span class="vrf">✓ Verified</span>' if r.get("verified") else ""
+        cards.append(
+            f'<div class="rvcard"><div class="rvstars">{rs}</div>{photo}'
+            f'<div class="rvtext">{(r.get("text") or "")[:240]}</div>'
+            f'<div class="rvname">- {r.get("customer_name") or "Customer"} {vb}</div></div>')
+    return (
+        f'<div class="reviews"><h2>What customers say</h2>'
+        f'<div class="rvsum"><span class="rvbig">{st["avg"]}</span>'
+        f'<span class="rvstars">{stars}</span>'
+        f'<span class="rvn">{st["count"]} verified review'
+        f'{"s" if st["count"] != 1 else ""}</span></div>'
+        f'<div class="rvgrid">{"".join(cards)}</div></div>')
+
+
 def _competitive_sections() -> str:
     """Conversion sections that beat mass printers: why-us comparison, a real
     happiness guarantee, and an FAQ. (Honest: no fabricated reviews pre-launch.)"""
@@ -280,8 +309,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     logo = brand / "joffiels_logo_green_gold.png"
     banner = brand / "joffiels_banner.png"
     logo_src = _web_img(logo, 240) if logo.exists() else ""
-    banner_src = _web_img(banner, 1400) if banner.exists() else ""
+    # Hero: a lifestyle/sample photo (HERO_IMAGE or brand/hero.*) beats the banner.
+    from quoteforge.config import HERO_IMAGE
+    hero_img = None
+    if HERO_IMAGE and Path(HERO_IMAGE).exists():
+        hero_img = Path(HERO_IMAGE)
+    else:
+        hero_img = next((p for p in (brand / "hero.jpg", brand / "hero.png",
+                                     brand / "hero.jpeg") if p.exists()), None)
+    banner_src = _web_img(hero_img, 1600) if hero_img else (
+        _web_img(banner, 1400) if banner.exists() else "")
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
+
+    # Order-by gift-deadline banner (urgency) + verified reviews summary.
+    try:
+        from quoteforge.etsy.shipping_cutoff import upcoming_cutoff, banner_text
+        _cut = upcoming_cutoff()
+        cutoff_html = (f'<div class="cutoff">⏰ {banner_text(_cut)}</div>'
+                       if _cut else "")
+    except Exception:  # noqa: BLE001
+        cutoff_html = ""
+    try:
+        reviews_html = _reviews_section()
+    except Exception:  # noqa: BLE001
+        reviews_html = ""
 
     gate = "" if not password else f"""
 <div id="gate">
@@ -384,6 +435,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
+ .cutoff{{background:#7a2e2e;color:#ffe9cf;text-align:center;padding:11px 16px;
+   font-size:14px;font-weight:600;letter-spacing:.3px}}
+ .reviews{{max-width:1100px;margin:34px auto;padding:0 20px;text-align:center}}
+ .reviews h2{{font-size:28px;color:var(--green);margin:0 0 8px}}
+ .rvsum{{display:flex;gap:10px;justify-content:center;align-items:baseline;margin-bottom:16px}}
+ .rvbig{{font-size:34px;font-weight:700;color:var(--green)}}
+ .rvsum .rvstars{{color:var(--gold);font-size:20px}} .rvn{{color:var(--muted);font-size:14px}}
+ .rvgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}}
+ .rvcard{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:left}}
+ .rvcard .rvstars{{color:var(--gold)}} .rvimg{{width:100%;border-radius:8px;margin:8px 0}}
+ .rvtext{{font-size:14px;color:#3a463f;line-height:1.5}}
+ .rvname{{font-size:12px;color:var(--muted);margin-top:8px}}
+ .vrf{{color:#15633f;font-weight:600}}
  .shopocc{{max-width:1000px;margin:18px auto 0;padding:0 20px;text-align:center}}
  .shopocc .lbl{{font-size:13px;color:var(--muted);margin-bottom:8px}}
  .occrow{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}}
@@ -522,6 +586,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
+ {cutoff_html}
  {"<div class='uatbar'>👋 Thanks for helping review " + SHOP_NAME +
   "! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then "
   "tap <b>feedback</b>. "
@@ -534,6 +599,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      digital proof is sent before anything is printed.</p>
  </div>
  <div class="grid" id="grid"></div>
+ {reviews_html}
  {_competitive_sections()}
  {_gift_and_b2b_section(owner)}
  <div class="foot">

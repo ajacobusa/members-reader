@@ -173,6 +173,11 @@ ANTHROPIC_COST_PER_ORDER: float = float(os.getenv("ANTHROPIC_COST_PER_ORDER", "0
 # Fixed monthly overhead for the general ledger (tooling/subscriptions you pay).
 # The ledger prorates this across days. Make.com (if used) is added automatically.
 MONTHLY_FIXED_COSTS: float = float(os.getenv("MONTHLY_FIXED_COSTS", "0"))
+# Turnaround for the "order by" gift-deadline banner.
+PRODUCTION_DAYS: int = int(os.getenv("PRODUCTION_DAYS", "3"))
+SHIPPING_DAYS: int = int(os.getenv("SHIPPING_DAYS", "6"))
+# Optional homepage hero image (a lifestyle/sample photo). Falls back to banner.
+HERO_IMAGE: str = os.getenv("HERO_IMAGE", "").strip()
 ETSY_LISTING_RENEWAL_PER_MONTH: float = 0.20 / 4   # $0.20 every 4 months
 
 # Phase 12: All Gelato product sizes at 300 DPI (width_px, height_px)

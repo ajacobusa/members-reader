@@ -1195,6 +1195,41 @@ def _cmd_ledger_breakdown(args: list[str]) -> int:
     return 0
 
 
+def _cmd_add_review(args: list[str]) -> int:
+    """Record a REAL customer review. `add-review "Name" RATING "text" [photo_url] [listing]`."""
+    if len(args) < 2:
+        print('Usage: add-review "Name" RATING(1-5) "text" [photo_url] [listing]')
+        return 2
+    from quoteforge.db.database import add_review, init_db
+    init_db()
+    rid = add_review(args[0], int(args[1]),
+                     args[2] if len(args) > 2 else "",
+                     args[3] if len(args) > 3 else "",
+                     args[4] if len(args) > 4 else "")
+    print(f"Saved review #{rid}. It will show on the site after the next rebuild.")
+    return 0
+
+
+def _cmd_reviews(args: list[str]) -> int:
+    """Show published reviews + average. `reviews`."""
+    from quoteforge.db.database import get_published_reviews, review_stats, init_db
+    init_db()
+    st = review_stats()
+    print(f"Reviews: {st['count']}  avg {st['avg']}/5")
+    for r in get_published_reviews(50):
+        print(f"  {r['rating']}*  {r.get('customer_name','?')}: "
+              f"{(r.get('text') or '')[:70]}")
+    return 0
+
+
+def _cmd_order_by(args: list[str]) -> int:
+    """Show the next gift order-by deadline. `order-by`."""
+    from quoteforge.etsy.shipping_cutoff import upcoming_cutoff, banner_text
+    c = upcoming_cutoff()
+    print(banner_text(c) if c else "No gift deadline within the window.")
+    return 0
+
+
 def _cmd_ai_review(args: list[str]) -> int:
     """AI ops review: audit every step, flag issues, suggest improvements.
     `ai-review [email]`."""
@@ -1399,6 +1434,9 @@ COMMANDS = {
     "ledger-excel": _cmd_ledger_excel,
     "ledger-breakdown": _cmd_ledger_breakdown,
     "vendors": _cmd_vendors,
+    "add-review": _cmd_add_review,
+    "reviews": _cmd_reviews,
+    "order-by": _cmd_order_by,
     "ai-review": _cmd_ai_review,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,

@@ -181,6 +181,19 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS customer_reviews (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_name TEXT,
+            rating       INTEGER NOT NULL,        -- 1..5
+            text         TEXT,
+            photo_url    TEXT,                     -- optional buyer photo
+            listing      TEXT,
+            verified     INTEGER DEFAULT 1,        -- a real, confirmed purchase
+            published    INTEGER DEFAULT 1,        -- show on the site
+            created_at   TEXT DEFAULT (datetime('now'))
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS catalog_items (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             vendor      TEXT DEFAULT 'gelato',     -- gelato|printful|printify|manual|digital|...
@@ -527,6 +540,38 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Customer reviews (real, verified - shown on the site) ────────
+
+def add_review(customer_name: str, rating: int, text: str = "",
+               photo_url: str = "", listing: str = "", verified: bool = True,
+               published: bool = True) -> int:
+    rating = max(1, min(5, int(rating)))
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO customer_reviews
+               (customer_name, rating, text, photo_url, listing, verified, published)
+               VALUES (?,?,?,?,?,?,?)""",
+            (customer_name, rating, text, photo_url, listing,
+             1 if verified else 0, 1 if published else 0))
+        return cur.lastrowid
+
+
+def get_published_reviews(limit: int = 50) -> list[dict]:
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM customer_reviews WHERE published=1 "
+            "ORDER BY created_at DESC LIMIT ?", (limit,))]
+
+
+def review_stats() -> dict:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) n, AVG(rating) a FROM customer_reviews WHERE published=1"
+        ).fetchone()
+    n = row["n"] or 0
+    return {"count": n, "avg": round(row["a"], 1) if n else 0.0}
 
 
 # ── Multi-vendor catalog (products & services from any vendor) ───
