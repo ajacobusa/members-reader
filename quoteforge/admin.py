@@ -1195,6 +1195,17 @@ def _cmd_ledger_breakdown(args: list[str]) -> int:
     return 0
 
 
+def _cmd_ai_review(args: list[str]) -> int:
+    """AI ops review: audit every step, flag issues, suggest improvements.
+    `ai-review [email]`."""
+    from quoteforge.automation.ai_ops_review import ai_review, format_review_text
+    r = ai_review(email=("email" in args))
+    print(format_review_text(r))
+    if r.get("emailed"):
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_vendors(args: list[str]) -> int:
     """List vendors + catalog counts. `vendors`."""
     from quoteforge.catalog.registry import vendor_summary
@@ -1388,6 +1399,7 @@ COMMANDS = {
     "ledger-excel": _cmd_ledger_excel,
     "ledger-breakdown": _cmd_ledger_breakdown,
     "vendors": _cmd_vendors,
+    "ai-review": _cmd_ai_review,
     "add-product": _cmd_add_product,
     "list-products": _cmd_list_products,
     "add-income": _cmd_add_income,

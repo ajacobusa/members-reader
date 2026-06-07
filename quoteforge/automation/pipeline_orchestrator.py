@@ -376,30 +376,36 @@ def run_full_pipeline(
                 return get_order(order_id) or {}
             _log(order_id, "preflight", "pass", "Artwork meets print spec")
 
-        # ── Stage 6: Gelato Order ────────────────────────────────
+        # ── Stage 6: Fulfillment (vendor-routed) ─────────────────
         gelato_order_id = ""
-        if gelato_product_uid and recipient_address and artwork_url:
-            _notify("gelato_order", "Creating Gelato production order...")
+        _notify("gelato_order", "Routing to vendor fulfillment...")
+        try:
+            from quoteforge.fulfillment.router import route_order
+            from quoteforge.automation.retry import retry_call
             try:
-                from quoteforge.automation.gelato_api import create_gelato_order
-                from quoteforge.automation.retry import retry_call
-                gelato_resp = retry_call(
-                    create_gelato_order,
-                    order_id=order_id,
-                    recipient=recipient_address,
-                    artwork_url=artwork_url,
-                    product_uid=gelato_product_uid,
-                )
-                gelato_order_id = gelato_resp.get("id", "")
-                update_order(order_id, gelato_order_id=gelato_order_id)
-                _log(order_id, "gelato_order", "success", gelato_order_id)
-            except Exception as exc:
-                _log(order_id, "gelato_order", "error", str(exc))
-                _notify("gelato_order", f"Gelato error: {exc}")
-        else:
-            _log(order_id, "gelato_order", "skipped",
-                 "No product UID or address — manual Gelato upload required")
-            _notify("gelato_order", "Gelato skipped — upload artwork manually")
+                vendor = (get_order(order_id) or {}).get("vendor", "gelato")
+            except Exception:  # noqa: BLE001
+                vendor = "gelato"
+            resp = retry_call(
+                route_order,
+                {"order_id": order_id, "vendor": vendor,
+                 "gelato_product_uid": gelato_product_uid},
+                recipient=recipient_address, artwork_url=artwork_url,
+            )
+            status = resp.get("status")
+            if status in ("submitted", "fulfilled"):
+                gelato_order_id = resp.get("id", "")
+                if gelato_order_id:
+                    update_order(order_id, gelato_order_id=gelato_order_id)
+                _log(order_id, "gelato_order", "success",
+                     f"{resp.get('vendor')}: {status} {gelato_order_id}")
+                _notify("gelato_order", f"{resp.get('vendor')} {status}")
+            else:   # manual / error -> flag for the operator
+                _log(order_id, "gelato_order", "skipped", resp.get("detail", status))
+                _notify("gelato_order", resp.get("detail", "manual fulfillment"))
+        except Exception as exc:
+            _log(order_id, "gelato_order", "error", str(exc))
+            _notify("gelato_order", f"Fulfillment error: {exc}")
 
         # ── Stage 7: Follow-up (persist messages, upsell, review) ──
         _notify("followup", "Creating follow-up messages...")

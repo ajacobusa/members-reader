@@ -34,6 +34,24 @@ VENDORS: list[Vendor] = [
 ]
 
 
+# Sensible default net-margin floors by vendor (services/digital can be higher).
+DEFAULT_VENDOR_FLOORS = {"digital": 90.0, "service": 80.0}
+
+
+def floor_for_vendor(vendor: str) -> float:
+    """Net-margin floor for a vendor: config override > default > global 60%."""
+    from quoteforge.config import TARGET_MARGIN_PCT, VENDOR_MARGIN_FLOORS_JSON
+    import json
+    floors = dict(DEFAULT_VENDOR_FLOORS)
+    if VENDOR_MARGIN_FLOORS_JSON:
+        try:
+            floors.update({k: float(v) for k, v in
+                           json.loads(VENDOR_MARGIN_FLOORS_JSON).items()})
+        except Exception:  # noqa: BLE001
+            pass
+    return max(float(floors.get(vendor, TARGET_MARGIN_PCT)), TARGET_MARGIN_PCT)
+
+
 def get_vendor(vendor_id: str) -> Vendor | None:
     return next((v for v in VENDORS if v.id == vendor_id), None)
 

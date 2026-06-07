@@ -62,6 +62,14 @@ MARGIN_FLOOR_TOP: float = float(os.getenv("MARGIN_FLOOR_TOP", str(TARGET_MARGIN_
 # Single items LIST at this margin (the anchor); bundle/quantity discounts reduce
 # toward - but never below - TARGET_MARGIN_PCT (the hard floor).
 LIST_MARGIN_PCT: float = float(os.getenv("LIST_MARGIN_PCT", "68"))
+# Per-vendor net-margin floors (JSON). Services/digital can carry higher floors.
+# e.g. VENDOR_MARGIN_FLOORS_JSON={"service":80,"digital":90,"printful":55}
+VENDOR_MARGIN_FLOORS_JSON: str = os.getenv("VENDOR_MARGIN_FLOORS_JSON", "").strip()
+
+# Other POD vendors (auto-route fulfillment when their key is set).
+PRINTFUL_API_KEY: str = os.getenv("PRINTFUL_API_KEY", "").strip()
+PRINTIFY_API_KEY: str = os.getenv("PRINTIFY_API_KEY", "").strip()
+PRINTIFY_SHOP_ID: str = os.getenv("PRINTIFY_SHOP_ID", "").strip()
 
 # ── Autopilot (autonomous decision bots) ─────────────────────────
 # When enabled, bots auto-execute low-risk, high-confidence decisions and only
