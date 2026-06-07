@@ -133,80 +133,149 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{SHOP_NAME} - Personalized Wall Art</title>
 {_analytics_snippet()}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
- *{{box-sizing:border-box}} body{{font-family:'Helvetica Neue',Arial,sans-serif;
-   margin:0;background:#f6f3ee;color:#23302b}}
+ :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
+   --cream:#f7f4ee;--ink:#23302b;--muted:#6b7a72;--line:#e7e1d6}}
+ *{{box-sizing:border-box}}
+ body{{font-family:'Inter',-apple-system,Segoe UI,Arial,sans-serif;margin:0;
+   background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}}
+ h1,h2,h3,.serif{{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;
+   letter-spacing:.2px}}
+ a{{color:var(--green)}}
  /* gate */
- #gate{{position:fixed;inset:0;background:#0f3d2e;display:flex;align-items:center;
-   justify-content:center;z-index:99}}
- .gatebox{{background:#fff;border-radius:14px;padding:34px;max-width:360px;
-   text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)}}
- .glogo{{width:120px;margin-bottom:8px}}
- .gatebox h2{{font-family:Georgia,serif;color:#0f3d2e;margin:6px 0}}
- .gatebox p{{color:#666;font-size:14px}}
- #pw{{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;
-   font-size:16px;margin:10px 0}}
- .gatebox button{{background:#0f3d2e;color:#fff;border:none;padding:12px 0;
-   width:100%;border-radius:24px;font-size:16px;cursor:pointer}}
+ #gate{{position:fixed;inset:0;background:linear-gradient(160deg,#103d2e,#0b2c21);
+   display:flex;align-items:center;justify-content:center;z-index:99;padding:20px}}
+ .gatebox{{background:#fff;border-radius:18px;padding:40px 34px;max-width:380px;
+   width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35)}}
+ .glogo{{width:120px;margin-bottom:6px}}
+ .gatebox h2{{color:var(--green);margin:6px 0;font-size:30px}}
+ .gatebox p{{color:var(--muted);font-size:14px;margin:6px 0 14px}}
+ #pw{{width:100%;padding:13px 14px;border:1px solid #d6cfc1;border-radius:10px;
+   font-size:16px;margin:6px 0;outline:none}}
+ #pw:focus{{border-color:var(--gold)}}
+ .gatebox button{{background:var(--green);color:#fff;border:none;padding:13px 0;
+   width:100%;border-radius:30px;font-size:15px;font-weight:600;cursor:pointer;
+   margin-top:8px;letter-spacing:.3px;transition:background .15s}}
+ .gatebox button:hover{{background:var(--green-d)}}
  #err{{display:none;color:#b3261e;font-size:13px;margin-top:10px}}
- /* hero */
- .hero-banner{{width:100%;display:block}}
- .ribbon{{background:#0f3d2e;color:#e8d8a8;text-align:center;padding:14px;
-   font-family:Georgia,serif;font-size:18px}}
- .tag{{text-align:center;color:#5a6b62;margin:18px 16px;font-size:16px;line-height:1.5}}
- .grid{{max-width:1180px;margin:10px auto 40px;display:grid;
-   grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 16px}}
- .card{{background:#fff;border:1px solid #e6e0d6;border-radius:12px;overflow:hidden;
-   transition:transform .15s,box-shadow .15s}}
- .card:hover{{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.10)}}
+ /* header + hero */
+ .nav{{position:sticky;top:0;z-index:20;background:rgba(247,244,238,.92);
+   backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+   display:flex;align-items:center;justify-content:center;gap:12px;padding:12px}}
+ .nav img{{height:34px}} .nav .bn{{font-family:'Cormorant Garamond',serif;
+   font-size:24px;color:var(--green);font-weight:700;letter-spacing:1px}}
+ .hero{{position:relative}} .hero-banner{{width:100%;display:block}}
+ .hero-fallback{{background:linear-gradient(160deg,#103d2e,#0b2c21);color:#fff;
+   padding:64px 20px;text-align:center}}
+ .hero-fallback h1{{font-size:44px;margin:0;color:#fff}}
+ .hero-overlay{{position:absolute;inset:0;display:flex;flex-direction:column;
+   align-items:center;justify-content:center;text-align:center;
+   background:linear-gradient(rgba(8,30,22,.18),rgba(8,30,22,.45));color:#fff;padding:20px}}
+ .hero-overlay h1{{font-size:clamp(30px,5vw,52px);margin:0;color:#fff;
+   text-shadow:0 2px 18px rgba(0,0,0,.4)}}
+ .hero-overlay p{{font-size:clamp(14px,2vw,19px);margin:10px 0 0;max-width:620px;
+   text-shadow:0 1px 10px rgba(0,0,0,.45)}}
+ /* trust bar */
+ .trust{{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 30px;
+   background:var(--green);color:#eadfb9;padding:13px 16px;font-size:13px;
+   letter-spacing:.4px;text-align:center}}
+ .trust b{{color:#fff;font-weight:600}}
+ .intro{{text-align:center;max-width:680px;margin:34px auto 6px;padding:0 20px}}
+ .intro h2{{font-size:30px;color:var(--green);margin:0 0 8px}}
+ .intro p{{color:var(--muted);font-size:16px;line-height:1.6;margin:0}}
+ .grid{{max-width:1200px;margin:26px auto 50px;display:grid;
+   grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:26px;padding:0 20px}}
+ .card{{background:#fff;border:1px solid var(--line);border-radius:14px;
+   overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;
+   display:flex;flex-direction:column}}
+ .card:hover{{transform:translateY(-5px);box-shadow:0 14px 34px rgba(16,61,46,.14)}}
  .card .hero{{width:100%;display:block;aspect-ratio:1/1;object-fit:cover}}
- .cap{{padding:12px 14px}}
- .ttl{{font-size:14px;line-height:1.45;height:60px;overflow:hidden;color:#2b3a33}}
- .pr{{margin-top:8px;font-weight:bold;color:#0f3d2e;font-size:16px}}
- .fb{{display:inline-block;margin-top:8px;font-size:12px;color:#0f3d2e;
-   text-decoration:none;border:1px solid #0f3d2e;border-radius:14px;padding:3px 10px}}
- .uatbar{{background:#fff7e6;border:1px solid #f0e0b8;color:#6b5a2b;
-   margin:16px;padding:12px 16px;border-radius:8px;font-size:14px;text-align:center}}
- .uatbar a{{color:#0f3d2e;font-weight:bold}}
- .foot{{text-align:center;color:#9aa39d;font-size:12px;margin:30px 16px}}
+ .cap{{padding:14px 16px 18px}}
+ .ttl{{font-size:15px;line-height:1.5;height:66px;overflow:hidden;color:#2b3a33}}
+ .pr{{margin-top:10px;font-weight:600;color:var(--green);font-size:17px}}
+ .pr small{{color:var(--muted);font-weight:400;font-size:12px}}
+ .fb{{display:inline-block;margin-top:10px;font-size:12px;color:var(--green);
+   text-decoration:none;border:1px solid var(--green);border-radius:16px;
+   padding:5px 12px;transition:.15s}}
+ .card:hover .fb{{background:var(--green);color:#fff}}
+ .uatbar{{max-width:1160px;background:#fffaf0;border:1px solid #f0e2bd;
+   color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
+   font-size:14px;text-align:center;line-height:1.55}}
+ .uatbar a{{color:var(--green);font-weight:600}}
+ .foot{{background:var(--green-d);color:#cfe0d6;text-align:center;
+   padding:34px 20px;font-size:13px;line-height:1.7;margin-top:30px}}
+ .foot .fbn{{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold);
+   letter-spacing:1px}}
  /* modal */
- #modal{{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;
+ #modal{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;
    align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:20px}}
- .mbox{{background:#fff;border-radius:12px;max-width:820px;width:100%;margin:20px;
-   overflow:hidden}}
- .mbody{{display:flex;flex-wrap:wrap;gap:18px;padding:18px}}
- .mleft{{flex:1;min-width:280px}} .mright{{flex:1;min-width:260px}}
- #mmain{{width:100%;border-radius:8px}}
- .mthumbs{{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}}
- .mthumbs img{{width:60px;height:60px;object-fit:cover;border:1px solid #d8cdb6;
-   border-radius:5px;cursor:pointer}}
- .mbox h2{{font-size:18px;margin:0 0 6px}} .mprice{{font-weight:bold;
-   color:#0f3d2e;font-size:22px;margin:6px 0}}
- .mdesc{{font-size:13px;line-height:1.6;color:#444;white-space:pre-wrap}}
- .closex{{float:right;font-size:24px;cursor:pointer;color:#888;padding:8px 14px}}
- .fbbtn{{display:block;background:#c9a84c;color:#22301e;text-align:center;
-   text-decoration:none;padding:12px;border-radius:24px;font-weight:bold;margin:12px 0}}
+ .mbox{{background:#fff;border-radius:16px;max-width:880px;width:100%;margin:24px;
+   overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.4)}}
+ .mbody{{display:flex;flex-wrap:wrap;gap:22px;padding:22px}}
+ .mleft{{flex:1.1;min-width:300px}} .mright{{flex:1;min-width:280px}}
+ #mmain{{width:100%;border-radius:10px;border:1px solid var(--line)}}
+ .mthumbs{{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}}
+ .mthumbs img{{width:62px;height:62px;object-fit:cover;border:1px solid #d8cdb6;
+   border-radius:7px;cursor:pointer;transition:.12s}}
+ .mthumbs img:hover{{border-color:var(--gold)}}
+ .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
+ .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
+ .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
+   border-top:1px solid var(--line);margin-top:14px;padding-top:12px}}
+ .closex{{float:right;font-size:26px;cursor:pointer;color:#9aa39d;padding:10px 16px;
+   line-height:1}}
+ .fbbtn{{display:block;background:var(--gold);color:#22301e;text-align:center;
+   text-decoration:none;padding:13px;border-radius:30px;font-weight:600;
+   margin:14px 0;transition:.15s}}
+ .fbbtn:hover{{background:var(--gold-d)}}
  /* star rating */
- .rate{{margin:10px 0 4px}} .rate .lbl{{font-size:13px;color:#555;margin-bottom:4px}}
- .stars2{{font-size:30px;line-height:1;cursor:pointer;user-select:none}}
- .stars2 span{{color:#d8cdb6;transition:color .1s}}
- .stars2 span.on{{color:#c9a84c}}
- .ratemsg{{font-size:12px;color:#0f3d2e;min-height:16px;margin-top:2px}}
+ .rate{{margin:12px 0 4px}} .rate .lbl{{font-size:13px;color:var(--muted);margin-bottom:4px}}
+ .stars2{{font-size:32px;line-height:1;cursor:pointer;user-select:none}}
+ .stars2 span{{color:#ddd3bc;transition:color .1s}}
+ .stars2 span.on{{color:var(--gold)}}
+ .ratemsg{{font-size:12px;color:var(--green);min-height:16px;margin-top:2px}}
+ @media(max-width:560px){{.mbody{{padding:16px}} .nav .bn{{font-size:20px}}}}
 </style></head><body>
 {gate}
 <div id="site" style="{site_style}">
- {f'<img class="hero-banner" src="{banner_src}">' if banner_src else f'<div class="ribbon">{SHOP_NAME}</div>'}
- <div class="ribbon">Personalized wall art for life's most meaningful moments</div>
+ <div class="nav">
+   {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
+   <span class="bn">{SHOP_NAME}</span>
+ </div>
+ <div class="hero">
+   {f'<img class="hero-banner" src="{banner_src}">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
+   <div class="hero-overlay">
+     <h1>Personalized wall art for life's most meaningful moments</h1>
+     <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
+   </div>
+ </div>
+ <div class="trust">
+   <span>✦ <b>Free digital proof</b> before printing</span>
+   <span>✦ <b>Made to order</b>, just for you</span>
+   <span>✦ <b>Premium</b> museum-quality materials</span>
+   <span>✦ <b>Worldwide</b> tracked shipping</span>
+ </div>
  {"<div class='uatbar'>👋 Thanks for helping review " + SHOP_NAME +
-  "! <b>Tap any item</b> to see all its photos &amp; details, then tap "
-  "<b>“Tell us what you think”</b> to send quick feedback. "
+  "! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then "
+  "tap <b>feedback</b>. "
   "<a href='mailto:" + owner + "?subject=Joffiels%20overall%20feedback'>"
   "Send overall feedback</a></div>" if uat else ""}
- <p class="tag">Every piece is custom-made for your recipient - a name, an occasion,
-   their story. A free digital proof is sent before anything is printed.</p>
+ <div class="intro">
+   <h2>Gifts they'll keep forever</h2>
+   <p>Every piece is custom-made for your recipient - a name, an occasion, their
+     story. Choose poster, framed, canvas, acrylic or metal at checkout; a free
+     digital proof is sent before anything is printed.</p>
+ </div>
  <div class="grid" id="grid"></div>
- <div class="foot">{SHOP_NAME} - sample preview for review. Prices shown are starting
-   prices; every item is personalized to order.</div>
+ <div class="foot">
+   <div class="fbn">{SHOP_NAME}</div>
+   <p>Personalized wall art, made to order - free proof before printing.<br>
+   Sample preview for review. Prices shown are starting prices; every item is
+   personalized to order.</p>
+ </div>
 </div>
 
 <div id="modal" onclick="if(event.target.id==='modal')closeM()">
