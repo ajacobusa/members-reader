@@ -1186,6 +1186,72 @@ def _cmd_ledger(args: list[str]) -> int:
     return 0
 
 
+def _cmd_ledger_breakdown(args: list[str]) -> int:
+    """P&L split by channel, vendor & product type. `ledger-breakdown [period]`."""
+    from quoteforge.etsy.ledger import build_breakdown, format_breakdown_text
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "month")
+    print(format_breakdown_text(build_breakdown(period)))
+    return 0
+
+
+def _cmd_vendors(args: list[str]) -> int:
+    """List vendors + catalog counts. `vendors`."""
+    from quoteforge.catalog.registry import vendor_summary
+    print(vendor_summary())
+    return 0
+
+
+def _cmd_add_product(args: list[str]) -> int:
+    """Add a product/service from any vendor.
+    `add-product "Name" vendor [sku] [category] [type] [cost] [price]`."""
+    if len(args) < 2:
+        print('Usage: add-product "Name" vendor [sku] [category] [print|service|digital] [cost] [price]')
+        return 2
+    from quoteforge.catalog.registry import add_product
+    name, vendor = args[0], args[1]
+    sku = args[2] if len(args) > 2 else ""
+    cat = args[3] if len(args) > 3 else ""
+    typ = args[4] if len(args) > 4 else "print"
+    cost = float(args[5]) if len(args) > 5 else 0.0
+    price = float(args[6]) if len(args) > 6 else 0.0
+    try:
+        r = add_product(name, vendor, sku, cat, typ, cost, price)
+    except ValueError as e:
+        print(str(e))
+        return 1
+    print(f"Added #{r['id']}: {r['name']} ({r['vendor']}, {r['type']}).")
+    return 0
+
+
+def _cmd_list_products(args: list[str]) -> int:
+    """List all sellable items across vendors. `list-products [vendor]`."""
+    from quoteforge.catalog.registry import list_products
+    vendor = args[0] if args else ""
+    items = [p for p in list_products() if not vendor or p["vendor"] == vendor]
+    print(f"Catalog items: {len(items)}")
+    for p in items[:200]:
+        print(f"  [{p['vendor']:8}] {p['name'][:34]:34} {p['item_type']:7} "
+              f"cost ${p['cost']:.2f}  ({p['source']})")
+    return 0
+
+
+def _cmd_add_income(args: list[str]) -> int:
+    """Record off-platform income (affiliate/wholesale). `add-income AMOUNT [channel] [source] [note]`."""
+    if not args:
+        print('Usage: add-income AMOUNT [affiliate|wholesale|other] [source] [note]')
+        return 2
+    from quoteforge.db.database import add_income, init_db
+    init_db()
+    amount = float(args[0])
+    channel = args[1] if len(args) > 1 else "affiliate"
+    source = args[2] if len(args) > 2 else ""
+    note = args[3] if len(args) > 3 else ""
+    iid = add_income(amount, channel, source, note)
+    print(f"Recorded income #{iid}: ${amount:.2f} ({channel}).")
+    return 0
+
+
 def _cmd_ledger_excel(args: list[str]) -> int:
     """Export the full general ledger to Excel. `ledger-excel [period]`."""
     from quoteforge.etsy.ledger import export_ledger_excel
@@ -1320,6 +1386,11 @@ COMMANDS = {
     "subscription-listing": _cmd_subscription_listing,
     "ledger": _cmd_ledger,
     "ledger-excel": _cmd_ledger_excel,
+    "ledger-breakdown": _cmd_ledger_breakdown,
+    "vendors": _cmd_vendors,
+    "add-product": _cmd_add_product,
+    "list-products": _cmd_list_products,
+    "add-income": _cmd_add_income,
     "gift-note": _cmd_gift_note,
     "gift-addon-listing": _cmd_gift_addon_listing,
     "gelato-sync": _cmd_gelato_sync,

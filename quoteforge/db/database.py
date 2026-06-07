@@ -181,6 +181,32 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS catalog_items (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            vendor      TEXT DEFAULT 'gelato',     -- gelato|printful|printify|manual|digital|...
+            sku         TEXT,
+            name        TEXT NOT NULL,
+            category    TEXT,                       -- poster|canvas|framed|service|digital|...
+            item_type   TEXT DEFAULT 'print',       -- print|service|digital
+            cost        REAL DEFAULT 0,             -- your wholesale cost (0 for digital)
+            price       REAL DEFAULT 0,             -- list price (optional)
+            active      INTEGER DEFAULT 1,
+            created_at  TEXT DEFAULT (datetime('now')),
+            UNIQUE(vendor, sku, name)
+        );
+        """)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS misc_income (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel     TEXT DEFAULT 'affiliate',   -- affiliate|wholesale|other
+            source      TEXT,                        -- program / partner name
+            amount      REAL NOT NULL,               -- net income (e.g. commission)
+            note        TEXT,
+            day         TEXT DEFAULT (date('now')),
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS ledger_snapshots (
             day        TEXT PRIMARY KEY,        -- ISO date
             revenue    REAL DEFAULT 0,
@@ -234,6 +260,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     subcols = {row["name"] for row in conn.execute("PRAGMA table_info(subscribers)")}
     if subcols and "consent" not in subcols:
         conn.execute("ALTER TABLE subscribers ADD COLUMN consent TEXT DEFAULT 'pending'")
+    if "channel" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN channel TEXT DEFAULT 'etsy'")
+    if "vendor" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN vendor TEXT DEFAULT 'gelato'")
+    if "product_type" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN product_type TEXT DEFAULT 'print'")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -247,8 +279,8 @@ def create_order(data: dict) -> str:
             (order_id, etsy_order_id, customer_name, customer_email,
              recipient_name, sender_name, relationship, occasion,
              scenery, tone, memory, output_style, status,
-             sale_price, gelato_cost)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             sale_price, gelato_cost, channel, vendor, product_type)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -265,6 +297,9 @@ def create_order(data: dict) -> str:
             "received",
             data.get("sale_price"),   # None until a real sale price is known
             data.get("gelato_cost"),  # None until a real print cost is known
+            data.get("channel", "etsy"),
+            data.get("vendor", "gelato"),
+            data.get("product_type", "print"),
         ))
     return order_id
 
@@ -492,6 +527,60 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Multi-vendor catalog (products & services from any vendor) ───
+
+def add_catalog_item(name: str, vendor: str = "gelato", sku: str = "",
+                     category: str = "", item_type: str = "print",
+                     cost: float = 0.0, price: float = 0.0) -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT OR IGNORE INTO catalog_items
+               (vendor, sku, name, category, item_type, cost, price)
+               VALUES (?,?,?,?,?,?,?)""",
+            (vendor, sku, name, category, item_type, cost, price))
+        return cur.lastrowid
+
+
+def get_catalog_items(vendor: str = "", active_only: bool = True) -> list[dict]:
+    q, args = "SELECT * FROM catalog_items WHERE 1=1", []
+    if vendor:
+        q += " AND vendor=?"; args.append(vendor)
+    if active_only:
+        q += " AND active=1"
+    q += " ORDER BY vendor, category, name"
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(q, args)]
+
+
+def set_catalog_item_active(item_id: int, active: bool) -> None:
+    with _conn() as conn:
+        conn.execute("UPDATE catalog_items SET active=? WHERE id=?",
+                     (1 if active else 0, item_id))
+
+
+# ── Misc income (affiliate commissions, wholesale, other) ────────
+
+def add_income(amount: float, channel: str = "affiliate", source: str = "",
+               note: str = "", day: str = "") -> int:
+    from datetime import date as _date
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO misc_income (channel, source, amount, note, day) VALUES (?,?,?,?,?)",
+            (channel, source, amount, note, day or _date.today().isoformat()))
+        return cur.lastrowid
+
+
+def get_income(since_iso: str = "", until_iso: str = "") -> list[dict]:
+    q, args = "SELECT * FROM misc_income WHERE 1=1", []
+    if since_iso:
+        q += " AND day >= ?"; args.append(since_iso)
+    if until_iso:
+        q += " AND day <= ?"; args.append(until_iso)
+    q += " ORDER BY day"
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(q, args)]
 
 
 # ── Subscriptions (memberships / recurring plans) ────────────────

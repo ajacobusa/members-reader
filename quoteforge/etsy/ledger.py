@@ -77,6 +77,12 @@ def build_ledger(period: str = "month") -> dict:
     for c in get_api_costs(start.isoformat(), (end + timedelta(days=1)).isoformat()):
         _row(_day_of(c.get("created_at")))["api_cost"] += float(c.get("cost_usd") or 0)
 
+    # Misc income (affiliate commissions, wholesale, etc.) - net revenue.
+    from quoteforge.db.database import get_income
+    for inc in get_income(start.isoformat(), hi):
+        r = _row(_day_of(inc.get("day")))
+        r["revenue"] += float(inc.get("amount") or 0)
+
     # Prorated fixed overhead for each calendar day in range.
     opex = _daily_opex()
     cur = start
@@ -100,6 +106,78 @@ def build_ledger(period: str = "month") -> dict:
         if tot["revenue"] else 0.0
     return {"period": period, "start": start.isoformat(), "end": end.isoformat(),
             "days": rows, "totals": tot}
+
+
+def build_breakdown(period: str = "month") -> dict:
+    """Revenue / cost / profit grouped by channel, vendor, and product type."""
+    from quoteforge.db.database import (
+        init_db, get_all_orders, get_income)
+    from quoteforge.etsy.profit_calculator import calculate_order_profit
+    init_db()
+    start, end = _range_for(period)
+    hi = (end + timedelta(days=1)).isoformat()
+    by_channel: dict[str, dict] = {}
+    by_vendor: dict[str, dict] = {}
+    by_product: dict[str, dict] = {}
+
+    def _acc(bucket, key):
+        return bucket.setdefault(key, {"revenue": 0.0, "cost": 0.0,
+                                       "net": 0.0, "orders": 0})
+
+    for o in get_all_orders(limit=100000):
+        d = _day_of(o.get("created_at"))
+        if not (start.isoformat() <= d <= hi):
+            continue
+        sale = o.get("sale_price")
+        if sale in (None, 0):
+            continue
+        cost = o.get("gelato_cost") or 0.0
+        p = calculate_order_profit(float(sale), float(cost))
+        ch = o.get("channel") or "etsy"
+        vd = o.get("vendor") or "gelato"
+        pt = o.get("product_type") or "print"
+        for bucket, key in ((by_channel, ch), (by_vendor, vd), (by_product, pt)):
+            a = _acc(bucket, key)
+            a["revenue"] += p["sale_price"]
+            a["cost"] += p["gelato_cost"] + p["total_fees"]
+            a["net"] += p["net_profit"]
+            a["orders"] += 1
+
+    for inc in get_income(start.isoformat(), hi):
+        a = _acc(by_channel, inc.get("channel") or "affiliate")
+        amt = float(inc.get("amount") or 0)
+        a["revenue"] += amt
+        a["net"] += amt                      # commission/wholesale = net income
+        a["orders"] += 1
+
+    def _round(bucket):
+        for k in bucket:
+            for f in ("revenue", "cost", "net"):
+                bucket[k][f] = round(bucket[k][f], 2)
+        return bucket
+    return {"period": period,
+            "by_channel": _round(by_channel),
+            "by_vendor": _round(by_vendor),
+            "by_product": _round(by_product)}
+
+
+def format_breakdown_text(bd: dict) -> str:
+    lines = ["=" * 60, f"LEDGER BREAKDOWN ({bd['period']})", "=" * 60]
+    for title, key in (("BY CHANNEL", "by_channel"),
+                       ("BY VENDOR", "by_vendor"),
+                       ("BY PRODUCT TYPE", "by_product")):
+        lines.append(f"\n{title}:")
+        rows = bd[key]
+        if not rows:
+            lines.append("  (no sales yet)")
+            continue
+        lines.append(f"  {'Key':16}{'Revenue':>10}{'Cost':>10}{'Net':>10}{'Ord':>5}")
+        for k in sorted(rows, key=lambda x: -rows[x]["net"]):
+            r = rows[k]
+            lines.append(f"  {k[:16]:16}{r['revenue']:>10.2f}{r['cost']:>10.2f}"
+                         f"{r['net']:>10.2f}{r['orders']:>5}")
+    lines.append("=" * 60)
+    return "\n".join(lines)
 
 
 def snapshot_today() -> dict:
