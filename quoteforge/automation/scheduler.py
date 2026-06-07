@@ -119,6 +119,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Refreshes the email-capture kit (QR, announcement, Linktree, signup "
         "snippet, insert card) so the audience-building assets stay current."),
     ScheduledJob(
+        "QuoteForge Daily Ledger", "ledger month email",
+        ["/SC", "DAILY", "/ST", "07:20"],
+        "Updates the general ledger snapshot and emails the month-to-date P&L: "
+        "revenue, Gelato COGS, Etsy fees, Claude API cost, prorated overhead, and "
+        "net profit/margin - end-to-end."),
+    ScheduledJob(
         "QuoteForge Subscription Reminders", "subscriptions remind 7",
         ["/SC", "DAILY", "/ST", "08:35"],
         "Emails each client an AI-personalized renewal reminder when their "

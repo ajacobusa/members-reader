@@ -162,6 +162,9 @@ SENTRY_DSN: str = os.getenv("SENTRY_DSN", "").strip()
 USE_MAKE_COM: bool = _env_bool("USE_MAKE_COM", True)   # $9/mo automation
 MAKE_COM_COST: float = float(os.getenv("MAKE_COM_COST", "9.0"))
 ANTHROPIC_COST_PER_ORDER: float = float(os.getenv("ANTHROPIC_COST_PER_ORDER", "0.02"))
+# Fixed monthly overhead for the general ledger (tooling/subscriptions you pay).
+# The ledger prorates this across days. Make.com (if used) is added automatically.
+MONTHLY_FIXED_COSTS: float = float(os.getenv("MONTHLY_FIXED_COSTS", "0"))
 ETSY_LISTING_RENEWAL_PER_MONTH: float = 0.20 / 4   # $0.20 every 4 months
 
 # Phase 12: All Gelato product sizes at 300 DPI (width_px, height_px)

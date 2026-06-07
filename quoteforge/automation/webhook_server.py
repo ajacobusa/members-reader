@@ -168,6 +168,14 @@ def process_webhook_payload(payload: dict) -> dict:
     except Exception:  # noqa: BLE001
         pass
 
+    # Subscription order: create the membership record + welcome email.
+    try:
+        if payload.get("subscription_plan"):
+            from quoteforge.etsy.subscription_product import start_subscription_from_order
+            start_subscription_from_order(payload)
+    except Exception:  # noqa: BLE001
+        pass
+
     try:
         # ── Multi-item order ────────────────────────────────────
         if isinstance(items, list) and items:

@@ -180,7 +180,42 @@ def init_db() -> None:
             created_at    TEXT DEFAULT (datetime('now'))
         );
         """)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS ledger_snapshots (
+            day        TEXT PRIMARY KEY,        -- ISO date
+            revenue    REAL DEFAULT 0,
+            cogs       REAL DEFAULT 0,          -- Gelato print cost
+            etsy_fees  REAL DEFAULT 0,
+            api_cost   REAL DEFAULT 0,          -- Claude
+            opex       REAL DEFAULT 0,          -- prorated fixed overhead
+            net_profit REAL DEFAULT 0,
+            orders     INTEGER DEFAULT 0,
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+        """)
         _migrate(conn)
+
+
+def upsert_ledger_snapshot(day: str, row: dict) -> None:
+    with _conn() as conn:
+        conn.execute("""
+            INSERT INTO ledger_snapshots
+              (day, revenue, cogs, etsy_fees, api_cost, opex, net_profit, orders, updated_at)
+            VALUES (?,?,?,?,?,?,?,?, datetime('now'))
+            ON CONFLICT(day) DO UPDATE SET
+              revenue=excluded.revenue, cogs=excluded.cogs, etsy_fees=excluded.etsy_fees,
+              api_cost=excluded.api_cost, opex=excluded.opex,
+              net_profit=excluded.net_profit, orders=excluded.orders,
+              updated_at=datetime('now')
+        """, (day, row.get("revenue", 0), row.get("cogs", 0), row.get("etsy_fees", 0),
+              row.get("api_cost", 0), row.get("opex", 0), row.get("net_profit", 0),
+              row.get("orders", 0)))
+
+
+def get_ledger_snapshots(limit: int = 90) -> list[dict]:
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM ledger_snapshots ORDER BY day DESC LIMIT ?", (limit,))]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

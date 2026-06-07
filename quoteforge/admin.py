@@ -1167,6 +1167,49 @@ def _cmd_frame_preview(args: list[str]) -> int:
     return 0
 
 
+def _cmd_ledger(args: list[str]) -> int:
+    """General ledger P&L. `ledger [today|week|month|year|all] [email]`.
+    Persists today's snapshot and (with 'email') emails the report."""
+    from quoteforge.etsy.ledger import build_ledger, format_ledger_text, snapshot_today
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "month")
+    snapshot_today()
+    led = build_ledger(period)
+    text = format_ledger_text(led)
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email(f"Joffiels General Ledger ({period})", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
+def _cmd_ledger_excel(args: list[str]) -> int:
+    """Export the full general ledger to Excel. `ledger-excel [period]`."""
+    from quoteforge.etsy.ledger import export_ledger_excel
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "all")
+    out = export_ledger_excel(period)
+    print(f"Ledger exported: {out}")
+    return 0
+
+
+def _cmd_subscription_listing(args: list[str]) -> int:
+    """Print the ready-to-publish Etsy membership/subscription listing."""
+    from quoteforge.etsy.subscription_product import build_subscription_listing
+    l = build_subscription_listing()
+    print("=== ETSY LISTING: MEMBERSHIP / SUBSCRIPTION ===\n")
+    print("TITLE:\n" + l["title"] + "\n")
+    print("PLANS:")
+    for p in l["plans"]:
+        print(f"  - {p['name']}: ${p['price']:.0f}  (subscription_plan={p['id']})")
+    print("\nTAGS (13):\n" + ", ".join(l["tags"]) + "\n")
+    print("DESCRIPTION:\n" + l["description"])
+    return 0
+
+
 def _cmd_subscriptions(args: list[str]) -> int:
     """Manage subscriptions. `subscriptions` (list) |
     `subscriptions add EMAIL END_DATE [name] [plan]` | `subscriptions remind [days]`."""
@@ -1274,6 +1317,9 @@ COMMANDS = {
     "frame-preview": _cmd_frame_preview,
     "affiliates": _cmd_affiliates,
     "subscriptions": _cmd_subscriptions,
+    "subscription-listing": _cmd_subscription_listing,
+    "ledger": _cmd_ledger,
+    "ledger-excel": _cmd_ledger_excel,
     "gift-note": _cmd_gift_note,
     "gift-addon-listing": _cmd_gift_addon_listing,
     "gelato-sync": _cmd_gelato_sync,
