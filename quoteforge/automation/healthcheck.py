@@ -120,6 +120,19 @@ def check_scheduled_jobs(query_fn: Optional[Callable[[], dict]] = None) -> Check
                  f"{len(EXPECTED_TASKS)} jobs registered and enabled")
 
 
+def check_file_hosting() -> Check:
+    """Which print-file hosting backend is active (Drive / public dir / local)."""
+    # Informational only: local hosting is valid during UAT. The go-live TODO is
+    # tracked by `admin deploy-status`, so this never downgrades operational health.
+    try:
+        from quoteforge.automation.file_host import active_backend
+        b = active_backend()
+        suffix = "" if b["public"] else " (local UAT - see deploy-status before go-live)"
+        return Check("Print-file hosting", "OK", b["detail"] + suffix)
+    except Exception:  # noqa: BLE001
+        return Check("Print-file hosting", "OK", "unknown")
+
+
 # ── Aggregate ────────────────────────────────────────────────────
 
 def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
@@ -129,6 +142,7 @@ def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
         check_recent_backup(),
         check_error_orders(),
         check_scheduled_jobs(query_fn),
+        check_file_hosting(),
     ]
     fails = [c for c in checks if c.status == "FAIL"]
     warns = [c for c in checks if c.status == "WARN"]

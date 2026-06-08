@@ -17,6 +17,28 @@ _MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
          ".pdf": "application/pdf", ".tif": "image/tiff", ".tiff": "image/tiff"}
 
 
+def active_backend() -> dict:
+    """Which hosting backend would be used right now (without uploading anything).
+    Returns {backend, public, detail}."""
+    try:
+        from quoteforge.automation.google_drive_client import is_configured
+        if is_configured():
+            return {"backend": "google_drive", "public": True,
+                    "detail": "Google Drive (direct-download links)"}
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from quoteforge.config import PUBLIC_FILE_BASE_URL, PUBLIC_FILE_DIR
+        if PUBLIC_FILE_BASE_URL and PUBLIC_FILE_DIR:
+            return {"backend": "public_dir", "public": True,
+                    "detail": f"public dir -> {PUBLIC_FILE_BASE_URL}"}
+    except Exception:  # noqa: BLE001
+        pass
+    return {"backend": "local", "public": False,
+            "detail": "local file:// only (not fetchable by Gelato - set Drive or "
+                      "PUBLIC_FILE_DIR before go-live)"}
+
+
 def publish_print_file(local_path) -> dict:
     """Return {url, host, public, local}. `local` is always the kept local copy."""
     p = Path(local_path)

@@ -1220,6 +1220,23 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_deploy_status(args: list[str]) -> int:
+    """Production-readiness tracker. `deploy-status [--write-doc] [email]`."""
+    from quoteforge.automation.deployment_state import format_text, write_migration_doc
+    text = format_text()
+    print(text)
+    if "--write-doc" in args or "doc" in args:
+        dest = write_migration_doc()
+        print(f"\nMigration tracker written: {dest}")
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Production Readiness", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_check_print(args: list[str]) -> int:
     """AI + resolution quality check on a print photo.
     `check-print <image_path> [size e.g. 18x24]`."""
@@ -1786,6 +1803,7 @@ COMMANDS = {
     "trends": _cmd_trends,
     "check-print": _cmd_check_print,
     "validate-order": _cmd_validate_order,
+    "deploy-status": _cmd_deploy_status,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,
