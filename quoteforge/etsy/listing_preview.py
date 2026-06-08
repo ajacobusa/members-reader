@@ -307,6 +307,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         from quoteforge.config import ETSY_SHOP_URL as etsy_shop_url
     except Exception:  # noqa: BLE001
         etsy_shop_url = ""
+    try:
+        from quoteforge.config import ESTIMATED_TAX_RATE_PCT as est_tax_pct
+    except Exception:  # noqa: BLE001
+        est_tax_pct = 0
 
     # Size -> price map per format (sizes/prices are the same across designs).
     sizemap: dict = {}
@@ -619,8 +623,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .bpbox h2{{color:var(--green);margin:0 0 12px;font-size:22px}}
  .bpline{{display:flex;justify-content:space-between;gap:10px;padding:8px 0;
    border-bottom:1px solid var(--line);font-size:13.5px;text-align:left}}
- .bptot{{display:flex;justify-content:space-between;font-weight:700;color:var(--green);
-   padding:10px 0;font-size:16px}}
+ .bptot{{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-weight:700;
+   color:var(--green);padding:10px 0;font-size:16px}}
+ .bptot .bptax{{font-weight:400;color:var(--muted);font-size:13px}}
+ .bptaxnote{{font-size:11.5px;color:var(--muted);margin-bottom:8px}}
+ .taxnote{{background:#f6f2e7;border-radius:8px;padding:8px 10px}}
  .bpactions{{display:flex;gap:10px;margin-top:8px}}
  .bpclear{{flex:1;background:#fff;border:1px solid var(--line);border-radius:22px;
    padding:11px;font-size:14px;cursor:pointer;color:#a23a3a}}
@@ -1004,6 +1011,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <button type="button" class="savebtn" onclick="saveDesign()">💾 Save design</button>
            <button type="button" class="reviewbtn" onclick="showFinalProof()">👁️ Review &amp; accept</button>
          </div>
+         <div class="note taxnote">🧾 Prices are per item. <b>Tax &amp; shipping are
+           calculated by Etsy at checkout</b> based on your location.</div>
          <div class="uploadbox">
            <div class="lbl">📷 Add your own photo (optional)</div>
            <input type="file" id="mupload"
@@ -1191,6 +1200,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
  // ── Persistent basket (across designs) ──
  const ETSY_SHOP_URL = "{etsy_shop_url}";
+ const EST_TAX_PCT = {est_tax_pct};   // 0 = tax calculated by Etsy at checkout
  function toggleBasket(){{const p=document.getElementById('basketPanel');
    const open=p.style.display!=='flex'; renderBasket(); p.style.display=open?'flex':'none';}}
  function clearBasket(){{ if(CART.length && !confirm('Empty your basket?')) return;
@@ -1207,8 +1217,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      return `<div class="bpline"><span>${{nm}}${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
        `${{d?` (${{Math.round(d*100)}}% off)`:''}}</span>`+
        `<span>$${{sub.toFixed(2)}} <span class="rm" onclick="rmLine(${{i}})">remove</span></span></div>`;}}).join('');
-   if(tt)tt.innerHTML=`<span>Total (${{CART.length}} item${{CART.length>1?'s':''}})</span>`+
-     `<span>$${{_cartTotal().toFixed(2)}}</span>`;
+   if(tt){{
+     const sub=_cartTotal();
+     let rows=`<span>Subtotal (${{CART.length}} item${{CART.length>1?'s':''}})</span>`+
+       `<span>$${{sub.toFixed(2)}}</span>`;
+     if(EST_TAX_PCT>0){{ const tax=sub*EST_TAX_PCT/100;
+       rows+=`<span class="bptax">Est. tax (${{EST_TAX_PCT}}%)*</span><span class="bptax">$${{tax.toFixed(2)}}</span>`+
+         `<span><b>Est. total</b></span><span><b>$${{(sub+tax).toFixed(2)}}</b></span>`; }}
+     tt.innerHTML=rows;
+   }}
+   const note=document.getElementById('basketTaxNote');
+   if(note) note.innerHTML = EST_TAX_PCT>0
+     ? "*Estimate only. Tax &amp; shipping are calculated and collected by Etsy at checkout based on your location."
+     : "Tax &amp; shipping are calculated by Etsy at checkout based on your location.";
  }}
  function checkout(){{
    if(!CART.length){{ alert('Your basket is empty.'); return; }}
@@ -1236,11 +1257,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        .catch(()=>_toast('Saved on this device.'));
    }} else {{ _toast('Saved on this device. (Sign up to save to your order.)'); }}
  }}
+ function _taxLine(sub){{
+   if(EST_TAX_PCT>0){{ const tax=sub*EST_TAX_PCT/100;
+     return `Subtotal: $${{sub.toFixed(2)}}\\nEst. tax (${{EST_TAX_PCT}}%): $${{tax.toFixed(2)}}*\\n`+
+       `Est. total: $${{(sub+tax).toFixed(2)}}\\n(*Tax & shipping finalized by Etsy at checkout)`;
+   }}
+   return `Subtotal: $${{sub.toFixed(2)}}\\n(Tax & shipping calculated by Etsy at checkout)`;
+ }}
  function _orderSummaryText(){{
    if(CART.length) return CART.map(l=>`${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
-     (l.title?` - ${{l.title}}`:'')).join('\\n')+`\\nTotal: $${{_cartTotal().toFixed(2)}}`;
+     (l.title?` - ${{l.title}}`:'')).join('\\n')+'\\n'+_taxLine(_cartTotal());
    const s=_designState();
-   return `${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"`;
+   const price=parseFloat((((document.getElementById('msize')||{{}}).value||'').split('|')[1])||'0');
+   return `${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"\\n`+_taxLine(price);
  }}
  function showFinalProof(){{
    const cv=document.getElementById('mcanvas');
@@ -1673,6 +1702,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     <h2>🛒 Your basket</h2>
     <div id="basketLines"></div>
     <div id="basketTotal" class="bptot"></div>
+    <div id="basketTaxNote" class="bptaxnote"></div>
     <div class="bpactions">
       <button class="bpclear" onclick="clearBasket()">Empty basket</button>
       <button class="bpco" onclick="checkout()">Checkout &rarr;</button>

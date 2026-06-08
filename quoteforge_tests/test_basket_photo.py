@@ -67,3 +67,21 @@ def test_preview_matches_selected_size_crop(tmp_path):
     assert 'onchange="onSizeChange()"' in h
     # aspect-fit logic present (fit framed piece to size ratio)
     assert "AW/AH > ar" in h
+
+
+def test_tax_handled_by_etsy_note(tmp_path, monkeypatch):
+    """Buyer tax is calculated by Etsy; the page must say so and not fabricate tax
+    when no estimate rate is configured."""
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "ESTIMATED_TAX_RATE_PCT", 0)
+    h = _page(tmp_path)
+    assert "calculated by Etsy at checkout" in h
+    assert "const EST_TAX_PCT = 0" in h
+    assert "function _taxLine" in h
+
+
+def test_estimated_tax_when_rate_set(tmp_path, monkeypatch):
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "ESTIMATED_TAX_RATE_PCT", 7.5)
+    h = _page(tmp_path)
+    assert "const EST_TAX_PCT = 7.5" in h
