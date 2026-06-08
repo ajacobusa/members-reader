@@ -67,3 +67,22 @@ def test_bundle_discount_js_matches_backend_single_source(tmp_path):
     # promo copy comes from config
     from quoteforge.config import PROMO_WELCOME_CODE
     assert PROMO_WELCOME_CODE in h
+
+
+def test_guided_bundle_flow_present(tmp_path):
+    """The bundle builder must route through a per-design personalize flow before
+    items reach the cart (not a blind add)."""
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=True)
+    h = out.read_text(encoding="utf-8")
+    assert "function startBundleFlow" in h and "function nextBundleStep" in h
+    assert 'id="bundlebanner"' in h and "Personalize &amp; add this set" in h
+    # add-to-order advances the guided flow
+    assert "if(BFLOW){{ BFLOW.idx++; nextBundleStep(); }}" in h or \
+           "if(BFLOW){ BFLOW.idx++; nextBundleStep(); }" in h

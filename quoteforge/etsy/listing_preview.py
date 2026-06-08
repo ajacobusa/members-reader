@@ -538,6 +538,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .btot.on{{position:sticky;bottom:12px;z-index:60;color:#22301e;background:var(--gold);
    border:none;box-shadow:0 8px 24px rgba(0,0,0,.18)}}
  .btot .bsave{{color:#0a6b3b}}
+ .btot.on{{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px}}
+ .btotline{{font-size:15px}}
+ .bsetbtn{{background:var(--green);color:#fff;border:none;border-radius:22px;
+   padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}}
+ .bsetbtn:hover{{background:var(--green-d)}}
+ #bundlebanner{{background:#eef6f0;border-bottom:1px solid var(--line);color:var(--green);
+   padding:11px 16px;font-size:13.5px;border-radius:14px 14px 0 0}}
+ #bundlebanner .bskip{{color:#9aa39d;cursor:pointer;text-decoration:underline;
+   margin-left:8px;font-size:12.5px}}
  .hero{{position:relative}} .hero-banner{{width:100%;display:block}}
  .hero-fallback{{background:linear-gradient(160deg,#103d2e,#0b2c21);color:#fff;
    padding:64px 20px;text-align:center}}
@@ -841,6 +850,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <div id="modal" onclick="if(event.target.id==='modal')closeM()">
  <div class="mbox">
    <span class="closex" onclick="closeM()">&times;</span>
+   <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft">
        <canvas id="mcanvas" width="520" height="650"></canvas>
@@ -1007,8 +1017,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}} in - $${{r.price}}</option>`).join('');}}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
-   CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty}}); renderCart();
-   clearDraft(); if(typeof abConvert==='function') abConvert();}}
+   const title=(DATA[CUR]||{{}}).title||'';
+   CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title}}); renderCart();
+   clearDraft(); if(typeof abConvert==='function') abConvert();
+   // In a guided bundle: advance to the next selected design to personalize.
+   if(BFLOW){{ BFLOW.idx++; nextBundleStep(); }}}}
  function clearDraft(){{
    try{{localStorage.removeItem('jf_draft');}}catch(e){{}}
    const b=document.getElementById('resumeBar'); if(b)b.style.display='none';
@@ -1024,7 +1037,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!CART.length){{c.innerHTML='<div class="note">No items yet - choose size + qty, then Add.</div>';return;}}
    let tot=0; c.innerHTML=CART.map((l,i)=>{{const d=qdisc(l.qty);
      const unit=+(l.unit*(1-d)).toFixed(2); const sub=+(unit*l.qty).toFixed(2); tot+=sub;
-     return `<div class="line"><span>${{l.qty}}x ${{l.fmt}} ${{l.size}}${{d?` (${{Math.round(d*100)}}% off)`:''}}</span>`+
+     const nm=l.title?`<b>${{l.title.slice(0,26)}}</b> - `:'';
+     return `<div class="line"><span>${{nm}}${{l.qty}}x ${{l.fmt}} ${{l.size}}${{d?` (${{Math.round(d*100)}}% off)`:''}}</span>`+
        `<span>$${{sub.toFixed(2)}} <span class="rm" onclick="rmLine(${{i}})">remove</span></span></div>`;}}).join('')+
      `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
  function checkUpload(){{const inp=document.getElementById('mupload'),msg=document.getElementById('muploadmsg');
@@ -1181,7 +1195,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    window.location.href="mailto:"+to+"?subject="+
      encodeURIComponent("Wholesale / bulk gifting inquiry")+"&body="+body;
  }}
- function closeM(){{document.getElementById('modal').style.display='none';}}
+ function closeM(){{document.getElementById('modal').style.display='none';
+   BFLOW=null; var bb=document.getElementById('bundlebanner'); if(bb)bb.style.display='none';}}
  document.querySelectorAll('#mstars span').forEach(function(el){{
    el.addEventListener('click', function(){{ setRating(parseInt(el.dataset.v)); }});
  }});
@@ -1242,12 +1257,44 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const total=(base*(1-disc)).toFixed(2);
    const saved=(base-total).toFixed(2);
    t.classList.add('on');
-   t.innerHTML=`<b>${{n}} prints selected</b> &middot; ${{Math.round(disc*100)}}% off &middot; `+
-     `set from <b>$${{total}}</b> <span class="bsave">(save $${{saved}})</span> `+
-     `&middot; mix sizes/frames at checkout`;
+   t.innerHTML=`<span class="btotline"><b>${{n}} prints selected</b> &middot; `+
+     `${{Math.round(disc*100)}}% off &middot; set from <b>$${{total}}</b> `+
+     `<span class="bsave">(save $${{saved}})</span></span>`+
+     `<button class="bsetbtn" onclick="startBundleFlow()">Personalize &amp; add this set &rarr;</button>`;
  }}
  function toggleBundle(i){{ if(BSEL.has(i))BSEL.delete(i); else BSEL.add(i); renderBundle(); }}
  renderBundle();
+
+ // ── Guided bundle personalization: craft each design BEFORE it goes to cart ──
+ let BFLOW=null;
+ function startBundleFlow(){{
+   if(BSEL.size<2) return;
+   BFLOW={{queue:Array.from(BSEL), idx:0}};
+   nextBundleStep();
+ }}
+ function _bundleBanner(){{
+   const b=document.getElementById('bundlebanner'); if(!b) return;
+   if(!BFLOW){{ b.style.display='none'; return; }}
+   const k=BFLOW.idx+1, N=BFLOW.queue.length;
+   b.style.display='block';
+   b.innerHTML=`🎨 Building your set - <b>design ${{k}} of ${{N}}</b>. `+
+     `Personalize the words, frame &amp; colors, then tap <b>Add to order</b> to continue. `+
+     `<span class="bskip" onclick="skipBundleStep()">Skip this one</span>`;
+ }}
+ function nextBundleStep(){{
+   if(!BFLOW) return;
+   if(BFLOW.idx>=BFLOW.queue.length){{ finishBundleFlow(); return; }}
+   openM(BFLOW.queue[BFLOW.idx]);
+   _bundleBanner();
+ }}
+ function skipBundleStep(){{ if(!BFLOW) return; BFLOW.idx++; nextBundleStep(); }}
+ function finishBundleFlow(){{
+   BFLOW=null; _bundleBanner();
+   const c=document.getElementById('mcart');
+   if(c) c.scrollIntoView({{behavior:'smooth',block:'center'}});
+   const msg=document.getElementById('mratemsg');
+   if(msg) msg.textContent="Your set is ready - review each piece below, then check out on Etsy.";
+ }}
 </script>
 
 <button id="angeBtn" onclick="toggleAnge()">💬 Ask Ange</button>
