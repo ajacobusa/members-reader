@@ -232,6 +232,21 @@ def init_db() -> None:
             updated_at TEXT DEFAULT (datetime('now'))
         );
         """)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS gift_profiles (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_email   TEXT NOT NULL,            -- the buyer who saved this profile
+            recipient_name TEXT NOT NULL,
+            relationship  TEXT,                      -- Mom|Wife|Best Friend|...
+            occasion      TEXT,                      -- Birthday|Anniversary|...
+            event_date    TEXT,                      -- ISO date (MM-DD recurs yearly)
+            notes         TEXT,                      -- room colors, favorite words, etc.
+            last_order_id TEXT,                      -- most recent gift for this person
+            reminded_at   TEXT,                      -- last reminder sent (idempotency)
+            created_at    TEXT DEFAULT (datetime('now')),
+            UNIQUE(owner_email, recipient_name, occasion)
+        );
+        """)
         _migrate(conn)
 
 
@@ -540,6 +555,53 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Gift profiles (memory-based repeat gifting) ──────────────────
+
+def save_gift_profile(owner_email: str, recipient_name: str,
+                      relationship: str = "", occasion: str = "",
+                      event_date: str = "", notes: str = "",
+                      last_order_id: str = "") -> int:
+    """Create/update a saved gift profile. Keyed by owner+recipient+occasion."""
+    owner_email = (owner_email or "").strip().lower()
+    recipient_name = (recipient_name or "").strip()
+    if not owner_email or not recipient_name:
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO gift_profiles
+               (owner_email, recipient_name, relationship, occasion, event_date,
+                notes, last_order_id)
+               VALUES (?,?,?,?,?,?,?)
+               ON CONFLICT(owner_email, recipient_name, occasion) DO UPDATE SET
+                 relationship=excluded.relationship,
+                 event_date=excluded.event_date,
+                 notes=excluded.notes,
+                 last_order_id=COALESCE(NULLIF(excluded.last_order_id,''), last_order_id)
+            """,
+            (owner_email, recipient_name, relationship, occasion, event_date,
+             notes, last_order_id))
+        return cur.lastrowid or 0
+
+
+def get_gift_profiles(owner_email: str = "") -> list[dict]:
+    with _conn() as conn:
+        if owner_email:
+            rows = conn.execute(
+                "SELECT * FROM gift_profiles WHERE owner_email=? ORDER BY created_at DESC",
+                (owner_email.strip().lower(),))
+        else:
+            rows = conn.execute(
+                "SELECT * FROM gift_profiles ORDER BY created_at DESC")
+        return [dict(r) for r in rows]
+
+
+def mark_profile_reminded(profile_id: int, when: str = "") -> None:
+    from datetime import datetime as _dt
+    with _conn() as conn:
+        conn.execute("UPDATE gift_profiles SET reminded_at=? WHERE id=?",
+                     (when or _dt.now().isoformat(), profile_id))
 
 
 # ── Customer reviews (real, verified - shown on the site) ────────

@@ -227,6 +227,16 @@ def format_review_text(r: dict) -> str:
         lines.append("\n" + format_performance_text())
     except Exception:  # noqa: BLE001
         pass
+    try:
+        from quoteforge.etsy.dynamic_pricing import format_dynamic_text
+        lines.append("\n" + format_dynamic_text())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from quoteforge.marketing.gift_profiles import format_reminders_text
+        lines.append("\n" + format_reminders_text(30))
+    except Exception:  # noqa: BLE001
+        pass
     lines.append("=" * 62)
     return "\n".join(lines)
 

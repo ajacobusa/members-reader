@@ -365,6 +365,33 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if ok else 400)
 
+    @app.route("/profile", methods=["POST", "OPTIONS"])
+    def save_profile():
+        """Save a memory-based gift profile from the storefront.
+        POST {owner_email, recipient_name, relationship, occasion, event_date, notes}."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        d = request.get_json(force=True, silent=True) or {}
+        saved = 0
+        try:
+            from quoteforge.db.database import save_gift_profile
+            saved = save_gift_profile(
+                owner_email=d.get("owner_email", ""),
+                recipient_name=d.get("recipient_name", ""),
+                relationship=d.get("relationship", ""),
+                occasion=d.get("occasion", ""),
+                event_date=d.get("event_date", ""),
+                notes=d.get("notes", ""))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"save_profile failed: {exc}")
+        ok = bool(d.get("owner_email") and d.get("recipient_name"))
+        resp = jsonify({"status": "ok" if ok else "error", "saved": bool(saved)})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if ok else 400)
+
     @app.route("/order", methods=["POST"])
     def receive_order():
         from quoteforge.automation.webhook_security import verify_signature

@@ -64,6 +64,12 @@ MARGIN_FLOOR_TOP: float = float(os.getenv("MARGIN_FLOOR_TOP", str(TARGET_MARGIN_
 # Single items LIST at this margin (the anchor); bundle/quantity discounts reduce
 # toward - but never below - TARGET_MARGIN_PCT (the hard floor).
 LIST_MARGIN_PCT: float = float(os.getenv("LIST_MARGIN_PCT", "68"))
+# Dynamic (seasonal-demand) pricing. UPLIFT-ONLY: during active high-demand
+# seasons we raise prices above list by up to DYNAMIC_MAX_UPLIFT_PCT. It can never
+# push a price DOWN, so the 60% net floor is structurally safe. Toggle off to
+# always sell at list price.
+DYNAMIC_PRICING_ENABLED: bool = os.getenv("DYNAMIC_PRICING_ENABLED", "true").lower() in ("1", "true", "yes")
+DYNAMIC_MAX_UPLIFT_PCT: float = float(os.getenv("DYNAMIC_MAX_UPLIFT_PCT", "15"))
 # Per-vendor net-margin floors (JSON). Services/digital can carry higher floors.
 # e.g. VENDOR_MARGIN_FLOORS_JSON={"service":80,"digital":90,"printful":55}
 VENDOR_MARGIN_FLOORS_JSON: str = os.getenv("VENDOR_MARGIN_FLOORS_JSON", "").strip()

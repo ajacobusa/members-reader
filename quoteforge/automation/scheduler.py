@@ -158,6 +158,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "to hold the 60% margin floor and disables discontinued frames/products "
         "before the daily site rebuild publishes."),
     ScheduledJob(
+        "QuoteForge Gift Reminders", "gift-profiles remind 21 email",
+        ["/SC", "DAILY", "/ST", "08:40"],
+        "Emails repeat-gifting reminders for saved gift profiles whose occasion "
+        "date is within 21 days (idempotent per year), driving repeat purchases."),
+    ScheduledJob(
         "QuoteForge Site Rebuild", "rebuild-site",
         ["/SC", "DAILY", "/ST", "01:50"],
         "Rebuilds the public shop-home page (docs/index.html) with the latest "

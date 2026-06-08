@@ -1220,6 +1220,42 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_dynamic_pricing(args: list[str]) -> int:
+    """Show current seasonal-demand pricing state. `dynamic-pricing`."""
+    from quoteforge.etsy.dynamic_pricing import format_dynamic_text, dynamic_price
+    print(format_dynamic_text())
+    # quick illustration on a sample list price
+    sample = dynamic_price(49.99, cost=12.0, tier="entry")
+    print(f"\nExample: list $49.99 -> ${sample['price']} "
+          f"(+{sample['uplift_pct']}%, margin {sample['margin_pct']}%, "
+          f"holds_floor={sample['holds_floor']})")
+    return 0
+
+
+def _cmd_gift_profiles(args: list[str]) -> int:
+    """Memory-based gift profiles + upcoming reminders.
+    `gift-profiles [remind [days]] [email]`."""
+    from quoteforge.marketing.gift_profiles import format_reminders_text
+    from quoteforge.db.database import get_gift_profiles
+    if "remind" in args:
+        days = next((int(a) for a in args if a.isdigit()), 21)
+        text = format_reminders_text(days)
+        print(text)
+        if "email" in args:
+            from quoteforge.automation.emailer import _send_email
+            from quoteforge.config import REPORT_RECIPIENT
+            html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+            _send_email("Joffiels Gift Reminders", html, to=REPORT_RECIPIENT)
+            print("\nEmailed.")
+        return 0
+    profiles = get_gift_profiles()
+    print(f"Saved gift profiles: {len(profiles)}")
+    for p in profiles[:30]:
+        print(f"  {p['recipient_name']} ({p.get('relationship','')}) - "
+              f"{p.get('occasion','')} {p.get('event_date','')} [{p['owner_email']}]")
+    return 0
+
+
 def _cmd_add_review(args: list[str]) -> int:
     """Record a REAL customer review. `add-review "Name" RATING "text" [photo_url] [listing]`."""
     if len(args) < 2:
@@ -1548,6 +1584,8 @@ COMMANDS = {
     "ledger-breakdown": _cmd_ledger_breakdown,
     "clv": _cmd_clv,
     "quote-performance": _cmd_quote_performance,
+    "dynamic-pricing": _cmd_dynamic_pricing,
+    "gift-profiles": _cmd_gift_profiles,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,
