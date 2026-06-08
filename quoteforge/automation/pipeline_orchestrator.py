@@ -435,6 +435,20 @@ def resume_after_proof_approval(order_id: str,
     artwork_url = order.get("artwork_url", "")
 
     if gelato_product_uid and recipient_address and artwork_url:
+        # Final validation gate before we spend money at Gelato: address complete,
+        # product set, print file attached, and the AI quality check not rejected.
+        from quoteforge.automation.print_quality import validate_order_for_gelato
+        _val = validate_order_for_gelato({
+            "recipient_address": recipient_address,
+            "gelato_product_uid": gelato_product_uid,
+            "artwork_url": artwork_url,
+            "print_quality": order.get("print_quality"),
+        })
+        if not _val["ok"]:
+            update_order(order_id, status="hold_validation")
+            log_pipeline_stage(order_id, "order_validation", "hold",
+                               "; ".join(_val["issues"]))
+            return get_order(order_id) or {}
         from quoteforge.automation.gelato_api import create_gelato_order
         gelato_resp = create_gelato_order(
             order_id=order_id,

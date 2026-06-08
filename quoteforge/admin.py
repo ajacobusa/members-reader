@@ -1220,6 +1220,41 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_check_print(args: list[str]) -> int:
+    """AI + resolution quality check on a print photo.
+    `check-print <image_path> [size e.g. 18x24]`."""
+    if not args:
+        print("Usage: check-print <image_path> [size]")
+        return 2
+    path = args[0]
+    size = next((a for a in args[1:] if "x" in a.lower()), "18x24")
+    from quoteforge.automation.print_quality import assess_photo, format_assessment_text
+    a = assess_photo(path, size)
+    print(format_assessment_text(a))
+    if a["decision"] != "approve":
+        from quoteforge.automation.print_quality import reupload_request
+        print("\nRe-upload message:\n  " + reupload_request(a))
+    return 0
+
+
+def _cmd_validate_order(args: list[str]) -> int:
+    """Validate an order is ready for Gelato. `validate-order <order_id>`."""
+    if not args:
+        print("Usage: validate-order <order_id>")
+        return 2
+    from quoteforge.db.database import get_order
+    from quoteforge.automation.print_quality import validate_order_for_gelato
+    o = get_order(args[0])
+    if not o:
+        print("Order not found.")
+        return 1
+    v = validate_order_for_gelato(o)
+    print(f"Order {args[0]}: {'READY for Gelato' if v['ok'] else 'NOT ready'}")
+    for i in v["issues"]:
+        print(f"  - {i}")
+    return 0
+
+
 def _cmd_competitors(args: list[str]) -> int:
     """Competitor Intelligence. `competitors` (dashboard), `competitors refresh`,
     or `competitors add <shop> <listings> <min_price> <reviews>`."""
@@ -1749,6 +1784,8 @@ COMMANDS = {
     "ab": _cmd_ab,
     "competitors": _cmd_competitors,
     "trends": _cmd_trends,
+    "check-print": _cmd_check_print,
+    "validate-order": _cmd_validate_order,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,

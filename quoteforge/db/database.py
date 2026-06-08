@@ -356,6 +356,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN listing TEXT")
     if "acquisition_source" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN acquisition_source TEXT")
+    # Customer print file + AI quality decision (approve|hold|reject).
+    if "print_file" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN print_file TEXT")
+    if "print_quality" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN print_quality TEXT")
     # Fulfillment timestamps for the production-capacity monitor.
     if "shipped_at" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN shipped_at TEXT")

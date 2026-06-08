@@ -365,6 +365,54 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if ok else 400)
 
+    @app.route("/upload", methods=["POST", "OPTIONS"])
+    def upload_photo():
+        """Receive a customer print photo (multipart), AI-check quality, attach it
+        to the order. Form fields: file, email, order_id (opt), size (opt).
+        Returns the assessment + decision (approve|hold|reject)."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        f = request.files.get("file")
+        email = (request.form.get("email") or "").strip()
+        order_id = (request.form.get("order_id") or "").strip()
+        size = (request.form.get("size") or "18x24").strip()
+        if not f or "@" not in email:
+            resp = jsonify({"status": "error", "message": "file and email required"})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            return resp, 400
+        try:
+            import tempfile, os as _os
+            from quoteforge.customers import save_upload
+            from quoteforge.automation.print_quality import (assess_photo,
+                                                             reupload_request)
+            tmp = _os.path.join(tempfile.gettempdir(), f.filename or "upload.jpg")
+            f.save(tmp)
+            saved = save_upload(email, tmp, name=request.form.get("name", ""))
+            assessment = assess_photo(saved or tmp, size)
+            decision = assessment["decision"]
+            if order_id:
+                from quoteforge.db.database import update_order
+                fields = {"print_file": str(saved or ""), "print_quality": decision,
+                          "artwork_url": (saved.as_uri() if saved else "")}
+                if decision == "reject":
+                    fields["status"] = "hold_photo"
+                update_order(order_id, **fields)
+            out = {"status": "ok", "decision": decision,
+                   "reasons": assessment["reasons"]}
+            if decision != "approve":
+                out["message"] = reupload_request(assessment)
+            resp = jsonify(out)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"upload_photo failed: {exc}")
+            resp = jsonify({"status": "error", "message": "could not process file"})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            return resp, 500
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+
     @app.route("/ab", methods=["POST", "OPTIONS"])
     def ab_event():
         """Record an A/B impression/conversion. POST {experiment, variant, event}."""

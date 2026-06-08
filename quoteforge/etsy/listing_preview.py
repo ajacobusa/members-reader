@@ -909,8 +909,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
              accept="image/jpeg,image/png,application/pdf,image/tiff"
              onchange="checkUpload()">
            <div id="muploadmsg" class="note"></div>
-           <div class="note">High-resolution JPG/PNG/PDF/TIFF only - we auto-check
-             quality and ask for a better photo if needed before printing.</div>
+           <div id="maicheck" class="note"></div>
+           <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
+             auto-checks quality and asks for a better photo if needed; your
+             approved photo is sent with the order to our print partner.</div>
          </div>
        </div>
        <div class="rate" id="mrate" style="display:none">
@@ -1070,7 +1072,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      msg.textContent='Unsupported format. Use JPG, PNG, PDF or TIFF.';return;}}
    if(/pdf$/i.test(f.name)){{PHOTO=null;drawArt();
      msg.className='note upok';msg.innerHTML="PDF received - we'll verify print quality. "
-       +"<span class='rmphoto' onclick='removePhoto()'>remove</span>";return;}}
+       +"<span class='rmphoto' onclick='removePhoto()'>remove</span>";aiCheckPhoto(f);return;}}
    const inches=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0].split('x').map(parseFloat);
    const img=new Image();
    img.onload=function(){{const nw=(inches[0]||18)*150, nh=(inches[1]||24)*150;
@@ -1080,7 +1082,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        msg.innerHTML=`Great - ${{img.width}}x${{img.height}}px works for ${{inches[0]}}x${{inches[1]}}". Previewing on the left.`+rm;}}
      else{{msg.className='note upbad';
        msg.innerHTML=`Only ${{img.width}}x${{img.height}}px - too low for a sharp ${{inches[0]}}x${{inches[1]}}" print (previewing anyway). Please upload a higher-resolution original.`+rm;}}
-     PHOTO=img; drawArt();}};
+     PHOTO=img; drawArt(); aiCheckPhoto(f);}};
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
@@ -1364,7 +1366,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // ── Exit-intent email capture ──
  const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/signup') : "";
  const CUSTOMIZE_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/customization') : "";
+ const UPLOAD_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/upload') : "";
  function knownEmail(){{ try{{return localStorage.getItem('jf_email')||"";}}catch(e){{return "";}} }}
+ // Send the photo to the server for an AI quality check + attach to the order.
+ // (Server also forwards the approved JPG to Gelato by URL.) No-ops if not hosted.
+ function aiCheckPhoto(file){{
+   const email=knownEmail(); if(!UPLOAD_API || !email || !file) return;
+   const size=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0];
+   const fd=new FormData(); fd.append('file',file); fd.append('email',email);
+   fd.append('size',size);
+   const note=document.getElementById('maicheck'); if(note)note.textContent='🤖 AI checking photo quality…';
+   fetch(UPLOAD_API,{{method:'POST',body:fd}}).then(r=>r.json()).then(function(d){{
+     if(!note) return;
+     if(d.decision==='approve') note.innerHTML='✅ AI quality check passed - good to print.';
+     else note.innerHTML='⚠️ '+(d.message||'Please upload a higher-quality photo.');
+   }}).catch(function(){{ if(note)note.textContent=''; }});
+ }}
  // ── Automated A/B testing ──
  const AB_EXPERIMENTS = {ab_json};
  const AB_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/ab') : "";
