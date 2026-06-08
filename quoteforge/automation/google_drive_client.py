@@ -85,6 +85,36 @@ def upload_file_to_drive(file_path: Path, filename: str,
         return None
 
 
+def upload_public_image(file_path: Path, filename: str,
+                        mimetype: str = "image/jpeg") -> Optional[str]:
+    """Upload an image, make it public, and return a DIRECT download URL that a
+    print partner (Gelato) can fetch (not the webViewLink preview page).
+    Returns None if Drive isn't configured / upload fails."""
+    if not is_configured():
+        return None
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+        creds = service_account.Credentials.from_service_account_file(
+            GOOGLE_SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/drive.file"])
+        service = build("drive", "v3", credentials=creds)
+        media = MediaFileUpload(str(file_path), mimetype=mimetype, resumable=True)
+        uploaded = service.files().create(
+            body={"name": filename, "parents": [GOOGLE_DRIVE_FOLDER_ID]},
+            media_body=media, fields="id").execute()
+        fid = uploaded.get("id", "")
+        if not fid:
+            return None
+        service.permissions().create(
+            fileId=fid, body={"type": "anyone", "role": "reader"}).execute()
+        # Direct-content link (fetchable by external services), not the viewer page.
+        return f"https://drive.google.com/uc?export=download&id={fid}"
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def get_google_drive_setup() -> str:
     return """
 GOOGLE DRIVE API SETUP

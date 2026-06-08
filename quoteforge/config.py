@@ -78,6 +78,11 @@ PROMO_WELCOME_PCT: int = int(os.getenv("PROMO_WELCOME_PCT", "10"))
 # (e.g. package pricing during a Gelato outage). Chosen to clear the 60% floor.
 DEFAULT_LIST_PRICE: float = float(os.getenv("DEFAULT_LIST_PRICE", "49.99"))
 DEFAULT_GELATO_COST: float = float(os.getenv("DEFAULT_GELATO_COST", "12.0"))
+# Public hosting for customer print files so the print partner (Gelato) can fetch
+# them by URL. Preferred: Google Drive (service account). Fallback: a directory
+# served at PUBLIC_FILE_BASE_URL (e.g. the web server's /files static route).
+PUBLIC_FILE_BASE_URL: str = os.getenv("PUBLIC_FILE_BASE_URL", "").strip().rstrip("/")
+PUBLIC_FILE_DIR: str = os.getenv("PUBLIC_FILE_DIR", "").strip()
 # Competitor shops to track (comma-separated handles/names). Snapshots are stored
 # and diffed for price drops, new listings, and review growth.
 COMPETITORS: list[str] = [c.strip() for c in

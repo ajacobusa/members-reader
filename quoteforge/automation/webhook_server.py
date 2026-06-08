@@ -365,6 +365,16 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if ok else 400)
 
+    @app.route("/files/<path:filename>", methods=["GET"])
+    def serve_public_file(filename):
+        """Serve a hosted print file so the print partner can fetch it by URL.
+        Enabled only when PUBLIC_FILE_DIR is configured."""
+        from quoteforge.config import PUBLIC_FILE_DIR
+        if not PUBLIC_FILE_DIR:
+            return jsonify({"status": "error", "message": "not configured"}), 404
+        from flask import send_from_directory
+        return send_from_directory(PUBLIC_FILE_DIR, filename)
+
     @app.route("/upload", methods=["POST", "OPTIONS"])
     def upload_photo():
         """Receive a customer print photo (multipart), AI-check quality, attach it
@@ -390,18 +400,23 @@ if FLASK_AVAILABLE and app:
                                                              reupload_request)
             tmp = _os.path.join(tempfile.gettempdir(), f.filename or "upload.jpg")
             f.save(tmp)
+            # Always keep the LOCAL copy in the customer folder.
             saved = save_upload(email, tmp, name=request.form.get("name", ""))
             assessment = assess_photo(saved or tmp, size)
             decision = assessment["decision"]
+            # Publish a public, Gelato-fetchable URL (Drive / public dir / local).
+            from quoteforge.automation.file_host import publish_print_file
+            pub = publish_print_file(saved or tmp)
             if order_id:
                 from quoteforge.db.database import update_order
                 fields = {"print_file": str(saved or ""), "print_quality": decision,
-                          "artwork_url": (saved.as_uri() if saved else "")}
+                          "artwork_url": pub["url"]}
                 if decision == "reject":
                     fields["status"] = "hold_photo"
                 update_order(order_id, **fields)
             out = {"status": "ok", "decision": decision,
-                   "reasons": assessment["reasons"]}
+                   "reasons": assessment["reasons"],
+                   "hosted": pub["public"], "host": pub["host"]}
             if decision != "approve":
                 out["message"] = reupload_request(assessment)
             resp = jsonify(out)
