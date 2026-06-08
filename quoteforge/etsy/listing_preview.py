@@ -814,11 +814,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    padding:10px;font-size:13px;cursor:pointer;color:var(--green);white-space:nowrap}}
  .paccept{{flex:1;background:var(--green);color:#fff;border:none;border-radius:20px;
    padding:10px;font-size:14px;font-weight:700;cursor:pointer}}
- #roomLight{{position:fixed;inset:0;z-index:90;background:rgba(11,28,22,.85);
-   display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}}
- #roomLight img{{max-width:92vw;max-height:88vh;border-radius:10px;
-   box-shadow:0 20px 60px rgba(0,0,0,.5)}}
- #roomLight .qclose{{position:absolute;top:16px;right:24px;color:#fff;font-size:34px}}
  .dragmode{{margin-left:6px}}
  .dmbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
    font-size:12px;cursor:pointer;color:var(--green)}}
@@ -958,10 +953,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   <span class="rbx" onclick="document.getElementById('resumeBar').style.display='none'">&times;</span>
 </div>
 
-<div id="roomLight" onclick="closeRoom()">
-  <span class="qclose" onclick="closeRoom()">&times;</span>
-  <img id="roomLightImg" alt="Styled in a room">
-</div>
 
 <div id="proofPop" onclick="if(event.target.id==='proofPop')closeProof()">
   <div class="proofbox">
@@ -1007,8 +998,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="lbl">👉 Choose your frame / material:</div>
          <div class="fchips" id="mfchips"></div>
        </div>
-       <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 4px">📷 See it styled in a room (tap to open):</div>
-       <div class="mthumbs" id="mthumbs"></div>
+       <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
@@ -1184,9 +1174,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function openM(i){{
    CUR = i; RATING = 0; paintStars();
    const d = DATA[i];
-   const roomShots = (d.formats && d.formats.length) ? d.formats.map(f=>f.img) : d.imgs;
-   document.getElementById('mthumbs').innerHTML = roomShots.map(
-     s=>`<img src="${{s}}" onclick="viewRoom('${{s}}')">`).join('');
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
      fc.innerHTML=d.formats.map((f,j)=>
@@ -1309,8 +1296,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // In-modal basket bar so customers always see what's in their basket.
    const bar=document.getElementById('mbasketbar');
    if(bar) bar.innerHTML = CART.length
-     ? `🛒 <b>${{CART.length}} item${{CART.length>1?'s':''}}</b> in your basket &middot; `+
-       `$${{_cartTotal().toFixed(2)}} <span class="mbview">review / checkout &rarr;</span>`
+     ? `🛒 <b>${{CART.length}} item${{CART.length>1?'s':''}}</b> &middot; $${{_cartTotal().toFixed(2)}} `+
+       `<span class="mbview">Review &amp; checkout &rarr;</span>`
      : '';
  }}
  function checkout(){{
@@ -1396,10 +1383,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('proofPop').style.display='flex';
  }}
  function closeProof(){{ document.getElementById('proofPop').style.display='none'; }}
- function viewRoom(src){{ const o=document.getElementById('roomLight');
-   const img=document.getElementById('roomLightImg'); if(img)img.src=src;
-   if(o)o.style.display='flex'; }}
- function closeRoom(){{ const o=document.getElementById('roomLight'); if(o)o.style.display='none'; }}
  function proofEdit(){{ closeProof(); }}                 // back to the open design / basket
  function proofAccept(){{ if(PROOFMODE==='final') acceptProof(); else addFromProof(); }}
  function addFromProof(){{

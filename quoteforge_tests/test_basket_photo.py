@@ -90,12 +90,13 @@ def test_estimated_tax_when_rate_set(tmp_path, monkeypatch):
     assert "const EST_TAX_PCT = 7.5" in h
 
 
-def test_room_thumbs_inline_not_new_window(tmp_path):
-    """Room thumbnails open inline (lightbox), not a new browser window."""
+def test_no_room_thumbnail_popup(tmp_path):
+    """Static room thumbnails removed (caused popup confusion); the live wall-color
+    preview covers 'see it in a room'. No new-window/lightbox for room shots."""
     h = _page(tmp_path)
-    assert "function viewRoom" in h and 'id="roomLight"' in h
-    assert "onclick=\"viewRoom(" in h
     assert "window.open('${s}'" not in h  # no new-window for room shots
+    assert 'id="mthumbs"' not in h and "function viewRoom" not in h
+    assert "Your room wall" in h  # interactive room preview remains
 
 
 def test_add_to_basket_and_two_mode_proof(tmp_path):
