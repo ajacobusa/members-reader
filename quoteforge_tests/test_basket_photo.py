@@ -123,3 +123,11 @@ def test_drag_toggle_under_preview(tmp_path):
     assert 'class="dragbar"' in h
     assert 'data-m="text"' in h and 'data-m="photo"' in h
     assert "setDragMode('text')" in h and "setDragMode('photo')" in h
+
+
+def test_text_full_rotation_and_sideways(tmp_path):
+    """Text can rotate full range incl. sideways, with preset buttons + sideways wrap."""
+    h = _page(tmp_path)
+    assert 'min="-180" max="180"' in h and "function setRot" in h
+    assert "Sideways" in h and "const sideways=" in h
+    assert 'class="rotrow"' in h

@@ -345,6 +345,10 @@
  .perso .swrow{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}
  .tsizerow{display:flex;align-items:center;gap:10px;margin-bottom:6px}
  .tsizerow input[type=range]{flex:1;accent-color:var(--green)}
+ .rotrow{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
+ .rotrow button{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
+   padding:5px 8px;font-size:12px;cursor:pointer;color:var(--green);white-space:nowrap}
+ .rotrow button:hover{border-color:var(--gold)}
  .tposreset{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}
  .tposhint{margin-left:8px;color:#9aa49c;font-weight:400}
@@ -620,10 +624,17 @@
              oninput="setTextSize(this.value)">
            <button type="button" class="tposreset" onclick="resetTextPos()">Reset</button>
          </div>
-         <div class="swrow">Rotate text <span id="mtrotlbl" style="color:#9aa49c;font-weight:400">0°</span></div>
+         <div class="swrow">Rotate text <span id="mtrotlbl" style="color:#9aa49c;font-weight:400">0°</span>
+           <span class="tposhint">drag the wording on the preview to move it (Text mode)</span></div>
          <div class="tsizerow">
-           <input type="range" id="mtrot" min="-45" max="45" value="0" step="1"
+           <input type="range" id="mtrot" min="-180" max="180" value="0" step="1"
              oninput="setTextRot(this.value)">
+         </div>
+         <div class="rotrow">
+           <button type="button" onclick="setRot(-90)">⟲ Sideways</button>
+           <button type="button" onclick="setRot(0)">Upright</button>
+           <button type="button" onclick="setRot(90)">Sideways ⟳</button>
+           <button type="button" onclick="setRot(180)">Flip</button>
          </div>
          <div class="note">Use the <b>Move: Text / Photo</b> toggle under the preview
            to drag the wording or the photo (one at a time). Resize &amp; rotate the
@@ -1060,6 +1071,7 @@
  let TPOS={x:0.5, y:0.5}, TSIZE=0, TROT=0, ART={x:0,y:0,w:1,h:1}, DRAGMODE='text';
  function setTextRot(v){ TROT=parseInt(v)||0;
    const lbl=document.getElementById('mtrotlbl'); if(lbl)lbl.textContent=TROT+'°'; drawArt(); }
+ function setRot(deg){ const s=document.getElementById('mtrot'); if(s)s.value=deg; setTextRot(deg); }
  function setDragMode(m){ DRAGMODE=m;
    document.querySelectorAll('.dmbtn').forEach(b=>b.classList.toggle('sel',b.dataset.m===m)); }
  function setTextSize(v){ TSIZE=parseInt(v)||0;
@@ -1210,7 +1222,12 @@
    const typed=(document.getElementById('mtext')||{}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
-   const maxW=w*0.84;
+   // When text is rotated sideways (~90/270), wrap to the frame HEIGHT and fit
+   // the stacked lines to the WIDTH, so sideways wording reads cleanly.
+   const ra=Math.abs(((TROT%180)+180)%180);
+   const sideways=(ra>45 && ra<135);
+   const wrapDim=sideways?h:w, stackDim=sideways?w:h;
+   const maxW=wrapDim*0.84;
    function wrap(f){ctx.font='600 '+f+'px '+SELFONT;
      const words=text.split(/\s+/); let lines=[],cur='';
      for(const wd of words){const tt=(cur+' '+wd).trim();
@@ -1218,8 +1235,8 @@
      if(cur)lines.push(cur); return lines;}
    let fs, lines;
    if(TSIZE>0){ fs=Math.max(9, Math.round(h*TSIZE/100)); lines=wrap(fs); }  // manual
-   else { fs=Math.round(h*0.10); lines=wrap(fs);                            // auto-fit
-     while((lines.length*fs*1.32)>h*0.82 && fs>9){fs-=1; lines=wrap(fs);} }
+   else { fs=Math.round(stackDim*0.10); lines=wrap(fs);                      // auto-fit
+     while((lines.length*fs*1.32)>stackDim*0.82 && fs>9){fs-=1; lines=wrap(fs);} }
    const lh=fs*1.34; const block=lines.length*lh;
    const ax=x+TPOS.x*w, ay=y+TPOS.y*h;                         // anchor (draggable)
    ctx.save(); ctx.translate(ax,ay);
