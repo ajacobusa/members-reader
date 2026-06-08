@@ -285,6 +285,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         quiz_json = "{}"
 
+    try:
+        from quoteforge.analytics.ab_testing import experiments_config
+        ab_json = json.dumps(experiments_config())
+    except Exception:  # noqa: BLE001
+        ab_json = "{}"
+
     # Single source of truth for quantity/bundle discounts (mirrors backend so the
     # storefront JS can never drift from variations.QTY_DISCOUNT).
     from quoteforge.etsy.variations import QTY_DISCOUNT
@@ -742,7 +748,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="hero">
    {f'<img class="hero-banner" src="{banner_src}">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
    <div class="hero-overlay">
-     <h1>Personalized wall art for life's most meaningful moments</h1>
+     <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
      <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
    </div>
  </div>
@@ -865,7 +871,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="orow">
            <label>Size <select id="msize"></select></label>
            <label>Qty <select id="mqty"></select></label>
-           <button class="addbtn" onclick="addToOrder()">Add to order</button>
+           <button class="addbtn" data-ab="primary_cta" onclick="addToOrder()">Add to order</button>
          </div>
          <div id="mcart" class="cart"></div>
          <div class="uploadbox">
@@ -992,7 +998,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty}}); renderCart();
-   clearDraft();}}
+   clearDraft(); if(typeof abConvert==='function') abConvert();}}
  function clearDraft(){{
    try{{localStorage.removeItem('jf_draft');}}catch(e){{}}
    const b=document.getElementById('resumeBar'); if(b)b.style.display='none';
@@ -1245,6 +1251,38 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/signup') : "";
  const CUSTOMIZE_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/customization') : "";
  function knownEmail(){{ try{{return localStorage.getItem('jf_email')||"";}}catch(e){{return "";}} }}
+ // ── Automated A/B testing ──
+ const AB_EXPERIMENTS = {ab_json};
+ const AB_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/ab') : "";
+ function _visitorId(){{ try{{let v=localStorage.getItem('jf_vid');
+   if(!v){{v='v'+Math.abs((Date.now()^(performance.now()*1000|0))).toString(36);
+     localStorage.setItem('jf_vid',v);}} return v;}}catch(e){{return 'anon';}} }}
+ function _abAssign(exp, keys){{
+   try{{const sk='jf_ab_'+exp; let v=localStorage.getItem(sk);
+     if(v && keys.indexOf(v)>=0) return v;
+     v=keys[Math.floor(Math.random()*keys.length)];
+     localStorage.setItem(sk,v); return v;}}
+   catch(e){{return keys[0];}}
+ }}
+ function _abSend(exp, variant, event){{
+   if(!AB_API) return;
+   fetch(AB_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+     body:JSON.stringify({{experiment:exp,variant:variant,event:event,
+       visitor:_visitorId()}})}}).catch(function(){{}});
+ }}
+ const AB_ASSIGNED={{}};
+ function applyExperiments(){{
+   for(const exp in AB_EXPERIMENTS){{
+     const cfg=AB_EXPERIMENTS[exp]; const keys=Object.keys(cfg.variants||{{}});
+     if(!keys.length) continue;
+     const variant=_abAssign(exp, keys); AB_ASSIGNED[exp]=variant;
+     const el=document.querySelector('[data-ab="'+cfg.target+'"]');
+     if(el) el.textContent=cfg.variants[variant];
+     _abSend(exp, variant, 'impression');
+   }}
+ }}
+ function abConvert(){{ for(const exp in AB_ASSIGNED) _abSend(exp, AB_ASSIGNED[exp], 'conversion'); }}
+ window.addEventListener('DOMContentLoaded', applyExperiments);
  const SIGNUP_URL = "{signup_url}";
  let EXIT_SHOWN = false;
  function _exitDone(){{ try{{localStorage.setItem('jf_exit','1');}}catch(e){{}} }}

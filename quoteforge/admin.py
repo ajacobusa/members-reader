@@ -1220,6 +1220,34 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_capacity(args: list[str]) -> int:
+    """Production Capacity Monitor (vendor speed, delays, defects). `capacity [email]`."""
+    from quoteforge.automation.capacity_monitor import format_capacity_text
+    text = format_capacity_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Production Capacity", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
+def _cmd_ab(args: list[str]) -> int:
+    """Automated A/B testing results. `ab [email]`."""
+    from quoteforge.analytics.ab_testing import format_ab_text
+    text = format_ab_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels A/B Testing", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_crm(args: list[str]) -> int:
     """CRM dashboard. `crm` (overview) or `crm <email>` (single 360 view)."""
     email = next((a for a in args if "@" in a), "")
@@ -1674,6 +1702,8 @@ COMMANDS = {
     "journey": _cmd_journey,
     "crm": _cmd_crm,
     "leaderboard": _cmd_leaderboard,
+    "capacity": _cmd_capacity,
+    "ab": _cmd_ab,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,

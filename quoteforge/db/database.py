@@ -233,6 +233,16 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS ab_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            experiment  TEXT NOT NULL,             -- experiment key
+            variant     TEXT NOT NULL,             -- variant key
+            event       TEXT NOT NULL,             -- impression|conversion
+            visitor     TEXT,                       -- anonymous client id
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS rewards (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             email       TEXT NOT NULL,
@@ -332,6 +342,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN listing TEXT")
     if "acquisition_source" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN acquisition_source TEXT")
+    # Fulfillment timestamps for the production-capacity monitor.
+    if "shipped_at" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN shipped_at TEXT")
+    if "delivered_at" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN delivered_at TEXT")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -598,6 +613,32 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── A/B testing events ──────────────────────────────────────────
+
+def record_ab_event(experiment: str, variant: str, event: str,
+                    visitor: str = "") -> int:
+    """Record an A/B impression or conversion."""
+    experiment = (experiment or "").strip()
+    variant = (variant or "").strip()
+    if not experiment or not variant or event not in ("impression", "conversion"):
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO ab_events (experiment, variant, event, visitor) "
+            "VALUES (?,?,?,?)", (experiment, variant, event, visitor))
+        return cur.lastrowid or 0
+
+
+def get_ab_events(experiment: str = "") -> list[dict]:
+    with _conn() as conn:
+        if experiment:
+            rows = conn.execute(
+                "SELECT * FROM ab_events WHERE experiment=?", (experiment,))
+        else:
+            rows = conn.execute("SELECT * FROM ab_events")
+        return [dict(r) for r in rows]
 
 
 # ── Rewards / referrals (loyalty points ledger) ─────────────────

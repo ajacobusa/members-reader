@@ -37,9 +37,16 @@ def sync_tracking(limit: int = 500) -> dict:
             except Exception:  # noqa: BLE001
                 pass
             newly_shipped.append(o["order_id"])
+            if not o.get("shipped_at"):
+                from datetime import datetime as _dt
+                update_order(o["order_id"], shipped_at=_dt.now().isoformat())
 
         if gstatus == "delivered":
-            update_order(o["order_id"], status="delivered")
+            from datetime import datetime as _dt
+            fields = {"status": "delivered"}
+            if not o.get("delivered_at"):
+                fields["delivered_at"] = _dt.now().isoformat()
+            update_order(o["order_id"], **fields)
             delivered.append(o["order_id"])
     return {"checked": True, "newly_shipped": newly_shipped,
             "pushed_to_etsy": pushed, "delivered": delivered}

@@ -158,6 +158,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "to hold the 60% margin floor and disables discontinued frames/products "
         "before the daily site rebuild publishes."),
     ScheduledJob(
+        "QuoteForge Capacity Monitor", "capacity email",
+        ["/SC", "DAILY", "/ST", "06:30"],
+        "Daily production-capacity check: per-vendor production/shipping speed and "
+        "defect rates, flags orders past SLA, and recommends the fastest vendor "
+        "to reroute to. Emails when there are alerts."),
+    ScheduledJob(
         "QuoteForge Customization Recovery", "recover-customizations --send 60",
         ["/SC", "HOURLY", "/MO", "3"],
         "Every 3h: emails a 'your custom artwork is still waiting' recovery note "

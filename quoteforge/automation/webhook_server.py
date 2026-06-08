@@ -365,6 +365,26 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if ok else 400)
 
+    @app.route("/ab", methods=["POST", "OPTIONS"])
+    def ab_event():
+        """Record an A/B impression/conversion. POST {experiment, variant, event}."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        d = request.get_json(force=True, silent=True) or {}
+        ok = False
+        try:
+            from quoteforge.db.database import record_ab_event
+            ok = bool(record_ab_event(d.get("experiment", ""), d.get("variant", ""),
+                                      d.get("event", ""), d.get("visitor", "")))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"ab_event failed: {exc}")
+        resp = jsonify({"status": "ok" if ok else "error"})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if ok else 400)
+
     @app.route("/customization", methods=["POST", "OPTIONS"])
     def save_customization_route():
         """Save an in-progress (abandoned) customization for later recovery.
