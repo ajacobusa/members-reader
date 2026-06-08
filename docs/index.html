@@ -15,6 +15,10 @@
    text-rendering:optimizeLegibility}
  h1,h2,h3,.serif{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;
    letter-spacing:.3px;line-height:1.2}
+ /* every control/text inherits the page font so nothing falls back to the OS font.
+    (Font-PICKER chips keep their inline preview font - that's intentional.) */
+ button,input,select,textarea,label,a,span,div,li{font-family:inherit}
+ .fchip{font-family:inherit}  /* overridden inline per-font for the preview */
  p{margin:0 0 12px}
  .intro p,.mdesc,.faq p{font-size:15.5px;line-height:1.7;color:#44514a}
  a{color:var(--green)}
