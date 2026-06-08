@@ -233,6 +233,18 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS rewards (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            email       TEXT NOT NULL,
+            kind        TEXT NOT NULL,             -- referral|review|repeat_purchase
+            points      INTEGER NOT NULL DEFAULT 0,
+            ref         TEXT,                       -- order_id, referee email, etc.
+            note        TEXT,
+            created_at  TEXT DEFAULT (datetime('now')),
+            UNIQUE(email, kind, ref)
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS abandoned_customizations (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             email         TEXT NOT NULL,
@@ -586,6 +598,34 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Rewards / referrals (loyalty points ledger) ─────────────────
+
+def add_reward(email: str, kind: str, points: int, ref: str = "",
+               note: str = "") -> int:
+    """Record a loyalty/referral event. Idempotent on (email, kind, ref)."""
+    email = (email or "").strip().lower()
+    if "@" not in email or kind not in ("referral", "review", "repeat_purchase"):
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO rewards (email, kind, points, ref, note)
+               VALUES (?,?,?,?,?)
+               ON CONFLICT(email, kind, ref) DO NOTHING""",
+            (email, kind, int(points), ref, note))
+        return cur.lastrowid or 0
+
+
+def get_rewards(email: str = "") -> list[dict]:
+    with _conn() as conn:
+        if email:
+            rows = conn.execute(
+                "SELECT * FROM rewards WHERE email=? ORDER BY created_at DESC",
+                (email.strip().lower(),))
+        else:
+            rows = conn.execute("SELECT * FROM rewards ORDER BY created_at DESC")
+        return [dict(r) for r in rows]
 
 
 # ── Abandoned customizations (recovery) ─────────────────────────

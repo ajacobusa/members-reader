@@ -1220,6 +1220,32 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_crm(args: list[str]) -> int:
+    """CRM dashboard. `crm` (overview) or `crm <email>` (single 360 view)."""
+    email = next((a for a in args if "@" in a), "")
+    if email:
+        from quoteforge.analytics.crm import format_customer_text
+        print(format_customer_text(email))
+    else:
+        from quoteforge.analytics.crm import format_crm_overview
+        print(format_crm_overview())
+    return 0
+
+
+def _cmd_leaderboard(args: list[str]) -> int:
+    """Referral & loyalty leaderboard. `leaderboard [email]`."""
+    from quoteforge.analytics.referrals import format_leaderboard_text
+    text = format_leaderboard_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Referral Leaderboard", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_preferences(args: list[str]) -> int:
     """Customer Preference Graph (data moat). `preferences [email]`."""
     from quoteforge.analytics.preference_graph import format_graph_text
@@ -1646,6 +1672,8 @@ COMMANDS = {
     "recover-customizations": _cmd_recover_customizations,
     "preferences": _cmd_preferences,
     "journey": _cmd_journey,
+    "crm": _cmd_crm,
+    "leaderboard": _cmd_leaderboard,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,
