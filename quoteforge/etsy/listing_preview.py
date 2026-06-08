@@ -352,6 +352,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         reviews_html = ""
     try:
+        from quoteforge.etsy.social_proof import social_proof_bar, customer_gallery
+        sproof_html = social_proof_bar()
+        gallery_html = customer_gallery()
+    except Exception:  # noqa: BLE001
+        sproof_html = gallery_html = ""
+    try:
         from quoteforge.ai.ange import kb_for_web
         ange_kb_json = json.dumps(kb_for_web())
     except Exception:  # noqa: BLE001
@@ -470,6 +476,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    background:var(--green);color:#eadfb9;padding:13px 16px;font-size:13px;
    letter-spacing:.4px;text-align:center}}
  .trust b{{color:#fff;font-weight:600}}
+ /* social proof (real data only) */
+ .sproof{{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 34px;
+   background:#fbf7ee;color:#5a4a2a;padding:11px 16px;font-size:13.5px;
+   text-align:center;border-bottom:1px solid #ece3cf}}
+ .sproof .spi b{{color:var(--green);font-weight:700;font-size:15px}}
+ /* customer gallery (real photos only) */
+ .cgallery{{max-width:1100px;margin:40px auto;padding:0 20px;text-align:center}}
+ .cgallery h2{{font-size:28px;color:var(--green);margin:0 0 4px}}
+ .cgallery .csub{{color:var(--muted);margin:0 0 18px}}
+ .ggrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+   gap:14px}}
+ .gtile{{margin:0;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08)}}
+ .gtile img{{width:100%;height:170px;object-fit:cover;display:block}}
+ .gtile figcaption{{font-size:11.5px;color:#6b7a72;padding:6px 4px}}
+ .cgallery .cshare{{margin-top:16px;color:var(--muted);font-size:13px}}
  .intro{{text-align:center;max-width:680px;margin:34px auto 6px;padding:0 20px}}
  .intro h2{{font-size:30px;color:var(--green);margin:0 0 8px}}
  .intro p{{color:var(--muted);font-size:16px;line-height:1.6;margin:0}}
@@ -669,6 +690,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
+ {sproof_html}
  {cutoff_html}
  {"<div class='uatbar'>👋 Thanks for helping review " + SHOP_NAME +
   "! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then "
@@ -690,6 +712,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div class="btot" id="btot">Select 2 or more to see your set price.</div>
  </div>
  {reviews_html}
+ {gallery_html}
  {_competitive_sections()}
  {_gift_and_b2b_section(owner)}
  <div class="foot">
@@ -740,6 +763,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="sw" id="mbg"></div>
          <div class="swrow">Text color</div>
          <div class="sw" id="mtxt"></div>
+         <div class="swrow">🛋️ Your room wall <span style="color:#9aa49c;font-weight:400">(preview against your wall color)</span></div>
+         <div class="sw" id="mwall"></div>
          <div class="swrow">Your wording</div>
          <textarea id="mtext" maxlength="250" rows="3" oninput="onText()"
            placeholder="Type your own message (optional) - previews live"></textarea>
@@ -849,11 +874,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mdesc').textContent = d.desc;
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
-   SELFONT = FONTS[0][1];
+   SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
    CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
-   renderBg(); renderTxt(); renderFonts(); drawArt();
+   renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
    fillQty(); fillSizes(); renderCart();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
@@ -926,6 +951,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mtxt').innerHTML = TXTCOLORS.map((c,k)=>
      `<span style="background:${{c}}" class="${{c===SELTXT?'sel':''}}" onclick="pickTxt('${{c}}',this)" title="${{c}}"></span>`).join('');
  }}
+ // AI Room Designer: preview the framed art against the customer's wall color
+ const WALLS = [["#ece7dd","Warm white"],["#d9d2c4","Greige"],["#cfd6d2","Sage"],
+   ["#c3cdd6","Soft blue"],["#e3d3cb","Blush"],["#3a3f3b","Charcoal"],
+   ["#2b3a30","Forest"],["#1f2733","Navy"]];
+ let SELWALL = WALLS[0][0];
+ function renderWall(){{
+   const el=document.getElementById('mwall'); if(!el)return;
+   el.innerHTML = WALLS.map(w=>
+     `<span style="background:${{w[0]}}" class="${{w[0]===SELWALL?'sel':''}}" onclick="pickWall('${{w[0]}}',this)" title="${{w[1]}}"></span>`).join('');
+ }}
+ function pickWall(c,el){{ SELWALL=c;
+   document.querySelectorAll('#mwall span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
  function pickBg(c,el){{ SELBG=c;
    document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
  function pickTxt(c,el){{ SELTXT=c;
@@ -946,7 +983,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
-   ctx.fillStyle="#ece7dd"; ctx.fillRect(0,0,W,H);            // wall
+   ctx.fillStyle=SELWALL; ctx.fillRect(0,0,W,H);             // room wall
    const m=16, spec=frameSpec();
    let x=m,y=m,w=W-2*m,h=H-2*m;
    // drop shadow for depth

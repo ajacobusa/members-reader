@@ -82,6 +82,21 @@
    background:var(--green);color:#eadfb9;padding:13px 16px;font-size:13px;
    letter-spacing:.4px;text-align:center}
  .trust b{color:#fff;font-weight:600}
+ /* social proof (real data only) */
+ .sproof{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 34px;
+   background:#fbf7ee;color:#5a4a2a;padding:11px 16px;font-size:13.5px;
+   text-align:center;border-bottom:1px solid #ece3cf}
+ .sproof .spi b{color:var(--green);font-weight:700;font-size:15px}
+ /* customer gallery (real photos only) */
+ .cgallery{max-width:1100px;margin:40px auto;padding:0 20px;text-align:center}
+ .cgallery h2{font-size:28px;color:var(--green);margin:0 0 4px}
+ .cgallery .csub{color:var(--muted);margin:0 0 18px}
+ .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+   gap:14px}
+ .gtile{margin:0;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+ .gtile img{width:100%;height:170px;object-fit:cover;display:block}
+ .gtile figcaption{font-size:11.5px;color:#6b7a72;padding:6px 4px}
+ .cgallery .cshare{margin-top:16px;color:var(--muted);font-size:13px}
  .intro{text-align:center;max-width:680px;margin:34px auto 6px;padding:0 20px}
  .intro h2{font-size:30px;color:var(--green);margin:0 0 8px}
  .intro p{color:var(--muted);font-size:16px;line-height:1.6;margin:0}
@@ -303,6 +318,7 @@
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
+ <div class="sproof"><span class="spi"><b>3</b> orders made to order</span></div>
  <div class="cutoff">⏰ Only 5 days left - order by Jun 12 to get it in time for Father's Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div class="intro">
@@ -319,6 +335,7 @@
    <div class="bgrid" id="bgrid"></div>
    <div class="btot" id="btot">Select 2 or more to see your set price.</div>
  </div>
+ 
  
  <div class="shopocc"><div class="lbl">Shop by occasion</div><div class="occrow"><span class="occhip">Graduation</span><span class="occhip">Birthday</span><span class="occhip">Wedding</span><span class="occhip">Anniversary</span><span class="occhip">Mother's Day</span><span class="occhip">Father's Day</span><span class="occhip">Memorial</span><span class="occhip">New Home</span><span class="occhip">Faith</span><span class="occhip">Christmas</span></div></div><div class="why"><h2>Why Joffiels (not a mass printer)</h2><table class="cmp"><tr><th>Joffiels</th><th>Big-box printers</th></tr><tr><td class="us">✓ Designed by a real person for your story</td><td class="them">Templated, mass-produced</td></tr><tr><td class="us">✓ FREE digital proof - approve before we print</td><td class="them">What you upload is what prints</td></tr><tr><td class="us">✓ Made to order, museum-quality materials</td><td class="them">Bulk factory runs</td></tr><tr><td class="us">✓ Custom wording, colors &amp; frame - you preview it live</td><td class="them">Limited presets</td></tr><tr><td class="us">✓ Personal note + gift e-card included free</td><td class="them">Add-on fees</td></tr><tr><td class="us">✓ Happiness guarantee - we make it right</td><td class="them">Rigid return windows</td></tr></table></div><div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is made to order and approved by you on a free proof. If something isn't right, we'll make it right.</div><div class="faqs"><h2>Questions, answered</h2><details class="faq"><summary>Is the frame included?</summary><p>Poster, canvas, acrylic and metal ship without a frame. Choose a "Framed" option to add a real wood frame (6 styles).</p></details><details class="faq"><summary>Can I use my own photo or exact wording?</summary><p>Yes! Upload a high-resolution photo and type your own words - we auto-check quality and send a free proof before printing.</p></details><details class="faq"><summary>How fast will it arrive?</summary><p>We send your proof within ~24h; once approved it's printed and shipped with tracking, typically within 3-5 business days.</p></details><details class="faq"><summary>What if I don't love it?</summary><p>Message us - our happiness guarantee means we'll fix or remake it. Personalized items are made to order, so approval happens on the proof.</p></details></div>
  <div class="b2b"><h2>Corporate &amp; bulk gifting</h2><p class="gsub">Personalized art for employee recognition, client gifts, weddings, realtor closings, churches &amp; schools - wholesale pricing on volume orders.</p><div class="b2bform"><input id="bz_name" placeholder="Your name"><input id="bz_co" placeholder="Company / organization"><input id="bz_email" placeholder="Your email"><input id="bz_qty" placeholder="Approx. quantity"><textarea id="bz_msg" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea><button onclick="b2bSend('ajacobusa@gmail.com')">Request a wholesale quote</button></div></div>
@@ -370,6 +387,8 @@
          <div class="sw" id="mbg"></div>
          <div class="swrow">Text color</div>
          <div class="sw" id="mtxt"></div>
+         <div class="swrow">🛋️ Your room wall <span style="color:#9aa49c;font-weight:400">(preview against your wall color)</span></div>
+         <div class="sw" id="mwall"></div>
          <div class="swrow">Your wording</div>
          <textarea id="mtext" maxlength="250" rows="3" oninput="onText()"
            placeholder="Type your own message (optional) - previews live"></textarea>
@@ -479,11 +498,11 @@
    document.getElementById('mdesc').textContent = d.desc;
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
-   SELFONT = FONTS[0][1];
+   SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
    CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
-   renderBg(); renderTxt(); renderFonts(); drawArt();
+   renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
    fillQty(); fillSizes(); renderCart();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
@@ -556,6 +575,18 @@
    document.getElementById('mtxt').innerHTML = TXTCOLORS.map((c,k)=>
      `<span style="background:${c}" class="${c===SELTXT?'sel':''}" onclick="pickTxt('${c}',this)" title="${c}"></span>`).join('');
  }
+ // AI Room Designer: preview the framed art against the customer's wall color
+ const WALLS = [["#ece7dd","Warm white"],["#d9d2c4","Greige"],["#cfd6d2","Sage"],
+   ["#c3cdd6","Soft blue"],["#e3d3cb","Blush"],["#3a3f3b","Charcoal"],
+   ["#2b3a30","Forest"],["#1f2733","Navy"]];
+ let SELWALL = WALLS[0][0];
+ function renderWall(){
+   const el=document.getElementById('mwall'); if(!el)return;
+   el.innerHTML = WALLS.map(w=>
+     `<span style="background:${w[0]}" class="${w[0]===SELWALL?'sel':''}" onclick="pickWall('${w[0]}',this)" title="${w[1]}"></span>`).join('');
+ }
+ function pickWall(c,el){ SELWALL=c;
+   document.querySelectorAll('#mwall span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }
  function pickBg(c,el){ SELBG=c;
    document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }
  function pickTxt(c,el){ SELTXT=c;
@@ -576,7 +607,7 @@
  function drawArt(){
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
-   ctx.fillStyle="#ece7dd"; ctx.fillRect(0,0,W,H);            // wall
+   ctx.fillStyle=SELWALL; ctx.fillRect(0,0,W,H);             // room wall
    const m=16, spec=frameSpec();
    let x=m,y=m,w=W-2*m,h=H-2*m;
    // drop shadow for depth
