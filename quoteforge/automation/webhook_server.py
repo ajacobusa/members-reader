@@ -414,9 +414,12 @@ if FLASK_AVAILABLE and app:
                 if decision == "reject":
                     fields["status"] = "hold_photo"
                 update_order(order_id, **fields)
+            from quoteforge.automation.print_quality import ai_focal_point
+            focal = ai_focal_point(saved or tmp)
             out = {"status": "ok", "decision": decision,
                    "reasons": assessment["reasons"],
-                   "hosted": pub["public"], "host": pub["host"]}
+                   "hosted": pub["public"], "host": pub["host"],
+                   "focal": focal}
             if decision != "approve":
                 out["message"] = reupload_request(assessment)
             resp = jsonify(out)

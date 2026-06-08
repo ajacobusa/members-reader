@@ -179,6 +179,26 @@
    font-size:14px;text-align:center;line-height:1.55}
  .uatbar a{color:var(--green);font-weight:600}
  /* Ask Ange chat */
+ #basketBtn{position:fixed;left:20px;bottom:20px;z-index:60;background:var(--gold);
+   color:#22301e;border:none;border-radius:30px;padding:13px 20px;font-size:15px;
+   font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+ #basketBtn:hover{background:var(--gold-d)}
+ #basketBtn #basketCount{background:#22301e;color:#fff;border-radius:50%;
+   padding:1px 8px;margin-left:4px;font-size:13px}
+ #basketPanel{position:fixed;inset:0;z-index:81;background:rgba(11,28,22,.55);
+   display:none;align-items:center;justify-content:center;padding:24px}
+ .bpbox{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;
+   box-shadow:0 30px 70px rgba(0,0,0,.45);max-height:86vh;overflow:auto}
+ .bpbox h2{color:var(--green);margin:0 0 12px;font-size:22px}
+ .bpline{display:flex;justify-content:space-between;gap:10px;padding:8px 0;
+   border-bottom:1px solid var(--line);font-size:13.5px;text-align:left}
+ .bptot{display:flex;justify-content:space-between;font-weight:700;color:var(--green);
+   padding:10px 0;font-size:16px}
+ .bpactions{display:flex;gap:10px;margin-top:8px}
+ .bpclear{flex:1;background:#fff;border:1px solid var(--line);border-radius:22px;
+   padding:11px;font-size:14px;cursor:pointer;color:#a23a3a}
+ .bpco{flex:2;background:var(--green);color:#fff;border:none;border-radius:22px;
+   padding:11px;font-size:15px;font-weight:600;cursor:pointer}
  #angeBtn{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--green);
    color:#fff;border:none;border-radius:30px;padding:13px 20px;font-size:15px;
    font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(16,61,46,.35)}
@@ -303,6 +323,12 @@
  .tposreset{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}
  .tposhint{margin-left:8px;color:#9aa49c;font-weight:400}
+ .photorow{display:flex;align-items:center;gap:6px;margin:5px 0}
+ .photorow .plbl{font-size:11px;color:var(--muted);width:40px}
+ .photorow input[type=range]{flex:1;accent-color:var(--green)}
+ .photorow button{background:#fff;border:1px solid var(--line);border-radius:8px;
+   padding:4px 9px;font-size:13px;cursor:pointer;color:var(--green)}
+ .photorow .pcenter{background:var(--green);color:#fff;border:none}
  #mcanvas{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:8px;background:#103d2e}
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
@@ -517,6 +543,25 @@
              onchange="checkUpload()">
            <div id="muploadmsg" class="note"></div>
            <div id="maicheck" class="note"></div>
+           <div id="mphotoctl" style="display:none">
+             <div class="swrow">🖼️ Fit your photo in the frame</div>
+             <div class="photorow">
+               <span class="plbl">Zoom</span>
+               <input type="range" id="mphotozoom" min="1" max="3" step="0.05" value="1"
+                 oninput="setPhotoZoom(this.value)">
+             </div>
+             <div class="photorow">
+               <span class="plbl">Move</span>
+               <button type="button" onclick="nudgePhoto(-0.05,0)">&larr;</button>
+               <button type="button" onclick="nudgePhoto(0.05,0)">&rarr;</button>
+               <button type="button" onclick="nudgePhoto(0,-0.05)">&uarr;</button>
+               <button type="button" onclick="nudgePhoto(0,0.05)">&darr;</button>
+               <button type="button" class="pcenter" onclick="autoCenterPhoto()">Center</button>
+               <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
+             </div>
+             <div class="note">Our AI auto-centers the subject on upload; fine-tune
+               here. Final crop is confirmed on your free proof.</div>
+           </div>
            <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
              auto-checks quality and asks for a better photo if needed; your
              approved photo is sent with the order to our print partner.</div>
@@ -614,7 +659,8 @@
    initTextDrag();
    fillQty(); fillSizes(); renderCart(); updateReview();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
-   PHOTO=null; var ui=document.getElementById('mupload'); if(ui) ui.value="";
+   PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5; _showPhotoCtl(false);
+   var ui=document.getElementById('mupload'); if(ui) ui.value="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
    fb.href = fbLink(d.title);
@@ -662,7 +708,10 @@
    }
  }
  function rmLine(i){CART.splice(i,1);renderCart();}
- function renderCart(){const c=document.getElementById('mcart'); if(!c)return;
+ function _cartTotal(){let t=0;CART.forEach(l=>{t+=+( l.unit*(1-qdisc(l.qty))*l.qty);});return +t.toFixed(2);}
+ function renderCart(){const c=document.getElementById('mcart');
+   renderBasket();
+   if(!c)return;
    if(!CART.length){c.innerHTML='<div class="note">No items yet - choose size + qty, then Add.</div>';return;}
    let tot=0; c.innerHTML=CART.map((l,i)=>{const d=qdisc(l.qty);
      const unit=+(l.unit*(1-d)).toFixed(2); const sub=+(unit*l.qty).toFixed(2); tot+=sub;
@@ -670,12 +719,59 @@
      return `<div class="line"><span>${nm}${l.qty}x ${l.fmt} ${l.size}${d?` (${Math.round(d*100)}% off)`:''}</span>`+
        `<span>$${sub.toFixed(2)} <span class="rm" onclick="rmLine(${i})">remove</span></span></div>`;}).join('')+
      `<div class="line tot"><span>Order total</span><span>$${tot.toFixed(2)}</span></div>`;}
- let PHOTO=null;
+ // ── Persistent basket (across designs) ──
+ const ETSY_SHOP_URL = "";
+ function toggleBasket(){const p=document.getElementById('basketPanel');
+   const open=p.style.display!=='flex'; renderBasket(); p.style.display=open?'flex':'none';}
+ function clearBasket(){ if(CART.length && !confirm('Empty your basket?')) return;
+   CART=[]; renderCart(); }
+ function renderBasket(){
+   const cnt=document.getElementById('basketCount'); if(cnt)cnt.textContent=CART.length;
+   const ln=document.getElementById('basketLines'), tt=document.getElementById('basketTotal');
+   if(!ln) return;
+   if(!CART.length){ ln.innerHTML='<div class="note">Your basket is empty. Tap a design, personalize it, and Add to order.</div>';
+     if(tt)tt.textContent=''; return; }
+   ln.innerHTML=CART.map((l,i)=>{const d=qdisc(l.qty);
+     const sub=+(l.unit*(1-d)*l.qty).toFixed(2);
+     const nm=l.title?`<b>${l.title.slice(0,30)}</b><br>`:'';
+     return `<div class="bpline"><span>${nm}${l.qty}x ${l.fmt} ${l.size}`+
+       `${d?` (${Math.round(d*100)}% off)`:''}</span>`+
+       `<span>$${sub.toFixed(2)} <span class="rm" onclick="rmLine(${i})">remove</span></span></div>`;}).join('');
+   if(tt)tt.innerHTML=`<span>Total (${CART.length} item${CART.length>1?'s':''})</span>`+
+     `<span>$${_cartTotal().toFixed(2)}</span>`;
+ }
+ function checkout(){
+   if(!CART.length){ alert('Your basket is empty.'); return; }
+   abConvert && abConvert();
+   if(ETSY_SHOP_URL){ window.open(ETSY_SHOP_URL,'_blank'); }
+   const summary=CART.map(l=>`${l.qty}x ${l.fmt} ${l.size}`+(l.title?` (${l.title})`:'')).join('\n');
+   alert("Your set ("+CART.length+" item"+(CART.length>1?'s':'')+", $"+_cartTotal().toFixed(2)+
+     "):\n\n"+summary+"\n\nComplete your purchase on Etsy - we'll send a free proof "+
+     "of each personalized piece before printing.");
+ }
+ let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5;
+ function _showPhotoCtl(on){
+   var c=document.getElementById('mphotoctl'); if(c)c.style.display=on?'block':'none';
+ }
+ function setPhotoZoom(v){ PHOTO_ZOOM=Math.max(1,parseFloat(v)||1); drawArt(); }
+ function nudgePhoto(dx,dy){ PHOTO_FX=Math.min(1,Math.max(0,PHOTO_FX+dx));
+   PHOTO_FY=Math.min(1,Math.max(0,PHOTO_FY+dy)); drawArt(); }
+ function resetPhoto(){ PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+   var z=document.getElementById('mphotozoom'); if(z)z.value=1; drawArt(); }
+ function applyFocal(f){ if(!f) return;
+   if(typeof f.x==='number') PHOTO_FX=Math.min(1,Math.max(0,f.x));
+   if(typeof f.y==='number') PHOTO_FY=Math.min(1,Math.max(0,f.y)); drawArt();
+   var n=document.getElementById('maicheck');
+   if(n && f.source==='ai') n.innerHTML+=" <span style='color:#0a6b3b'>· subject auto-centered</span>";
+ }
+ // Client fallback auto-center (no server): center the photo; AI refines via /upload.
+ function autoCenterPhoto(){ PHOTO_FX=0.5; PHOTO_FY=0.5; drawArt(); }
  function removePhoto(){
    if(PHOTO&&PHOTO.src&&PHOTO.src.indexOf('blob:')===0) URL.revokeObjectURL(PHOTO.src);
-   PHOTO=null; const inp=document.getElementById('mupload'); if(inp)inp.value='';
+   PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+   const inp=document.getElementById('mupload'); if(inp)inp.value='';
    const msg=document.getElementById('muploadmsg'); if(msg){msg.className='note';msg.textContent='';}
-   drawArt();
+   _showPhotoCtl(false); drawArt();
  }
  function checkUpload(){const inp=document.getElementById('mupload'),msg=document.getElementById('muploadmsg');
    const f=inp.files&&inp.files[0]; if(!f){removePhoto();return;}
@@ -693,7 +789,9 @@
        msg.innerHTML=`Great - ${img.width}x${img.height}px works for ${inches[0]}x${inches[1]}". Previewing on the left.`+rm;}
      else{msg.className='note upbad';
        msg.innerHTML=`Only ${img.width}x${img.height}px - too low for a sharp ${inches[0]}x${inches[1]}" print (previewing anyway). Please upload a higher-resolution original.`+rm;}
-     PHOTO=img; drawArt(); aiCheckPhoto(f);};
+     PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+     var z=document.getElementById('mphotozoom'); if(z)z.value=1;
+     _showPhotoCtl(true); drawArt(); aiCheckPhoto(f);};
    img.onerror=function(){PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';};
    img.src=URL.createObjectURL(f);}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
@@ -792,10 +890,14 @@
        ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }
    }
    ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h);                 // art background
-   if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){        // uploaded photo (cover-fit)
-     const ar=PHOTO.naturalWidth/PHOTO.naturalHeight, br=w/h;
-     let dw=w, dh=h, dx=x, dy=y;
-     if(ar>br){ dh=h; dw=h*ar; dx=x-(dw-w)/2; } else { dw=w; dh=w/ar; dy=y-(dh-h)/2; }
+   if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){        // uploaded photo
+     const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
+     const cover=Math.max(w/iw, h/ih)*PHOTO_ZOOM;             // fill + zoom
+     const dw=iw*cover, dh=ih*cover;
+     // place so the focal point (PHOTO_FX,PHOTO_FY of the image) sits at frame center
+     let dx=(x+w/2)-PHOTO_FX*dw, dy=(y+h/2)-PHOTO_FY*dh;
+     dx=Math.min(x, Math.max(x+w-dw, dx));                    // keep frame covered
+     dy=Math.min(y, Math.max(y+h-dh, dy));
      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
      ctx.drawImage(PHOTO,dx,dy,dw,dh);
      // scrim so overlaid wording stays legible over any photo
@@ -996,6 +1098,22 @@
  }
 </script>
 
+<button id="basketBtn" onclick="toggleBasket()">🛒 Basket <span id="basketCount">0</span></button>
+<div id="basketPanel" onclick="if(event.target.id==='basketPanel')toggleBasket()">
+  <div class="bpbox">
+    <span class="qclose" onclick="toggleBasket()">&times;</span>
+    <h2>🛒 Your basket</h2>
+    <div id="basketLines"></div>
+    <div id="basketTotal" class="bptot"></div>
+    <div class="bpactions">
+      <button class="bpclear" onclick="clearBasket()">Empty basket</button>
+      <button class="bpco" onclick="checkout()">Checkout &rarr;</button>
+    </div>
+    <p class="ftc">Items are added as you personalize each design. Personalization &amp;
+      exact layout are confirmed on your free proof before printing.</p>
+  </div>
+</div>
+
 <button id="angeBtn" onclick="toggleAnge()">💬 Ask Ange</button>
 <div id="angePanel">
   <div class="angehdr">Ask Ange<small>Joffiels assistant - quick answers</small></div>
@@ -1025,6 +1143,7 @@
    fd.append('size',size);
    const note=document.getElementById('maicheck'); if(note)note.textContent='🤖 AI checking photo quality…';
    fetch(UPLOAD_API,{method:'POST',body:fd}).then(r=>r.json()).then(function(d){
+     if(d && d.focal) applyFocal(d.focal);   // AI auto-centers the subject
      if(!note) return;
      if(d.decision==='approve') note.innerHTML='✅ AI quality check passed - good to print.';
      else note.innerHTML='⚠️ '+(d.message||'Please upload a higher-quality photo.');

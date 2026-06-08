@@ -90,6 +90,45 @@ def assess_photo(path, size: str = "18x24", run_ai: bool = True) -> dict:
     return {"decision": decision, "validation": v, "ai": ai, "reasons": reasons}
 
 
+def ai_focal_point(path) -> dict:
+    """Estimate the subject's center (for auto-centering in the frame).
+
+    Returns {x, y} as fractions 0..1 (0.5,0.5 = image center). Uses Claude vision
+    when available; otherwise returns center. Never raises."""
+    from pathlib import Path as _P
+    p = _P(path)
+    default = {"x": 0.5, "y": 0.5, "source": "center"}
+    try:
+        from quoteforge.config import TEST_MODE, ANTHROPIC_API_KEY, CLAUDE_MODEL
+        if TEST_MODE or not ANTHROPIC_API_KEY or not p.exists() \
+                or p.suffix.lower() == ".pdf":
+            return default
+        import base64, re
+        from quoteforge.quotes.generator import _client, _invoke
+        ext = p.suffix.lower().lstrip(".")
+        media = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+                 "webp": "image/webp", "gif": "image/gif"}.get(ext, "image/jpeg")
+        b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+        msg = _invoke(
+            _client(), operation="ai_focal", model=CLAUDE_MODEL, max_tokens=40,
+            messages=[{"role": "user", "content": [
+                {"type": "image", "source": {"type": "base64",
+                 "media_type": media, "data": b64}},
+                {"type": "text", "content": (
+                    "Find the main subject (face/person/focal object). Reply with "
+                    "ONLY its center as 'x,y' where x and y are decimals 0..1 "
+                    "(left-to-right, top-to-bottom). Example: 0.42,0.30")}]}])
+        text = "".join(getattr(b, "text", "") for b in msg.content).strip()
+        m = re.search(r"([01]?\.?\d+)\s*,\s*([01]?\.?\d+)", text)
+        if m:
+            x = min(1.0, max(0.0, float(m.group(1))))
+            y = min(1.0, max(0.0, float(m.group(2))))
+            return {"x": round(x, 3), "y": round(y, 3), "source": "ai"}
+    except Exception:  # noqa: BLE001
+        pass
+    return default
+
+
 def reupload_request(assessment: dict, recipient: str = "") -> str:
     """Customer-facing message asking for a better photo (AI-written if available)."""
     reasons = "; ".join(assessment.get("reasons", [])) or "image quality"

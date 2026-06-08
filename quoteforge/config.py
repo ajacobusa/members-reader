@@ -72,6 +72,7 @@ DYNAMIC_PRICING_ENABLED: bool = os.getenv("DYNAMIC_PRICING_ENABLED", "true").low
 DYNAMIC_MAX_UPLIFT_PCT: float = float(os.getenv("DYNAMIC_MAX_UPLIFT_PCT", "15"))
 # Welcome / first-order promo (exit-intent capture). Set the code in your Etsy
 # shop coupons; these just drive the on-site copy. Empty code hides the offer.
+ETSY_SHOP_URL: str = os.getenv("ETSY_SHOP_URL", "").strip().rstrip("/")
 PROMO_WELCOME_CODE: str = os.getenv("PROMO_WELCOME_CODE", "WELCOME10").strip()
 PROMO_WELCOME_PCT: int = int(os.getenv("PROMO_WELCOME_PCT", "10"))
 # Conservative fallbacks used only when the live variations catalog can't be read
