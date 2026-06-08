@@ -431,6 +431,62 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
 
+    @app.route("/design", methods=["POST", "OPTIONS"])
+    def save_design_route():
+        """Save a customer's design layout (preferences). POST {email, design_id,
+        design, summary}."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        d = request.get_json(force=True, silent=True) or {}
+        email = (d.get("email") or "").strip()
+        saved = 0
+        try:
+            import json as _json
+            from quoteforge.db.database import save_design
+            design = d.get("design")
+            if design is not None and not isinstance(design, str):
+                design = _json.dumps(design)
+            saved = save_design(email, design_json=design or "",
+                                design_id=d.get("design_id", "default"),
+                                summary=d.get("summary", ""))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"save_design failed: {exc}")
+        ok = "@" in email
+        resp = jsonify({"status": "ok" if ok else "error", "saved": bool(saved)})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if ok else 400)
+
+    @app.route("/confirm", methods=["POST", "OPTIONS"])
+    def confirm_design_route():
+        """Customer accepted the final proof. POST {email, summary, design,
+        design_id}. Records acceptance + emails a confirmation."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        d = request.get_json(force=True, silent=True) or {}
+        email = (d.get("email") or "").strip()
+        try:
+            import json as _json
+            from quoteforge.automation.design_confirm import confirm_design
+            design = d.get("design")
+            if design is not None and not isinstance(design, str):
+                design = _json.dumps(design)
+            result = confirm_design(email, summary=d.get("summary", ""),
+                                    design_json=design or "",
+                                    design_id=d.get("design_id", "default"))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"confirm_design failed: {exc}")
+            result = {"ok": False, "emailed": False}
+        resp = jsonify({"status": "ok" if result.get("ok") else "error",
+                        "emailed": result.get("emailed", False)})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if result.get("ok") else 400)
+
     @app.route("/ab", methods=["POST", "OPTIONS"])
     def ab_event():
         """Record an A/B impression/conversion. POST {experiment, variant, event}."""

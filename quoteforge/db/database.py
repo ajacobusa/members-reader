@@ -233,6 +233,22 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS saved_designs (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            email       TEXT NOT NULL,
+            design_id   TEXT,                       -- client design id (per piece)
+            order_id    TEXT,                       -- linked once an Etsy order arrives
+            design_json TEXT,                       -- full layout: wording/colors/font/
+                                                    -- size/position/rotation/photo fit
+            summary     TEXT,                        -- human-readable order summary
+            accepted    INTEGER DEFAULT 0,           -- customer pressed Accept
+            accepted_at TEXT,
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now')),
+            UNIQUE(email, design_id)
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS competitor_snapshots (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             shop          TEXT NOT NULL,             -- competitor shop name/handle
@@ -632,6 +648,49 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Saved designs (customer layout preferences) ─────────────────
+
+def save_design(email: str, design_json: str = "", design_id: str = "",
+                summary: str = "", order_id: str = "") -> int:
+    """Save/update a customer's design layout. Keyed by email + design_id."""
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return 0
+    design_id = (design_id or "default").strip()
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO saved_designs
+               (email, design_id, order_id, design_json, summary)
+               VALUES (?,?,?,?,?)
+               ON CONFLICT(email, design_id) DO UPDATE SET
+                 design_json=excluded.design_json, summary=excluded.summary,
+                 order_id=COALESCE(NULLIF(excluded.order_id,''), order_id),
+                 updated_at=datetime('now')""",
+            (email, design_id, order_id, design_json, summary))
+        return cur.lastrowid or 0
+
+
+def accept_design(email: str, design_id: str = "default") -> None:
+    from datetime import datetime as _dt
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE saved_designs SET accepted=1, accepted_at=?, updated_at=? "
+            "WHERE email=? AND design_id=?",
+            (_dt.now().isoformat(), _dt.now().isoformat(),
+             (email or "").strip().lower(), design_id))
+
+
+def get_designs(email: str = "") -> list[dict]:
+    with _conn() as conn:
+        if email:
+            rows = conn.execute(
+                "SELECT * FROM saved_designs WHERE email=? ORDER BY updated_at DESC",
+                (email.strip().lower(),))
+        else:
+            rows = conn.execute("SELECT * FROM saved_designs ORDER BY updated_at DESC")
+        return [dict(r) for r in rows]
 
 
 # ── Competitor snapshots (intelligence) ─────────────────────────

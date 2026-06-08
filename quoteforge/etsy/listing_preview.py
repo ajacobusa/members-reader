@@ -750,6 +750,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .tposreset{{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}}
  .tposhint{{margin-left:8px;color:#9aa49c;font-weight:400}}
+ .orderactions{{display:flex;gap:8px;margin:8px 0}}
+ .savebtn{{flex:1;background:#fff;border:1px solid var(--green);color:var(--green);
+   border-radius:18px;padding:9px;font-size:13.5px;font-weight:600;cursor:pointer}}
+ .reviewbtn{{flex:1;background:var(--gold);color:#22301e;border:none;border-radius:18px;
+   padding:9px;font-size:13.5px;font-weight:700;cursor:pointer}}
+ #proofPop{{position:fixed;inset:0;z-index:82;background:rgba(11,28,22,.6);
+   display:none;align-items:center;justify-content:center;padding:20px}}
+ .proofbox{{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:22px;
+   text-align:center;max-height:90vh;overflow:auto;box-shadow:0 30px 70px rgba(0,0,0,.45)}}
+ .proofbox h2{{color:var(--green);margin:0 0 4px;font-size:22px}}
+ .proofimg{{width:100%;max-width:300px;border-radius:8px;border:1px solid var(--line);
+   margin:10px auto;display:block}}
+ .proofsum{{background:#f6f2e7;border-radius:10px;padding:10px;font-size:13px;
+   color:#3a4a42;white-space:pre-line;text-align:left;margin-bottom:8px}}
+ .proofstatus{{color:var(--green);font-weight:600;font-size:14px;margin-bottom:8px}}
+ .proofactions{{display:flex;gap:8px;flex-wrap:wrap}}
+ .pedit,.padd{{flex:1;background:#fff;border:1px solid var(--line);border-radius:20px;
+   padding:10px;font-size:13px;cursor:pointer;color:var(--green);white-space:nowrap}}
+ .paccept{{flex:1;background:var(--green);color:#fff;border:none;border-radius:20px;
+   padding:10px;font-size:14px;font-weight:700;cursor:pointer}}
+ .dragmode{{margin-left:6px}}
+ .dmbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
+   font-size:12px;cursor:pointer;color:var(--green)}}
+ .dmbtn.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
  .photorow{{display:flex;align-items:center;gap:6px;margin:5px 0}}
  .photorow .plbl{{font-size:11px;color:var(--muted);width:40px}}
  .photorow input[type=range]{{flex:1;accent-color:var(--green)}}
@@ -875,6 +899,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   <span class="rbx" onclick="document.getElementById('resumeBar').style.display='none'">&times;</span>
 </div>
 
+<div id="proofPop" onclick="if(event.target.id==='proofPop')closeProof()">
+  <div class="proofbox">
+    <span class="qclose" onclick="closeProof()">&times;</span>
+    <h2>Your final design</h2>
+    <p class="qsub">This is how your piece will look. Happy with it? Accept to confirm -
+      we'll still send a FREE proof before printing.</p>
+    <img id="proofImg" class="proofimg" alt="Your design preview">
+    <div class="proofsum">Your order:<br><span id="proofSummary"></span></div>
+    <div id="proofStatus" class="proofstatus"></div>
+    <div class="proofactions">
+      <button class="pedit" onclick="proofEdit()">&larr; Go back &amp; edit</button>
+      <button class="padd" onclick="proofAddAnother()">＋ Add another</button>
+      <button class="paccept" onclick="acceptProof()">✓ Accept</button>
+    </div>
+  </div>
+</div>
+
 <div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
   <div class="xbox">
     <span class="qclose" onclick="closeExit()">&times;</span>
@@ -927,13 +968,25 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="cc"><span id="mcc">0 / 250</span> characters</div>
          <div class="swrow">Font</div>
          <div class="fonts" id="mfonts"></div>
-         <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span>
-           <span class="tposhint">✋ drag the text on the preview to move it</span></div>
+         <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span></div>
          <div class="tsizerow">
            <input type="range" id="mtsize" min="0" max="22" value="0" step="1"
              oninput="setTextSize(this.value)">
            <button type="button" class="tposreset" onclick="resetTextPos()">Reset</button>
          </div>
+         <div class="swrow">Rotate text <span id="mtrotlbl" style="color:#9aa49c;font-weight:400">0°</span></div>
+         <div class="tsizerow">
+           <input type="range" id="mtrot" min="-45" max="45" value="0" step="1"
+             oninput="setTextRot(this.value)">
+         </div>
+         <div class="swrow">✋ Drag on the preview to move
+           <span class="dragmode">
+             <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">Text</button>
+             <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">Photo</button>
+           </span></div>
+         <div class="note">You can drag the wording (or your photo) anywhere in the
+           frame, resize and rotate the text, and fine-tune the photo fit. Nothing is
+           final until you review &amp; accept - and we still send a free proof.</div>
          <div class="note">Background, text color, font, size, position &amp; wording are all free -
            the preview updates instantly and final details are confirmed on your
            FREE digital proof before printing.</div>
@@ -947,6 +1000,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          </div>
          <div id="mreview" class="mreview"></div>
          <div id="mcart" class="cart"></div>
+         <div class="orderactions">
+           <button type="button" class="savebtn" onclick="saveDesign()">💾 Save design</button>
+           <button type="button" class="reviewbtn" onclick="showFinalProof()">👁️ Review &amp; accept</button>
+         </div>
          <div class="uploadbox">
            <div class="lbl">📷 Add your own photo (optional)</div>
            <input type="file" id="mupload"
@@ -1060,9 +1117,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
-   TPOS={{x:0.5,y:0.5}}; TSIZE=0;
+   TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; DRAGMODE='text';
    var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
    var tl=document.getElementById('mtsizelbl'); if(tl)tl.textContent='Auto';
+   var tr=document.getElementById('mtrot'); if(tr)tr.value=0;
+   var trl=document.getElementById('mtrotlbl'); if(trl)trl.textContent='0°';
    CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
@@ -1153,12 +1212,62 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function checkout(){{
    if(!CART.length){{ alert('Your basket is empty.'); return; }}
-   abConvert && abConvert();
-   if(ETSY_SHOP_URL){{ window.open(ETSY_SHOP_URL,'_blank'); }}
-   const summary=CART.map(l=>`${{l.qty}}x ${{l.fmt}} ${{l.size}}`+(l.title?` (${{l.title}})`:'')).join('\\n');
-   alert("Your set ("+CART.length+" item"+(CART.length>1?'s':'')+", $"+_cartTotal().toFixed(2)+
-     "):\\n\\n"+summary+"\\n\\nComplete your purchase on Etsy - we'll send a free proof "+
-     "of each personalized piece before printing.");
+   toggleBasket(); showFinalProof();   // show the final output to accept first
+ }}
+ // ── Design state, Save, and final-proof Accept ──
+ function _designState(){{
+   return {{listing:(DATA[CUR]||{{}}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
+     font:SELFONT, wall:SELWALL, wording:((document.getElementById('mtext')||{{}}).value||''),
+     size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
+     tpos:TPOS, tsize:TSIZE, trot:TROT,
+     photo:{{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}}}};
+ }}
+ function _toast(t){{ const n=document.getElementById('maicheck');
+   if(n){{ n.innerHTML='💾 '+t; }} }}
+ function saveDesign(){{
+   const s=_designState();
+   try{{localStorage.setItem('jf_design', JSON.stringify(s));}}catch(e){{}}
+   const email=knownEmail();
+   if(email && DESIGN_API){{
+     fetch(DESIGN_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{email:email, design:s,
+         summary:`${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"`}})}})
+       .then(()=>_toast('Your design preferences are saved.'))
+       .catch(()=>_toast('Saved on this device.'));
+   }} else {{ _toast('Saved on this device. (Sign up to save to your order.)'); }}
+ }}
+ function _orderSummaryText(){{
+   if(CART.length) return CART.map(l=>`${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
+     (l.title?` - ${{l.title}}`:'')).join('\\n')+`\\nTotal: $${{_cartTotal().toFixed(2)}}`;
+   const s=_designState();
+   return `${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"`;
+ }}
+ function showFinalProof(){{
+   const cv=document.getElementById('mcanvas');
+   const img=document.getElementById('proofImg');
+   if(cv && img){{ try{{ img.src=cv.toDataURL('image/png'); }}catch(e){{}} }}
+   const sum=document.getElementById('proofSummary');
+   if(sum) sum.textContent=_orderSummaryText();
+   document.getElementById('proofPop').style.display='flex';
+ }}
+ function closeProof(){{ document.getElementById('proofPop').style.display='none'; }}
+ function proofEdit(){{ closeProof(); }}                 // back to the open design
+ function proofAddAnother(){{ closeProof(); closeM(); }} // pick another design
+ function acceptProof(){{
+   const email=knownEmail();
+   const summary=_orderSummaryText();
+   const done=function(emailed){{
+     const st=document.getElementById('proofStatus');
+     if(st) st.innerHTML = emailed
+       ? '✅ Accepted! A confirmation email is on its way. We\\'ll send a free proof before printing.'
+       : '✅ Accepted! Complete your purchase on Etsy - we\\'ll send a free proof before printing.';
+     abConvert && abConvert();
+   }};
+   if(email && CONFIRM_API){{
+     fetch(CONFIRM_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{email:email, summary:summary, design:_designState()}})}})
+       .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
+   }} else {{ done(false); }}
  }}
  let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5;
  function _showPhotoCtl(on){{
@@ -1206,8 +1315,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
- // Draggable text position (fractions of the art area) + manual font size (0=auto).
- let TPOS={{x:0.5, y:0.5}}, TSIZE=0, ART={{x:0,y:0,w:1,h:1}};
+ // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
+ let TPOS={{x:0.5, y:0.5}}, TSIZE=0, TROT=0, ART={{x:0,y:0,w:1,h:1}}, DRAGMODE='text';
+ function setTextRot(v){{ TROT=parseInt(v)||0;
+   const lbl=document.getElementById('mtrotlbl'); if(lbl)lbl.textContent=TROT+'°'; drawArt(); }}
+ function setDragMode(m){{ DRAGMODE=m;
+   document.querySelectorAll('.dmbtn').forEach(b=>b.classList.toggle('sel',b.dataset.m===m)); }}
  function setTextSize(v){{ TSIZE=parseInt(v)||0;
    const lbl=document.getElementById('mtsizelbl');
    if(lbl) lbl.textContent = TSIZE===0 ? 'Auto' : TSIZE+'%'; drawArt(); }}
@@ -1220,15 +1333,25 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return {{x:(t.clientX-r.left)*(cv.width/r.width),
             y:(t.clientY-r.top)*(cv.height/r.height)}};
  }}
- let DRAGGING=false;
- function _startDrag(ev){{ DRAGGING=true; _moveDrag(ev); ev.preventDefault&&ev.preventDefault(); }}
+ let DRAGGING=false, DRAGLAST=null;
+ function _frac(ev){{ const p=_canvasPt(ev);
+   return {{x:(p.x-ART.x)/ART.w, y:(p.y-ART.y)/ART.h}}; }}
+ function _clamp(v,a,b){{ return Math.min(b,Math.max(a,v)); }}
+ function _startDrag(ev){{ DRAGGING=true; DRAGLAST=_frac(ev);
+   if(DRAGMODE!=='photo'||!PHOTO){{ TPOS.x=_clamp(DRAGLAST.x,0.04,0.96);
+     TPOS.y=_clamp(DRAGLAST.y,0.04,0.96); drawArt(); }}
+   ev.preventDefault&&ev.preventDefault(); }}
  function _moveDrag(ev){{ if(!DRAGGING) return;
-   const p=_canvasPt(ev);
-   TPOS.x=Math.min(0.96,Math.max(0.04,(p.x-ART.x)/ART.w));
-   TPOS.y=Math.min(0.96,Math.max(0.04,(p.y-ART.y)/ART.h));
-   drawArt(); ev.preventDefault&&ev.preventDefault();
+   const f=_frac(ev);
+   if(DRAGMODE==='photo' && PHOTO){{                            // pan the photo
+     if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
+       PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }}
+   }} else {{                                                    // move the text
+     TPOS.x=_clamp(f.x,0.04,0.96); TPOS.y=_clamp(f.y,0.04,0.96);
+   }}
+   DRAGLAST=f; drawArt(); ev.preventDefault&&ev.preventDefault();
  }}
- function _endDrag(){{ DRAGGING=false; }}
+ function _endDrag(){{ DRAGGING=false; DRAGLAST=null; }}
  function initTextDrag(){{
    const cv=document.getElementById('mcanvas'); if(!cv||cv.dataset.drag) return;
    cv.dataset.drag='1'; cv.style.cursor='move';
@@ -1249,7 +1372,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;
    drawArt();
  }}
- function onSizeChange(){{ drawArt(); updateReview(); }}  // resize preview to the size's crop
+ function onSizeChange(){{ drawArt(); updateReview(); recheckPhotoRes(); }}
+ // Re-check the uploaded photo's resolution against the CURRENTLY selected size.
+ function recheckPhotoRes(){{
+   const msg=document.getElementById('muploadmsg');
+   if(!PHOTO || !PHOTO.naturalWidth || !msg) return;
+   const inch=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0]
+     .split('x').map(parseFloat);
+   const nw=(inch[0]||18)*150, nh=(inch[1]||24)*150;
+   const big=Math.max(PHOTO.naturalWidth,PHOTO.naturalHeight),
+         small=Math.min(PHOTO.naturalWidth,PHOTO.naturalHeight);
+   const rm=" <span class='rmphoto' onclick='removePhoto()'>remove</span>";
+   if(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)){{ msg.className='note upok';
+     msg.innerHTML=`Great - ${{PHOTO.naturalWidth}}x${{PHOTO.naturalHeight}}px works for ${{inch[0]}}x${{inch[1]}}".`+rm; }}
+   else {{ msg.className='note upbad';
+     msg.innerHTML=`Only ${{PHOTO.naturalWidth}}x${{PHOTO.naturalHeight}}px - too low for a sharp ${{inch[0]}}x${{inch[1]}}" print. Try a larger size or a higher-res photo.`+rm; }}
+ }}
  function renderBg(){{
    document.getElementById('mbg').innerHTML = BGCOLORS.map((c,k)=>
      `<span style="background:${{c}}" class="${{c===SELBG?'sel':''}}" onclick="pickBg('${{c}}',this)" title="${{c}}"></span>`).join('');
@@ -1341,9 +1479,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    else {{ fs=Math.round(h*0.10); lines=wrap(fs);                            // auto-fit
      while((lines.length*fs*1.32)>h*0.82 && fs>9){{fs-=1; lines=wrap(fs);}} }}
    const lh=fs*1.34; const block=lines.length*lh;
-   const cx=x+TPOS.x*w;                                        // text anchor (draggable)
-   let ty=y+TPOS.y*h-block/2+fs*0.9;
-   for(const ln of lines){{ctx.fillText(ln,cx,ty); ty+=lh;}}
+   const ax=x+TPOS.x*w, ay=y+TPOS.y*h;                         // anchor (draggable)
+   ctx.save(); ctx.translate(ax,ay);
+   if(TROT) ctx.rotate(TROT*Math.PI/180);                      // rotate the wording
+   let ty=-block/2+fs*0.9;
+   for(const ln of lines){{ctx.fillText(ln,0,ty); ty+=lh;}}
+   ctx.restore();
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
      crop.textContent = sv
@@ -1560,6 +1701,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/signup') : "";
  const CUSTOMIZE_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/customization') : "";
  const UPLOAD_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/upload') : "";
+ const DESIGN_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/design') : "";
+ const CONFIRM_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/confirm') : "";
  function knownEmail(){{ try{{return localStorage.getItem('jf_email')||"";}}catch(e){{return "";}} }}
  // Send the photo to the server for an AI quality check + attach to the order.
  // (Server also forwards the approved JPG to Gelato by URL.) No-ops if not hosted.
