@@ -340,6 +340,31 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
 
+    @app.route("/signup", methods=["POST", "OPTIONS"])
+    def signup():
+        """Email capture for the on-site exit-intent / newsletter form.
+        POST {"email": "...", "source": "exit_intent"}. CORS-open so the static
+        site can call it. Stored with consent='yes' (explicit form opt-in)."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        data = request.get_json(force=True, silent=True) or {}
+        email = (data.get("email") or "").strip()
+        source = (data.get("source") or "site").strip()[:40]
+        added = False
+        try:
+            from quoteforge.db.database import add_subscriber
+            added = add_subscriber(email, source=source, consent="yes")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"signup failed: {exc}")
+        ok = added or ("@" in email and "." in email.split("@")[-1])
+        resp = jsonify({"status": "ok" if ok else "error",
+                        "added": added})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if ok else 400)
+
     @app.route("/order", methods=["POST"])
     def receive_order():
         from quoteforge.automation.webhook_security import verify_signature

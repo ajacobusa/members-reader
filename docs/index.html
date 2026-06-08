@@ -56,6 +56,37 @@
    border-radius:12px;padding:16px;display:none}
  #qresult h3{color:var(--green);margin:0 0 6px}
  .qclose{float:right;font-size:24px;cursor:pointer;color:#9aa39d}
+ /* exit-intent capture */
+ #exitpop{position:fixed;inset:0;background:rgba(11,28,22,.66);display:none;z-index:80;
+   align-items:center;justify-content:center;padding:24px}
+ .xbox{background:#fff;border-radius:16px;max-width:460px;width:100%;
+   padding:28px;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+ .xbox h2{color:var(--green);font-size:24px;margin:0 0 6px}
+ #xform{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap}
+ #xform input{flex:1;min-width:180px;padding:12px;border:1px solid #cdbf98;
+   border-radius:9px;font-size:15px}
+ #xform .qgo{width:auto;margin:0;padding:12px 18px;white-space:nowrap}
+ #xmsg{font-size:14px;margin:6px 0} #xmsg.xok{color:var(--green)}
+ #xmsg.xbad{color:#a23a3a}
+ /* wedding & corporate packages */
+ .packages{max-width:1100px;margin:46px auto;padding:0 20px;text-align:center}
+ .packages h2{font-size:28px;color:var(--green);margin:0 0 4px}
+ .packages .pksub{color:var(--muted);max-width:680px;margin:0 auto 14px}
+ .pkgrouph{color:var(--green);text-align:left;margin:22px 0 10px;font-size:18px}
+ .pkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+   gap:18px}
+ .pkcard{background:#fff;border:1px solid var(--line);border-radius:14px;
+   padding:18px;text-align:left;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+ .pkname{font-weight:700;color:var(--green);font-size:18px}
+ .pkfrom{font-size:20px;color:#1b1b1f;margin:4px 0}
+ .pkfrom .pkpp{font-size:12px;color:var(--muted);font-weight:400}
+ .pksave{display:inline-block;background:#f3efe0;color:#5a4a2a;font-size:11.5px;
+   padding:2px 8px;border-radius:10px;margin-bottom:6px}
+ .pkblurb{color:var(--muted);font-size:13.5px;line-height:1.5;margin:6px 0}
+ .pkinc{margin:6px 0 12px 18px;padding:0;color:#3a4a42;font-size:13px}
+ .pkinc li{margin:3px 0}
+ .pkcta{display:inline-block;background:var(--green);color:#fff;text-decoration:none;
+   border-radius:22px;padding:9px 16px;font-size:14px;font-weight:600}
  /* bundle builder */
  .bundle{max-width:1100px;margin:30px auto;padding:0 20px;text-align:center}
  .bundle h2{font-size:28px;color:var(--green);margin:0 0 6px}
@@ -318,7 +349,7 @@
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
- <div class="sproof"><span class="spi"><b>3</b> orders made to order</span></div>
+ <div class="sproof"><span class="spi"><b>3</b> orders made to order</span><span class="spi"><b>1</b> on the insider list</span></div>
  <div class="cutoff">⏰ Only 5 days left - order by Jun 12 to get it in time for Father's Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div class="intro">
@@ -338,6 +369,7 @@
  
  
  <div class="shopocc"><div class="lbl">Shop by occasion</div><div class="occrow"><span class="occhip">Graduation</span><span class="occhip">Birthday</span><span class="occhip">Wedding</span><span class="occhip">Anniversary</span><span class="occhip">Mother's Day</span><span class="occhip">Father's Day</span><span class="occhip">Memorial</span><span class="occhip">New Home</span><span class="occhip">Faith</span><span class="occhip">Christmas</span></div></div><div class="why"><h2>Why Joffiels (not a mass printer)</h2><table class="cmp"><tr><th>Joffiels</th><th>Big-box printers</th></tr><tr><td class="us">✓ Designed by a real person for your story</td><td class="them">Templated, mass-produced</td></tr><tr><td class="us">✓ FREE digital proof - approve before we print</td><td class="them">What you upload is what prints</td></tr><tr><td class="us">✓ Made to order, museum-quality materials</td><td class="them">Bulk factory runs</td></tr><tr><td class="us">✓ Custom wording, colors &amp; frame - you preview it live</td><td class="them">Limited presets</td></tr><tr><td class="us">✓ Personal note + gift e-card included free</td><td class="them">Add-on fees</td></tr><tr><td class="us">✓ Happiness guarantee - we make it right</td><td class="them">Rigid return windows</td></tr></table></div><div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is made to order and approved by you on a free proof. If something isn't right, we'll make it right.</div><div class="faqs"><h2>Questions, answered</h2><details class="faq"><summary>Is the frame included?</summary><p>Poster, canvas, acrylic and metal ship without a frame. Choose a "Framed" option to add a real wood frame (6 styles).</p></details><details class="faq"><summary>Can I use my own photo or exact wording?</summary><p>Yes! Upload a high-resolution photo and type your own words - we auto-check quality and send a free proof before printing.</p></details><details class="faq"><summary>How fast will it arrive?</summary><p>We send your proof within ~24h; once approved it's printed and shipped with tracking, typically within 3-5 business days.</p></details><details class="faq"><summary>What if I don't love it?</summary><p>Message us - our happiness guarantee means we'll fix or remake it. Personalized items are made to order, so approval happens on the proof.</p></details></div>
+ <div class="packages"><h2>Wedding &amp; corporate packages</h2><p class="pksub">Curated multi-piece sets - personalized, made to order, and priced for gifting at scale. Every set price still clears our quality and margin standards.</p><h3 class="pkgrouph">💍 Weddings</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">The Vows Set</div><div class="pkfrom">from $417.09 <span class="pkpp">(~$139.03/piece)</span></div><span class="pksave">Set price - 12% vs singles</span><p class="pkblurb">Your wedding vows or first dance lyrics as a framed centerpiece, plus two matching prints for the couple's first home.</p><ul class="pkinc"><li>1 large framed centerpiece (premium wood)</li><li>2 coordinated prints</li><li>Custom names, date & wording</li><li>Free digital proof before printing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20The%20Vows%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Guest & Gift Bundle</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">A signature framed piece for the couple plus a set of small prints as keepsake favors or bridal-party gifts.</p><ul class="pkinc"><li>1 framed signature piece</li><li>4 keepsake prints</li><li>Matching design & palette</li><li>Bulk-friendly pricing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Guest%20&%20Gift%20Bundle">Request this package &rarr;</a></div></div><h3 class="pkgrouph">🏢 Corporate &amp; bulk</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">Team Recognition Set</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Personalized award/values prints for employee recognition, onboarding or milestones - your branding, names and message.</p><ul class="pkinc"><li>5 personalized prints (poster or framed)</li><li>Your logo, colors & wording</li><li>Volume pricing - scales with quantity</li><li>Single invoice, one approval</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Team%20Recognition%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Client Gifting Program</div><div class="pkfrom">from $892.40 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Branded, made-to-order art gifts for clients and partners - ship individually or in bulk, fully personalized.</p><ul class="pkinc"><li>10+ branded gift prints</li><li>Individual personalization</li><li>Recurring/seasonal scheduling available</li><li>Dedicated account contact</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Client%20Gifting%20Program">Request this package &rarr;</a></div></div></div>
  <div class="b2b"><h2>Corporate &amp; bulk gifting</h2><p class="gsub">Personalized art for employee recognition, client gifts, weddings, realtor closings, churches &amp; schools - wholesale pricing on volume orders.</p><div class="b2bform"><input id="bz_name" placeholder="Your name"><input id="bz_co" placeholder="Company / organization"><input id="bz_email" placeholder="Your email"><input id="bz_qty" placeholder="Approx. quantity"><textarea id="bz_msg" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea><button onclick="b2bSend('ajacobusa@gmail.com')">Request a wholesale quote</button></div></div>
  <div class="foot">
    <div class="fbn">Joffiels</div>
@@ -358,6 +390,22 @@
     <div class="qrow"><label>Style</label><select id="q_sty"></select></div>
     <button class="qgo" onclick="runQuiz()">Find my gift &rarr;</button>
     <div id="qresult"></div>
+  </div>
+</div>
+
+<div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
+  <div class="xbox">
+    <span class="qclose" onclick="closeExit()">&times;</span>
+    <h2>Wait - here's 10% off your first piece</h2>
+    <p class="qsub">Join the insider list for an instant discount code, early
+      access to new designs &amp; seasonal gift guides.</p>
+    <div id="xform">
+      <input id="xemail" type="email" placeholder="you@email.com"
+        onkeydown="if(event.key==='Enter')submitExit()">
+      <button class="qgo" onclick="submitExit()">Send my code &rarr;</button>
+    </div>
+    <div id="xmsg"></div>
+    <p class="ftc">No spam - unsubscribe anytime. One email, one code.</p>
   </div>
 </div>
 
@@ -724,6 +772,34 @@
  const ANGE_KB = [{"q": "Is a frame included?", "k": ["frame", "framed", "included", "frame included"], "a": "Poster, canvas, acrylic and metal ship WITHOUT a frame. If you'd like it framed, choose the \"Framed\" material at checkout and pick your frame style (6 options, from a slim black to premium oak, walnut or gold)."}, {"q": "What sizes do you offer?", "k": ["size", "sizes", "dimensions", "how big"], "a": "Sizes range from 8x10 up to 24x36 inches depending on the material. You pick the size (and quantity) right on the product page."}, {"q": "Can I personalize it?", "k": ["personalize", "custom", "wording", "name", "text", "quote", "message"], "a": "Yes - that's our specialty. Add the recipient's name, the occasion, and your own words. You can even preview your colors, font and frame live before you buy."}, {"q": "Can I use my own photo?", "k": ["photo", "upload", "picture", "image", "my own"], "a": "Absolutely. Upload a high-resolution photo (JPG, PNG, PDF or TIFF). We auto-check the quality and, if it's too low for a sharp print, we'll ask for a better version before anything prints."}, {"q": "Do I see it before it prints?", "k": ["proof", "approve", "see before", "preview"], "a": "Always. We send a FREE digital proof and nothing prints until you approve it - so it's exactly right."}, {"q": "How long does it take?", "k": ["ship", "shipping", "delivery", "how long", "arrive", "turnaround", "fast"], "a": "We send your proof within about a day; once you approve, it's printed and shipped with tracking - typically 3-6 business days. Watch for the \"order by\" date near big holidays."}, {"q": "What if I'm not happy?", "k": ["return", "refund", "guarantee", "not happy", "wrong"], "a": "We stand behind every piece with our happiness guarantee - if something isn't right, message us and we'll make it right. (Because each item is personalized and made to order, approval happens on your free proof.) For a specific order issue, a team member will help you personally."}, {"q": "What materials are available?", "k": ["material", "materials", "canvas", "acrylic", "metal", "paper", "quality"], "a": "Premium poster prints, gallery-wrapped canvas, framed prints, acrylic and metal - all museum-quality, made to order."}, {"q": "Can I send it as a gift?", "k": ["gift", "ecard", "e-card", "gift card", "send a gift", "surprise"], "a": "Yes! Add a gift e-card and we'll send your recipient a beautiful announcement with a free personal note - perfect for surprises and last-minute or long-distance gifts."}, {"q": "How much does it cost / are there discounts?", "k": ["price", "cost", "discount", "bundle", "how much", "cheaper"], "a": "Prices depend on material and size (shown live as you choose). Order more than one and a quantity discount applies automatically - great for gallery sets or gifting several people."}, {"q": "Do you do bulk / corporate orders?", "k": ["bulk", "wholesale", "corporate", "business", "many", "b2b"], "a": "Yes - we offer wholesale pricing for corporate gifts, weddings, realtors, churches and schools. Use the 'Corporate & bulk gifting' form and we'll send a quote."}, {"q": "Can you make a pet or memorial piece?", "k": ["pet", "dog", "cat", "memorial", "remembrance", "loss"], "a": "Yes - pet portraits and memorial keepsakes are some of our most loved pieces. Upload a clear photo and add your words; we'll send a free proof."}, {"q": "Can I choose colors and fonts?", "k": ["color", "colour", "background", "font", "change colors"], "a": "Yes! On each product you can preview different background colors, text colors and fonts live, and we confirm everything on your free proof."}, {"q": "Do you offer a subscription?", "k": ["subscription", "membership", "monthly", "club"], "a": "We do - a membership delivers a fresh personalized piece on a schedule (quarterly, half-year or annual). A lovely ongoing gift."}, {"q": "Can I track my order?", "k": ["track", "tracking", "where is", "status"], "a": "Yes, every order ships with tracking. For the status of a specific order, message the team and we'll look it up for you."}, {"q": "Do you sell digital downloads?", "k": ["digital", "download", "printable", "file"], "a": "Selected designs are available as instant printable digital files - a great budget or last-minute option. Check the product options."}, {"q": "Do you ship internationally?", "k": ["international", "worldwide", "country", "outside us"], "a": "Yes - we ship worldwide with tracking via our global print network, so your order is produced close to the destination where possible."}, {"q": "How do I care for it?", "k": ["care", "clean", "wash", "maintain", "fade", "last"], "a": "Wipe gently with a soft, dry (or barely damp) cloth - no harsh cleaners. Hang out of direct, harsh sunlight to keep colors vivid for years. Canvas and acrylic just need an occasional light dusting."}, {"q": "Will it arrive in time?", "k": ["when", "in time", "deadline", "order by", "before christmas", "rush", "how soon"], "a": "We send your proof within ~1 day; after you approve, it prints and ships (typically 3-6 business days). Near big holidays, watch the 'order by' date on the site, and message us if it's urgent - we'll do our best."}, {"q": "What size should I get?", "k": ["what size", "which size", "how big should", "wall", "room", "recommend size"], "a": "For a desk, nightstand or gallery wall, 8x10-11x14 is perfect. For above a sofa, bed or as a statement piece, go 16x20-24x36. Tell me the spot and I'll suggest a size!"}, {"q": "What payment methods can I use?", "k": ["pay", "payment", "paypal", "card", "afterpay", "klarna"], "a": "Checkout is secure through Etsy - credit/debit cards, PayPal, Apple Pay, Google Pay, Etsy gift cards, and (where available) Klarna/Afterpay."}, {"q": "How long does it take to make?", "k": ["how long", "processing", "make time", "production"], "a": "Because each piece is personalized and made to order: proof within ~1 day, then production + tracked shipping, usually 3-6 business days after you approve the proof."}];
  const ANGE_OWNER = "ajacobusa@gmail.com";
  const ANGE_API = "";
+ // ── Exit-intent email capture ──
+ const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\/ask$/,'/signup') : "";
+ const SIGNUP_URL = "";
+ let EXIT_SHOWN = false;
+ function _exitDone(){ try{localStorage.setItem('jf_exit','1');}catch(e){} }
+ function _exitSeen(){ try{return localStorage.getItem('jf_exit')==='1';}catch(e){return false;} }
+ function openExit(){ if(EXIT_SHOWN||_exitSeen())return; EXIT_SHOWN=true;
+   document.getElementById('exitpop').style.display='flex'; }
+ function closeExit(){ document.getElementById('exitpop').style.display='none'; _exitDone(); }
+ function submitExit(){
+   const v=(document.getElementById('xemail').value||'').trim();
+   const msg=document.getElementById('xmsg');
+   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){
+     msg.className='xbad'; msg.textContent='Please enter a valid email.'; return; }
+   const finish=()=>{ msg.className='xok';
+     msg.innerHTML='🎉 You\'re in! Use code <b>WELCOME10</b> for 10% off your first order.';
+     document.getElementById('xform').style.display='none'; _exitDone(); };
+   if(SIGNUP_API){
+     fetch(SIGNUP_API,{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({email:v,source:'exit_intent'})}).then(finish).catch(finish);
+   } else if(SIGNUP_URL){ window.open(SIGNUP_URL,'_blank'); finish();
+   } else { finish(); }
+ }
+ // desktop: fire when cursor leaves the top of the viewport
+ document.addEventListener('mouseout',function(e){
+   if(!e.relatedTarget && e.clientY<=0) openExit(); });
+ // mobile/fallback: fire after 40s of engagement
+ setTimeout(function(){ if(!_exitSeen()) openExit(); }, 40000);
  function toggleAnge(){const p=document.getElementById('angePanel');
    const open=p.style.display!=='block'; p.style.display=open?'block':'none';
    if(open && !document.getElementById('angeMsgs').dataset.init){

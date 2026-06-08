@@ -366,6 +366,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         from quoteforge.config import ASK_ANGE_API_URL as ask_api_url
     except Exception:  # noqa: BLE001
         ask_api_url = ""
+    try:
+        from quoteforge.config import SIGNUP_URL as signup_url
+    except Exception:  # noqa: BLE001
+        signup_url = ""
+    try:
+        from quoteforge.etsy.packages import packages_section
+        from quoteforge.config import B2B_CONTACT_EMAIL as _b2b
+        packages_html = packages_section(_b2b or owner)
+    except Exception:  # noqa: BLE001
+        packages_html = ""
 
     gate = "" if not password else f"""
 <div id="gate">
@@ -450,6 +460,37 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:12px;padding:16px;display:none}}
  #qresult h3{{color:var(--green);margin:0 0 6px}}
  .qclose{{float:right;font-size:24px;cursor:pointer;color:#9aa39d}}
+ /* exit-intent capture */
+ #exitpop{{position:fixed;inset:0;background:rgba(11,28,22,.66);display:none;z-index:80;
+   align-items:center;justify-content:center;padding:24px}}
+ .xbox{{background:#fff;border-radius:16px;max-width:460px;width:100%;
+   padding:28px;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,.45)}}
+ .xbox h2{{color:var(--green);font-size:24px;margin:0 0 6px}}
+ #xform{{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap}}
+ #xform input{{flex:1;min-width:180px;padding:12px;border:1px solid #cdbf98;
+   border-radius:9px;font-size:15px}}
+ #xform .qgo{{width:auto;margin:0;padding:12px 18px;white-space:nowrap}}
+ #xmsg{{font-size:14px;margin:6px 0}} #xmsg.xok{{color:var(--green)}}
+ #xmsg.xbad{{color:#a23a3a}}
+ /* wedding & corporate packages */
+ .packages{{max-width:1100px;margin:46px auto;padding:0 20px;text-align:center}}
+ .packages h2{{font-size:28px;color:var(--green);margin:0 0 4px}}
+ .packages .pksub{{color:var(--muted);max-width:680px;margin:0 auto 14px}}
+ .pkgrouph{{color:var(--green);text-align:left;margin:22px 0 10px;font-size:18px}}
+ .pkgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+   gap:18px}}
+ .pkcard{{background:#fff;border:1px solid var(--line);border-radius:14px;
+   padding:18px;text-align:left;box-shadow:0 2px 12px rgba(0,0,0,.05)}}
+ .pkname{{font-weight:700;color:var(--green);font-size:18px}}
+ .pkfrom{{font-size:20px;color:#1b1b1f;margin:4px 0}}
+ .pkfrom .pkpp{{font-size:12px;color:var(--muted);font-weight:400}}
+ .pksave{{display:inline-block;background:#f3efe0;color:#5a4a2a;font-size:11.5px;
+   padding:2px 8px;border-radius:10px;margin-bottom:6px}}
+ .pkblurb{{color:var(--muted);font-size:13.5px;line-height:1.5;margin:6px 0}}
+ .pkinc{{margin:6px 0 12px 18px;padding:0;color:#3a4a42;font-size:13px}}
+ .pkinc li{{margin:3px 0}}
+ .pkcta{{display:inline-block;background:var(--green);color:#fff;text-decoration:none;
+   border-radius:22px;padding:9px 16px;font-size:14px;font-weight:600}}
  /* bundle builder */
  .bundle{{max-width:1100px;margin:30px auto;padding:0 20px;text-align:center}}
  .bundle h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
@@ -714,6 +755,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
+ {packages_html}
  {_gift_and_b2b_section(owner)}
  <div class="foot">
    <div class="fbn">{SHOP_NAME}</div>
@@ -734,6 +776,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     <div class="qrow"><label>Style</label><select id="q_sty"></select></div>
     <button class="qgo" onclick="runQuiz()">Find my gift &rarr;</button>
     <div id="qresult"></div>
+  </div>
+</div>
+
+<div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
+  <div class="xbox">
+    <span class="qclose" onclick="closeExit()">&times;</span>
+    <h2>Wait - here's 10% off your first piece</h2>
+    <p class="qsub">Join the insider list for an instant discount code, early
+      access to new designs &amp; seasonal gift guides.</p>
+    <div id="xform">
+      <input id="xemail" type="email" placeholder="you@email.com"
+        onkeydown="if(event.key==='Enter')submitExit()">
+      <button class="qgo" onclick="submitExit()">Send my code &rarr;</button>
+    </div>
+    <div id="xmsg"></div>
+    <p class="ftc">No spam - unsubscribe anytime. One email, one code.</p>
   </div>
 </div>
 
@@ -1100,6 +1158,34 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const ANGE_KB = {ange_kb_json};
  const ANGE_OWNER = "{owner}";
  const ANGE_API = "{ask_api_url}";
+ // ── Exit-intent email capture ──
+ const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/signup') : "";
+ const SIGNUP_URL = "{signup_url}";
+ let EXIT_SHOWN = false;
+ function _exitDone(){{ try{{localStorage.setItem('jf_exit','1');}}catch(e){{}} }}
+ function _exitSeen(){{ try{{return localStorage.getItem('jf_exit')==='1';}}catch(e){{return false;}} }}
+ function openExit(){{ if(EXIT_SHOWN||_exitSeen())return; EXIT_SHOWN=true;
+   document.getElementById('exitpop').style.display='flex'; }}
+ function closeExit(){{ document.getElementById('exitpop').style.display='none'; _exitDone(); }}
+ function submitExit(){{
+   const v=(document.getElementById('xemail').value||'').trim();
+   const msg=document.getElementById('xmsg');
+   if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v)){{
+     msg.className='xbad'; msg.textContent='Please enter a valid email.'; return; }}
+   const finish=()=>{{ msg.className='xok';
+     msg.innerHTML='🎉 You\\'re in! Use code <b>WELCOME10</b> for 10% off your first order.';
+     document.getElementById('xform').style.display='none'; _exitDone(); }};
+   if(SIGNUP_API){{
+     fetch(SIGNUP_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{email:v,source:'exit_intent'}})}}).then(finish).catch(finish);
+   }} else if(SIGNUP_URL){{ window.open(SIGNUP_URL,'_blank'); finish();
+   }} else {{ finish(); }}
+ }}
+ // desktop: fire when cursor leaves the top of the viewport
+ document.addEventListener('mouseout',function(e){{
+   if(!e.relatedTarget && e.clientY<=0) openExit(); }});
+ // mobile/fallback: fire after 40s of engagement
+ setTimeout(function(){{ if(!_exitSeen()) openExit(); }}, 40000);
  function toggleAnge(){{const p=document.getElementById('angePanel');
    const open=p.style.display!=='block'; p.style.display=open?'block':'none';
    if(open && !document.getElementById('angeMsgs').dataset.init){{
