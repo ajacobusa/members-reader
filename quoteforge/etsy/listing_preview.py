@@ -107,9 +107,12 @@ def _competitive_sections() -> str:
         for q, a in faqs)
     occ = ["Graduation", "Birthday", "Wedding", "Anniversary", "Mother's Day",
            "Father's Day", "Memorial", "New Home", "Faith", "Christmas"]
-    chips = "".join(f'<span class="occhip">{o}</span>' for o in occ)
+    chips = ('<span class="occhip sel" onclick="shopByOccasion(\'\',this)">All</span>'
+             + "".join(f'<span class="occhip" '
+                       f'onclick="shopByOccasion(\'{o}\',this)">{o}</span>' for o in occ))
     return (
-        f'<div class="shopocc"><div class="lbl">Shop by occasion</div>'
+        f'<div class="shopocc"><div class="lbl">Shop by occasion '
+        f'<span style="color:#9aa49c">(tap to filter)</span></div>'
         f'<div class="occrow">{chips}</div></div>'
         f'<div class="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
@@ -474,6 +477,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .navquiz{{margin-left:14px;background:var(--gold);color:#22301e;border:none;
    border-radius:20px;padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer}}
  .navquiz:hover{{background:var(--gold-d)}}
+ .navbasket{{margin-left:10px;background:var(--green);color:#fff;border:none;
+   border-radius:20px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer}}
+ .navbasket:hover{{background:var(--green-d)}}
+ .navbasket #basketCountNav{{background:#fff;color:var(--green);border-radius:50%;
+   padding:1px 8px;margin-left:4px;font-size:13px}}
+ #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
    align-items:flex-start;justify-content:center;overflow:auto;padding:24px}}
@@ -677,7 +686,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .shopocc .lbl{{font-size:13px;color:var(--muted);margin-bottom:8px}}
  .occrow{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}}
  .occhip{{background:#fff;border:1px solid var(--line);border-radius:18px;
-   padding:7px 14px;font-size:13px;color:var(--green)}}
+   padding:7px 14px;font-size:13px;color:var(--green);cursor:pointer}}
+ .occhip:hover{{border-color:var(--gold)}}
+ .occhip.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .occnote{{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}}
+ .baddlbl{{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}}
+ .bopt.sel .baddlbl{{color:#0a6b3b}}
  .why{{max-width:760px;margin:34px auto 10px;padding:0 20px;text-align:center}}
  .why h2{{font-size:28px;color:var(--green);margin:0 0 12px}}
  .cmp{{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
@@ -859,6 +873,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
    <span class="bn">{SHOP_NAME}</span>
    <button class="navquiz" onclick="openQuiz()">🎁 Gift Finder</button>
+   <button class="navbasket" id="basketBtnNav" onclick="toggleBasket()">🛒 Basket <span id="basketCountNav">0</span></button>
  </div>
  <div class="hero">
    {f'<img class="hero-banner" src="{banner_src}">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
@@ -886,6 +901,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      story. Choose poster, framed, canvas, acrylic or metal at checkout; a free
      digital proof is sent before anything is printed.</p>
  </div>
+ <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
  <div class="bundle">
    <h2>Build a gallery set &amp; save</h2>
@@ -1125,7 +1141,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function render(){{
    const g = document.getElementById('grid');
    g.innerHTML = DATA.map((d,i) => `
-     <div class="card" onclick="openM(${{i}})">
+     <div class="card" data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" onclick="openM(${{i}})">
        <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="">
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">Starting at $${{d.price}}</div>
@@ -1133,6 +1149,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="fb">Tap to choose frame / canvas &amp; see it</span>
        </div>
      </div>`).join('');
+ }}
+ // Filter the product grid by occasion (Shop by occasion chips).
+ function shopByOccasion(occ, el){{
+   const q=(occ||'').toLowerCase();
+   let shown=0;
+   document.querySelectorAll('#grid .card').forEach(c=>{{
+     const ok = !q || (c.getAttribute('data-title')||'').indexOf(q)>=0;
+     c.style.display = ok ? '' : 'none'; if(ok) shown++;
+   }});
+   document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
+   const note=document.getElementById('occnote');
+   if(note) note.textContent = q ? `${{shown}} design${{shown!==1?'s':''}} for "${{occ}}"` : '';
+   const grid=document.getElementById('grid');
+   if(grid) grid.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars();
@@ -1235,6 +1265,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    CART=[]; renderCart(); }}
  function renderBasket(){{
    const cnt=document.getElementById('basketCount'); if(cnt)cnt.textContent=CART.length;
+   const cntN=document.getElementById('basketCountNav'); if(cntN)cntN.textContent=CART.length;
    const ln=document.getElementById('basketLines'), tt=document.getElementById('basketTotal');
    if(!ln) return;
    if(!CART.length){{ ln.innerHTML='<div class="note">Your basket is empty. Tap a design, personalize it, and Add to order.</div>';
@@ -1271,7 +1302,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
  function openBasketFromModal(){{ toggleBasket(); }}
- function pulseBasket(){{ const b=document.getElementById('basketBtn'); if(!b)return;
+ function pulseBasket(){{ const b=document.getElementById('basketBtnNav'); if(!b)return;
    b.classList.add('pulse'); setTimeout(()=>b.classList.remove('pulse'),1000); }}
  // Primary action: add the current personalized design to the basket.
  function addToBasket(){{
@@ -1733,9 +1764,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function renderBundle(){{
    const g=document.getElementById('bgrid'); if(!g)return;
    g.innerHTML=DATA.map((d,i)=>
-     `<div class="bopt ${{BSEL.has(i)?'sel':''}}" onclick="toggleBundle(${{i}})">`+
+     `<div class="bopt ${{BSEL.has(i)?'sel':''}}" onclick="toggleBundle(${{i}})" `+
+     `title="Tap to add this design to your gallery set">`+
      `<span class="bcheck">${{BSEL.has(i)?'✓':'+'}}</span>`+
-     `<img src="${{d.imgs[0]}}" loading="lazy"><div>${{d.title.slice(0,28)}}</div></div>`).join('');
+     `<img src="${{d.imgs[0]}}" loading="lazy"><div>${{d.title.slice(0,28)}}</div>`+
+     `<div class="baddlbl">${{BSEL.has(i)?'✓ In your set':'+ Add to set'}}</div></div>`).join('');
    const n=BSEL.size; const disc=qdisc(n);
    const t=document.getElementById('btot');
    if(n===0){{ t.classList.remove('on');
@@ -1786,7 +1819,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
 </script>
 
-<button id="basketBtn" onclick="toggleBasket()">🛒 Basket <span id="basketCount">0</span></button>
 <div id="basketPanel" onclick="if(event.target.id==='basketPanel')toggleBasket()">
   <div class="bpbox">
     <span class="qclose" onclick="toggleBasket()">&times;</span>

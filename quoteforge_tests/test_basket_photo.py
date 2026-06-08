@@ -17,7 +17,8 @@ def _page(tmp_path):
 
 def test_persistent_basket_in_page(tmp_path):
     h = _page(tmp_path)
-    assert 'id="basketBtn"' in h and "function renderBasket" in h
+    assert 'id="basketBtnNav"' in h and "function renderBasket" in h
+    assert "class=\"navbasket\"" in h  # basket lives in the top nav
     assert "function checkout" in h and "function clearBasket" in h
     assert "function toggleBasket" in h
 
@@ -104,3 +105,12 @@ def test_add_to_basket_and_two_mode_proof(tmp_path):
     assert "function proofAccept" in h and "function addFromProof" in h
     assert "showFinalProof('item')" in h and "showFinalProof('final')" in h
     assert 'id="mbasketbar"' in h and "function pulseBasket" in h
+
+
+def test_shop_by_occasion_and_nav_basket(tmp_path):
+    """Occasion chips filter the grid; basket lives in the nav; bundle cards labeled."""
+    h = _page(tmp_path)
+    assert "function shopByOccasion" in h and "onclick=\"shopByOccasion(" in h
+    assert "data-title=" in h  # cards carry their title for filtering
+    assert 'class="navbasket"' in h and 'id="basketBtnNav"' in h
+    assert "Add to set" in h  # bundle cards now state the action
