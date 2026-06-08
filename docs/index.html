@@ -392,7 +392,12 @@
  .photorow .pcenter{background:var(--green);color:#fff;border:none}
  #mcanvas{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:4px;background:#103d2e}
- .mcrop{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 8px}
+ .mcrop{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}
+ .dragbar{display:flex;align-items:center;justify-content:center;gap:6px;
+   font-size:12px;color:var(--muted);margin:0 0 10px;flex-wrap:wrap}
+ .dragbar .dmbtn{background:#fff;border:1px solid var(--line);border-radius:14px;
+   padding:4px 12px;font-size:12.5px;cursor:pointer;color:var(--green)}
+ .dragbar .dmbtn.sel{background:var(--green);color:#fff;border-color:var(--green)}
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px}
  .orderbox .lbl{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}
@@ -578,6 +583,10 @@
      <div class="mleft">
        <canvas id="mcanvas" width="520" height="650"></canvas>
        <div id="mcrop" class="mcrop"></div>
+       <div class="dragbar">✋ Drag on the preview to move:
+         <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">✍️ Text</button>
+         <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">🖼️ Photo</button>
+       </div>
        <div class="fpick" id="mfpick" style="display:none">
          <div class="lbl">👉 Choose your frame / material:</div>
          <div class="fchips" id="mfchips"></div>
@@ -616,13 +625,9 @@
            <input type="range" id="mtrot" min="-45" max="45" value="0" step="1"
              oninput="setTextRot(this.value)">
          </div>
-         <div class="swrow">✋ Drag on the preview to move
-           <span class="dragmode">
-             <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">Text</button>
-             <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">Photo</button>
-           </span></div>
-         <div class="note">You can drag the wording (or your photo) anywhere in the
-           frame, resize and rotate the text, and fine-tune the photo fit. Nothing is
+         <div class="note">Use the <b>Move: Text / Photo</b> toggle under the preview
+           to drag the wording or the photo (one at a time). Resize &amp; rotate the
+           text above; fine-tune the photo fit below. Nothing is
            final until you review &amp; accept - and we still send a free proof.</div>
          <div class="note">Background, text color, font, size, position &amp; wording are all free -
            the preview updates instantly and final details are confirmed on your
@@ -772,7 +777,7 @@
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
-   TPOS={x:0.5,y:0.5}; TSIZE=0; TROT=0; DRAGMODE='text';
+   TPOS={x:0.5,y:0.5}; TSIZE=0; TROT=0; setDragMode('text');
    var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
    var tl=document.getElementById('mtsizelbl'); if(tl)tl.textContent='Auto';
    var tr=document.getElementById('mtrot'); if(tr)tr.value=0;

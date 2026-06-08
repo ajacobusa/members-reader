@@ -115,3 +115,11 @@ def test_shop_by_occasion_and_nav_basket(tmp_path):
     assert "data-title=" in h  # cards carry their title for filtering
     assert 'class="navbasket"' in h and 'id="basketBtnNav"' in h
     assert "Add to set" in h  # bundle cards now state the action
+
+
+def test_drag_toggle_under_preview(tmp_path):
+    """A clear Text/Photo move toggle sits under the preview so each is movable."""
+    h = _page(tmp_path)
+    assert 'class="dragbar"' in h
+    assert 'data-m="text"' in h and 'data-m="photo"' in h
+    assert "setDragMode('text')" in h and "setDragMode('photo')" in h
