@@ -103,7 +103,7 @@ def format_profit_text(orders: list[dict] | None = None) -> str:
     o = optimize(orders)
     if not o["sales"]:
         return ("Profit Optimization Engine\n" + "-" * 44 +
-                "\nNo confirmed sales yet - profit-per dimension will populate "
+                "\nNo confirmed sales yet - profit per dimension will populate "
                 "after your first orders.")
     lines = ["Profit Optimization Engine (real sales)", "-" * 44,
              f"  Confirmed sales : {o['sales']}",

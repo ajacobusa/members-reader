@@ -33,7 +33,7 @@ def social_proof_bar() -> str:
     s = social_proof_stats()
     items = []
     if s["orders"] > 0:
-        items.append(f'<span class="spi"><b>{s["orders"]:,}</b> orders made to order</span>')
+        items.append(f'<span class="spi"><b>{s["orders"]:,}</b> made-to-order pieces</span>')
     if s["reviews"] > 0:
         stars = "★" * int(round(s["avg"]))
         items.append(f'<span class="spi"><b>{s["avg"]}</b> {stars} '
