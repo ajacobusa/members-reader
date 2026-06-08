@@ -1095,8 +1095,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                <button type="button" class="pcenter" onclick="autoCenterPhoto()">Center</button>
                <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
              </div>
-             <div class="note">Our AI auto-centers the subject on upload; fine-tune
-               here. Final crop is confirmed on your free proof.</div>
+             <div class="note">✋ <b>Drag the photo on the preview to position it</b>
+               (switch the drag toggle to <b>Text</b> to move the wording). Use Zoom
+               for more room. AI auto-centers the subject on upload; final crop is
+               confirmed on your free proof.</div>
            </div>
            <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
              auto-checks quality and asks for a better photo if needed; your
@@ -1457,7 +1459,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
    const inp=document.getElementById('mupload'); if(inp)inp.value='';
    const msg=document.getElementById('muploadmsg'); if(msg){{msg.className='note';msg.textContent='';}}
-   _showPhotoCtl(false); drawArt();
+   setDragMode('text'); _showPhotoCtl(false); drawArt();
  }}
  function checkUpload(){{const inp=document.getElementById('mupload'),msg=document.getElementById('muploadmsg');
    const f=inp.files&&inp.files[0]; if(!f){{removePhoto();return;}}
@@ -1477,6 +1479,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        msg.innerHTML=`Only ${{img.width}}x${{img.height}}px - too low for a sharp ${{inches[0]}}x${{inches[1]}}" print (previewing anyway). Please upload a higher-resolution original.`+rm;}}
      PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
+     setDragMode('photo');                    // dragging now moves the PHOTO
      _showPhotoCtl(true); drawArt(); aiCheckPhoto(f);}};
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
@@ -1618,7 +1621,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h);                 // art background
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){{        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
-     const cover=Math.max(w/iw, h/ih)*PHOTO_ZOOM;             // fill + zoom
+     // small bleed (1.06) so there's always room to drag/reposition the photo
+     const cover=Math.max(w/iw, h/ih)*1.06*PHOTO_ZOOM;        // fill + bleed + zoom
      const dw=iw*cover, dh=ih*cover;
      // place so the focal point (PHOTO_FX,PHOTO_FY of the image) sits at frame center
      let dx=(x+w/2)-PHOTO_FX*dw, dy=(y+h/2)-PHOTO_FY*dh;
