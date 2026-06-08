@@ -57,3 +57,13 @@ def test_upload_returns_focal(tmp_path, monkeypatch):
         "file": (buf, "p.jpg")}, content_type="multipart/form-data")
     j = r.get_json()
     assert r.status_code == 200 and "focal" in j and "x" in j["focal"]
+
+
+def test_preview_matches_selected_size_crop(tmp_path):
+    """Preview must use the selected size's aspect ratio so the crop is accurate."""
+    h = _page(tmp_path)
+    assert "function _printAR" in h and "function onSizeChange" in h
+    assert 'id="mcrop"' in h and "Final print preview" in h
+    assert 'onchange="onSizeChange()"' in h
+    # aspect-fit logic present (fit framed piece to size ratio)
+    assert "AW/AH > ar" in h

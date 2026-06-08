@@ -330,7 +330,8 @@
    padding:4px 9px;font-size:13px;cursor:pointer;color:var(--green)}
  .photorow .pcenter{background:var(--green);color:#fff;border:none}
  #mcanvas{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
-   margin-bottom:8px;background:#103d2e}
+   margin-bottom:4px;background:#103d2e}
+ .mcrop{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 8px}
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px}
  .orderbox .lbl{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}
@@ -488,6 +489,7 @@
    <div class="mbody">
      <div class="mleft">
        <canvas id="mcanvas" width="520" height="650"></canvas>
+       <div id="mcrop" class="mcrop"></div>
        <div class="fpick" id="mfpick" style="display:none">
          <div class="lbl">👉 Choose your frame / material:</div>
          <div class="fchips" id="mfchips"></div>
@@ -530,7 +532,7 @@
        <div class="orderbox">
          <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)</div>
          <div class="orow">
-           <label>Size <select id="msize" onchange="updateReview()"></select></label>
+           <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
            <label>Qty <select id="mqty"></select></label>
            <button class="addbtn" data-ab="primary_cta" onclick="addToOrder()">Add to order</button>
          </div>
@@ -657,7 +659,7 @@
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
    renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
    initTextDrag();
-   fillQty(); fillSizes(); renderCart(); updateReview();
+   fillQty(); fillSizes(); drawArt(); renderCart(); updateReview();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5; _showPhotoCtl(false);
    var ui=document.getElementById('mupload'); if(ui) ui.value="";
@@ -838,6 +840,7 @@
    document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;
    drawArt();
  }
+ function onSizeChange(){ drawArt(); updateReview(); }  // resize preview to the size's crop
  function renderBg(){
    document.getElementById('mbg').innerHTML = BGCOLORS.map((c,k)=>
      `<span style="background:${c}" class="${c===SELBG?'sel':''}" onclick="pickBg('${c}',this)" title="${c}"></span>`).join('');
@@ -875,12 +878,22 @@
      return {t:0.014, color:'#c9ccce', mat:false};
    return null;  // Poster / Canvas = unframed
  }
+ function _printAR(){  // width/height ratio of the selected print size (e.g. 8x10 -> 0.8)
+   const sv=((document.getElementById('msize')||{}).value||'').split('|')[0];
+   const m=sv.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/);
+   if(m){ const a=parseFloat(m[1]), b=parseFloat(m[2]); if(a>0&&b>0) return a/b; }
+   return 0.8;  // default 4:5 portrait
+ }
  function drawArt(){
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
    ctx.fillStyle=SELWALL; ctx.fillRect(0,0,W,H);             // room wall
    const m=16, spec=frameSpec();
-   let x=m,y=m,w=W-2*m,h=H-2*m;
+   // Fit the framed piece to the SELECTED SIZE's aspect ratio so the preview shows
+   // the true print proportions (and how the photo will crop). Centered on wall.
+   const ar=_printAR(), AW=W-2*m, AH=H-2*m;
+   let w,h; if(AW/AH > ar){ h=AH; w=AH*ar; } else { w=AW; h=AW/ar; }
+   let x=(W-w)/2, y=(H-h)/2;
    // drop shadow for depth
    ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h);
    if(spec){ const t=spec.t*w;
@@ -922,6 +935,11 @@
    const cx=x+TPOS.x*w;                                        // text anchor (draggable)
    let ty=y+TPOS.y*h-block/2+fs*0.9;
    for(const ln of lines){ctx.fillText(ln,cx,ty); ty+=lh;}
+   const crop=document.getElementById('mcrop');
+   if(crop){ const sv=((document.getElementById('msize')||{}).value||'').split('|')[0];
+     crop.textContent = sv
+       ? `📐 Final print preview - actual ${sv}" crop`+(PHOTO?" (photo auto-fit to frame)":"")
+       : "📐 Final print preview"; }
    saveDraft(); updateReview();
  }
  // ── Single-item review: show exactly what you're adding, before you add ──
