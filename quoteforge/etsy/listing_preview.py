@@ -523,11 +523,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .bundle h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
  .bgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
    gap:10px;margin:14px 0}}
- .bopt{{border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer;
-   background:#fff;font-size:12px}}
+ .bopt{{position:relative;border:1px solid var(--line);border-radius:10px;padding:8px;
+   cursor:pointer;background:#fff;font-size:12px;transition:box-shadow .12s,transform .12s}}
+ .bopt:hover{{box-shadow:0 4px 14px rgba(0,0,0,.12);transform:translateY(-2px)}}
  .bopt.sel{{border-color:var(--green);box-shadow:0 0 0 2px var(--green)}}
  .bopt img{{width:100%;border-radius:6px;aspect-ratio:1/1;object-fit:cover}}
- .btot{{font-size:16px;font-weight:600;color:var(--green);margin-top:6px}}
+ .bcheck{{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;
+   background:#fff;border:1px solid var(--line);color:#9aa39d;font-weight:700;
+   display:flex;align-items:center;justify-content:center;font-size:14px}}
+ .bopt.sel .bcheck{{background:var(--green);border-color:var(--green);color:#fff}}
+ .btot{{font-size:15px;font-weight:600;color:var(--muted);margin:14px auto 0;
+   max-width:760px;padding:12px 16px;border-radius:12px;background:#f6f2e7;
+   border:1px dashed var(--line)}}
+ .btot.on{{position:sticky;bottom:12px;z-index:60;color:#22301e;background:var(--gold);
+   border:none;box-shadow:0 8px 24px rgba(0,0,0,.18)}}
+ .btot .bsave{{color:#0a6b3b}}
  .hero{{position:relative}} .hero-banner{{width:100%;display:block}}
  .hero-fallback{{background:linear-gradient(160deg,#103d2e,#0b2c21);color:#fff;
    padding:64px 20px;text-align:center}}
@@ -1220,13 +1230,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const g=document.getElementById('bgrid'); if(!g)return;
    g.innerHTML=DATA.map((d,i)=>
      `<div class="bopt ${{BSEL.has(i)?'sel':''}}" onclick="toggleBundle(${{i}})">`+
+     `<span class="bcheck">${{BSEL.has(i)?'✓':'+'}}</span>`+
      `<img src="${{d.imgs[0]}}" loading="lazy"><div>${{d.title.slice(0,28)}}</div></div>`).join('');
    const n=BSEL.size; const disc=qdisc(n);
    const t=document.getElementById('btot');
-   if(n<2){{t.textContent='Select 2 or more to see your set price.'; return;}}
+   if(n===0){{ t.classList.remove('on');
+     t.innerHTML='Tap designs below to build your set (2 = 8% off, 3 = 12%, 4+ = 15%).'; return; }}
+   if(n===1){{ t.classList.add('on');
+     t.innerHTML='<b>1 selected</b> — add 1 more to unlock 8% off your set.'; return; }}
    let base=0; BSEL.forEach(i=>base+=parseFloat(DATA[i].price));
    const total=(base*(1-disc)).toFixed(2);
-   t.textContent=`${{n}} prints &middot; ${{Math.round(disc*100)}}% off &middot; set from $${{total}} (mix sizes/frames at checkout)`;
+   const saved=(base-total).toFixed(2);
+   t.classList.add('on');
+   t.innerHTML=`<b>${{n}} prints selected</b> &middot; ${{Math.round(disc*100)}}% off &middot; `+
+     `set from <b>$${{total}}</b> <span class="bsave">(save $${{saved}})</span> `+
+     `&middot; mix sizes/frames at checkout`;
  }}
  function toggleBundle(i){{ if(BSEL.has(i))BSEL.delete(i); else BSEL.add(i); renderBundle(); }}
  renderBundle();
