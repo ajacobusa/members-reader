@@ -721,6 +721,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .fonts{{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}}
  .fonts .fchip{{font-size:14px}}
  .perso .swrow{{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}}
+ .tsizerow{{display:flex;align-items:center;gap:10px;margin-bottom:6px}}
+ .tsizerow input[type=range]{{flex:1;accent-color:var(--green)}}
+ .tposreset{{background:#fff;border:1px solid var(--line);border-radius:14px;
+   padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}}
+ .tposhint{{margin-left:8px;color:#9aa49c;font-weight:400}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:8px;background:#103d2e}}
  .orderbox{{margin-top:14px;background:#fff;border:1px solid var(--line);
@@ -890,7 +895,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="cc"><span id="mcc">0 / 250</span> characters</div>
          <div class="swrow">Font</div>
          <div class="fonts" id="mfonts"></div>
-         <div class="note">Background, text color, font &amp; wording are all free -
+         <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span>
+           <span class="tposhint">✋ drag the text on the preview to move it</span></div>
+         <div class="tsizerow">
+           <input type="range" id="mtsize" min="0" max="22" value="0" step="1"
+             oninput="setTextSize(this.value)">
+           <button type="button" class="tposreset" onclick="resetTextPos()">Reset</button>
+         </div>
+         <div class="note">Background, text color, font, size, position &amp; wording are all free -
            the preview updates instantly and final details are confirmed on your
            FREE digital proof before printing.</div>
        </div>
@@ -997,10 +1009,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
+   TPOS={{x:0.5,y:0.5}}; TSIZE=0;
+   var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
+   var tl=document.getElementById('mtsizelbl'); if(tl)tl.textContent='Auto';
    CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
    renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
+   initTextDrag();
    fillQty(); fillSizes(); renderCart(); updateReview();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    PHOTO=null; var ui=document.getElementById('mupload'); if(ui) ui.value="";
@@ -1086,6 +1102,38 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
+ // Draggable text position (fractions of the art area) + manual font size (0=auto).
+ let TPOS={{x:0.5, y:0.5}}, TSIZE=0, ART={{x:0,y:0,w:1,h:1}};
+ function setTextSize(v){{ TSIZE=parseInt(v)||0;
+   const lbl=document.getElementById('mtsizelbl');
+   if(lbl) lbl.textContent = TSIZE===0 ? 'Auto' : TSIZE+'%'; drawArt(); }}
+ function resetTextPos(){{ TPOS={{x:0.5,y:0.5}}; TSIZE=0;
+   const s=document.getElementById('mtsize'); if(s)s.value=0; setTextSize(0); }}
+ // Drag the wording anywhere on the art.
+ function _canvasPt(ev){{
+   const cv=document.getElementById('mcanvas'); const r=cv.getBoundingClientRect();
+   const t=(ev.touches&&ev.touches[0])||ev;
+   return {{x:(t.clientX-r.left)*(cv.width/r.width),
+            y:(t.clientY-r.top)*(cv.height/r.height)}};
+ }}
+ let DRAGGING=false;
+ function _startDrag(ev){{ DRAGGING=true; _moveDrag(ev); ev.preventDefault&&ev.preventDefault(); }}
+ function _moveDrag(ev){{ if(!DRAGGING) return;
+   const p=_canvasPt(ev);
+   TPOS.x=Math.min(0.96,Math.max(0.04,(p.x-ART.x)/ART.w));
+   TPOS.y=Math.min(0.96,Math.max(0.04,(p.y-ART.y)/ART.h));
+   drawArt(); ev.preventDefault&&ev.preventDefault();
+ }}
+ function _endDrag(){{ DRAGGING=false; }}
+ function initTextDrag(){{
+   const cv=document.getElementById('mcanvas'); if(!cv||cv.dataset.drag) return;
+   cv.dataset.drag='1'; cv.style.cursor='move';
+   cv.addEventListener('mousedown',_startDrag); cv.addEventListener('mousemove',_moveDrag);
+   window.addEventListener('mouseup',_endDrag);
+   cv.addEventListener('touchstart',_startDrag,{{passive:false}});
+   cv.addEventListener('touchmove',_moveDrag,{{passive:false}});
+   window.addEventListener('touchend',_endDrag);
+ }}
  function renderFonts(){{
    document.getElementById('mfonts').innerHTML = FONTS.map((f,k)=>
      `<span class="fchip ${{f[1]===SELFONT?'sel':''}}" style="font-family:${{f[1]}}" onclick="pickFont(${{k}})">${{f[0]}}</span>`).join('');
@@ -1159,19 +1207,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.fillStyle="rgba(0,0,0,.32)"; ctx.fillRect(x,y,w,h);
      ctx.restore();
    }}
+   ART={{x:x,y:y,w:w,h:h}};                                    // for drag hit-testing
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
-   const maxW=w*0.84; let fs=Math.round(h*0.10);
+   const maxW=w*0.84;
    function wrap(f){{ctx.font='600 '+f+'px '+SELFONT;
      const words=text.split(/\\s+/); let lines=[],cur='';
      for(const wd of words){{const tt=(cur+' '+wd).trim();
        if(ctx.measureText(tt).width<=maxW){{cur=tt;}}else{{lines.push(cur);cur=wd;}}}}
      if(cur)lines.push(cur); return lines;}}
-   let lines=wrap(fs);
-   while((lines.length*fs*1.32)>h*0.82 && fs>9){{fs-=1; lines=wrap(fs);}}
-   const lh=fs*1.34; let ty=y+(h-lines.length*lh)/2+fs*0.9;
-   for(const ln of lines){{ctx.fillText(ln,x+w/2,ty); ty+=lh;}}
+   let fs, lines;
+   if(TSIZE>0){{ fs=Math.max(9, Math.round(h*TSIZE/100)); lines=wrap(fs); }}  // manual
+   else {{ fs=Math.round(h*0.10); lines=wrap(fs);                            // auto-fit
+     while((lines.length*fs*1.32)>h*0.82 && fs>9){{fs-=1; lines=wrap(fs);}} }}
+   const lh=fs*1.34; const block=lines.length*lh;
+   const cx=x+TPOS.x*w;                                        // text anchor (draggable)
+   let ty=y+TPOS.y*h-block/2+fs*0.9;
+   for(const ln of lines){{ctx.fillText(ln,cx,ty); ty+=lh;}}
    saveDraft(); updateReview();
  }}
  // ── Single-item review: show exactly what you're adding, before you add ──
