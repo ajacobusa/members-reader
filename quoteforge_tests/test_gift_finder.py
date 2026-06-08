@@ -27,4 +27,5 @@ def test_quiz_and_bundle_in_page(tmp_path):
                           out_path=tmp_path / "h.html", frame_picker=False)
     h = out.read_text(encoding="utf-8")
     assert "Gift Finder" in h and "function runQuiz" in h and "const QUIZ" in h
-    assert "Build a gallery set" in h and "function renderBundle" in h
+    assert "buy a matching set" in h and "function renderBundle" in h
+    assert "function toggleBundleSec" in h  # bundle is an optional, collapsible callout

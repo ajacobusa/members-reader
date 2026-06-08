@@ -540,8 +540,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .pkcta{{display:inline-block;background:var(--green);color:#fff;text-decoration:none;
    border-radius:22px;padding:9px 16px;font-size:14px;font-weight:600}}
  /* bundle builder */
- .bundle{{max-width:1100px;margin:30px auto;padding:0 20px;text-align:center}}
- .bundle h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
+ .bundle{{max-width:1000px;margin:34px auto;padding:18px 22px;text-align:center;
+   background:#fbf7ee;border:1px dashed var(--gold);border-radius:16px}}
+ .bundlehdr{{display:flex;align-items:center;justify-content:space-between;gap:16px;
+   text-align:left;flex-wrap:wrap}}
+ .bundlehdr .gsub{{margin:4px 0 0;max-width:640px}}
+ .bundle h2{{font-size:21px;color:var(--green);margin:0}}
+ .bundletoggle{{background:var(--green);color:#fff;border:none;border-radius:22px;
+   padding:11px 20px;font-size:14.5px;font-weight:700;cursor:pointer;white-space:nowrap}}
+ .bundletoggle:hover{{background:var(--green-d)}}
  .bgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
    gap:10px;margin:14px 0}}
  .bopt{{position:relative;border:1px solid var(--line);border-radius:10px;padding:8px;
@@ -903,12 +910,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  </div>
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
- <div class="bundle">
-   <h2>Build a gallery set &amp; save</h2>
-   <p class="gsub">Pick 2-3 designs for a wall or a family collection - bundle
-     discounts apply automatically ({bundle_discount_text}).</p>
-   <div class="bgrid" id="bgrid"></div>
-   <div class="btot" id="btot">Select 2 or more to see your set price.</div>
+ <div class="bundle" id="bundleSec">
+   <div class="bundlehdr">
+     <div>
+       <h2>💡 Optional: buy a matching set &amp; save</h2>
+       <p class="gsub">Decorating a wall or gifting a family? Pick 2-3 designs and
+         bundle discounts apply automatically ({bundle_discount_text}).
+         You'll personalize each piece next - skip this if you just want one.</p>
+     </div>
+     <button class="bundletoggle" id="bundleToggle" onclick="toggleBundleSec()">Build a set &rarr;</button>
+   </div>
+   <div id="bundleBody" style="display:none">
+     <div class="bgrid" id="bgrid"></div>
+     <div class="btot" id="btot">Select 2 or more to see your set price.</div>
+   </div>
  </div>
  {reviews_html}
  {gallery_html}
@@ -1785,6 +1800,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      `<button class="bsetbtn" onclick="startBundleFlow()">Personalize &amp; add this set &rarr;</button>`;
  }}
  function toggleBundle(i){{ if(BSEL.has(i))BSEL.delete(i); else BSEL.add(i); renderBundle(); }}
+ function toggleBundleSec(){{
+   const b=document.getElementById('bundleBody'), t=document.getElementById('bundleToggle');
+   const open=b.style.display==='none';
+   b.style.display=open?'block':'none';
+   if(t)t.innerHTML=open?'Hide set builder':'Build a set &rarr;';
+   if(open) b.scrollIntoView({{behavior:'smooth',block:'nearest'}});
+ }}
  renderBundle();
 
  // ── Guided bundle personalization: craft each design BEFORE it goes to cart ──
