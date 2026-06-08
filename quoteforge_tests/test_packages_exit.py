@@ -103,3 +103,19 @@ def test_single_item_review_and_photo_guard(tmp_path):
     assert 'id="mreview"' in h and "function updateReview" in h
     assert "Review before adding" in h
     assert "too low-resolution" in h  # photo guard in addToOrder
+
+
+def test_uploaded_photo_previews_on_canvas(tmp_path):
+    """An uploaded photo must render in the live preview (canvas background),
+    not only get a quality check."""
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=True)
+    h = out.read_text(encoding="utf-8")
+    assert "let PHOTO=null" in h and "ctx.drawImage(PHOTO" in h
+    assert "function removePhoto" in h and "previewing anyway" in h

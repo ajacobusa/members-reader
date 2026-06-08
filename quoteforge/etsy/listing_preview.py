@@ -729,6 +729,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .orow{{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:8px}}
  .orow label{{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px}}
  .orow select{{padding:8px;border:1px solid #cdbf98;border-radius:8px;font-size:13px}}
+ .rmphoto{{color:#a23a3a;cursor:pointer;text-decoration:underline;margin-left:6px;
+   font-size:12px;font-weight:600}}
  .mreview{{margin:8px 0;padding:9px 12px;background:#f6f2e7;border:1px solid var(--line);
    border-radius:10px;font-size:13px;color:#3a4a42}}
  .mreview .rvh{{font-size:11px;color:#8a7a52;font-weight:600;text-transform:uppercase;
@@ -999,6 +1001,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
    fillQty(); fillSizes(); renderCart(); updateReview();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
+   PHOTO=null; var ui=document.getElementById('mupload'); if(ui) ui.value="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
    fb.href = fbLink(d.title);
@@ -1054,21 +1057,31 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      return `<div class="line"><span>${{nm}}${{l.qty}}x ${{l.fmt}} ${{l.size}}${{d?` (${{Math.round(d*100)}}% off)`:''}}</span>`+
        `<span>$${{sub.toFixed(2)}} <span class="rm" onclick="rmLine(${{i}})">remove</span></span></div>`;}}).join('')+
      `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
+ let PHOTO=null;
+ function removePhoto(){{
+   if(PHOTO&&PHOTO.src&&PHOTO.src.indexOf('blob:')===0) URL.revokeObjectURL(PHOTO.src);
+   PHOTO=null; const inp=document.getElementById('mupload'); if(inp)inp.value='';
+   const msg=document.getElementById('muploadmsg'); if(msg){{msg.className='note';msg.textContent='';}}
+   drawArt();
+ }}
  function checkUpload(){{const inp=document.getElementById('mupload'),msg=document.getElementById('muploadmsg');
-   const f=inp.files&&inp.files[0]; if(!f){{msg.textContent='';return;}}
+   const f=inp.files&&inp.files[0]; if(!f){{removePhoto();return;}}
    if(!/(jpe?g|png|pdf|tiff?)$/i.test(f.name)){{msg.className='note upbad';
      msg.textContent='Unsupported format. Use JPG, PNG, PDF or TIFF.';return;}}
-   if(/pdf$/i.test(f.name)){{msg.className='note upok';msg.textContent="PDF received - we'll verify print quality.";return;}}
+   if(/pdf$/i.test(f.name)){{PHOTO=null;drawArt();
+     msg.className='note upok';msg.innerHTML="PDF received - we'll verify print quality. "
+       +"<span class='rmphoto' onclick='removePhoto()'>remove</span>";return;}}
    const inches=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0].split('x').map(parseFloat);
    const img=new Image();
    img.onload=function(){{const nw=(inches[0]||18)*150, nh=(inches[1]||24)*150;
      const big=Math.max(img.width,img.height), small=Math.min(img.width,img.height);
+     const rm=" <span class='rmphoto' onclick='removePhoto()'>remove</span>";
      if(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)){{msg.className='note upok';
-       msg.textContent=`Great - ${{img.width}}x${{img.height}}px works for ${{inches[0]}}x${{inches[1]}}".`;}}
+       msg.innerHTML=`Great - ${{img.width}}x${{img.height}}px works for ${{inches[0]}}x${{inches[1]}}". Previewing on the left.`+rm;}}
      else{{msg.className='note upbad';
-       msg.textContent=`Only ${{img.width}}x${{img.height}}px - too low for a sharp ${{inches[0]}}x${{inches[1]}}" print. Please upload a higher-resolution original.`;}}
-     URL.revokeObjectURL(img.src);}};
-   img.onerror=function(){{msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
+       msg.innerHTML=`Only ${{img.width}}x${{img.height}}px - too low for a sharp ${{inches[0]}}x${{inches[1]}}" print (previewing anyway). Please upload a higher-resolution original.`+rm;}}
+     PHOTO=img; drawArt();}};
+   img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  function renderFonts(){{
@@ -1134,6 +1147,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }}
    }}
    ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h);                 // art background
+   if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){{        // uploaded photo (cover-fit)
+     const ar=PHOTO.naturalWidth/PHOTO.naturalHeight, br=w/h;
+     let dw=w, dh=h, dx=x, dy=y;
+     if(ar>br){{ dh=h; dw=h*ar; dx=x-(dw-w)/2; }} else {{ dw=w; dh=w/ar; dy=y-(dh-h)/2; }}
+     ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+     ctx.drawImage(PHOTO,dx,dy,dw,dh);
+     // scrim so overlaid wording stays legible over any photo
+     ctx.fillStyle="rgba(0,0,0,.32)"; ctx.fillRect(x,y,w,h);
+     ctx.restore();
+   }}
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
