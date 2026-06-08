@@ -440,10 +440,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
    --cream:#f7f4ee;--ink:#23302b;--muted:#6b7a72;--line:#e7e1d6}}
  *{{box-sizing:border-box}}
- body{{font-family:'Inter',-apple-system,Segoe UI,Arial,sans-serif;margin:0;
-   background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}}
+ body{{font-family:'Inter','Segoe UI',-apple-system,Helvetica,Arial,sans-serif;margin:0;
+   background:var(--cream);color:var(--ink);line-height:1.62;font-size:16px;
+   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+   text-rendering:optimizeLegibility}}
  h1,h2,h3,.serif{{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;
-   letter-spacing:.2px}}
+   letter-spacing:.3px;line-height:1.2}}
+ p{{margin:0 0 12px}}
+ .intro p,.mdesc,.faq p{{font-size:15.5px;line-height:1.7;color:#44514a}}
  a{{color:var(--green)}}
  /* gate */
  #gate{{position:fixed;inset:0;background:linear-gradient(160deg,#103d2e,#0b2c21);
@@ -777,6 +781,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    padding:10px;font-size:13px;cursor:pointer;color:var(--green);white-space:nowrap}}
  .paccept{{flex:1;background:var(--green);color:#fff;border:none;border-radius:20px;
    padding:10px;font-size:14px;font-weight:700;cursor:pointer}}
+ #roomLight{{position:fixed;inset:0;z-index:90;background:rgba(11,28,22,.85);
+   display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}}
+ #roomLight img{{max-width:92vw;max-height:88vh;border-radius:10px;
+   box-shadow:0 20px 60px rgba(0,0,0,.5)}}
+ #roomLight .qclose{{position:absolute;top:16px;right:24px;color:#fff;font-size:34px}}
  .dragmode{{margin-left:6px}}
  .dmbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
    font-size:12px;cursor:pointer;color:var(--green)}}
@@ -906,6 +915,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   <span class="rbx" onclick="document.getElementById('resumeBar').style.display='none'">&times;</span>
 </div>
 
+<div id="roomLight" onclick="closeRoom()">
+  <span class="qclose" onclick="closeRoom()">&times;</span>
+  <img id="roomLightImg" alt="Styled in a room">
+</div>
+
 <div id="proofPop" onclick="if(event.target.id==='proofPop')closeProof()">
   <div class="proofbox">
     <span class="qclose" onclick="closeProof()">&times;</span>
@@ -1012,7 +1026,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <button type="button" class="reviewbtn" onclick="showFinalProof()">👁️ Review &amp; accept</button>
          </div>
          <div class="note taxnote">🧾 Prices are per item. <b>Tax &amp; shipping are
-           calculated by Etsy at checkout</b> based on your location.</div>
+           calculated at checkout</b> based on your location.</div>
          <div class="uploadbox">
            <div class="lbl">📷 Add your own photo (optional)</div>
            <input type="file" id="mupload"
@@ -1111,7 +1125,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const d = DATA[i];
    const roomShots = (d.formats && d.formats.length) ? d.formats.map(f=>f.img) : d.imgs;
    document.getElementById('mthumbs').innerHTML = roomShots.map(
-     s=>`<img src="${{s}}" onclick="window.open('${{s}}','_blank')">`).join('');
+     s=>`<img src="${{s}}" onclick="viewRoom('${{s}}')">`).join('');
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
      fc.innerHTML=d.formats.map((f,j)=>
@@ -1200,7 +1214,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
  // ── Persistent basket (across designs) ──
  const ETSY_SHOP_URL = "{etsy_shop_url}";
- const EST_TAX_PCT = {est_tax_pct};   // 0 = tax calculated by Etsy at checkout
+ const EST_TAX_PCT = {est_tax_pct};   // 0 = tax calculated at checkout
  function toggleBasket(){{const p=document.getElementById('basketPanel');
    const open=p.style.display!=='flex'; renderBasket(); p.style.display=open?'flex':'none';}}
  function clearBasket(){{ if(CART.length && !confirm('Empty your basket?')) return;
@@ -1228,8 +1242,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    const note=document.getElementById('basketTaxNote');
    if(note) note.innerHTML = EST_TAX_PCT>0
-     ? "*Estimate only. Tax &amp; shipping are calculated and collected by Etsy at checkout based on your location."
-     : "Tax &amp; shipping are calculated by Etsy at checkout based on your location.";
+     ? "*Estimate only. Tax &amp; shipping are calculated and collected at secure checkout based on your location."
+     : "Tax &amp; shipping are calculated at secure checkout based on your location.";
  }}
  function checkout(){{
    if(!CART.length){{ alert('Your basket is empty.'); return; }}
@@ -1260,9 +1274,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _taxLine(sub){{
    if(EST_TAX_PCT>0){{ const tax=sub*EST_TAX_PCT/100;
      return `Subtotal: $${{sub.toFixed(2)}}\\nEst. tax (${{EST_TAX_PCT}}%): $${{tax.toFixed(2)}}*\\n`+
-       `Est. total: $${{(sub+tax).toFixed(2)}}\\n(*Tax & shipping finalized by Etsy at checkout)`;
+       `Est. total: $${{(sub+tax).toFixed(2)}}\\n(*Tax & shipping finalized at checkout)`;
    }}
-   return `Subtotal: $${{sub.toFixed(2)}}\\n(Tax & shipping calculated by Etsy at checkout)`;
+   return `Subtotal: $${{sub.toFixed(2)}}\\n(Tax & shipping calculated at checkout)`;
  }}
  function _orderSummaryText(){{
    if(CART.length) return CART.map(l=>`${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
@@ -1280,6 +1294,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('proofPop').style.display='flex';
  }}
  function closeProof(){{ document.getElementById('proofPop').style.display='none'; }}
+ function viewRoom(src){{ const o=document.getElementById('roomLight');
+   const img=document.getElementById('roomLightImg'); if(img)img.src=src;
+   if(o)o.style.display='flex'; }}
+ function closeRoom(){{ const o=document.getElementById('roomLight'); if(o)o.style.display='none'; }}
  function proofEdit(){{ closeProof(); }}                 // back to the open design
  function proofAddAnother(){{ closeProof(); closeM(); }} // pick another design
  function acceptProof(){{
@@ -1289,7 +1307,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const st=document.getElementById('proofStatus');
      if(st) st.innerHTML = emailed
        ? '✅ Accepted! A confirmation email is on its way. We\\'ll send a free proof before printing.'
-       : '✅ Accepted! Complete your purchase on Etsy - we\\'ll send a free proof before printing.';
+       : '✅ Accepted! Complete your purchase at checkout - we\\'ll send a free proof before printing.';
      abConvert && abConvert();
    }};
    if(email && CONFIRM_API){{
@@ -1691,7 +1709,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const c=document.getElementById('mcart');
    if(c) c.scrollIntoView({{behavior:'smooth',block:'center'}});
    const msg=document.getElementById('mratemsg');
-   if(msg) msg.textContent="Your set is ready - review each piece below, then check out on Etsy.";
+   if(msg) msg.textContent="Your set is ready - review each piece below, then continue to checkout.";
  }}
 </script>
 

@@ -69,15 +69,17 @@ def test_preview_matches_selected_size_crop(tmp_path):
     assert "AW/AH > ar" in h
 
 
-def test_tax_handled_by_etsy_note(tmp_path, monkeypatch):
-    """Buyer tax is calculated by Etsy; the page must say so and not fabricate tax
-    when no estimate rate is configured."""
+def test_tax_handled_at_checkout_note(tmp_path, monkeypatch):
+    """Buyer tax is calculated at checkout (by the marketplace); the page must say
+    so and not fabricate tax when no estimate rate is configured."""
     import quoteforge.config as cfg
     monkeypatch.setattr(cfg, "ESTIMATED_TAX_RATE_PCT", 0)
     h = _page(tmp_path)
-    assert "calculated by Etsy at checkout" in h
+    assert "calculated at checkout" in h
     assert "const EST_TAX_PCT = 0" in h
     assert "function _taxLine" in h
+    # customer-facing copy must not name the marketplace
+    assert "purchase on Etsy" not in h and "check out on Etsy" not in h
 
 
 def test_estimated_tax_when_rate_set(tmp_path, monkeypatch):
@@ -85,3 +87,11 @@ def test_estimated_tax_when_rate_set(tmp_path, monkeypatch):
     monkeypatch.setattr(cfg, "ESTIMATED_TAX_RATE_PCT", 7.5)
     h = _page(tmp_path)
     assert "const EST_TAX_PCT = 7.5" in h
+
+
+def test_room_thumbs_inline_not_new_window(tmp_path):
+    """Room thumbnails open inline (lightbox), not a new browser window."""
+    h = _page(tmp_path)
+    assert "function viewRoom" in h and 'id="roomLight"' in h
+    assert "onclick=\"viewRoom(" in h
+    assert "window.open('${s}'" not in h  # no new-window for room shots
