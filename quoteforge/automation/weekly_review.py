@@ -217,6 +217,16 @@ def format_review_text(r: dict) -> str:
         for w in trend:
             lines.append(f"  {w['week_of']}: ${w['revenue']} / ${w['net']} / "
                          f"{w['orders']}")
+    try:
+        from quoteforge.analytics.clv import format_clv_text
+        lines.append("\n" + format_clv_text())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from quoteforge.quotes.performance import format_performance_text
+        lines.append("\n" + format_performance_text())
+    except Exception:  # noqa: BLE001
+        pass
     lines.append("=" * 62)
     return "\n".join(lines)
 

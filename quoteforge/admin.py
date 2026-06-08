@@ -1195,6 +1195,31 @@ def _cmd_ledger_breakdown(args: list[str]) -> int:
     return 0
 
 
+def _cmd_clv(args: list[str]) -> int:
+    """Customer Lifetime Value dashboard from real orders. `clv [email]`."""
+    from quoteforge.analytics.clv import build_clv, format_clv_text
+    text = format_clv_text(build_clv())
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels CLV Dashboard", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
+def _cmd_quote_performance(args: list[str]) -> int:
+    """Rank quote themes by REAL sales performance. `quote-performance`."""
+    from quoteforge.quotes.performance import (format_performance_text,
+                                               ranked_categories)
+    print(format_performance_text())
+    print("\nTop categories (sales-ranked):")
+    for i, c in enumerate(ranked_categories()[:10], 1):
+        print(f"  {i:>2}. {c}")
+    return 0
+
+
 def _cmd_add_review(args: list[str]) -> int:
     """Record a REAL customer review. `add-review "Name" RATING "text" [photo_url] [listing]`."""
     if len(args) < 2:
@@ -1521,6 +1546,8 @@ COMMANDS = {
     "ledger": _cmd_ledger,
     "ledger-excel": _cmd_ledger_excel,
     "ledger-breakdown": _cmd_ledger_breakdown,
+    "clv": _cmd_clv,
+    "quote-performance": _cmd_quote_performance,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,
