@@ -279,6 +279,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         listings.append(entry)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
+    try:
+        from quoteforge.etsy.gift_finder import quiz_config
+        quiz_json = json.dumps(quiz_config())
+    except Exception:  # noqa: BLE001
+        quiz_json = "{}"
 
     # Size -> price map per format (sizes/prices are the same across designs).
     sizemap: dict = {}
@@ -419,6 +424,36 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    display:flex;align-items:center;justify-content:center;gap:12px;padding:12px}}
  .nav img{{height:34px}} .nav .bn{{font-family:'Cormorant Garamond',serif;
    font-size:24px;color:var(--green);font-weight:700;letter-spacing:1px}}
+ .navquiz{{margin-left:14px;background:var(--gold);color:#22301e;border:none;
+   border-radius:20px;padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer}}
+ .navquiz:hover{{background:var(--gold-d)}}
+ /* gift finder quiz */
+ #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
+   align-items:flex-start;justify-content:center;overflow:auto;padding:24px}}
+ .qbox{{background:#fff;border-radius:16px;max-width:560px;width:100%;margin:24px;
+   padding:26px;box-shadow:0 30px 70px rgba(0,0,0,.4)}}
+ .qbox h2{{color:var(--green);font-size:26px;margin:0 0 4px}}
+ .qbox p.qsub{{color:var(--muted);margin:0 0 16px}}
+ .qrow{{margin:10px 0}} .qrow label{{display:block;font-size:13px;color:var(--green);
+   font-weight:600;margin-bottom:4px}}
+ .qrow select{{width:100%;padding:11px;border:1px solid #cdbf98;border-radius:9px;
+   font-size:15px}}
+ .qgo{{background:var(--green);color:#fff;border:none;border-radius:26px;
+   padding:13px;width:100%;font-size:16px;font-weight:600;cursor:pointer;margin-top:14px}}
+ #qresult{{margin-top:16px;background:#f3efe6;border:1px solid var(--line);
+   border-radius:12px;padding:16px;display:none}}
+ #qresult h3{{color:var(--green);margin:0 0 6px}}
+ .qclose{{float:right;font-size:24px;cursor:pointer;color:#9aa39d}}
+ /* bundle builder */
+ .bundle{{max-width:1100px;margin:30px auto;padding:0 20px;text-align:center}}
+ .bundle h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
+ .bgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+   gap:10px;margin:14px 0}}
+ .bopt{{border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer;
+   background:#fff;font-size:12px}}
+ .bopt.sel{{border-color:var(--green);box-shadow:0 0 0 2px var(--green)}}
+ .bopt img{{width:100%;border-radius:6px;aspect-ratio:1/1;object-fit:cover}}
+ .btot{{font-size:16px;font-weight:600;color:var(--green);margin-top:6px}}
  .hero{{position:relative}} .hero-banner{{width:100%;display:block}}
  .hero-fallback{{background:linear-gradient(160deg,#103d2e,#0b2c21);color:#fff;
    padding:64px 20px;text-align:center}}
@@ -619,6 +654,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="nav">
    {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
    <span class="bn">{SHOP_NAME}</span>
+   <button class="navquiz" onclick="openQuiz()">🎁 Gift Finder</button>
  </div>
  <div class="hero">
    {f'<img class="hero-banner" src="{banner_src}">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
@@ -646,6 +682,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      digital proof is sent before anything is printed.</p>
  </div>
  <div class="grid" id="grid"></div>
+ <div class="bundle">
+   <h2>Build a gallery set &amp; save</h2>
+   <p class="gsub">Pick 2-3 designs for a wall or a family collection - bundle
+     discounts apply automatically (2 = 8% off, 3 = 12%, 4+ = 15%).</p>
+   <div class="bgrid" id="bgrid"></div>
+   <div class="btot" id="btot">Select 2 or more to see your set price.</div>
+ </div>
  {reviews_html}
  {_competitive_sections()}
  {_gift_and_b2b_section(owner)}
@@ -655,6 +698,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    Sample preview for review. Prices shown are starting prices; every item is
    personalized to order.</p>
  </div>
+</div>
+
+<div id="quiz" onclick="if(event.target.id==='quiz')closeQuiz()">
+  <div class="qbox">
+    <span class="qclose" onclick="closeQuiz()">&times;</span>
+    <h2>🎁 Find the perfect gift</h2>
+    <p class="qsub">Answer 5 quick questions and we'll recommend the ideal piece.</p>
+    <div class="qrow"><label>Who is it for?</label><select id="q_rel"></select></div>
+    <div class="qrow"><label>Occasion</label><select id="q_occ"></select></div>
+    <div class="qrow"><label>Budget</label><select id="q_bud"></select></div>
+    <div class="qrow"><label>Style</label><select id="q_sty"></select></div>
+    <button class="qgo" onclick="runQuiz()">Find my gift &rarr;</button>
+    <div id="qresult"></div>
+  </div>
 </div>
 
 <div id="modal" onclick="if(event.target.id==='modal')closeM()">
@@ -935,6 +992,60 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    el.addEventListener('click', function(){{ setRating(parseInt(el.dataset.v)); }});
  }});
  render();
+
+ // ── Gift Finder quiz ──
+ const QUIZ = {quiz_json};
+ function _fill(id, arr, val, lbl){{
+   const s=document.getElementById(id); if(!s)return;
+   s.innerHTML=arr.map(o=>{{const v=val?o[val]:o, t=lbl!==undefined?o[lbl]:o;
+     return `<option value="${{v}}">${{t}}</option>`;}}).join('');
+ }}
+ function openQuiz(){{
+   _fill('q_rel', QUIZ.relationships); _fill('q_occ', QUIZ.occasions);
+   _fill('q_bud', QUIZ.budgets, 0, 1); _fill('q_sty', QUIZ.styles, 0, 1);
+   document.getElementById('qresult').style.display='none';
+   document.getElementById('quiz').style.display='flex';
+ }}
+ function closeQuiz(){{document.getElementById('quiz').style.display='none';}}
+ function runQuiz(){{
+   const rel=document.getElementById('q_rel').value;
+   const occ=document.getElementById('q_occ').value;
+   const bud=document.getElementById('q_bud').value;
+   const sty=document.getElementById('q_sty').value;
+   const matMap={{under50:'Poster',"50to100":'Framed',"100plus":'Acrylic'}};
+   const material=matMap[bud]||'Framed';
+   const styRow=(QUIZ.styles||[]).find(s=>s[0]===sty)||['','Classic','Premium Solid Oak'];
+   // best-matching product by relationship + occasion
+   let bi=0, bs=-1;
+   DATA.forEach((d,i)=>{{let sc=0; const t=(d.full_title||'').toLowerCase();
+     if(rel && t.indexOf(rel.toLowerCase())>=0) sc+=2;
+     if(occ && t.indexOf(occ.toLowerCase())>=0) sc+=2;
+     if(sc>bs){{bs=sc; bi=i;}}}});
+   const r=document.getElementById('qresult');
+   r.style.display='block';
+   r.innerHTML=`<h3>Our pick for your ${{rel}}'s ${{occ}}</h3>`+
+     `<p><b>${{DATA[bi].title}}</b><br>Material: ${{material}}`+
+     (material==='Framed'?` &middot; Frame: ${{styRow[2]}}`:``)+
+     `<br>Style: ${{styRow[1]}} &middot; add your own words at checkout.</p>`+
+     `<button class="qgo" onclick="closeQuiz();openM(${{bi}})">View this gift &rarr;</button>`;
+ }}
+
+ // ── Bundle builder ──
+ const BSEL=new Set();
+ function renderBundle(){{
+   const g=document.getElementById('bgrid'); if(!g)return;
+   g.innerHTML=DATA.map((d,i)=>
+     `<div class="bopt ${{BSEL.has(i)?'sel':''}}" onclick="toggleBundle(${{i}})">`+
+     `<img src="${{d.imgs[0]}}" loading="lazy"><div>${{d.title.slice(0,28)}}</div></div>`).join('');
+   const n=BSEL.size; const disc=n>=4?0.15:n>=3?0.12:n>=2?0.08:0;
+   const t=document.getElementById('btot');
+   if(n<2){{t.textContent='Select 2 or more to see your set price.'; return;}}
+   let base=0; BSEL.forEach(i=>base+=parseFloat(DATA[i].price));
+   const total=(base*(1-disc)).toFixed(2);
+   t.textContent=`${{n}} prints &middot; ${{Math.round(disc*100)}}% off &middot; set from $${{total}} (mix sizes/frames at checkout)`;
+ }}
+ function toggleBundle(i){{ if(BSEL.has(i))BSEL.delete(i); else BSEL.add(i); renderBundle(); }}
+ renderBundle();
 </script>
 
 <button id="angeBtn" onclick="toggleAnge()">💬 Ask Ange</button>
