@@ -1220,6 +1220,34 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_preferences(args: list[str]) -> int:
+    """Customer Preference Graph (data moat). `preferences [email]`."""
+    from quoteforge.analytics.preference_graph import format_graph_text
+    text = format_graph_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Customer Preference Graph", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
+def _cmd_journey(args: list[str]) -> int:
+    """Customer Journey Analysis (Clarity + owned funnel). `journey [email]`."""
+    from quoteforge.automation.journey_analysis import format_journey_text
+    text = format_journey_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Customer Journey Analysis", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_profit(args: list[str]) -> int:
     """Profit Optimization Engine - profit per listing/size/material/source.
     `profit [email]`."""
@@ -1616,6 +1644,8 @@ COMMANDS = {
     "gift-profiles": _cmd_gift_profiles,
     "profit": _cmd_profit,
     "recover-customizations": _cmd_recover_customizations,
+    "preferences": _cmd_preferences,
+    "journey": _cmd_journey,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,

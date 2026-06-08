@@ -246,6 +246,16 @@ def format_review_text(r: dict) -> str:
     except Exception:  # noqa: BLE001
         pass
     try:
+        from quoteforge.analytics.preference_graph import format_graph_text
+        lines.append("\n" + format_graph_text(orders=_orders))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from quoteforge.automation.journey_analysis import format_journey_text
+        lines.append("\n" + format_journey_text())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from quoteforge.etsy.dynamic_pricing import format_dynamic_text
         lines.append("\n" + format_dynamic_text())
     except Exception:  # noqa: BLE001
