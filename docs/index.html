@@ -306,6 +306,12 @@
  .orow{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:8px}
  .orow label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
  .orow select{padding:8px;border:1px solid #cdbf98;border-radius:8px;font-size:13px}
+ .mreview{margin:8px 0;padding:9px 12px;background:#f6f2e7;border:1px solid var(--line);
+   border-radius:10px;font-size:13px;color:#3a4a42}
+ .mreview .rvh{font-size:11px;color:#8a7a52;font-weight:600;text-transform:uppercase;
+   letter-spacing:.4px;margin-bottom:2px}
+ .mreview .rvtag{background:#e7ddc2;color:#6b5a2a;font-size:10.5px;padding:1px 6px;
+   border-radius:8px;margin-left:4px}
  .addbtn{background:var(--green);color:#fff;border:none;border-radius:18px;
    padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
  .addbtn:hover{background:var(--green-d)}
@@ -484,10 +490,11 @@
        <div class="orderbox">
          <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)</div>
          <div class="orow">
-           <label>Size <select id="msize"></select></label>
+           <label>Size <select id="msize" onchange="updateReview()"></select></label>
            <label>Qty <select id="mqty"></select></label>
            <button class="addbtn" data-ab="primary_cta" onclick="addToOrder()">Add to order</button>
          </div>
+         <div id="mreview" class="mreview"></div>
          <div id="mcart" class="cart"></div>
          <div class="uploadbox">
            <div class="lbl">📷 Add your own photo (optional)</div>
@@ -585,7 +592,7 @@
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
    renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
-   fillQty(); fillSizes(); renderCart();
+   fillQty(); fillSizes(); renderCart(); updateReview();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
@@ -611,6 +618,12 @@
    const rows=SIZEMAP[CURFMT]||[];
    sel.innerHTML=rows.map(r=>`<option value="${r.size}|${r.price}">${r.size} in - $${r.price}</option>`).join('');}
  function addToOrder(){const sv=(document.getElementById('msize')||{}).value; if(!sv)return;
+   // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
+   const um=document.getElementById('muploadmsg');
+   if(um && um.className.indexOf('upbad')>=0){
+     if(!confirm("Your uploaded photo may be too low-resolution for a sharp print. "
+       +"Add anyway? (You can upload a higher-res photo instead.)")) return;
+   }
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{}).value||'1');
    const title=(DATA[CUR]||{}).title||'';
    CART.push({fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title}); renderCart();
@@ -729,7 +742,20 @@
    while((lines.length*fs*1.32)>h*0.82 && fs>9){fs-=1; lines=wrap(fs);}
    const lh=fs*1.34; let ty=y+(h-lines.length*lh)/2+fs*0.9;
    for(const ln of lines){ctx.fillText(ln,x+w/2,ty); ty+=lh;}
-   saveDraft();
+   saveDraft(); updateReview();
+ }
+ // ── Single-item review: show exactly what you're adding, before you add ──
+ function updateReview(){
+   const r=document.getElementById('mreview'); if(!r) return;
+   const typed=((document.getElementById('mtext')||{}).value||'').trim();
+   const words=typed || CURQUOTE || '(your wording)';
+   const fmt=CURFMT || ((DATA[CUR]&&DATA[CUR].formats&&DATA[CUR].formats[0])?DATA[CUR].formats[0].name:'');
+   const sv=((document.getElementById('msize')||{}).value||'').split('|');
+   const size=sv[0] ? sv[0]+' in' : 'choose a size';
+   const src=typed ? '' : ' <span class="rvtag">suggested wording</span>';
+   r.innerHTML=`<div class="rvh">Review before adding:</div>`+
+     `<div class="rvbody"><b>${fmt}</b> &middot; ${size} &middot; `+
+     `&ldquo;${words.slice(0,90)}${words.length>90?'&hellip;':''}&rdquo;${src}</div>`;
  }
  // ── Abandoned-customization save/restore ──
  let DRAFT_T=null;

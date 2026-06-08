@@ -86,3 +86,20 @@ def test_guided_bundle_flow_present(tmp_path):
     # add-to-order advances the guided flow
     assert "if(BFLOW){{ BFLOW.idx++; nextBundleStep(); }}" in h or \
            "if(BFLOW){ BFLOW.idx++; nextBundleStep(); }" in h
+
+
+def test_single_item_review_and_photo_guard(tmp_path):
+    """Single-item add shows a live 'review before adding' summary and guards a
+    too-low-res uploaded photo (review at the moment of adding, no extra screen)."""
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=True)
+    h = out.read_text(encoding="utf-8")
+    assert 'id="mreview"' in h and "function updateReview" in h
+    assert "Review before adding" in h
+    assert "too low-resolution" in h  # photo guard in addToOrder
