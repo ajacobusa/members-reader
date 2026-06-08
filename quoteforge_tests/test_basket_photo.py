@@ -95,3 +95,12 @@ def test_room_thumbs_inline_not_new_window(tmp_path):
     assert "function viewRoom" in h and 'id="roomLight"' in h
     assert "onclick=\"viewRoom(" in h
     assert "window.open('${s}'" not in h  # no new-window for room shots
+
+
+def test_add_to_basket_and_two_mode_proof(tmp_path):
+    """Accept on a single design adds to basket; basket checkout = accept all."""
+    h = _page(tmp_path)
+    assert "function addToBasket" in h and "Add to basket" in h
+    assert "function proofAccept" in h and "function addFromProof" in h
+    assert "showFinalProof('item')" in h and "showFinalProof('final')" in h
+    assert 'id="mbasketbar"' in h and "function pulseBasket" in h

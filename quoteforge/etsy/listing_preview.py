@@ -762,6 +762,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}}
  .tposhint{{margin-left:8px;color:#9aa49c;font-weight:400}}
  .orderactions{{display:flex;gap:8px;margin:8px 0}}
+ .addbasketbtn{{flex:1.4;background:var(--green);color:#fff;border:none;border-radius:18px;
+   padding:11px;font-size:14.5px;font-weight:700;cursor:pointer}}
+ .addbasketbtn:hover{{background:var(--green-d)}}
+ .savebtn2{{width:100%;background:#fff;border:1px dashed var(--line);color:var(--green);
+   border-radius:14px;padding:8px;font-size:13px;cursor:pointer;margin:6px 0}}
+ .mbasketbar{{background:var(--gold);color:#22301e;border-radius:12px;padding:9px 12px;
+   font-size:13.5px;margin:8px 0;cursor:pointer;text-align:center;transition:transform .15s}}
+ .mbasketbar:empty{{display:none}}
+ .mbasketbar.added{{transform:scale(1.04)}}
+ .mbasketbar .mbview{{text-decoration:underline;font-weight:600}}
+ #basketBtn.pulse{{animation:basketpulse .5s ease 2}}
+ @keyframes basketpulse{{0%,100%{{transform:scale(1)}}50%{{transform:scale(1.15)}}}}
  .savebtn{{flex:1;background:#fff;border:1px solid var(--green);color:var(--green);
    border-radius:18px;padding:9px;font-size:13.5px;font-weight:600;cursor:pointer}}
  .reviewbtn{{flex:1;background:var(--gold);color:#22301e;border:none;border-radius:18px;
@@ -923,16 +935,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <div id="proofPop" onclick="if(event.target.id==='proofPop')closeProof()">
   <div class="proofbox">
     <span class="qclose" onclick="closeProof()">&times;</span>
-    <h2>Your final design</h2>
-    <p class="qsub">This is how your piece will look. Happy with it? Accept to confirm -
-      we'll still send a FREE proof before printing.</p>
+    <h2 id="proofTitle">Your final design</h2>
+    <p class="qsub" id="proofSub">This is how your piece will look. Happy with it?
+      Add it to your basket - we'll still send a FREE proof before printing.</p>
     <img id="proofImg" class="proofimg" alt="Your design preview">
-    <div class="proofsum">Your order:<br><span id="proofSummary"></span></div>
+    <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofStatus" class="proofstatus"></div>
     <div class="proofactions">
       <button class="pedit" onclick="proofEdit()">&larr; Go back &amp; edit</button>
-      <button class="padd" onclick="proofAddAnother()">＋ Add another</button>
-      <button class="paccept" onclick="acceptProof()">✓ Accept</button>
+      <button id="proofAcceptBtn" class="paccept" onclick="proofAccept()">✓ Add to basket</button>
     </div>
   </div>
 </div>
@@ -1017,13 +1028,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="orow">
            <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
            <label>Qty <select id="mqty"></select></label>
-           <button class="addbtn" data-ab="primary_cta" onclick="addToOrder()">Add to order</button>
          </div>
          <div id="mreview" class="mreview"></div>
-         <div id="mcart" class="cart"></div>
          <div class="orderactions">
-           <button type="button" class="savebtn" onclick="saveDesign()">💾 Save design</button>
-           <button type="button" class="reviewbtn" onclick="showFinalProof()">👁️ Review &amp; accept</button>
+           <button type="button" class="savebtn" onclick="showFinalProof('item')">👁️ Review this design</button>
+           <button class="addbasketbtn" onclick="addToBasket()">🛒 Add to basket</button>
+         </div>
+         <div id="mbasketbar" class="mbasketbar" onclick="openBasketFromModal()"></div>
+         <div id="mcart" class="cart"></div>
+         <div class="savedesignrow">
+           <button type="button" class="savebtn2" onclick="saveDesign()">💾 Save this design for later</button>
          </div>
          <div class="note taxnote">🧾 Prices are per item. <b>Tax &amp; shipping are
            calculated at checkout</b> based on your location.</div>
@@ -1244,10 +1258,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(note) note.innerHTML = EST_TAX_PCT>0
      ? "*Estimate only. Tax &amp; shipping are calculated and collected at secure checkout based on your location."
      : "Tax &amp; shipping are calculated at secure checkout based on your location.";
+   // In-modal basket bar so customers always see what's in their basket.
+   const bar=document.getElementById('mbasketbar');
+   if(bar) bar.innerHTML = CART.length
+     ? `🛒 <b>${{CART.length}} item${{CART.length>1?'s':''}}</b> in your basket &middot; `+
+       `$${{_cartTotal().toFixed(2)}} <span class="mbview">review / checkout &rarr;</span>`
+     : '';
  }}
  function checkout(){{
    if(!CART.length){{ alert('Your basket is empty.'); return; }}
-   toggleBasket(); showFinalProof();   // show the final output to accept first
+   closeBasket(); showFinalProof('final');   // final review of ALL items, then accept all
+ }}
+ function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
+ function openBasketFromModal(){{ toggleBasket(); }}
+ function pulseBasket(){{ const b=document.getElementById('basketBtn'); if(!b)return;
+   b.classList.add('pulse'); setTimeout(()=>b.classList.remove('pulse'),1000); }}
+ // Primary action: add the current personalized design to the basket.
+ function addToBasket(){{
+   const sv=(document.getElementById('msize')||{{}}).value;
+   if(!sv){{ alert('Please choose a size first.'); return; }}
+   const before=CART.length; addToOrder();
+   if(CART.length>before){{ pulseBasket();
+     const bar=document.getElementById('mbasketbar');
+     if(bar){{ bar.classList.add('added'); setTimeout(()=>bar.classList.remove('added'),1400); }}
+   }}
  }}
  // ── Design state, Save, and final-proof Accept ──
  function _designState(){{
@@ -1278,19 +1312,36 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    return `Subtotal: $${{sub.toFixed(2)}}\\n(Tax & shipping calculated at checkout)`;
  }}
- function _orderSummaryText(){{
-   if(CART.length) return CART.map(l=>`${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
-     (l.title?` - ${{l.title}}`:'')).join('\\n')+'\\n'+_taxLine(_cartTotal());
+ function _currentDesignSummary(){{
    const s=_designState();
    const price=parseFloat((((document.getElementById('msize')||{{}}).value||'').split('|')[1])||'0');
    return `${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"\\n`+_taxLine(price);
  }}
- function showFinalProof(){{
-   const cv=document.getElementById('mcanvas');
-   const img=document.getElementById('proofImg');
-   if(cv && img){{ try{{ img.src=cv.toDataURL('image/png'); }}catch(e){{}} }}
-   const sum=document.getElementById('proofSummary');
-   if(sum) sum.textContent=_orderSummaryText();
+ function _basketSummary(){{
+   if(!CART.length) return '(your basket is empty)';
+   return CART.map((l,i)=>`${{i+1}}. ${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
+     (l.title?` - ${{l.title}}`:'')).join('\\n')+'\\n'+_taxLine(_cartTotal());
+ }}
+ let PROOFMODE='item';
+ function showFinalProof(mode){{
+   PROOFMODE=(mode==='final')?'final':'item';
+   const cv=document.getElementById('mcanvas'), img=document.getElementById('proofImg');
+   const title=document.getElementById('proofTitle'), sub=document.getElementById('proofSub');
+   const acc=document.getElementById('proofAcceptBtn'), sum=document.getElementById('proofSummary');
+   const st=document.getElementById('proofStatus'); if(st)st.textContent='';
+   if(PROOFMODE==='final'){{
+     if(img)img.style.display='none';
+     if(title)title.textContent='Review your basket ('+CART.length+')';
+     if(sub)sub.textContent="Here's everything you picked. Remove anything you don't want, or accept all to confirm - we'll still send a free proof of each piece before printing.";
+     if(sum)sum.innerHTML=_basketSummary().replace(/\\n/g,'<br>');
+     if(acc)acc.textContent='✓ Accept all & confirm';
+   }} else {{
+     if(cv&&img){{ try{{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }}catch(e){{}} }}
+     if(title)title.textContent='Your final design';
+     if(sub)sub.textContent="This is how your piece will look. Add it to your basket - we'll still send a free proof before printing.";
+     if(sum)sum.innerHTML=_currentDesignSummary().replace(/\\n/g,'<br>');
+     if(acc)acc.textContent='✓ Add to basket';
+   }}
    document.getElementById('proofPop').style.display='flex';
  }}
  function closeProof(){{ document.getElementById('proofPop').style.display='none'; }}
@@ -1298,16 +1349,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const img=document.getElementById('roomLightImg'); if(img)img.src=src;
    if(o)o.style.display='flex'; }}
  function closeRoom(){{ const o=document.getElementById('roomLight'); if(o)o.style.display='none'; }}
- function proofEdit(){{ closeProof(); }}                 // back to the open design
- function proofAddAnother(){{ closeProof(); closeM(); }} // pick another design
+ function proofEdit(){{ closeProof(); }}                 // back to the open design / basket
+ function proofAccept(){{ if(PROOFMODE==='final') acceptProof(); else addFromProof(); }}
+ function addFromProof(){{
+   const before=CART.length; addToOrder(); closeProof(); pulseBasket();
+   if(CART.length>before) toggleBasket();    // open the basket so they see it landed
+ }}
  function acceptProof(){{
    const email=knownEmail();
-   const summary=_orderSummaryText();
+   const summary=_basketSummary();
    const done=function(emailed){{
      const st=document.getElementById('proofStatus');
      if(st) st.innerHTML = emailed
        ? '✅ Accepted! A confirmation email is on its way. We\\'ll send a free proof before printing.'
-       : '✅ Accepted! Complete your purchase at checkout - we\\'ll send a free proof before printing.';
+       : '✅ Accepted! Continue to secure checkout to pay - we\\'ll send a free proof of each piece before printing.';
+     const acc=document.getElementById('proofAcceptBtn');
+     if(acc && ETSY_SHOP_URL){{ acc.textContent='Continue to checkout →';
+       acc.onclick=function(){{ window.open(ETSY_SHOP_URL,'_blank'); }}; }}
      abConvert && abConvert();
    }};
    if(email && CONFIRM_API){{
@@ -1694,7 +1752,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const k=BFLOW.idx+1, N=BFLOW.queue.length;
    b.style.display='block';
    b.innerHTML=`🎨 Building your set - <b>design ${{k}} of ${{N}}</b>. `+
-     `Personalize the words, frame &amp; colors, then tap <b>Add to order</b> to continue. `+
+     `Personalize the words, frame &amp; colors, then tap <b>Add to basket</b> to continue. `+
      `<span class="bskip" onclick="skipBundleStep()">Skip this one</span>`;
  }}
  function nextBundleStep(){{

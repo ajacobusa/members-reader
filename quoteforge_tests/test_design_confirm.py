@@ -74,4 +74,5 @@ def test_storefront_design_controls_in_page(tmp_path):
     assert "function setTextRot" in h and "DRAGMODE==='photo'" in h
     assert "function saveDesign" in h and "function recheckPhotoRes" in h
     assert "function showFinalProof" in h and "function acceptProof" in h
-    assert 'id="proofPop"' in h and "Review &amp; accept" in h
+    assert 'id="proofPop"' in h and "Add to basket" in h
+    assert "function addToBasket" in h and "function proofAccept" in h

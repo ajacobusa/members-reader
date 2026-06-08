@@ -19,15 +19,6 @@ EXPERIMENTS = {
             "C": "Custom keepsake art - made to order, just for them",
         },
     },
-    "cta_label": {
-        "label": "Primary CTA label",
-        "target": "primary_cta",
-        "variants": {
-            "A": "Personalize yours",
-            "B": "Start your design",
-            "C": "Create my gift",
-        },
-    },
 }
 
 # Need at least this many impressions per variant before declaring a winner.
