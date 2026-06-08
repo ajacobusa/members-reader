@@ -158,6 +158,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "to hold the 60% margin floor and disables discontinued frames/products "
         "before the daily site rebuild publishes."),
     ScheduledJob(
+        "QuoteForge Competitor & Trends", "competitors refresh",
+        ["/SC", "WEEKLY", "/D", "WED", "/ST", "07:55"],
+        "Weekly: refreshes competitor snapshots (when ETSY_API_KEY is set) so the "
+        "intelligence dashboard can alert on price drops, new listings, and review "
+        "growth; trend predictions ride along in the Friday review."),
+    ScheduledJob(
         "QuoteForge Capacity Monitor", "capacity email",
         ["/SC", "DAILY", "/ST", "06:30"],
         "Daily production-capacity check: per-vendor production/shipping speed and "

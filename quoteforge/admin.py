@@ -1220,6 +1220,49 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_competitors(args: list[str]) -> int:
+    """Competitor Intelligence. `competitors` (dashboard), `competitors refresh`,
+    or `competitors add <shop> <listings> <min_price> <reviews>`."""
+    from quoteforge.analytics import competitor_intel as ci
+    if args and args[0] == "add" and len(args) >= 2:
+        shop = args[1]
+        def _num(i, cast):
+            try:
+                return cast(args[i])
+            except (IndexError, ValueError):
+                return None
+        ci.record(shop, listings=_num(2, int), min_price=_num(3, float),
+                  reviews=_num(4, int))
+        print(f"Recorded snapshot for {shop}.")
+        return 0
+    if args and args[0] == "refresh":
+        print(ci.refresh())
+        return 0
+    text = ci.format_competitor_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Competitor Intelligence", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
+def _cmd_trends(args: list[str]) -> int:
+    """Trend Prediction Engine. `trends [email]`."""
+    from quoteforge.analytics.trend_engine import format_trend_text
+    text = format_trend_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Trend Predictions", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_capacity(args: list[str]) -> int:
     """Production Capacity Monitor (vendor speed, delays, defects). `capacity [email]`."""
     from quoteforge.automation.capacity_monitor import format_capacity_text
@@ -1704,6 +1747,8 @@ COMMANDS = {
     "leaderboard": _cmd_leaderboard,
     "capacity": _cmd_capacity,
     "ab": _cmd_ab,
+    "competitors": _cmd_competitors,
+    "trends": _cmd_trends,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,

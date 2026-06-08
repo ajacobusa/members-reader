@@ -78,6 +78,13 @@ PROMO_WELCOME_PCT: int = int(os.getenv("PROMO_WELCOME_PCT", "10"))
 # (e.g. package pricing during a Gelato outage). Chosen to clear the 60% floor.
 DEFAULT_LIST_PRICE: float = float(os.getenv("DEFAULT_LIST_PRICE", "49.99"))
 DEFAULT_GELATO_COST: float = float(os.getenv("DEFAULT_GELATO_COST", "12.0"))
+# Competitor shops to track (comma-separated handles/names). Snapshots are stored
+# and diffed for price drops, new listings, and review growth.
+COMPETITORS: list[str] = [c.strip() for c in
+                          os.getenv("COMPETITORS", "").split(",") if c.strip()]
+# Alert when a competitor's lowest price drops by at least this %.
+COMPETITOR_PRICE_DROP_ALERT_PCT: float = float(
+    os.getenv("COMPETITOR_PRICE_DROP_ALERT_PCT", "10"))
 # Per-vendor net-margin floors (JSON). Services/digital can carry higher floors.
 # e.g. VENDOR_MARGIN_FLOORS_JSON={"service":80,"digital":90,"printful":55}
 VENDOR_MARGIN_FLOORS_JSON: str = os.getenv("VENDOR_MARGIN_FLOORS_JSON", "").strip()

@@ -276,6 +276,16 @@ def format_review_text(r: dict) -> str:
     except Exception:  # noqa: BLE001
         pass
     try:
+        from quoteforge.analytics.competitor_intel import format_competitor_text
+        lines.append("\n" + format_competitor_text())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from quoteforge.analytics.trend_engine import format_trend_text
+        lines.append("\n" + format_trend_text())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from quoteforge.etsy.dynamic_pricing import format_dynamic_text
         lines.append("\n" + format_dynamic_text())
     except Exception:  # noqa: BLE001

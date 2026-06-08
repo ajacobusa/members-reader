@@ -233,6 +233,20 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS competitor_snapshots (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            shop          TEXT NOT NULL,             -- competitor shop name/handle
+            listings      INTEGER,                    -- active listing count
+            min_price     REAL,                       -- lowest listing price seen
+            avg_price     REAL,
+            reviews       INTEGER,                    -- total shop reviews
+            bestsellers   INTEGER,                    -- # listings with bestseller badge
+            new_listings  INTEGER,                    -- new since last snapshot (optional)
+            note          TEXT,
+            captured_at   TEXT DEFAULT (datetime('now'))
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS ab_events (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             experiment  TEXT NOT NULL,             -- experiment key
@@ -613,6 +627,39 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Competitor snapshots (intelligence) ─────────────────────────
+
+def add_competitor_snapshot(shop: str, listings: int = None, min_price: float = None,
+                            avg_price: float = None, reviews: int = None,
+                            bestsellers: int = None, new_listings: int = None,
+                            note: str = "") -> int:
+    """Record a point-in-time snapshot of a competitor shop."""
+    shop = (shop or "").strip()
+    if not shop:
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO competitor_snapshots
+               (shop, listings, min_price, avg_price, reviews, bestsellers,
+                new_listings, note)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (shop, listings, min_price, avg_price, reviews, bestsellers,
+             new_listings, note))
+        return cur.lastrowid or 0
+
+
+def get_competitor_snapshots(shop: str = "") -> list[dict]:
+    with _conn() as conn:
+        if shop:
+            rows = conn.execute(
+                "SELECT * FROM competitor_snapshots WHERE shop=? "
+                "ORDER BY captured_at ASC", (shop,))
+        else:
+            rows = conn.execute(
+                "SELECT * FROM competitor_snapshots ORDER BY captured_at ASC")
+        return [dict(r) for r in rows]
 
 
 # ── A/B testing events ──────────────────────────────────────────
