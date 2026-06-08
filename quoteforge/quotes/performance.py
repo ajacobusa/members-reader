@@ -17,10 +17,13 @@ def _orders() -> list[dict]:
         return []
 
 
-def theme_performance() -> list[dict]:
-    """Each (occasion, tone) theme ranked by orders then revenue (real data)."""
+def theme_performance(orders: list[dict] | None = None) -> list[dict]:
+    """Each (occasion, tone) theme ranked by orders then revenue (real data).
+
+    Pass `orders` (a prefetched list) to avoid re-querying the orders table.
+    """
     agg: dict[tuple, dict] = {}
-    for o in _orders():
+    for o in (_orders() if orders is None else orders):
         occ = (o.get("occasion") or "").strip() or "General"
         tone = (o.get("tone") or "").strip() or "Inspirational"
         key = (occ, tone)
@@ -67,8 +70,8 @@ def best_quotes(category: str = "", count: int = 5) -> list[str]:
     return get_quotes(category, count)
 
 
-def format_performance_text() -> str:
-    perf = theme_performance()
+def format_performance_text(orders: list[dict] | None = None) -> str:
+    perf = theme_performance(orders)
     if not perf:
         return ("Quote performance\n" + "-" * 40 +
                 "\nNo sales yet - themes will rank by real performance after your "

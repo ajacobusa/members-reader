@@ -23,9 +23,12 @@ def _price(o: dict) -> float:
         return 0.0
 
 
-def build_clv() -> dict:
-    """Per-customer rollup + headline CLV metrics from real orders."""
-    orders = _orders()
+def build_clv(orders: list[dict] | None = None) -> dict:
+    """Per-customer rollup + headline CLV metrics from real orders.
+
+    Pass `orders` (a prefetched list) to avoid re-querying the orders table.
+    """
+    orders = _orders() if orders is None else orders
     by_cust: dict[str, dict] = {}
     for o in orders:
         key = (o.get("customer_email") or o.get("customer_name") or "").strip().lower()
@@ -62,8 +65,8 @@ def build_clv() -> dict:
     }
 
 
-def format_clv_text(clv: dict | None = None) -> str:
-    c = clv if clv is not None else build_clv()
+def format_clv_text(clv: dict | None = None, orders: list[dict] | None = None) -> str:
+    c = clv if clv is not None else build_clv(orders)
     if not c["customers"]:
         return ("Customer Lifetime Value\n" + "-" * 40 +
                 "\nNo orders yet - CLV metrics will populate after your first sale.")

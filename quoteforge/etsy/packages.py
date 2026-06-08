@@ -50,33 +50,37 @@ CORPORATE_PACKAGES = (
 )
 
 
-def _representative(tier: str) -> tuple[float, float]:
+def _representative(tier: str, variations=None) -> tuple[float, float]:
     """A representative (list_price, cost) for a tier, from real variations.
 
-    Falls back to a conservative pair if the catalog can't be read, chosen so the
+    Pass `variations` (a prebuilt list) to avoid rebuilding the catalog per call.
+    Falls back to config defaults if the catalog can't be read, chosen so the
     floor math still produces a sane, floor-clearing price.
     """
+    from quoteforge.config import DEFAULT_LIST_PRICE, DEFAULT_GELATO_COST
     try:
-        from quoteforge.etsy.variations import build_variations
-        vs = [v for v in build_variations() if v.tier == tier]
+        if variations is None:
+            from quoteforge.etsy.variations import build_variations
+            variations = build_variations()
+        vs = [v for v in variations if v.tier == tier] or list(variations)
         if not vs:
-            vs = build_variations()
+            return (DEFAULT_LIST_PRICE, DEFAULT_GELATO_COST)
         # median-ish: pick the variation nearest the average price
         avg = sum(v.price for v in vs) / len(vs)
         pick = min(vs, key=lambda v: abs(v.price - avg))
         return float(pick.price), float(pick.gelato_cost)
     except Exception:  # noqa: BLE001
-        return (49.99, 12.0)
+        return (DEFAULT_LIST_PRICE, DEFAULT_GELATO_COST)
 
 
-def package_quote(pkg: Package) -> dict:
+def package_quote(pkg: Package, variations=None) -> dict:
     """Floor-safe 'from' price for a package: the bundle total for its piece count.
 
     Uses variations.bundle_quote, which caps the discount at the 60% net floor, so
     the returned per-piece price always clears the floor.
     """
     from quoteforge.etsy.variations import bundle_quote
-    list_price, cost = _representative(pkg.tier)
+    list_price, cost = _representative(pkg.tier, variations)
     q = bundle_quote(list_price, cost, pkg.pieces, pkg.tier)
     return {
         "key": pkg.key, "name": pkg.name, "audience": pkg.audience,
@@ -88,7 +92,15 @@ def package_quote(pkg: Package) -> dict:
 
 
 def all_packages() -> list[dict]:
-    return [package_quote(p) for p in (*WEDDING_PACKAGES, *CORPORATE_PACKAGES)]
+    # Build the variations catalog ONCE and reuse it for every package quote.
+    variations = None
+    try:
+        from quoteforge.etsy.variations import build_variations
+        variations = build_variations()
+    except Exception:  # noqa: BLE001
+        variations = None
+    return [package_quote(p, variations)
+            for p in (*WEDDING_PACKAGES, *CORPORATE_PACKAGES)]
 
 
 def packages_section(b2b_email: str) -> str:

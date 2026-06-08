@@ -217,14 +217,22 @@ def format_review_text(r: dict) -> str:
         for w in trend:
             lines.append(f"  {w['week_of']}: ${w['revenue']} / ${w['net']} / "
                          f"{w['orders']}")
+    # Fetch orders ONCE and share across the order-based aggregators below.
+    _orders = None
+    try:
+        from quoteforge.db.database import init_db, get_all_orders
+        init_db()
+        _orders = get_all_orders(limit=100000)
+    except Exception:  # noqa: BLE001
+        _orders = None
     try:
         from quoteforge.analytics.clv import format_clv_text
-        lines.append("\n" + format_clv_text())
+        lines.append("\n" + format_clv_text(orders=_orders))
     except Exception:  # noqa: BLE001
         pass
     try:
         from quoteforge.quotes.performance import format_performance_text
-        lines.append("\n" + format_performance_text())
+        lines.append("\n" + format_performance_text(orders=_orders))
     except Exception:  # noqa: BLE001
         pass
     try:

@@ -285,6 +285,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         quiz_json = "{}"
 
+    # Single source of truth for quantity/bundle discounts (mirrors backend so the
+    # storefront JS can never drift from variations.QTY_DISCOUNT).
+    from quoteforge.etsy.variations import QTY_DISCOUNT
+    qty_discount_json = json.dumps([[t, d] for t, d in QTY_DISCOUNT])
+    _bundle_tiers = sorted([(t, d) for t, d in QTY_DISCOUNT if d > 0], key=lambda x: x[0])
+    bundle_discount_text = ", ".join(
+        f"{t}{'+' if t == max(x[0] for x in _bundle_tiers) else ''} = {round(d*100)}% off"
+        for t, d in _bundle_tiers)
+    # Welcome / first-order promo copy (from config, not baked into markup).
+    from quoteforge.config import PROMO_WELCOME_CODE, PROMO_WELCOME_PCT
+    promo_code = PROMO_WELCOME_CODE
+    promo_pct = PROMO_WELCOME_PCT
+
     # Size -> price map per format (sizes/prices are the same across designs).
     sizemap: dict = {}
     try:
@@ -748,7 +761,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="bundle">
    <h2>Build a gallery set &amp; save</h2>
    <p class="gsub">Pick 2-3 designs for a wall or a family collection - bundle
-     discounts apply automatically (2 = 8% off, 3 = 12%, 4+ = 15%).</p>
+     discounts apply automatically ({bundle_discount_text}).</p>
    <div class="bgrid" id="bgrid"></div>
    <div class="btot" id="btot">Select 2 or more to see your set price.</div>
  </div>
@@ -782,7 +795,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
   <div class="xbox">
     <span class="qclose" onclick="closeExit()">&times;</span>
-    <h2>Wait - here's 10% off your first piece</h2>
+    <h2>Wait - here's {promo_pct}% off your first piece</h2>
     <p class="qsub">Join the insider list for an instant discount code, early
       access to new designs &amp; seasonal gift guides.</p>
     <div id="xform">
@@ -955,8 +968,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const MAXCHARS = 250;
  const SIZEMAP = {sizemap_json};
  let CART = [];
- const QD = [[4,0.15],[3,0.12],[2,0.08],[1,0]];
- function qdisc(q){{for(const t of QD){{if(q>=t[0])return t[1];}}return 0;}}
+ const QD = {qty_discount_json};
+ function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
  function fillQty(){{const s=document.getElementById('mqty'); if(s&&!s.options.length){{
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
@@ -1132,7 +1145,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    g.innerHTML=DATA.map((d,i)=>
      `<div class="bopt ${{BSEL.has(i)?'sel':''}}" onclick="toggleBundle(${{i}})">`+
      `<img src="${{d.imgs[0]}}" loading="lazy"><div>${{d.title.slice(0,28)}}</div></div>`).join('');
-   const n=BSEL.size; const disc=n>=4?0.15:n>=3?0.12:n>=2?0.08:0;
+   const n=BSEL.size; const disc=qdisc(n);
    const t=document.getElementById('btot');
    if(n<2){{t.textContent='Select 2 or more to see your set price.'; return;}}
    let base=0; BSEL.forEach(i=>base+=parseFloat(DATA[i].price));
@@ -1173,7 +1186,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v)){{
      msg.className='xbad'; msg.textContent='Please enter a valid email.'; return; }}
    const finish=()=>{{ msg.className='xok';
-     msg.innerHTML='🎉 You\\'re in! Use code <b>WELCOME10</b> for 10% off your first order.';
+     msg.innerHTML='🎉 You\\'re in! Use code <b>{promo_code}</b> for {promo_pct}% off your first order.';
      document.getElementById('xform').style.display='none'; _exitDone(); }};
    if(SIGNUP_API){{
      fetch(SIGNUP_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},

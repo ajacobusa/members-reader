@@ -44,3 +44,26 @@ def test_signup_endpoint_adds_subscriber(tmp_path, monkeypatch):
     assert r.status_code == 200 and r.get_json()["status"] == "ok"
     bad = client.post("/signup", json={"email": "nope"})
     assert bad.status_code == 400
+
+
+def test_bundle_discount_js_matches_backend_single_source(tmp_path):
+    """The storefront discount tiers must be injected from variations.QTY_DISCOUNT,
+    not hardcoded (prevents JS/Python drift)."""
+    import json
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    from quoteforge.etsy.variations import QTY_DISCOUNT
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=True)
+    h = out.read_text(encoding="utf-8")
+    expected = json.dumps([[t, d] for t, d in QTY_DISCOUNT])
+    assert f"const QD = {expected};" in h
+    # the old hardcoded ternary must be gone
+    assert "n>=4?0.15:n>=3?0.12" not in h
+    # promo copy comes from config
+    from quoteforge.config import PROMO_WELCOME_CODE
+    assert PROMO_WELCOME_CODE in h

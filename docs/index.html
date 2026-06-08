@@ -349,7 +349,7 @@
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
- <div class="sproof"><span class="spi"><b>3</b> orders made to order</span><span class="spi"><b>1</b> on the insider list</span></div>
+ <div class="sproof"><span class="spi"><b>9</b> orders made to order</span><span class="spi"><b>1</b> on the insider list</span></div>
  <div class="cutoff">⏰ Only 5 days left - order by Jun 12 to get it in time for Father's Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div class="intro">
@@ -362,7 +362,7 @@
  <div class="bundle">
    <h2>Build a gallery set &amp; save</h2>
    <p class="gsub">Pick 2-3 designs for a wall or a family collection - bundle
-     discounts apply automatically (2 = 8% off, 3 = 12%, 4+ = 15%).</p>
+     discounts apply automatically (2 = 8% off, 3 = 12% off, 4+ = 15% off).</p>
    <div class="bgrid" id="bgrid"></div>
    <div class="btot" id="btot">Select 2 or more to see your set price.</div>
  </div>
@@ -569,8 +569,8 @@
  const MAXCHARS = 250;
  const SIZEMAP = {"Poster (unframed)": [{"size": "8x10", "price": 18.99}, {"size": "11x14", "price": 24.99}, {"size": "12x16", "price": 30.99}, {"size": "18x24", "price": 43.99}, {"size": "24x36", "price": 63.99}], "Canvas (gallery-wrapped)": [{"size": "8x10", "price": 71.99}, {"size": "11x14", "price": 94.99}, {"size": "16x20", "price": 126.99}, {"size": "18x24", "price": 157.99}, {"size": "24x36", "price": 228.99}], "Acrylic": [{"size": "8x10", "price": 138.99}, {"size": "12x16", "price": 189.99}, {"size": "16x20", "price": 255.99}], "Metal": [{"size": "8x10", "price": 126.99}, {"size": "12x16", "price": 177.99}, {"size": "16x20", "price": 243.99}], "Framed - Gallery Gold": [{"size": "8x10", "price": 120.99}, {"size": "11x14", "price": 126.99}, {"size": "12x16", "price": 132.99}, {"size": "18x24", "price": 145.99}, {"size": "24x36", "price": 165.99}], "Framed - Premium Walnut": [{"size": "8x10", "price": 112.99}, {"size": "11x14", "price": 118.99}, {"size": "12x16", "price": 124.99}, {"size": "18x24", "price": 138.99}, {"size": "24x36", "price": 157.99}], "Framed - Premium Solid Oak": [{"size": "8x10", "price": 104.99}, {"size": "11x14", "price": 110.99}, {"size": "12x16", "price": 116.99}, {"size": "18x24", "price": 130.99}, {"size": "24x36", "price": 149.99}], "Framed - Classic Black Wood": [{"size": "8x10", "price": 65.99}, {"size": "11x14", "price": 71.99}, {"size": "12x16", "price": 77.99}, {"size": "18x24", "price": 90.99}, {"size": "24x36", "price": 110.99}], "Framed - Classic White Wood": [{"size": "8x10", "price": 65.99}, {"size": "11x14", "price": 71.99}, {"size": "12x16", "price": 77.99}, {"size": "18x24", "price": 90.99}, {"size": "24x36", "price": 110.99}], "Framed - Slim Black": [{"size": "8x10", "price": 45.99}, {"size": "11x14", "price": 51.99}, {"size": "12x16", "price": 57.99}, {"size": "18x24", "price": 71.99}, {"size": "24x36", "price": 90.99}]};
  let CART = [];
- const QD = [[4,0.15],[3,0.12],[2,0.08],[1,0]];
- function qdisc(q){for(const t of QD){if(q>=t[0])return t[1];}return 0;}
+ const QD = [[4, 0.15], [3, 0.12], [2, 0.08], [1, 0.0]];
+ function qdisc(q){let best=0; for(const t of QD){if(q>=t[0]&&t[1]>best)best=t[1];} return best;}
  function fillQty(){const s=document.getElementById('mqty'); if(s&&!s.options.length){
    for(let i=1;i<=10;i++){const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}
  function fillSizes(){const sel=document.getElementById('msize'); if(!sel)return;
@@ -746,7 +746,7 @@
    g.innerHTML=DATA.map((d,i)=>
      `<div class="bopt ${BSEL.has(i)?'sel':''}" onclick="toggleBundle(${i})">`+
      `<img src="${d.imgs[0]}" loading="lazy"><div>${d.title.slice(0,28)}</div></div>`).join('');
-   const n=BSEL.size; const disc=n>=4?0.15:n>=3?0.12:n>=2?0.08:0;
+   const n=BSEL.size; const disc=qdisc(n);
    const t=document.getElementById('btot');
    if(n<2){t.textContent='Select 2 or more to see your set price.'; return;}
    let base=0; BSEL.forEach(i=>base+=parseFloat(DATA[i].price));

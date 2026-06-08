@@ -21,8 +21,16 @@ def _days_until_anniversary(event_date: str, now: datetime) -> int | None:
             month, day = int(parts[0]), int(parts[1])
         else:
             return None
-        this_year = datetime(now.year, month, day)
-        nxt = this_year if this_year.date() >= now.date() else datetime(now.year + 1, month, day)
+        def _on(year: int) -> datetime:
+            try:
+                return datetime(year, month, day)
+            except ValueError:
+                # Feb 29 in a non-leap year -> observe on Feb 28
+                if month == 2 and day == 29:
+                    return datetime(year, 2, 28)
+                raise
+        this_year = _on(now.year)
+        nxt = this_year if this_year.date() >= now.date() else _on(now.year + 1)
         return (nxt.date() - now.date()).days
     except (ValueError, TypeError):
         return None

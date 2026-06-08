@@ -62,7 +62,13 @@ def dynamic_price(list_price: float, cost: float = 0.0, tier: str = "entry",
     BELOW the list price (so margin only ever improves vs. list).
     """
     from quoteforge.etsy.variations import net_margin_pct, floor_for_tier
-    mult = demand_multiplier(now)
+    from quoteforge.config import DYNAMIC_PRICING_ENABLED, DYNAMIC_MAX_UPLIFT_PCT
+    seasons = active_seasons(now)          # computed once, reused below
+    if not DYNAMIC_PRICING_ENABLED:
+        mult = 1.0
+    else:
+        total = sum(s["weight"] for s in seasons)
+        mult = round(1.0 + min(total, DYNAMIC_MAX_UPLIFT_PCT / 100.0), 4)
     raw = list_price * mult
     # round up to the next x.99 (>= raw), so we never round down below list
     import math
@@ -75,7 +81,7 @@ def dynamic_price(list_price: float, cost: float = 0.0, tier: str = "entry",
         "multiplier": mult, "uplift_pct": round((mult - 1.0) * 100, 1),
         "margin_pct": margin, "tier": tier,
         "holds_floor": (margin is None) or margin >= floor_for_tier(tier),
-        "active_seasons": [s["occasion"] for s in active_seasons(now)],
+        "active_seasons": [s["occasion"] for s in seasons],
     }
 
 
