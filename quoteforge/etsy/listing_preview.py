@@ -485,6 +485,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  #xform .qgo{{width:auto;margin:0;padding:12px 18px;white-space:nowrap}}
  #xmsg{{font-size:14px;margin:6px 0}} #xmsg.xok{{color:var(--green)}}
  #xmsg.xbad{{color:#a23a3a}}
+ /* abandoned-customization resume bar */
+ #resumeBar{{display:none;position:fixed;left:12px;bottom:12px;z-index:75;
+   align-items:center;gap:10px;background:#fff;border:1px solid var(--gold);
+   border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--green);
+   box-shadow:0 8px 26px rgba(0,0,0,.18);max-width:340px}}
+ #resumeBar button{{background:var(--green);color:#fff;border:none;border-radius:18px;
+   padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}}
+ #resumeBar .rbx{{cursor:pointer;color:#9aa39d;font-size:18px}}
  /* wedding & corporate packages */
  .packages{{max-width:1100px;margin:46px auto;padding:0 20px;text-align:center}}
  .packages h2{{font-size:28px;color:var(--green);margin:0 0 4px}}
@@ -792,6 +800,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   </div>
 </div>
 
+<div id="resumeBar">
+  🎨 Your custom artwork is still waiting.
+  <button onclick="resumeDraft()">Resume your design &rarr;</button>
+  <span class="rbx" onclick="document.getElementById('resumeBar').style.display='none'">&times;</span>
+</div>
+
 <div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
   <div class="xbox">
     <span class="qclose" onclick="closeExit()">&times;</span>
@@ -977,7 +991,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}} in - $${{r.price}}</option>`).join('');}}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
-   CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty}}); renderCart();}}
+   CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty}}); renderCart();
+   clearDraft();}}
+ function clearDraft(){{
+   try{{localStorage.removeItem('jf_draft');}}catch(e){{}}
+   const b=document.getElementById('resumeBar'); if(b)b.style.display='none';
+   const email=knownEmail();
+   if(email && CUSTOMIZE_API){{
+     fetch(CUSTOMIZE_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{email:email, listing:(DATA[CUR]||{{}}).title||'',
+         material:CURFMT, status:'converted'}})}}).catch(function(){{}});
+   }}
+ }}
  function rmLine(i){{CART.splice(i,1);renderCart();}}
  function renderCart(){{const c=document.getElementById('mcart'); if(!c)return;
    if(!CART.length){{c.innerHTML='<div class="note">No items yet - choose size + qty, then Add.</div>';return;}}
@@ -1079,7 +1104,52 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    while((lines.length*fs*1.32)>h*0.82 && fs>9){{fs-=1; lines=wrap(fs);}}
    const lh=fs*1.34; let ty=y+(h-lines.length*lh)/2+fs*0.9;
    for(const ln of lines){{ctx.fillText(ln,x+w/2,ty); ty+=lh;}}
+   saveDraft();
  }}
+ // ── Abandoned-customization save/restore ──
+ let DRAFT_T=null;
+ function _draftState(){{
+   const typed=(document.getElementById('mtext')||{{}}).value||'';
+   return {{i:CUR, fmt:CURFMT, bg:SELBG, txt:SELTXT, font:SELFONT, wall:SELWALL,
+            wording:typed, photo:!!(document.getElementById('mupload')||{{}}).value}};
+ }}
+ function saveDraft(){{
+   if(document.getElementById('modal').style.display!=='flex') return;
+   const s=_draftState();
+   if(!s.wording && !s.photo && s.fmt===((DATA[CUR]&&DATA[CUR].formats&&DATA[CUR].formats[0])?DATA[CUR].formats[0].name:'')) {{
+     // nothing meaningful customized yet - still remember the open design locally
+   }}
+   try{{localStorage.setItem('jf_draft', JSON.stringify(s));}}catch(e){{}}
+   // debounced server save (only when we know who they are)
+   const email=knownEmail();
+   if(email && CUSTOMIZE_API){{
+     clearTimeout(DRAFT_T);
+     DRAFT_T=setTimeout(function(){{
+       fetch(CUSTOMIZE_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+         body:JSON.stringify({{email:email, listing:(DATA[s.i]||{{}}).title||'',
+           material:s.fmt, wording:s.wording, has_photo:s.photo,
+           state_json:s}})}}).catch(function(){{}});
+     }}, 1200);
+   }}
+ }}
+ function resumeDraft(){{
+   let s=null; try{{s=JSON.parse(localStorage.getItem('jf_draft')||'null');}}catch(e){{}}
+   if(!s||typeof s.i!=='number'||!DATA[s.i]) return;
+   openM(s.i);
+   if(s.fmt && DATA[s.i].formats){{const j=DATA[s.i].formats.findIndex(f=>f.name===s.fmt);
+     if(j>=0) pickFmt(s.i,j);}}
+   if(s.bg)SELBG=s.bg; if(s.txt)SELTXT=s.txt; if(s.font)SELFONT=s.font; if(s.wall)SELWALL=s.wall;
+   const mt=document.getElementById('mtext'); if(mt&&s.wording){{mt.value=s.wording; onText();}}
+   renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
+   const b=document.getElementById('resumeBar'); if(b)b.style.display='none';
+ }}
+ (function(){{
+   let s=null; try{{s=JSON.parse(localStorage.getItem('jf_draft')||'null');}}catch(e){{}}
+   if(s && typeof s.i==='number' && DATA[s.i] && (s.wording||s.photo)){{
+     window.addEventListener('DOMContentLoaded',function(){{
+       const b=document.getElementById('resumeBar'); if(b)b.style.display='flex';}});
+   }}
+ }})();
  function pickFmt(i,j){{
    const f = DATA[i].formats[j];
    if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
@@ -1173,6 +1243,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const ANGE_API = "{ask_api_url}";
  // ── Exit-intent email capture ──
  const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/signup') : "";
+ const CUSTOMIZE_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/customization') : "";
+ function knownEmail(){{ try{{return localStorage.getItem('jf_email')||"";}}catch(e){{return "";}} }}
  const SIGNUP_URL = "{signup_url}";
  let EXIT_SHOWN = false;
  function _exitDone(){{ try{{localStorage.setItem('jf_exit','1');}}catch(e){{}} }}
@@ -1185,6 +1257,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const msg=document.getElementById('xmsg');
    if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v)){{
      msg.className='xbad'; msg.textContent='Please enter a valid email.'; return; }}
+   try{{localStorage.setItem('jf_email',v);}}catch(e){{}}
    const finish=()=>{{ msg.className='xok';
      msg.innerHTML='🎉 You\\'re in! Use code <b>{promo_code}</b> for {promo_pct}% off your first order.';
      document.getElementById('xform').style.display='none'; _exitDone(); }};

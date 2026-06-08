@@ -158,6 +158,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "to hold the 60% margin floor and disables discontinued frames/products "
         "before the daily site rebuild publishes."),
     ScheduledJob(
+        "QuoteForge Customization Recovery", "recover-customizations --send 60",
+        ["/SC", "HOURLY", "/MO", "3"],
+        "Every 3h: emails a 'your custom artwork is still waiting' recovery note "
+        "to shoppers who started a design but didn't order (idle >60 min). "
+        "Idempotent - each abandoned design is recovered once."),
+    ScheduledJob(
         "QuoteForge Gift Reminders", "gift-profiles remind 21 email",
         ["/SC", "DAILY", "/ST", "08:40"],
         "Emails repeat-gifting reminders for saved gift profiles whose occasion "

@@ -233,6 +233,23 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS abandoned_customizations (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            email         TEXT NOT NULL,
+            listing       TEXT,                      -- listing title/number being designed
+            material      TEXT,                      -- chosen format/frame
+            size          TEXT,
+            wording       TEXT,                      -- custom message in progress
+            has_photo     INTEGER DEFAULT 0,         -- did they upload a photo
+            state_json    TEXT,                      -- full client state (colors/font/etc)
+            status        TEXT DEFAULT 'open',       -- open|recovered|converted|dismissed
+            recovered_at  TEXT,                      -- last recovery email sent
+            created_at    TEXT DEFAULT (datetime('now')),
+            updated_at    TEXT DEFAULT (datetime('now')),
+            UNIQUE(email, listing)
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS gift_profiles (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             owner_email   TEXT NOT NULL,            -- the buyer who saved this profile
@@ -294,6 +311,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN vendor TEXT DEFAULT 'gelato'")
     if "product_type" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN product_type TEXT DEFAULT 'print'")
+    # Profit-optimization dimensions (nullable; populated as orders capture them).
+    if "material" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN material TEXT")
+    if "size" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN size TEXT")
+    if "listing" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN listing TEXT")
+    if "acquisition_source" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN acquisition_source TEXT")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -307,8 +333,9 @@ def create_order(data: dict) -> str:
             (order_id, etsy_order_id, customer_name, customer_email,
              recipient_name, sender_name, relationship, occasion,
              scenery, tone, memory, output_style, status,
-             sale_price, gelato_cost, channel, vendor, product_type)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             sale_price, gelato_cost, channel, vendor, product_type,
+             material, size, listing, acquisition_source)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -328,6 +355,10 @@ def create_order(data: dict) -> str:
             data.get("channel", "etsy"),
             data.get("vendor", "gelato"),
             data.get("product_type", "print"),
+            data.get("material"),
+            data.get("size"),
+            data.get("listing"),
+            data.get("acquisition_source"),
         ))
     return order_id
 
@@ -555,6 +586,71 @@ def get_subscribers() -> list[dict]:
 def subscriber_count() -> int:
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
+
+
+# ── Abandoned customizations (recovery) ─────────────────────────
+
+def save_customization(email: str, listing: str = "", material: str = "",
+                       size: str = "", wording: str = "", has_photo: bool = False,
+                       state_json: str = "") -> int:
+    """Upsert an in-progress (abandoned) customization keyed by email+listing."""
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO abandoned_customizations
+               (email, listing, material, size, wording, has_photo, state_json, status)
+               VALUES (?,?,?,?,?,?,?, 'open')
+               ON CONFLICT(email, listing) DO UPDATE SET
+                 material=excluded.material, size=excluded.size,
+                 wording=excluded.wording, has_photo=excluded.has_photo,
+                 state_json=excluded.state_json,
+                 status=CASE WHEN abandoned_customizations.status='converted'
+                             THEN 'converted' ELSE 'open' END,
+                 updated_at=datetime('now')
+            """,
+            (email, listing, material, size, wording, 1 if has_photo else 0,
+             state_json))
+        return cur.lastrowid or 0
+
+
+def get_open_customizations(older_than_minutes: int = 0) -> list[dict]:
+    """Open abandoned customizations, optionally only those idle for N minutes."""
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM abandoned_customizations WHERE status='open' "
+            "ORDER BY updated_at DESC")
+        items = [dict(r) for r in rows]
+    if older_than_minutes <= 0:
+        return items
+    from datetime import datetime as _dt, timedelta as _td
+    cutoff = _dt.now() - _td(minutes=older_than_minutes)
+    out = []
+    for it in items:
+        try:
+            upd = _dt.fromisoformat((it.get("updated_at") or "").replace("Z", ""))
+        except ValueError:
+            continue
+        if upd <= cutoff:
+            out.append(it)
+    return out
+
+
+def mark_customization(email: str, listing: str, status: str,
+                       recovered: bool = False) -> None:
+    email = (email or "").strip().lower()
+    from datetime import datetime as _dt
+    with _conn() as conn:
+        if recovered:
+            conn.execute(
+                "UPDATE abandoned_customizations SET status=?, recovered_at=? "
+                "WHERE email=? AND listing=?",
+                (status, _dt.now().isoformat(), email, listing))
+        else:
+            conn.execute(
+                "UPDATE abandoned_customizations SET status=? "
+                "WHERE email=? AND listing=?", (status, email, listing))
 
 
 # ── Gift profiles (memory-based repeat gifting) ──────────────────

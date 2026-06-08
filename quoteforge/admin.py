@@ -1220,6 +1220,34 @@ def _cmd_quote_performance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_profit(args: list[str]) -> int:
+    """Profit Optimization Engine - profit per listing/size/material/source.
+    `profit [email]`."""
+    from quoteforge.analytics.profit_optimizer import format_profit_text
+    text = format_profit_text()
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        html = f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>"
+        _send_email("Joffiels Profit Optimization", html, to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
+def _cmd_recover_customizations(args: list[str]) -> int:
+    """Recover abandoned customizations. `recover-customizations [--send] [minutes]`."""
+    from quoteforge.automation.customization_recovery import (
+        run_recovery, format_recovery_text)
+    minutes = next((int(a) for a in args if a.isdigit()), 60)
+    if "--send" in args or "send" in args:
+        r = run_recovery(minutes, send=True)
+        print(f"Recovery emails sent: {r['sent']} / {r['candidates']} candidate(s).")
+    else:
+        print(format_recovery_text(minutes))
+    return 0
+
+
 def _cmd_dynamic_pricing(args: list[str]) -> int:
     """Show current seasonal-demand pricing state. `dynamic-pricing`."""
     from quoteforge.etsy.dynamic_pricing import format_dynamic_text, dynamic_price
@@ -1586,6 +1614,8 @@ COMMANDS = {
     "quote-performance": _cmd_quote_performance,
     "dynamic-pricing": _cmd_dynamic_pricing,
     "gift-profiles": _cmd_gift_profiles,
+    "profit": _cmd_profit,
+    "recover-customizations": _cmd_recover_customizations,
     "vendors": _cmd_vendors,
     "add-review": _cmd_add_review,
     "reviews": _cmd_reviews,

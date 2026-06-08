@@ -365,6 +365,47 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if ok else 400)
 
+    @app.route("/customization", methods=["POST", "OPTIONS"])
+    def save_customization_route():
+        """Save an in-progress (abandoned) customization for later recovery.
+        POST {email, listing, material, size, wording, has_photo, state_json}."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        d = request.get_json(force=True, silent=True) or {}
+        saved = 0
+        # A 'converted' ping (the shopper added the item to their order) closes the
+        # abandoned record so no recovery email is sent.
+        if str(d.get("status", "")).lower() == "converted":
+            try:
+                from quoteforge.db.database import mark_customization
+                mark_customization(d.get("email", ""), d.get("listing", ""),
+                                   "converted")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"mark converted failed: {exc}")
+            resp = jsonify({"status": "ok", "converted": True})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            return resp
+        try:
+            import json as _json
+            from quoteforge.db.database import save_customization
+            state = d.get("state_json")
+            if state is not None and not isinstance(state, str):
+                state = _json.dumps(state)
+            saved = save_customization(
+                email=d.get("email", ""), listing=d.get("listing", ""),
+                material=d.get("material", ""), size=d.get("size", ""),
+                wording=d.get("wording", ""), has_photo=bool(d.get("has_photo")),
+                state_json=state or "")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"save_customization failed: {exc}")
+        ok = "@" in str(d.get("email", ""))
+        resp = jsonify({"status": "ok" if ok else "error", "saved": bool(saved)})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if ok else 400)
+
     @app.route("/profile", methods=["POST", "OPTIONS"])
     def save_profile():
         """Save a memory-based gift profile from the storefront.
