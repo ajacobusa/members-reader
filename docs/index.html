@@ -916,6 +916,9 @@
    const title=document.getElementById('proofTitle'), sub=document.getElementById('proofSub');
    const acc=document.getElementById('proofAcceptBtn'), sum=document.getElementById('proofSummary');
    const st=document.getElementById('proofStatus'); if(st)st.textContent='';
+   ACCEPTED=false;
+   const edit=document.querySelector('#proofPop .pedit'); if(edit)edit.style.display='';
+   if(acc){ acc.disabled=false; acc.onclick=proofAccept; }
    if(PROOFMODE==='final'){
      if(img)img.style.display='none';
      if(title)title.textContent='Review your basket ('+CART.length+')';
@@ -942,18 +945,30 @@
    const before=CART.length; addToOrder(); closeProof(); pulseBasket();
    if(CART.length>before) toggleBasket();    // open the basket so they see it landed
  }
+ let ACCEPTED=false;
  function acceptProof(){
+   if(ACCEPTED) return;            // guard against double-accept
    const email=knownEmail();
    const summary=_basketSummary();
+   const acc=document.getElementById('proofAcceptBtn');
+   if(acc){ acc.textContent='Confirming…'; acc.disabled=true; }
    const done=function(emailed){
+     ACCEPTED=true; abConvert && abConvert();
      const st=document.getElementById('proofStatus');
-     if(st) st.innerHTML = emailed
-       ? '✅ Accepted! A confirmation email is on its way. We\'ll send a free proof before printing.'
-       : '✅ Accepted! Continue to secure checkout to pay - we\'ll send a free proof of each piece before printing.';
-     const acc=document.getElementById('proofAcceptBtn');
-     if(acc && ETSY_SHOP_URL){ acc.textContent='Continue to checkout →';
-       acc.onclick=function(){ window.open(ETSY_SHOP_URL,'_blank'); }; }
-     abConvert && abConvert();
+     const edit=document.querySelector('#proofPop .pedit');
+     if(edit) edit.style.display='none';
+     let msg, label, action;
+     if(emailed){
+       msg='✅ Accepted! A confirmation email is on its way. We\'ll send a free proof of each piece before printing.';
+     } else {
+       msg='✅ Accepted &amp; saved! We\'ll send a free digital proof of each piece for your approval before anything prints.';
+     }
+     if(ETSY_SHOP_URL){ label='Continue to checkout →';
+       action=function(){ window.open(ETSY_SHOP_URL,'_blank'); };
+       msg+=' Tap below to complete your purchase.';
+     } else { label='Done ✓'; action=function(){ closeProof(); }; }
+     if(st) st.innerHTML=msg;
+     if(acc){ acc.textContent=label; acc.disabled=false; acc.onclick=action; }
    };
    if(email && CONFIRM_API){
      fetch(CONFIRM_API,{method:'POST',headers:{'Content-Type':'application/json'},
