@@ -141,7 +141,7 @@ def _occasion_showcase(kit_dir, external_assets: bool = False, assets=None) -> s
             f'onclick="shopByOccasion(\'{name_js}\',this)">{media}'
             f'<div class="occap"><div class="octitle">{name}</div>'
             f'<div class="ocsub">{sub}</div></div></button>')
-    return ('<div class="occasions"><h2>Shop by occasion</h2>'
+    return ('<div class="occasions" id="occasions"><h2>Shop by occasion</h2>'
             '<p class="ocintro">Find the perfect personalized gift for the moment '
             'that matters - tap an occasion to explore.</p>'
             f'<div class="ocgrid">{"".join(cards)}</div>'
@@ -1175,6 +1175,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .occhip{{background:#fff;border:1px solid var(--line);border-radius:18px;
    padding:7px 14px;font-size:13px;color:var(--green);cursor:pointer}}
  .occhip:hover{{border-color:var(--gold)}}
+ .occback{{margin-left:10px;background:var(--green);color:#fff;border:none;
+   border-radius:16px;padding:5px 13px;font-size:13px;font-weight:600;
+   cursor:pointer;font-family:inherit}}
+ .occback:hover{{background:var(--gold)}}
  .occhip.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
  .occnote{{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}}
  .baddlbl{{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}}
@@ -1700,15 +1704,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }});
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
    const note=document.getElementById('occnote');
+   // When an occasion is active, offer a one-tap way back to the occasion tiles
+   // so you don't have to scroll up to pick another.
+   const back = q ? ` <button class="occback" onclick="backToOccasions()">`+
+     `&#8593; Pick another occasion</button>` : '';
    if(q && shown===0){{                       // no matches -> show all, explain
      document.querySelectorAll('#grid .card').forEach(c=>c.style.display='');
      if(note) note.innerHTML=`No designs for <b>${{occ}}</b> yet - showing all. `+
-       `Tell us what you'd like and we'll create it!`;
+       `Tell us what you'd like and we'll create it!`+back;
    }} else if(note){{
-     note.innerHTML = q ? `Showing <b>${{shown}}</b> design${{shown!==1?'s':''}} for <b>${{occ}}</b>` : '';
+     note.innerHTML = q ? `Showing <b>${{shown}}</b> design${{shown!==1?'s':''}} for <b>${{occ}}</b>`+back : '';
    }}
    const grid=document.getElementById('grid');
    if(grid) grid.scrollIntoView({{behavior:'smooth',block:'start'}});
+ }}
+ function backToOccasions(){{
+   const s=document.getElementById('occasions');
+   if(s) s.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars();
