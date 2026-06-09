@@ -105,8 +105,9 @@ def _competitive_sections() -> str:
     faq_html = "".join(
         f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
         for q, a in faqs)
-    occ = ["Graduation", "Birthday", "Wedding", "Anniversary", "Mother's Day",
-           "Father's Day", "Memorial", "New Home", "Faith", "Christmas"]
+    occ = ["Graduation", "Birthday", "Wedding", "Anniversary", "Valentine's Day",
+           "Mother's Day", "Father's Day", "Memorial", "New Home", "Faith",
+           "Christmas"]
     chips = ('<span class="occhip sel" onclick="shopByOccasion(\'\',this)">All</span>'
              + "".join(f'<span class="occhip" '
                        f'onclick="shopByOccasion(\'{o}\',this)">{o}</span>' for o in occ))
@@ -1313,6 +1314,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "birthday":["birthday"],
    "wedding":["wedding","vows","bride","groom","marriage"],
    "anniversary":["anniversary","husband","wife"],
+   "valentine's day":["valentine","love","heart","romance","sweetheart","couple","husband","wife","anniversary"],
    "mother's day":["mother","mom","grandma","mum"],
    "father's day":["father","dad","grandpa","papa"],
    "memorial":["memorial","remember","sympathy","heaven","loss","grief"],

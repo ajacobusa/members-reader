@@ -9,7 +9,8 @@ from __future__ import annotations
 
 # Quiz options (value, label).
 OCCASIONS = ["Graduation", "Birthday", "Christmas", "Wedding", "Anniversary",
-             "Mother's Day", "Father's Day", "Memorial", "New Home", "Just because"]
+             "Valentine's Day", "Mother's Day", "Father's Day", "Memorial",
+             "New Home", "Just because"]
 RELATIONSHIPS = ["Daughter", "Son", "Mom", "Dad", "Wife", "Husband", "Grandma",
                  "Best Friend", "Family", "Pet"]
 BUDGETS = [("under50", "Under $50", "poster"),
