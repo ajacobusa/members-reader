@@ -152,11 +152,11 @@ def _gift_and_b2b_section(owner: str) -> str:
         'weddings, realtor closings, churches &amp; schools - wholesale pricing on '
         'volume orders.</p>'
         '<div class="b2bform">'
-        '<input id="bz_name" placeholder="Your name">'
-        '<input id="bz_co" placeholder="Company / organization">'
-        '<input id="bz_email" placeholder="Your email">'
-        '<input id="bz_qty" placeholder="Approx. quantity">'
-        '<textarea id="bz_msg" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea>'
+        '<input id="bz_name" aria-label="Your name" placeholder="Your name">'
+        '<input id="bz_co" aria-label="Company or organization" placeholder="Company / organization">'
+        '<input id="bz_email" aria-label="Your email" placeholder="Your email">'
+        '<input id="bz_qty" aria-label="Approximate quantity" placeholder="Approx. quantity">'
+        '<textarea id="bz_msg" aria-label="What do you need" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea>'
         f'<button onclick="b2bSend(\'{b2b_to}\')">Request a wholesale quote</button>'
         '</div></div>')
     return gift_html + b2b_html
@@ -452,7 +452,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     {f'<img src="{logo_src}" class="glogo">' if logo_src else ''}
     <h2>{SHOP_NAME}</h2>
     <p>This preview is private. Please enter the password to view.</p>
-    <input id="pw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')check()">
+    <input id="pw" type="password" aria-label="Password" placeholder="Password" onkeydown="if(event.key==='Enter')check()">
     <button onclick="check()">View</button>
     <div id="err">Incorrect password - please try again.</div>
   </div>
@@ -473,7 +473,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     site_style = "display:none" if password else "display:block"
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{SHOP_NAME} - Personalized Wall Art</title>
+<title>Personalized Wall Art Gifts for Any Occasion | {SHOP_NAME}</title>
+<meta name="description" content="Personalized wall art for life's moments - custom wording, your photo, 6 frame styles. FREE digital proof before printing &amp; a happiness guarantee. Made to order, shipped worldwide.">
+<meta name="theme-color" content="#103d2e">
+<link rel="canonical" href="https://joffiels.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{SHOP_NAME}">
+<meta property="og:title" content="Personalized Wall Art Gifts | {SHOP_NAME}">
+<meta property="og:description" content="Custom wording &amp; your photo on museum-quality prints. FREE proof before printing, happiness guarantee.">
+<meta property="og:url" content="https://joffiels.com/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Personalized Wall Art Gifts | {SHOP_NAME}">
+<meta name="twitter:description" content="Custom wording &amp; your photo, FREE proof before printing.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23103d2e'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23e8d8a8' font-family='Georgia,serif'%3EJ%3C/text%3E%3C/svg%3E">
 {_analytics_snippet()}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -493,7 +505,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  button,input,select,textarea,label,a,span,div,li{{font-family:inherit}}
  .fchip{{font-family:inherit}}  /* overridden inline per-font for the preview */
  p{{margin:0 0 12px}}
- .intro p,.mdesc,.faq p{{font-size:15.5px;line-height:1.7;color:#44514a}}
+ .intro p,.mdesc,.faq p{{font-size:15.5px;line-height:1.7;color:#33423a}}
+ /* visible keyboard focus for accessibility */
+ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,
+ textarea:focus-visible,.occhip:focus-visible,.fchip:focus-visible,
+ .sw span:focus-visible{{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}}
  a{{color:var(--green)}}
  /* gate */
  #gate{{position:fixed;inset:0;background:linear-gradient(160deg,#103d2e,#0b2c21);
@@ -923,7 +939,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .stars2 span{{color:#ddd3bc;transition:color .1s}}
  .stars2 span.on{{color:var(--gold)}}
  .ratemsg{{font-size:12px;color:var(--green);min-height:16px;margin-top:2px}}
- @media(max-width:560px){{.mbody{{padding:16px}} .nav .bn{{font-size:20px}}}}
+ @media(max-width:760px){{
+   .mleft,.mright{{min-width:0;flex-basis:100%}}
+   .mbox{{max-height:94vh}}
+ }}
+ @media(max-width:560px){{
+   .mbody{{padding:16px}} .nav .bn{{font-size:20px}}
+   .nav{{flex-wrap:wrap;gap:8px}} .navquiz,.navbasket{{margin-left:0}}
+   .photorow{{flex-wrap:wrap}} .b2bform{{grid-template-columns:1fr}}
+   .b2bform textarea,.b2bform button{{grid-column:1}}
+   .occrow{{gap:6px}} .occhip{{padding:6px 11px;font-size:12.5px}}
+   .proofactions,.bpactions{{flex-wrap:wrap}}
+ }}
 </style></head><body>
 {gate}
 <div id="site" style="{site_style}">
@@ -991,7 +1018,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 <div id="quiz" onclick="if(event.target.id==='quiz')closeQuiz()">
   <div class="qbox">
-    <span class="qclose" onclick="closeQuiz()">&times;</span>
+    <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeQuiz()">&times;</span>
     <h2>🎁 Find the perfect gift</h2>
     <p class="qsub">Answer 5 quick questions and we'll recommend the ideal piece.</p>
     <div class="qrow"><label>Who is it for?</label><select id="q_rel"></select></div>
@@ -1012,7 +1039,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 <div id="proofPop" onclick="if(event.target.id==='proofPop')closeProof()">
   <div class="proofbox">
-    <span class="qclose" onclick="closeProof()">&times;</span>
+    <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeProof()">&times;</span>
     <h2 id="proofTitle">Your final design</h2>
     <p class="qsub" id="proofSub">This is how your piece will look. Happy with it?
       Add it to your basket - we'll still send a FREE proof before printing.</p>
@@ -1028,12 +1055,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 <div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
   <div class="xbox">
-    <span class="qclose" onclick="closeExit()">&times;</span>
+    <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeExit()">&times;</span>
     <h2>Wait - here's {promo_pct}% off your first piece</h2>
     <p class="qsub">Join the insider list for an instant discount code, early
       access to new designs &amp; seasonal gift guides.</p>
     <div id="xform">
-      <input id="xemail" type="email" placeholder="you@email.com"
+      <input id="xemail" type="email" aria-label="Your email address" placeholder="you@email.com"
         onkeydown="if(event.key==='Enter')submitExit()">
       <button class="qgo" onclick="submitExit()">Send my code &rarr;</button>
     </div>
@@ -1044,7 +1071,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 <div id="modal" onclick="if(event.target.id==='modal')closeM()">
  <div class="mbox">
-   <span class="closex" onclick="closeM()">&times;</span>
+   <span class="closex" role="button" tabindex="0" aria-label="Close" onclick="closeM()" onkeydown="if(event.key=='Enter')closeM()">&times;</span>
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft">
@@ -1211,8 +1238,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function render(){{
    const g = document.getElementById('grid');
    g.innerHTML = DATA.map((d,i) => `
-     <div class="card" data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" onclick="openM(${{i}})">
-       <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="">
+     <div class="card" role="button" tabindex="0" aria-label="Personalize ${{d.title}}"
+       data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" onclick="openM(${{i}})"
+       onkeydown="if(event.key==='Enter'||event.key===' '){{event.preventDefault();openM(${{i}});}}">
+       <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="${{d.title}} - personalized wall art preview">
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">Starting at $${{d.price}}</div>
          <div class="prsub">${{MAT_SHORT}} &middot; ${{OPT_COUNT}} options to $${{PRICE_HI}}</div>
@@ -1920,7 +1949,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 <div id="basketPanel" onclick="if(event.target.id==='basketPanel')toggleBasket()">
   <div class="bpbox">
-    <span class="qclose" onclick="toggleBasket()">&times;</span>
+    <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="toggleBasket()">&times;</span>
     <h2>🛒 Your basket</h2>
     <div id="basketLines"></div>
     <div id="basketTotal" class="bptot"></div>
