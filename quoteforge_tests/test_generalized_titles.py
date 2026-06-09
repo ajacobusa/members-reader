@@ -64,3 +64,28 @@ def test_no_duplicate_titles_after_generalizing():
     # full_title stays in sync with the de-duped display title
     for e in listings:
         assert e["full_title"].startswith(e["title"]) or e["title"] in e["full_title"]
+
+
+def test_no_duplicate_design_cards_on_page(tmp_path):
+    """Near-duplicate designs (same concept after generalizing) are dropped, so the
+    grid shows each title once - no confusing repeats."""
+    import json, re
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    nums = []
+    for l in LAUNCH_PACK_20:
+        g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+        Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+        nums.append(l.n)
+    from quoteforge.etsy.listing_preview import build_shop_home, _drop_duplicate_designs
+    h = build_shop_home(numbers=nums, kit_dir=tmp_path,
+                        out_path=tmp_path / "h.html", frame_picker=False).read_text("utf-8")
+    data = json.loads(re.search(r'const DATA = (\[.*?\]);', h, re.S).group(1))
+    titles = [d["title"] for d in data]
+    assert len(titles) == len(set(titles)), "no duplicate design titles on the page"
+    # distinct profession graduations are KEPT
+    assert "Future Nurse Graduation Gift" in titles
+    # the drop helper keeps first per title
+    lst = [{"title": "A"}, {"title": "A"}, {"title": "B"}]
+    _drop_duplicate_designs(lst)
+    assert [x["title"] for x in lst] == ["A", "B"]

@@ -95,10 +95,13 @@ def _occasion_slug(name: str) -> str:
     return name.lower().replace("'", "").replace("’", "").replace(" ", "-")
 
 
-def _occasion_showcase(kit_dir) -> str:
+def _occasion_showcase(kit_dir, external_assets: bool = False, assets=None) -> str:
     """Image+title+subtitle occasion cards (filter the grid on tap). Uses a real
     lifestyle photo if found in an occasions image folder; else an elegant
-    gradient + emoji so it never looks broken or 'computer-generated'."""
+    gradient + emoji so it never looks broken or 'computer-generated'.
+
+    In external_assets mode the photos are written to the assets folder and
+    referenced by URL (keeps the HTML small); otherwise a compact inline JPEG."""
     import os
     from quoteforge.config import OUTPUT_DIR
     # where to look for occasion lifestyle photos
@@ -115,7 +118,12 @@ def _occasion_showcase(kit_dir) -> str:
                 p = d / f"{slug}{ext}"
                 if p.exists():
                     try:
-                        img = _web_img(p, 700)
+                        if external_assets and assets is not None:
+                            assets.mkdir(parents=True, exist_ok=True)
+                            _save_web_jpg(p, assets / f"occasion-{slug}.jpg", 700, 78)
+                            img = f"assets/occasion-{slug}.jpg"
+                        else:
+                            img = _web_img(p, 560, 72)   # compact inline (light page)
                     except Exception:  # noqa: BLE001
                         img = None
                     break
@@ -384,6 +392,24 @@ _QUALIFIERS = ["Gift", "Keepsake", "Wall Art", "Quote Print", "Memento",
                "Art Print", "Keepsake Print", "Custom Print"]
 
 
+def _drop_duplicate_designs(listings: list) -> None:
+    """After generalizing recipients, several designs collapse to the same concept
+    (e.g. Daughter/Son/Mom Birthday -> 'Personalized Birthday Gift'). They differ
+    only in default wording, which the buyer rewrites - so showing all of them is
+    just confusing. Keep ONE per unique title; drop the rest. Genuinely distinct
+    designs (e.g. Future Nurse/Dentist/Teacher Graduation) have unique titles and
+    are kept."""
+    seen: set = set()
+    keep = []
+    for e in listings:
+        base = e.get("title", "")
+        if base in seen:
+            continue
+        seen.add(base)
+        keep.append(e)
+    listings[:] = keep
+
+
 def _dedupe_titles(listings: list) -> None:
     """Ensure every display title is unique by swapping the trailing qualifier
     (e.g. two 'Personalized Birthday Gift' -> '... Gift' and '... Keepsake')."""
@@ -547,7 +573,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if prices:
             entry["price"] = f"{min(prices):.2f}"
         listings.append(entry)
-    _dedupe_titles(listings)
+    _drop_duplicate_designs(listings)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
@@ -1235,7 +1261,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      story. Choose poster, framed, canvas, acrylic or metal when you personalize;
      a free digital proof is sent before anything is printed.</p>
  </div>
- {_occasion_showcase(kit_dir)}
+ {_occasion_showcase(kit_dir, external_assets, assets)}
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
  <div class="bundle" id="bundleSec">
