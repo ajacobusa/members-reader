@@ -34,8 +34,8 @@ def check_software() -> list[CheckResult]:
 
     # ── Imports / wiring ─────────────────────────────────────────
     def _imports():
+        # Server / pipeline core — must import in any environment.
         for mod in [
-            "quoteforge.main",
             "quoteforge.automation.pipeline_orchestrator",
             "quoteforge.automation.webhook_server",
             "quoteforge.automation.retry",
@@ -44,6 +44,15 @@ def check_software() -> list[CheckResult]:
             "quoteforge.web_monitor",
         ]:
             importlib.import_module(mod)
+        # GUI entrypoint depends on tkinter, which is absent on headless
+        # servers and CI runners (e.g. GitHub Actions' Linux Python builds).
+        # A missing tkinter must not fail go-live: the server runs headless.
+        try:
+            importlib.import_module("quoteforge.main")
+        except ImportError as exc:
+            if "tkinter" in str(exc).lower():
+                return "core modules import (GUI skipped: no tkinter/display)"
+            raise
         return "all core modules import"
     ok, detail = _safe(_imports)
     results.append(CheckResult("Core modules import", "PASS" if ok else "FAIL", detail))
