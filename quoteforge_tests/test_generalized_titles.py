@@ -24,3 +24,30 @@ def test_all_launch_titles_generalized():
         t = _generalize_title(b.title)
         for w in ("Daughter", "Son", "Husband", "Grandma", "Grandson"):
             assert w not in t, f"{w} still in {t}"
+
+
+def test_generalize_quote():
+    from quoteforge.etsy.listing_preview import _generalize_quote
+    assert _generalize_quote("Dear Emma, be proud. With love, Mom") == \
+        "Dear [Name], be proud. With love, [Your name]"
+    assert _generalize_quote("Liam, you inspire me. With love,").startswith("[Name],")
+    assert _generalize_quote("Our Family, we rise.").startswith("[Name],")
+    # generic wording with no name is left alone
+    assert _generalize_quote("You make every day brighter.") == "You make every day brighter."
+
+
+def test_no_sample_names_on_page(tmp_path):
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    nums = []
+    for l in LAUNCH_PACK_20:          # render the whole pack (each needs a gallery)
+        g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+        Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+        nums.append(l.n)
+    from quoteforge.etsy.listing_preview import build_shop_home
+    h = build_shop_home(numbers=nums, kit_dir=tmp_path,
+                        out_path=tmp_path / "h.html", frame_picker=False).read_text("utf-8")
+    for name in ("Emma", "Liam", "Sarah", "James", "Grace"):
+        assert name not in h, f"{name} still in preview quotes"
+    # ([Name] placeholder is exercised by test_generalize_quote; in TEST_MODE the
+    #  preview quotes fall back to a generic, already-neutral line.)

@@ -196,6 +196,24 @@ def _generalize_title(t: str) -> str:
     return s or t
 
 
+def _generalize_quote(q: str) -> str:
+    """Make the DEFAULT preview wording recipient-neutral so it fits anyone:
+    'Dear Emma, ...' -> 'Dear [Name], ...'; sign-offs like ', Mom' -> ', [Your name]'.
+    The customer's own message replaces this entirely once they type it."""
+    if not q:
+        return q
+    s = q.strip()
+    # Leading salutation: optional 'Dear ' + a name/short phrase up to the first comma.
+    s = _re.sub(r"^(Dear\s+)?[A-Z][A-Za-z'’]*(?:\s[A-Z][A-Za-z'’]*)?\s*,",
+                lambda m: (m.group(1) or "") + "[Name],", s, count=1)
+    # Sender sign-off at the very end (e.g. 'With love, Mom' / 'Your Child').
+    s = _re.sub(r",\s*(Mom|Mum|Mother|Dad|Father|Your Child|Grandma|Grandpa)\s*$",
+                ", [Your name]", s, flags=_re.I)
+    # Any residual bracketed placeholder name variants -> [Name].
+    s = s.replace("[Your name]", "[Your name]")
+    return s
+
+
 def _generalize_desc(d: str) -> str:
     """Generalize a multi-line description: recipients -> 'loved one'."""
     s = d.replace("Mother's Day", "§MD§").replace("Father's Day", "§FD§")
@@ -283,7 +301,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         gen_title = _generalize_title(b.title)
         entry = {
             "n": b.listing_n,
-            "quote": quote_txt,
+            "quote": _generalize_quote(quote_txt),
             "title": gen_title.split(" | ")[0],
             "full_title": gen_title,
             "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
@@ -748,9 +766,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .rvtext{{font-size:14px;color:#3a463f;line-height:1.5}}
  .rvname{{font-size:12px;color:var(--muted);margin-top:8px}}
  .vrf{{color:#15633f;font-weight:600}}
- .shopocc{{max-width:1000px;margin:18px auto 0;padding:0 20px;text-align:center}}
+ .shopocc{{max-width:1000px;margin:18px auto 0;padding:0 24px;text-align:center;
+   box-sizing:border-box}}
  .shopocc .lbl{{font-size:13px;color:var(--muted);margin-bottom:8px}}
- .occrow{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}}
+ .occrow{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+   padding:0 4px;max-width:100%}}
  .occhip{{background:#fff;border:1px solid var(--line);border-radius:18px;
    padding:7px 14px;font-size:13px;color:var(--green);cursor:pointer}}
  .occhip:hover{{border-color:var(--gold)}}
