@@ -113,6 +113,11 @@ def test_shop_by_occasion_and_nav_basket(tmp_path):
     h = _page(tmp_path)
     assert "function shopByOccasion" in h and "onclick=\"shopByOccasion(" in h
     assert "data-title=" in h  # cards carry their title for filtering
+    assert "data-occ=" in h    # and their occasion key for reliable filtering
+    # Apostrophe occasions must be JS-escaped or the onclick is a syntax error
+    # (regression: "Mother's Day" chip did nothing because the ' closed the string).
+    assert "shopByOccasion('Mother's Day'" not in h
+    assert "shopByOccasion('Mother\\'s Day'" in h
     assert 'class="navbasket"' in h and 'id="basketBtnNav"' in h
     assert "Add to set" in h  # bundle cards now state the action
 

@@ -133,9 +133,12 @@ def _occasion_showcase(kit_dir, external_assets: bool = False, assets=None) -> s
                  if img else
                  f'<div class="ocimg ocfallback" style="background:{grad}">'
                  f'<span class="ocemoji">{emoji}</span></div>')
+        # Escape apostrophes so names like "Mother's Day" don't close the JS string
+        # (an unescaped ' in the onclick makes the whole handler a syntax error).
+        name_js = name.replace("\\", "\\\\").replace("'", "\\'")
         cards.append(
             f'<button class="occard" aria-label="Shop {name} gifts" '
-            f'onclick="shopByOccasion(\'{name}\',this)">{media}'
+            f'onclick="shopByOccasion(\'{name_js}\',this)">{media}'
             f'<div class="occap"><div class="octitle">{name}</div>'
             f'<div class="ocsub">{sub}</div></div></button>')
     return ('<div class="occasions"><h2>Shop by occasion</h2>'
