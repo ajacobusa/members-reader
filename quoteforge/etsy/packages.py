@@ -103,11 +103,15 @@ def all_packages() -> list[dict]:
             for p in (*WEDDING_PACKAGES, *CORPORATE_PACKAGES)]
 
 
-def packages_section(b2b_email: str) -> str:
-    """Render the Wedding & Corporate packages section for the storefront."""
+def packages_section(b2b_email: str, extra_html: str = "") -> str:
+    """Render the Wedding & Corporate packages section for the storefront.
+
+    ``extra_html`` is appended inside the collapsible (e.g. the wholesale-quote
+    form) so corporate packages + the custom-quote CTA live in ONE section instead
+    of two redundant ones."""
     quotes = all_packages()
     if not quotes:
-        return ""
+        return extra_html or ""
 
     def card(q: dict) -> str:
         inc = "".join(f"<li>{i}</li>" for i in q["includes"])
@@ -137,4 +141,5 @@ def packages_section(b2b_email: str) -> str:
         '<h3 class="pkgrouph">💍 Weddings</h3>'
         f'<div class="pkgrid">{weddings}</div>'
         '<h3 class="pkgrouph">🏢 Corporate &amp; bulk</h3>'
-        f'<div class="pkgrid">{corporate}</div></details>')
+        f'<div class="pkgrid">{corporate}</div>'
+        f'{extra_html}</details>')

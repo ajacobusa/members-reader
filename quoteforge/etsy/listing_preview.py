@@ -191,11 +191,9 @@ def _competitive_sections() -> str:
         f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>')
 
 
-def _gift_and_b2b_section(owner: str) -> str:
-    """'Complete the gift' affiliate cards (off-Etsy) + a B2B/wholesale inquiry
-    block. Affiliate cards appear only for links that are configured; B2B always
-    shows. FTC disclosure is included automatically."""
-    from quoteforge.config import B2B_CONTACT_EMAIL
+def _gift_section(owner: str) -> str:
+    """'Complete the gift' affiliate cards (off-Etsy). Appears only for links that
+    are configured. FTC disclosure is included automatically."""
     from quoteforge.marketing.affiliate_programs import configured_links, emoji_for
     cards = []
     for label, url in configured_links().items():
@@ -203,22 +201,27 @@ def _gift_and_b2b_section(owner: str) -> str:
             f'<a class="gcard" href="{url}" target="_blank" '
             f'rel="sponsored noopener nofollow"><div class="ge">{emoji_for(label)}</div>'
             f'<div class="gl">{label}</div></a>')
-    gift_html = ""
-    if cards:
-        gift_html = (
-            '<div class="giftsec"><h2>Complete the gift</h2>'
-            '<p class="gsub">Pair your personalized art with flowers or a gift '
-            'card - delivered by trusted partners.</p>'
-            f'<div class="gcards">{"".join(cards)}</div>'
-            '<p class="ftc">Some links are affiliate links - we may earn a small '
-            'commission at no extra cost to you.</p></div>')
+    if not cards:
+        return ""
+    return (
+        '<div class="giftsec"><h2>Complete the gift</h2>'
+        '<p class="gsub">Pair your personalized art with flowers or a gift '
+        'card - delivered by trusted partners.</p>'
+        f'<div class="gcards">{"".join(cards)}</div>'
+        '<p class="ftc">Some links are affiliate links - we may earn a small '
+        'commission at no extra cost to you.</p></div>')
 
+
+def _b2b_form(owner: str) -> str:
+    """The wholesale/volume-quote form. Folded INTO the packages section so there's
+    a single 'for scale' area (no separate redundant corporate block)."""
+    from quoteforge.config import B2B_CONTACT_EMAIL
     b2b_to = B2B_CONTACT_EMAIL or owner
-    b2b_html = (
-        '<div class="b2b"><h2>Corporate &amp; bulk gifting</h2>'
-        '<p class="gsub">Personalized art for employee recognition, client gifts, '
-        'weddings, realtor closings, churches &amp; schools - wholesale pricing on '
-        'volume orders.</p>'
+    return (
+        '<div class="b2b"><h3 class="b2bh">Need a custom volume quote?</h3>'
+        '<p class="gsub">For employee recognition, client gifts, weddings, realtor '
+        'closings, churches &amp; schools - tell us what you need and we\'ll send '
+        'wholesale pricing.</p>'
         '<div class="b2bform">'
         '<input id="bz_name" aria-label="Your name" placeholder="Your name">'
         '<input id="bz_co" aria-label="Company or organization" placeholder="Company / organization">'
@@ -227,7 +230,6 @@ def _gift_and_b2b_section(owner: str) -> str:
         '<textarea id="bz_msg" aria-label="What do you need" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea>'
         f'<button onclick="b2bSend(\'{b2b_to}\')">Request a wholesale quote</button>'
         '</div></div>')
-    return gift_html + b2b_html
 
 
 def _save_web_jpg(src: Path, dest: Path, max_dim: int = 900, quality: int = 80) -> None:
@@ -843,7 +845,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     try:
         from quoteforge.etsy.packages import packages_section
         from quoteforge.config import B2B_CONTACT_EMAIL as _b2b
-        packages_html = packages_section(_b2b or owner)
+        # Fold the wholesale-quote form INTO the packages section (one corporate
+        # area, not two) so the page isn't redundant.
+        packages_html = packages_section(_b2b or owner, _b2b_form(owner))
     except Exception:  # noqa: BLE001
         packages_html = ""
 
@@ -1218,6 +1222,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .occallbtn:hover{{background:var(--gold)}}
  .occbottom{{text-align:center;margin:22px 0 4px}}
  .occhip.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .gridcount{{text-align:center;color:var(--green);font-weight:600;font-size:14px;
+   letter-spacing:.3px;margin:6px 0 14px;text-transform:uppercase;opacity:.85}}
  .occnote{{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}}
  .baddlbl{{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}}
  .bopt.sel .baddlbl{{color:#0a6b3b}}
@@ -1240,6 +1246,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .faq p{{color:var(--muted);font-size:14px;margin:8px 0 0}}
  .giftsec,.b2b{{max-width:1000px;margin:30px auto;padding:0 20px;text-align:center}}
  .giftsec h2,.b2b h2{{font-size:28px;color:var(--green);margin:0 0 6px}}
+ .b2b{{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}}
+ .b2bh{{font-size:20px;color:var(--green);margin:0 0 6px}}
  .gsub{{color:var(--muted);font-size:15px;margin:0 auto 16px;max-width:620px}}
  .gcards{{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}}
  .gcard{{background:#fff;border:1px solid var(--line);border-radius:14px;
@@ -1427,7 +1435,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <nav class="navlinks" aria-label="Sections">
      <a href="#grid">Shop</a>
      <a href="#occasions">Occasions</a>
-     <a href="#why">Why us</a>
+     <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
    </nav>
    <button class="navquiz" onclick="openQuiz()">🎁 Gift Finder</button>
@@ -1464,6 +1472,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      a free digital proof is sent before anything is printed.</p>
  </div>
  {_occasion_showcase(kit_dir, external_assets, assets)}
+ <div id="gridcount" class="gridcount"></div>
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
  <div id="occbottom" class="occbottom" style="display:none"></div>
@@ -1486,7 +1495,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  {gallery_html}
  {_competitive_sections()}
  {packages_html}
- {_gift_and_b2b_section(owner)}
+ {_gift_section(owner)}
  <div class="foot">
    <div class="fbn">{SHOP_NAME}</div>
    <p>Personalized wall art, made to order - free proof before printing.<br>
@@ -1716,6 +1725,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let CUR = 0;
  function render(){{
    const g = document.getElementById('grid');
+   var gc=document.getElementById('gridcount');
+   if(gc) gc.textContent = DATA.length+' personalized designs - one for every occasion';
    g.innerHTML = DATA.map((d,i) => `
      <div class="card" role="button" tabindex="0" aria-label="Personalize ${{d.title}}"
        data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" data-occ="${{d.occ||''}}" onclick="openM(${{i}})"

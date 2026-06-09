@@ -133,7 +133,10 @@ def test_b2b_always_shows_affiliate_conditional(tmp_path, monkeypatch):
     out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
                           out_path=tmp_path / "h.html", frame_picker=False)
     h = out.read_text(encoding="utf-8")
-    assert "Corporate &amp; bulk gifting" in h and "b2bSend" in h
+    # B2B wholesale form is now folded INTO the single packages section (no separate
+    # redundant 'Corporate & bulk gifting' block).
+    assert "b2bSend" in h and "Need a custom volume quote?" in h
+    assert "Corporate &amp; bulk gifting" not in h   # the old duplicate block is gone
     assert "Complete the gift" not in h
     # with a flowers link -> gift card + FTC disclosure appear
     monkeypatch.setattr("quoteforge.config.AFFILIATE_FLOWERS_URL",
