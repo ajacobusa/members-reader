@@ -313,6 +313,7 @@
  .occallbtn{background:var(--green);color:#fff;border:none;border-radius:22px;
    padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
  .occallbtn:hover{background:var(--gold)}
+ .occbottom{text-align:center;margin:22px 0 4px}
  .occhip.sel{background:var(--green);color:#fff;border-color:var(--green)}
  .occnote{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}
  .baddlbl{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}
@@ -566,6 +567,7 @@
  <div class="occasions" id="occasions"><h2>Shop by occasion</h2><p class="ocintro">Find the perfect personalized gift for the moment that matters - tap an occasion to explore.</p><div class="ocgrid"><button class="occard" aria-label="Shop Birthday gifts" onclick="shopByOccasion('Birthday',this)"><img class="ocimg" loading="lazy" src="assets/occasion-birthday.jpg" alt="Birthday gift idea"><div class="occap"><div class="octitle">Birthday</div><div class="ocsub">Celebrate their special day</div></div></button><button class="occard" aria-label="Shop Anniversary gifts" onclick="shopByOccasion('Anniversary',this)"><img class="ocimg" loading="lazy" src="assets/occasion-anniversary.jpg" alt="Anniversary gift idea"><div class="occap"><div class="octitle">Anniversary</div><div class="ocsub">Celebrate your love story</div></div></button><button class="occard" aria-label="Shop Wedding gifts" onclick="shopByOccasion('Wedding',this)"><img class="ocimg" loading="lazy" src="assets/occasion-wedding.jpg" alt="Wedding gift idea"><div class="occap"><div class="octitle">Wedding</div><div class="ocsub">For their beautiful beginning</div></div></button><button class="occard" aria-label="Shop Mother's Day gifts" onclick="shopByOccasion('Mother\'s Day',this)"><img class="ocimg" loading="lazy" src="assets/occasion-mothers-day.jpg" alt="Mother's Day gift idea"><div class="occap"><div class="octitle">Mother's Day</div><div class="ocsub">Thank her for everything</div></div></button><button class="occard" aria-label="Shop Father's Day gifts" onclick="shopByOccasion('Father\'s Day',this)"><img class="ocimg" loading="lazy" src="assets/occasion-fathers-day.jpg" alt="Father's Day gift idea"><div class="occap"><div class="octitle">Father's Day</div><div class="ocsub">Honour the one who inspires</div></div></button><button class="occard" aria-label="Shop Valentine's Day gifts" onclick="shopByOccasion('Valentine\'s Day',this)"><img class="ocimg" loading="lazy" src="assets/occasion-valentines-day.jpg" alt="Valentine's Day gift idea"><div class="occap"><div class="octitle">Valentine's Day</div><div class="ocsub">Celebrate your special bond</div></div></button><button class="occard" aria-label="Shop Graduation gifts" onclick="shopByOccasion('Graduation',this)"><img class="ocimg" loading="lazy" src="assets/occasion-graduation.jpg" alt="Graduation gift idea"><div class="occap"><div class="octitle">Graduation</div><div class="ocsub">Cheer their big achievement</div></div></button><button class="occard" aria-label="Shop New Baby gifts" onclick="shopByOccasion('New Baby',this)"><img class="ocimg" loading="lazy" src="assets/occasion-new-baby.jpg" alt="New Baby gift idea"><div class="occap"><div class="octitle">New Baby</div><div class="ocsub">Welcome the little one</div></div></button><button class="occard" aria-label="Shop Housewarming gifts" onclick="shopByOccasion('Housewarming',this)"><img class="ocimg" loading="lazy" src="assets/occasion-housewarming.jpg" alt="Housewarming gift idea"><div class="occap"><div class="octitle">Housewarming</div><div class="ocsub">Bless their new home</div></div></button><button class="occard" aria-label="Shop Christmas gifts" onclick="shopByOccasion('Christmas',this)"><img class="ocimg" loading="lazy" src="assets/occasion-christmas.jpg" alt="Christmas gift idea"><div class="occap"><div class="octitle">Christmas</div><div class="ocsub">Make the season magical</div></div></button></div><div class="ocall"><button class="occhip sel" onclick="shopByOccasion('',this)">Show all designs</button></div></div>
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
+ <div id="occbottom" class="occbottom" style="display:none"></div>
  <div class="bundle" id="bundleSec">
    <div class="bundlehdr">
      <div>
@@ -867,6 +869,16 @@
    // Show the "Show all designs" tile beside the filtered product(s).
    const allCard=document.getElementById('occallcard');
    if(allCard) allCard.style.display = (q && shown>0) ? '' : 'none';
+   // Repeat the controls at the END of the results so you can switch occasion
+   // right where you finish reading, without scrolling back up.
+   const bottom=document.getElementById('occbottom');
+   if(bottom){
+     if(q && shown>0){
+       bottom.innerHTML=`<button class="occallbtn" onclick="showAllDesigns()">`+
+         `&#8593; Pick another occasion</button>`;
+       bottom.style.display='';
+     } else { bottom.innerHTML=''; bottom.style.display='none'; }
+   }
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
    const note=document.getElementById('occnote');
    // When an occasion is active, offer a one-tap way back to the occasion tiles
@@ -890,6 +902,7 @@
  function showAllDesigns(){
    document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>c.style.display='');
    const ac=document.getElementById('occallcard'); if(ac) ac.style.display='none';
+   const bottom=document.getElementById('occbottom'); if(bottom){ bottom.innerHTML=''; bottom.style.display='none'; }
    document.querySelectorAll('.occhip').forEach(e=>e.classList.remove('sel'));
    const note=document.getElementById('occnote'); if(note) note.innerHTML='';
    backToOccasions();

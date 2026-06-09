@@ -1187,6 +1187,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .occallbtn{{background:var(--green);color:#fff;border:none;border-radius:22px;
    padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}}
  .occallbtn:hover{{background:var(--gold)}}
+ .occbottom{{text-align:center;margin:22px 0 4px}}
  .occhip.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
  .occnote{{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}}
  .baddlbl{{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}}
@@ -1422,6 +1423,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  {_occasion_showcase(kit_dir, external_assets, assets)}
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
+ <div id="occbottom" class="occbottom" style="display:none"></div>
  <div class="bundle" id="bundleSec">
    <div class="bundlehdr">
      <div>
@@ -1723,6 +1725,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Show the "Show all designs" tile beside the filtered product(s).
    const allCard=document.getElementById('occallcard');
    if(allCard) allCard.style.display = (q && shown>0) ? '' : 'none';
+   // Repeat the controls at the END of the results so you can switch occasion
+   // right where you finish reading, without scrolling back up.
+   const bottom=document.getElementById('occbottom');
+   if(bottom){{
+     if(q && shown>0){{
+       bottom.innerHTML=`<button class="occallbtn" onclick="showAllDesigns()">`+
+         `&#8593; Pick another occasion</button>`;
+       bottom.style.display='';
+     }} else {{ bottom.innerHTML=''; bottom.style.display='none'; }}
+   }}
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
    const note=document.getElementById('occnote');
    // When an occasion is active, offer a one-tap way back to the occasion tiles
@@ -1746,6 +1758,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function showAllDesigns(){{
    document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>c.style.display='');
    const ac=document.getElementById('occallcard'); if(ac) ac.style.display='none';
+   const bottom=document.getElementById('occbottom'); if(bottom){{ bottom.innerHTML=''; bottom.style.display='none'; }}
    document.querySelectorAll('.occhip').forEach(e=>e.classList.remove('sel'));
    const note=document.getElementById('occnote'); if(note) note.innerHTML='';
    backToOccasions();
