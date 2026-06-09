@@ -834,13 +834,12 @@
  };
  function shopByOccasion(occ, el){
    const q=(occ||'').toLowerCase();
-   const keys = q ? (OCC_SYN[q] || [q]) : [];
    let shown=0;
    document.querySelectorAll('#grid .card').forEach(c=>{
-     const occ=(c.getAttribute('data-occ')||'');
-     const t=(c.getAttribute('data-title')||'');
-     // exact occasion-key match first (reliable); fall back to title keywords
-     const ok = !q || occ===q || keys.some(k=>t.indexOf(k)>=0);
+     const cocc=(c.getAttribute('data-occ')||'');
+     // every card carries its exact occasion key, so match on that only - no fuzzy
+     // keyword fallback (which used to pull e.g. Anniversary under Valentine's Day).
+     const ok = !q || cocc===q;
      c.style.display = ok ? '' : 'none'; if(ok) shown++;
    });
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
