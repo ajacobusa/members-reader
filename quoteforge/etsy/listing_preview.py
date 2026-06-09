@@ -105,9 +105,8 @@ def _competitive_sections() -> str:
     faq_html = "".join(
         f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
         for q, a in faqs)
-    occ = ["Graduation", "Birthday", "Wedding", "Anniversary", "Valentine's Day",
-           "Mother's Day", "Father's Day", "Memorial", "New Home", "Faith",
-           "Christmas"]
+    occ = ["Birthday", "Anniversary", "Wedding", "Mother's Day", "Father's Day",
+           "Valentine's Day", "Graduation", "New Baby", "Housewarming", "Christmas"]
     chips = ('<span class="occhip sel" onclick="shopByOccasion(\'\',this)">All</span>'
              + "".join(f'<span class="occhip" '
                        f'onclick="shopByOccasion(\'{o}\',this)">{o}</span>' for o in occ))
@@ -1318,6 +1317,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "mother's day":["mother","mom","grandma","mum"],
    "father's day":["father","dad","grandpa","papa"],
    "memorial":["memorial","remember","sympathy","heaven","loss","grief"],
+   "new baby":["baby","newborn","nursery","christening","new arrival","shower"],
+   "housewarming":["home","house","housewarming","new home","family"],
    "new home":["home","house","housewarming","family"],
    "faith":["faith","christian","prayer","bless","god","lord","scripture"],
    "christmas":["christmas","holiday","noel"]

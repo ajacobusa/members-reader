@@ -8,9 +8,9 @@ the same logic on the site so the quiz works client-side.
 from __future__ import annotations
 
 # Quiz options (value, label).
-OCCASIONS = ["Graduation", "Birthday", "Christmas", "Wedding", "Anniversary",
-             "Valentine's Day", "Mother's Day", "Father's Day", "Memorial",
-             "New Home", "Just because"]
+OCCASIONS = ["Birthday", "Anniversary", "Wedding", "Mother's Day", "Father's Day",
+             "Valentine's Day", "Graduation", "New Baby", "Housewarming",
+             "Christmas", "Just because"]
 RELATIONSHIPS = ["Daughter", "Son", "Mom", "Dad", "Wife", "Husband", "Grandma",
                  "Best Friend", "Family", "Pet"]
 BUDGETS = [("under50", "Under $50", "poster"),
