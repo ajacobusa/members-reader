@@ -74,6 +74,70 @@ def _reviews_section() -> str:
         f'<div class="rvgrid">{"".join(cards)}</div></div>')
 
 
+# Rich "Shop by occasion" showcase: warm subtitle + emoji + soft gradient, with a
+# real lifestyle photo when one is provided in the occasions image folder.
+# (name, subtitle, emoji, gradient)
+OCCASION_SHOWCASE = [
+    ("Birthday", "Celebrate their special day", "🎂", "linear-gradient(135deg,#f6e6c4,#fff7e6)"),
+    ("Anniversary", "Celebrate your love story", "💍", "linear-gradient(135deg,#f3dcdc,#fbeeee)"),
+    ("Wedding", "For their beautiful beginning", "💐", "linear-gradient(135deg,#e7efe6,#fbfdfa)"),
+    ("Mother's Day", "Thank her for everything", "🌸", "linear-gradient(135deg,#f6d9e2,#fdeef3)"),
+    ("Father's Day", "Honour the one who inspires", "🪶", "linear-gradient(135deg,#dde6ee,#f1f5f9)"),
+    ("Valentine's Day", "Celebrate your special bond", "❤️", "linear-gradient(135deg,#f4c9cd,#fce7e9)"),
+    ("Graduation", "Cheer their big achievement", "🎓", "linear-gradient(135deg,#dfe3ef,#f1f3fa)"),
+    ("New Baby", "Welcome the little one", "🍼", "linear-gradient(135deg,#dce9f2,#eef6fb)"),
+    ("Housewarming", "Bless their new home", "🏡", "linear-gradient(135deg,#dfe9df,#f0f6f0)"),
+    ("Christmas", "Make the season magical", "🎄", "linear-gradient(135deg,#d8e6da,#f2eee0)"),
+]
+
+
+def _occasion_slug(name: str) -> str:
+    return name.lower().replace("'", "").replace("’", "").replace(" ", "-")
+
+
+def _occasion_showcase(kit_dir) -> str:
+    """Image+title+subtitle occasion cards (filter the grid on tap). Uses a real
+    lifestyle photo if found in an occasions image folder; else an elegant
+    gradient + emoji so it never looks broken or 'computer-generated'."""
+    import os
+    from quoteforge.config import OUTPUT_DIR
+    # where to look for occasion lifestyle photos
+    search_dirs = [Path(os.getenv("OCCASION_IMG_DIR", "").strip() or "."),
+                   Path(kit_dir) / "occasions",
+                   Path(OUTPUT_DIR) / "occasions",
+                   Path(__file__).resolve().parents[2] / "brand" / "occasions"]
+    cards = []
+    for name, sub, emoji, grad in OCCASION_SHOWCASE:
+        slug = _occasion_slug(name)
+        img = None
+        for d in search_dirs:
+            for ext in (".jpg", ".jpeg", ".png", ".webp"):
+                p = d / f"{slug}{ext}"
+                if p.exists():
+                    try:
+                        img = _web_img(p, 700)
+                    except Exception:  # noqa: BLE001
+                        img = None
+                    break
+            if img:
+                break
+        media = (f'<img class="ocimg" loading="lazy" src="{img}" alt="{name} gift idea">'
+                 if img else
+                 f'<div class="ocimg ocfallback" style="background:{grad}">'
+                 f'<span class="ocemoji">{emoji}</span></div>')
+        cards.append(
+            f'<button class="occard" aria-label="Shop {name} gifts" '
+            f'onclick="shopByOccasion(\'{name}\',this)">{media}'
+            f'<div class="occap"><div class="octitle">{name}</div>'
+            f'<div class="ocsub">{sub}</div></div></button>')
+    return ('<div class="occasions"><h2>Shop by occasion</h2>'
+            '<p class="ocintro">Find the perfect personalized gift for the moment '
+            'that matters - tap an occasion to explore.</p>'
+            f'<div class="ocgrid">{"".join(cards)}</div>'
+            '<div class="ocall"><button class="occhip sel" '
+            'onclick="shopByOccasion(\'\',this)">Show all designs</button></div></div>')
+
+
 def _competitive_sections() -> str:
     """Conversion sections that beat mass printers: why-us comparison, a real
     happiness guarantee, and an FAQ. (Honest: no fabricated reviews pre-launch.)"""
@@ -105,15 +169,8 @@ def _competitive_sections() -> str:
     faq_html = "".join(
         f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
         for q, a in faqs)
-    occ = ["Birthday", "Anniversary", "Wedding", "Mother's Day", "Father's Day",
-           "Valentine's Day", "Graduation", "New Baby", "Housewarming", "Christmas"]
-    chips = ('<span class="occhip sel" onclick="shopByOccasion(\'\',this)">All</span>'
-             + "".join(f'<span class="occhip" '
-                       f'onclick="shopByOccasion(\'{o}\',this)">{o}</span>' for o in occ))
+    # (The rich occasion showcase lives above the grid now - see _occasion_showcase.)
     return (
-        f'<div class="shopocc"><div class="lbl">Shop by occasion '
-        f'<span style="color:#9aa49c">(tap to filter)</span></div>'
-        f'<div class="occrow">{chips}</div></div>'
         f'<div class="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
         f'{cmp_rows}</table></div>'
@@ -840,6 +897,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .intro{{text-align:center;max-width:680px;margin:34px auto 6px;padding:0 20px}}
  .intro h2{{font-size:30px;color:var(--green);margin:0 0 8px}}
  .intro p{{color:var(--muted);font-size:16px;line-height:1.6;margin:0}}
+ /* Shop-by-occasion showcase */
+ .occasions{{max-width:1200px;margin:30px auto 8px;padding:0 20px;text-align:center}}
+ .occasions h2{{font-size:30px;color:var(--green);margin:0 0 4px}}
+ .ocintro{{color:var(--muted);max-width:620px;margin:0 auto 18px}}
+ .ocgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+   gap:22px}}
+ .occard{{background:#fff;border:1px solid var(--line);border-radius:16px;
+   overflow:hidden;cursor:pointer;padding:0;text-align:left;
+   box-shadow:0 2px 12px rgba(0,0,0,.05);transition:transform .15s,box-shadow .15s}}
+ .occard:hover{{transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.14)}}
+ .ocimg{{width:100%;height:200px;object-fit:cover;display:block}}
+ .ocfallback{{display:flex;align-items:center;justify-content:center}}
+ .ocemoji{{font-size:72px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.12))}}
+ .occap{{padding:14px 16px 18px}}
+ .octitle{{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;
+   color:var(--green)}}
+ .ocsub{{color:var(--muted);font-size:14px;margin-top:2px}}
+ .ocall{{margin-top:18px}}
  .grid{{max-width:1200px;margin:26px auto 50px;display:grid;
    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:26px;padding:0 20px}}
  .card{{background:#fff;border:1px solid var(--line);border-radius:14px;
@@ -1157,9 +1232,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="intro">
    <h2>Gifts they'll keep forever</h2>
    <p>Every piece is custom-made for your recipient - a name, an occasion, their
-     story. Choose poster, framed, canvas, acrylic or metal at checkout; a free
-     digital proof is sent before anything is printed.</p>
+     story. Choose poster, framed, canvas, acrylic or metal when you personalize;
+     a free digital proof is sent before anything is printed.</p>
  </div>
+ {_occasion_showcase(kit_dir)}
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
  <div class="bundle" id="bundleSec">

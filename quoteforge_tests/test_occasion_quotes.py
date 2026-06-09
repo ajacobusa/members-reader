@@ -32,3 +32,19 @@ def test_quotes_personal_and_varied_on_page(tmp_path):
     assert "Emma" not in h
     assert len(set(quotes)) >= 8          # plenty of variety, not one templated line
     assert "[Name], family, and you, [Name]" not in h  # no garbled name
+
+
+def test_occasion_showcase_present(tmp_path):
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home, OCCASION_SHOWCASE
+    h = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                        out_path=tmp_path / "h.html", frame_picker=False).read_text("utf-8")
+    assert 'class="occasions"' in h and 'class="ocgrid"' in h
+    assert h.count('class="occard"') == len(OCCASION_SHOWCASE)
+    for name, sub, *_ in OCCASION_SHOWCASE:
+        assert sub in h and f"shopByOccasion('{name}'" in h
+    assert "ocfallback" in h  # elegant fallback when no photo provided
