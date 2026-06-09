@@ -418,48 +418,27 @@ def _drop_duplicate_designs(listings: list) -> None:
     listings[:] = keep
 
 
-def _collapse_to_one_per_occasion(listings: list) -> None:
-    """Show exactly ONE design per occasion - every print is fully personalizable,
-    so 6 graduation cards or 3 birthday cards is just noise. We keep the first
-    design seen for each occasion, normalize calendar cards to a clean
-    'Personalized <Occasion> Gift' title, and SYNTHESIZE a card for any showcased
-    occasion the launch pack doesn't cover yet (e.g. Father's Day, New Baby) by
-    cloning a neutral base design and swapping in that occasion's title + wording.
-    Result: the 'Shop by occasion' strip and every chip always lands on a design."""
-    if not listings:
-        return
-    by_occ: dict = {}
+def _occasion_card_desc(disp: str) -> str:
+    """Clean, occasion-specific listing description for a synthesized occasion card."""
+    return (
+        f"A personalized {disp} gift you make your own. Add any name, the occasion, "
+        f"and your own heartfelt message - we set it beautifully on premium wall art. "
+        f"HOW IT WORKS\n1. Choose your size, frame or canvas.\n2. Add the recipient's "
+        f"name and your own words at checkout.\n3. We design it and ship a "
+        f"ready-to-hang keepsake. A thoughtful, personal {disp} gift.")
+
+
+def _reorder_by_occasion(listings: list) -> None:
+    """Order the grid: calendar occasions in showcase order, then the extras
+    (faith/memorial/just-because), then anything else - one entry per occasion."""
+    by_occ = {}
+    rest = []
     for e in listings:
-        k = e.get("occ") or "just because"
-        if k not in by_occ:
+        k = e.get("occ")
+        if k and k not in by_occ:
             by_occ[k] = e
-    # A neutral base to clone art from for occasions with no dedicated design.
-    base = by_occ.get("just because") or listings[0]
-    # Normalize the calendar cards to clean, uniform occasion titles + fill gaps.
-    for key, disp in _CALENDAR_OCCASIONS:
-        if key in by_occ:
-            e = by_occ[key]
-            e["title"] = f"Personalized {disp} Gift"
-            e["full_title"] = (f"Personalized {disp} Gift | {disp} Wall Art | "
-                               f"Custom Quote Print - You Personalize It")
         else:
-            clone = dict(base)                # inherits formats only if base has them
-            clone["imgs"] = list(base.get("imgs", []))
-            clone["occ"] = key
-            clone["title"] = f"Personalized {disp} Gift"
-            clone["full_title"] = (f"Personalized {disp} Gift | {disp} Wall Art | "
-                                   f"Custom Quote Print - You Personalize It")
-            q = OCCASION_QUOTES.get(key) or [""]
-            clone["quote"] = _generalize_quote(q[0])
-            clone["desc"] = (
-                f"A personalized {disp} gift you make your own. Add any name, the "
-                f"occasion, and your own heartfelt message - we set it beautifully on "
-                f"premium wall art. HOW IT WORKS\n1. Choose your size, frame or canvas."
-                f"\n2. Add the recipient's name and your message at checkout.\n3. We "
-                f"design it and ship a ready-to-hang keepsake. Perfect for {disp}.")
-            by_occ[key] = clone
-    # Order: calendar occasions (showcase order) first, then the extras, then any
-    # remaining keys we didn't anticipate.
+            rest.append(e)
     final, used = [], set()
     for key, _ in _CALENDAR_OCCASIONS:
         if key in by_occ:
@@ -467,10 +446,80 @@ def _collapse_to_one_per_occasion(listings: list) -> None:
     for key in _EXTRA_OCCASIONS:
         if key in by_occ and key not in used:
             final.append(by_occ[key]); used.add(key)
-    for key, e in by_occ.items():
-        if key not in used:
-            final.append(e); used.add(key)
+    for k, e in by_occ.items():
+        if k not in used:
+            final.append(e); used.add(k)
     listings[:] = final
+
+
+def _render_occasion_design(kit_dir: Path, disp: str, quote: str) -> Path | None:
+    """Ensure a real poster + 5-image gallery exists for a synthesized occasion card
+    (its OWN wording burned in - never borrowed from another design).
+
+    Cached in a SHARED dir keyed by occasion+wording so the art is rendered once and
+    reused across every site rebuild (and every test), not regenerated per build.
+    The published copies are downscaled JPEGs (via _emit), so we render at a modest
+    web size for speed. Returns the design folder, or None if rendering is
+    unavailable."""
+    import hashlib
+    import tempfile
+    slug = disp.lower().replace("'", "").replace(" ", "-")
+    sig = hashlib.md5(quote.encode("utf-8")).hexdigest()[:8]  # noqa: S324 (cache key)
+    folder = Path(tempfile.gettempdir()) / "qf_occasions" / f"{slug}-{sig}"
+    gallery = folder / "gallery"
+    poster = folder / "poster_18x24.png"
+    if gallery.exists() and any(gallery.glob("*.png")):
+        return folder
+    try:
+        from quoteforge.images.local_renderer import render_local_poster
+        from quoteforge.images.listing_pack import build_listing_pack
+        folder.mkdir(parents=True, exist_ok=True)
+        render_local_poster(quote=quote, output_path=poster, size=(1500, 2000))
+        (folder / "quote.txt").write_text(quote, encoding="utf-8")
+        build_listing_pack(poster, gallery)
+        return folder
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _collapse_to_one_per_occasion(listings: list) -> list:
+    """Show exactly ONE design per occasion - every print is fully personalizable,
+    so 6 graduation cards or 3 birthday cards is just noise. Keep the first design
+    per occasion, normalize calendar cards to a clean 'Personalized <Occasion> Gift'
+    title, and RETURN the calendar occasions that still have no design so the caller
+    can synthesize a real (separately rendered) card for each. Result: the 'Shop by
+    occasion' strip and every chip always lands on exactly one matching design."""
+    if not listings:
+        return [(k, d) for k, d in _CALENDAR_OCCASIONS]
+    by_occ: dict = {}
+    order: list = []
+    for e in listings:
+        k = e.get("occ") or "just because"
+        if k not in by_occ:
+            by_occ[k] = e
+            order.append(k)
+    missing: list = []
+    for key, disp in _CALENDAR_OCCASIONS:
+        if key in by_occ:
+            e = by_occ[key]
+            e["title"] = f"Personalized {disp} Gift"
+            e["full_title"] = (f"Personalized {disp} Gift | {disp} Wall Art | "
+                               f"Custom Quote Print - You Personalize It")
+        else:
+            missing.append((key, disp))
+    # Order: calendar occasions (showcase order) first, then extras, then the rest.
+    final, used = [], set()
+    for key, _ in _CALENDAR_OCCASIONS:
+        if key in by_occ:
+            final.append(by_occ[key]); used.add(key)
+    for key in _EXTRA_OCCASIONS:
+        if key in by_occ and key not in used:
+            final.append(by_occ[key]); used.add(key)
+    for key in order:
+        if key not in used:
+            final.append(by_occ[key]); used.add(key)
+    listings[:] = final
+    return missing
 
 
 def _dedupe_titles(listings: list) -> None:
@@ -638,7 +687,36 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if prices:
             entry["price"] = f"{min(prices):.2f}"
         listings.append(entry)
-    _collapse_to_one_per_occasion(listings)
+    # One card per occasion; get the showcased occasions still lacking a design.
+    missing = _collapse_to_one_per_occasion(listings)
+    # Synthesize a REAL card for each missing occasion - its own art + wording,
+    # rendered (and cached) separately so nothing is borrowed from another design.
+    syn_tag = 90
+    for key, disp in missing:
+        quote = _generalize_quote((OCCASION_QUOTES.get(key) or [""])[0])
+        folder = _render_occasion_design(kit_dir, disp, quote)
+        if not folder:
+            continue
+        gal = sorted((folder / "gallery").glob("*.png"))
+        if not gal:
+            continue
+        syn_tag += 1
+        # Note: synthesized cards intentionally skip per-frame preview rendering
+        # (the heavy step). The card shows its own gallery art and the modal still
+        # offers every size/frame via the shared size map - just without a distinct
+        # rendered thumbnail per frame, which keeps rebuilds fast.
+        entry = {
+            "n": 0, "occ": key, "quote": quote,
+            "title": f"Personalized {disp} Gift",
+            "full_title": (f"Personalized {disp} Gift | {disp} Wall Art | "
+                           f"Custom Quote Print - You Personalize It"),
+            "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
+            "desc": _occasion_card_desc(disp),
+            "imgs": [_emit(p, f"{syn_tag}_g{i:02d}.jpg") for i, p in enumerate(gal)],
+        }
+        listings.append(entry)
+    # Re-order so synthesized cards slot into showcase position with the rest.
+    _reorder_by_occasion(listings)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:

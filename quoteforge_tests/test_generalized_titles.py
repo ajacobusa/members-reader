@@ -103,7 +103,7 @@ def test_drop_duplicate_designs_keeps_first(tmp_path):
     assert [x["title"] for x in lst] == ["A", "B"]
 
 
-def test_collapse_one_per_occasion_normalizes_and_fills(tmp_path):
+def test_collapse_one_per_occasion_normalizes_and_reports_missing(tmp_path):
     from quoteforge.etsy.listing_preview import _collapse_to_one_per_occasion
     lst = [
         {"occ": "graduation", "title": "Future Nurse", "full_title": "x",
@@ -113,13 +113,13 @@ def test_collapse_one_per_occasion_normalizes_and_fills(tmp_path):
         {"occ": "just because", "title": "Encouragement", "full_title": "x",
          "quote": "q", "imgs": ["a.jpg"]},
     ]
-    _collapse_to_one_per_occasion(lst)
+    missing = _collapse_to_one_per_occasion(lst)
     occs = [e["occ"] for e in lst]
+    # graduation collapsed to one + title normalized
     assert occs.count("graduation") == 1
-    # normalized title
     grad = next(e for e in lst if e["occ"] == "graduation")
     assert grad["title"] == "Personalized Graduation Gift"
-    # a missing occasion (e.g. new baby) was synthesized from the neutral base
-    assert "new baby" in occs
-    nb = next(e for e in lst if e["occ"] == "new baby")
-    assert nb["title"] == "Personalized New Baby Gift" and nb["imgs"]
+    # uncovered calendar occasions are reported back for separate synthesis
+    missing_keys = [k for k, _ in missing]
+    assert "new baby" in missing_keys and "housewarming" in missing_keys
+    assert "graduation" not in missing_keys
