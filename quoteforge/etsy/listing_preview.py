@@ -171,6 +171,44 @@ def _save_web_jpg(src: Path, dest: Path, max_dim: int = 900, quality: int = 80) 
     im.save(dest, "JPEG", quality=quality, optimize=True)
 
 
+# ── Recipient-neutral display copy ───────────────────────────────
+# The SEO data targets specific recipients (best for Etsy ranking), but the
+# storefront reads generically so ANY recipient fits. We only generalize the
+# DISPLAYED title/description here; the underlying launch/SEO data is untouched.
+import re as _re
+
+_RECIP = r"(daughters?|sons?|husbands?|wife|wives|grandmas?|grandmothers?|grandpas?|grandfathers?|grandsons?|granddaughters?|moms?|dads?|sisters?|brothers?|aunts?|uncles?|nieces?|nephews?|kids?|child(?:ren)?|boys?|girls?|her|him)"
+
+
+def _generalize_title(t: str) -> str:
+    """Strip recipient words from a title so it fits anyone (keeps occasions)."""
+    s = t.replace("Mother's Day", "§MD§").replace("Father's Day", "§FD§")
+    s = _re.sub(r"husband\s*/\s*wife", "Couple", s, flags=_re.I)   # couple gift
+    s = _re.sub(r"\bfor (a |your |my )?" + _RECIP + r"\b", "", s, flags=_re.I)
+    s = _re.sub(r"\b" + _RECIP + r"\b", "", s, flags=_re.I)
+    s = s.replace("§MD§", "Mother's Day").replace("§FD§", "Father's Day")
+    s = _re.sub(r"\bGift\s+Gift\b", "Gift", s)
+    s = _re.sub(r"\s*/\s*", " ", s)                                # stray slashes
+    s = _re.sub(r"\s{2,}", " ", s)
+    s = _re.sub(r"\s+\|", " |", s)
+    s = _re.sub(r"\|\s*\|", "|", s).strip().strip("|").strip()
+    s = _re.sub(r"\s{2,}", " ", s).replace("Personalized  ", "Personalized ")
+    return s or t
+
+
+def _generalize_desc(d: str) -> str:
+    """Generalize a multi-line description: recipients -> 'loved one'."""
+    s = d.replace("Mother's Day", "§MD§").replace("Father's Day", "§FD§")
+    s = _re.sub(r"\bfor (a |your |my )?" + _RECIP + r"\b", "for your loved one",
+                s, flags=_re.I)
+    s = _re.sub(r"\b(your|my|a)\s+" + _RECIP + r"\b", r"\1 loved one", s, flags=_re.I)
+    s = _re.sub(r"\b" + _RECIP + r"\b", "loved one", s, flags=_re.I)
+    s = s.replace("§MD§", "Mother's Day").replace("§FD§", "Father's Day")
+    s = _re.sub(r"\bloved one ideas\b", "gift ideas", s)
+    s = _re.sub(r"\s{2,}", " ", s)
+    return s
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -242,13 +280,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if not quote_txt:
             quote_txt = ("You make every day brighter. "
                          "Today, and always - with all my love.")
+        gen_title = _generalize_title(b.title)
         entry = {
             "n": b.listing_n,
             "quote": quote_txt,
-            "title": b.title.split(" | ")[0],
-            "full_title": b.title,
+            "title": gen_title.split(" | ")[0],
+            "full_title": gen_title,
             "price": f"{ETSY_DEFAULT_LISTING_PRICE:.2f}",
-            "desc": b.description,
+            "desc": _generalize_desc(b.description),
             "imgs": [_emit(p, f"{b.listing_n:02d}_g{i:02d}.jpg")
                      for i, p in enumerate(gallery)],
         }
