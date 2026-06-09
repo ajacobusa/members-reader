@@ -766,16 +766,37 @@
      </div>`).join('');
  }
  // Filter the product grid by occasion (Shop by occasion chips).
+ // Occasion -> matching keywords (so chips match real product titles).
+ const OCC_SYN={
+   "graduation":["graduation","graduate","grad","nurse","dentist","teacher","doctor"],
+   "birthday":["birthday"],
+   "wedding":["wedding","vows","bride","groom","marriage"],
+   "anniversary":["anniversary","husband","wife"],
+   "mother's day":["mother","mom","grandma","mum"],
+   "father's day":["father","dad","grandpa","papa"],
+   "memorial":["memorial","remember","sympathy","heaven","loss","grief"],
+   "new home":["home","house","housewarming","family"],
+   "faith":["faith","christian","prayer","bless","god","lord","scripture"],
+   "christmas":["christmas","holiday","noel"]
+ };
  function shopByOccasion(occ, el){
    const q=(occ||'').toLowerCase();
+   const keys = q ? (OCC_SYN[q] || [q]) : [];
    let shown=0;
    document.querySelectorAll('#grid .card').forEach(c=>{
-     const ok = !q || (c.getAttribute('data-title')||'').indexOf(q)>=0;
+     const t=(c.getAttribute('data-title')||'');
+     const ok = !q || keys.some(k=>t.indexOf(k)>=0);
      c.style.display = ok ? '' : 'none'; if(ok) shown++;
    });
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
    const note=document.getElementById('occnote');
-   if(note) note.textContent = q ? `${shown} design${shown!==1?'s':''} for "${occ}"` : '';
+   if(q && shown===0){                       // no matches -> show all, explain
+     document.querySelectorAll('#grid .card').forEach(c=>c.style.display='');
+     if(note) note.innerHTML=`No designs for <b>${occ}</b> yet - showing all. `+
+       `Tell us what you'd like and we'll create it!`;
+   } else if(note){
+     note.innerHTML = q ? `Showing <b>${shown}</b> design${shown!==1?'s':''} for <b>${occ}</b>` : '';
+   }
    const grid=document.getElementById('grid');
    if(grid) grid.scrollIntoView({behavior:'smooth',block:'start'});
  }
