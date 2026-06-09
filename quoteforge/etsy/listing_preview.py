@@ -196,6 +196,131 @@ def _generalize_title(t: str) -> str:
     return s or t
 
 
+# Warm, personal default wording per occasion (varied so designs don't look
+# templated/computer-generated). [Name]/[Your name] are replaced when the customer
+# types their own message.
+OCCASION_QUOTES = {
+    "birthday": [
+        "[Name], may this year bring you as much joy as you bring everyone around you. Happy birthday. With love, [Your name]",
+        "Happy birthday, [Name]! Of all of life's gifts, you are my favourite. Here's to you, today and always. [Your name]",
+        "[Name], the world got a little brighter the day you were born. Wishing you a birthday as wonderful as you are. [Your name]",
+    ],
+    "anniversary": [
+        "[Name], every year with you is my favourite year. Here's to us - then, now, and always. [Your name]",
+        "Through every season, my answer is still you. Happy anniversary, [Name]. [Your name]",
+        "[Name], I would choose this life with you a thousand times over. Happy anniversary, my love. [Your name]",
+    ],
+    "wedding": [
+        "[Name], today two hearts become one story. Wishing you a lifetime of love and laughter. [Your name]",
+        "To [Name] - may your love grow deeper with every passing year. Congratulations on your wedding day. [Your name]",
+        "[Name], here's to forever - the greatest adventure starts today. [Your name]",
+    ],
+    "mother's day": [
+        "[Name], thank you for every sacrifice, every hug, and every bit of love. Happy Mother's Day. [Your name]",
+        "To the heart of our family, [Name] - there is no love like a mother's. Happy Mother's Day. [Your name]",
+        "[Name], everything I am, I owe to you. Happy Mother's Day, with all my love. [Your name]",
+    ],
+    "father's day": [
+        "[Name], thank you for being my hero, my guide, and my biggest supporter. Happy Father's Day. [Your name]",
+        "To [Name] - strong, steady, and always there when it matters. Happy Father's Day. [Your name]",
+        "[Name], everything you taught me made me who I am. Happy Father's Day. [Your name]",
+    ],
+    "valentine's day": [
+        "[Name], you are my favourite hello and my hardest goodbye. Happy Valentine's Day. [Your name]",
+        "Of all the hearts in the world, I am so glad I found yours. Happy Valentine's Day, [Name]. [Your name]",
+        "[Name], you have my whole heart - today and every day. Happy Valentine's Day. [Your name]",
+    ],
+    "graduation": [
+        "[Name], you've climbed higher than any mountain - now the world is yours to explore. With love, [Your name]",
+        "[Name], your hard work brought you here, and your heart will take you even further. Congratulations, graduate. [Your name]",
+        "So proud of you, [Name]. This is only the beginning. Congratulations! [Your name]",
+    ],
+    "new baby": [
+        "Welcome to the world, [Name]. You are already so deeply loved. [Your name]",
+        "[Name], the moment you arrived, our whole world changed for the better. [Your name]",
+        "Little [Name], may your life be filled with wonder, laughter, and endless love. [Your name]",
+    ],
+    "housewarming": [
+        "May this home be filled with love, laughter, and a lifetime of happy memories. Welcome home, [Name]. [Your name]",
+        "[Name], a home isn't built with walls - it's built with love. Congratulations on yours. [Your name]",
+        "Wishing you warmth, comfort, and joy in your new home, [Name]. [Your name]",
+    ],
+    "christmas": [
+        "[Name], may your Christmas be merry and your heart be full. With love, [Your name]",
+        "Wishing you a Christmas wrapped in love and sparkling with joy, [Name]. [Your name]",
+        "[Name], you make every Christmas brighter. Merry Christmas, with all my love. [Your name]",
+    ],
+    "faith": [
+        "[Name], may God's love surround you and His light guide your every step. [Your name]",
+        "[Name], faith, family, and you - the greatest blessings of all. [Your name]",
+    ],
+    "memorial": [
+        "Forever in our hearts, [Name]. Loved beyond words, missed beyond measure.",
+        "[Name], your love remains in every memory and every heart you touched.",
+    ],
+    "just because": [
+        "[Name], no special reason - just a reminder that you are loved more than words can say. [Your name]",
+        "[Name], some people make the world feel like home. Thank you for being one of them. [Your name]",
+    ],
+}
+
+_OCC_COUNTER: dict = {}
+
+
+def _listing_occasion_key(listing_n: int, title: str, category: str) -> str:
+    """Map a listing to an OCCASION_QUOTES key using the launch pack + title/category."""
+    occ = ""
+    try:
+        from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+        rec = next((l for l in LAUNCH_PACK_20 if l.n == listing_n), None)
+        if rec:
+            occ = (rec.occasion or "").lower()
+            category = rec.category or category
+    except Exception:  # noqa: BLE001
+        pass
+    t = f"{title} {category}".lower()
+    if "memorial" in t:
+        return "memorial"
+    if "christian" in t or "prayer" in t or "faith" in t or "blessing" in t:
+        return "faith"
+    if "husband" in t or "wife" in t or "couple" in t:
+        return "anniversary"
+    # explicit occasion wins over any recipient word in the title
+    if "mother's day" in occ:
+        return "mother's day"
+    if "father's day" in occ:
+        return "father's day"
+    if "valentine" in occ or "valentine" in t:
+        return "valentine's day"
+    if "wedding" in occ or "wedding" in t:
+        return "wedding"
+    if "anniversary" in occ or "anniversary" in t:
+        return "anniversary"
+    if "graduation" in occ or "graduation" in t:
+        return "graduation"
+    if "birthday" in occ or "birthday" in t:
+        return "birthday"
+    if "christmas" in occ or "christmas" in t:
+        return "christmas"
+    if "new baby" in occ or "baby" in t:
+        return "new baby"
+    if "housewarming" in occ or "house" in t or "new home" in occ:
+        return "housewarming"
+    if occ in OCCASION_QUOTES:
+        return occ
+    return "just because"
+
+
+def _occasion_quote(listing_n: int, title: str, category: str) -> str:
+    """Pick a warm, occasion-appropriate default quote, rotating within an occasion
+    so multiple same-occasion designs don't show identical wording."""
+    key = _listing_occasion_key(listing_n, title, category)
+    pool = OCCASION_QUOTES.get(key) or OCCASION_QUOTES["just because"]
+    i = _OCC_COUNTER.get(key, 0)
+    _OCC_COUNTER[key] = i + 1
+    return pool[i % len(pool)]
+
+
 # Neutral qualifiers used to differentiate same-occasion designs after we strip
 # the recipient (so we never show two identical titles).
 _QUALIFIERS = ["Gift", "Keepsake", "Wall Art", "Quote Print", "Memento",
@@ -318,22 +443,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
     # Build a compact JS data array.
     listings = []
+    _OCC_COUNTER.clear()       # fresh occasion-quote rotation per build
     for b in bundles:
         gallery = sorted((kit_dir).glob(f"{b.listing_n:02d}_*/gallery/*.png"))
         if not gallery:
             continue
-        qf = next(iter(sorted(kit_dir.glob(f"{b.listing_n:02d}_*/quote.txt"))), None)
-        quote_txt = ""
-        if qf:
-            try:
-                import re as _re
-                quote_txt = _re.sub(r"^\s*\[TEST MODE[^\]]*\]\s*", "",
-                                    qf.read_text(encoding="utf-8")).strip()
-            except Exception:  # noqa: BLE001
-                quote_txt = ""
-        if not quote_txt:
-            quote_txt = ("You make every day brighter. "
-                         "Today, and always - with all my love.")
+        # Personal, occasion-specific default wording (varied per design) so the
+        # preview never looks like the same computer-generated text on every piece.
+        quote_txt = _occasion_quote(b.listing_n, b.title, getattr(b, "category", ""))
         gen_title = _generalize_title(b.title)
         entry = {
             "n": b.listing_n,
