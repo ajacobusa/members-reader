@@ -124,12 +124,17 @@ def packages_section(b2b_email: str) -> str:
 
     weddings = "".join(card(q) for q in quotes if q["audience"] == "wedding")
     corporate = "".join(card(q) for q in quotes if q["audience"] == "corporate")
+    # Collapsed by default - keeps the page tight for the common case (one personal
+    # gift); buyers shopping at scale tap to expand.
     return (
-        '<div class="packages"><h2>Wedding &amp; corporate packages</h2>'
+        '<details class="packages"><summary class="pksummary">'
+        '<span class="pktitle">Wedding &amp; corporate packages</span>'
+        '<span class="pkhint">Multi-piece sets, priced for gifting at scale — tap to view</span>'
+        '</summary>'
         '<p class="pksub">Curated multi-piece sets - personalized, made to order, '
         'and priced for gifting at scale. Every set price still clears our quality '
         'and margin standards.</p>'
         '<h3 class="pkgrouph">💍 Weddings</h3>'
         f'<div class="pkgrid">{weddings}</div>'
         '<h3 class="pkgrouph">🏢 Corporate &amp; bulk</h3>'
-        f'<div class="pkgrid">{corporate}</div></div>')
+        f'<div class="pkgrid">{corporate}</div></details>')

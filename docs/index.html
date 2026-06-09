@@ -114,6 +114,13 @@
  #resumeBar .rbx{cursor:pointer;color:#9aa39d;font-size:18px}
  /* wedding & corporate packages */
  .packages{max-width:1100px;margin:46px auto;padding:0 20px;text-align:center}
+ .packages>summary.pksummary{cursor:pointer;list-style:none;display:flex;
+   flex-direction:column;align-items:center;gap:2px;padding:16px;border:1px solid var(--line);
+   border-radius:14px;background:#fff}
+ .packages>summary.pksummary::-webkit-details-marker{display:none}
+ .pktitle{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--green);font-weight:600}
+ .pkhint{color:var(--muted);font-size:13px}
+ .packages[open]>summary.pksummary{margin-bottom:14px}
  .packages h2{font-size:28px;color:var(--green);margin:0 0 4px}
  .packages .pksub{color:var(--muted);max-width:680px;margin:0 auto 14px}
  .pkgrouph{color:var(--green);text-align:left;margin:22px 0 10px;font-size:18px}
@@ -178,6 +185,15 @@
    text-shadow:0 2px 18px rgba(0,0,0,.4)}
  .hero-overlay p{font-size:clamp(14px,2vw,19px);margin:10px 0 0;max-width:620px;
    text-shadow:0 1px 10px rgba(0,0,0,.45)}
+ .herocta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:22px}
+ .btn-shop{background:var(--gold);color:#22301e;text-decoration:none;font-weight:700;
+   font-size:16px;padding:13px 28px;border-radius:26px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+   transition:transform .12s,background .15s}
+ .btn-shop:hover{background:var(--gold-d);transform:translateY(-2px)}
+ .btn-find{background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.7);
+   font-weight:600;font-size:16px;padding:12px 24px;border-radius:26px;cursor:pointer;
+   font-family:inherit;backdrop-filter:blur(2px)}
+ .btn-find:hover{background:rgba(255,255,255,.28)}
  /* trust bar */
  .trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 30px;
    background:var(--green);color:#eadfb9;padding:13px 16px;font-size:13px;
@@ -240,6 +256,12 @@
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}
  .uatbar a{color:var(--green);font-weight:600}
+ /* back-to-top (bottom-left, clears the Ask Ange button on the right) */
+ #toTop{position:fixed;left:20px;bottom:20px;z-index:60;display:none;
+   align-items:center;justify-content:center;width:46px;height:46px;border:none;
+   border-radius:50%;background:var(--green);color:#fff;font-size:20px;cursor:pointer;
+   box-shadow:0 4px 16px rgba(0,0,0,.25)}
+ #toTop:hover{background:var(--gold);color:#22301e}
  /* Ask Ange chat */
  #basketBtn{position:fixed;left:20px;bottom:20px;z-index:60;background:var(--gold);
    color:#22301e;border:none;border-radius:30px;padding:13px 20px;font-size:15px;
@@ -564,6 +586,10 @@
    <div class="hero-overlay">
      <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
      <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
+     <div class="herocta">
+       <a class="btn-shop" href="#grid">Shop the collection</a>
+       <button class="btn-find" onclick="openQuiz()">🎁 Find the perfect gift</button>
+     </div>
    </div>
  </div>
  <div class="trust">
@@ -572,7 +598,7 @@
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
- <div class="sproof"><span class="spi"><b>9</b> made-to-order pieces</span><span class="spi"><b>1</b> on the insider list</span></div>
+ 
  <div class="cutoff">⏰ Only 3 days left - order by Jun 12 to get it in time for Father's Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div class="intro">
@@ -603,7 +629,7 @@
  
  
  <div class="why" id="why"><h2>Why Joffiels (not a mass printer)</h2><table class="cmp"><tr><th>Joffiels</th><th>Big-box printers</th></tr><tr><td class="us">✓ Designed by a real person for your story</td><td class="them">Templated, mass-produced</td></tr><tr><td class="us">✓ FREE digital proof - approve before we print</td><td class="them">What you upload is what prints</td></tr><tr><td class="us">✓ Made to order, museum-quality materials</td><td class="them">Bulk factory runs</td></tr><tr><td class="us">✓ Custom wording, colors &amp; frame - you preview it live</td><td class="them">Limited presets</td></tr><tr><td class="us">✓ Personal note + gift e-card included free</td><td class="them">Add-on fees</td></tr><tr><td class="us">✓ Happiness guarantee - we make it right</td><td class="them">Rigid return windows</td></tr></table></div><div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is made to order and approved by you on a free proof. If something isn't right, we'll make it right.</div><div class="faqs" id="faq"><h2>Questions, answered</h2><details class="faq"><summary>Is the frame included?</summary><p>Poster, canvas, acrylic and metal ship without a frame. Choose a "Framed" option to add a real wood frame (6 styles).</p></details><details class="faq"><summary>Can I use my own photo or exact wording?</summary><p>Yes! Upload a high-resolution photo and type your own words - we auto-check quality and send a free proof before printing.</p></details><details class="faq"><summary>How fast will it arrive?</summary><p>We send your proof within ~24h; once approved it's printed and shipped with tracking, typically within 3-5 business days.</p></details><details class="faq"><summary>What if I don't love it?</summary><p>Message us - our happiness guarantee means we'll fix or remake it. Personalized items are made to order, so approval happens on the proof.</p></details></div>
- <div class="packages"><h2>Wedding &amp; corporate packages</h2><p class="pksub">Curated multi-piece sets - personalized, made to order, and priced for gifting at scale. Every set price still clears our quality and margin standards.</p><h3 class="pkgrouph">💍 Weddings</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">The Vows Set</div><div class="pkfrom">from $417.09 <span class="pkpp">(~$139.03/piece)</span></div><span class="pksave">Set price - 12% vs singles</span><p class="pkblurb">Your wedding vows or first dance lyrics as a framed centerpiece, plus two matching prints for the couple's first home.</p><ul class="pkinc"><li>1 large framed centerpiece (premium wood)</li><li>2 coordinated prints</li><li>Custom names, date & wording</li><li>Free digital proof before printing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20The%20Vows%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Guest & Gift Bundle</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">A signature framed piece for the couple plus a set of small prints as keepsake favors or bridal-party gifts.</p><ul class="pkinc"><li>1 framed signature piece</li><li>4 keepsake prints</li><li>Matching design & palette</li><li>Bulk-friendly pricing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Guest%20&%20Gift%20Bundle">Request this package &rarr;</a></div></div><h3 class="pkgrouph">🏢 Corporate &amp; bulk</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">Team Recognition Set</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Personalized award/values prints for employee recognition, onboarding or milestones - your branding, names and message.</p><ul class="pkinc"><li>5 personalized prints (poster or framed)</li><li>Your logo, colors & wording</li><li>Volume pricing - scales with quantity</li><li>Single invoice, one approval</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Team%20Recognition%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Client Gifting Program</div><div class="pkfrom">from $892.40 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Branded, made-to-order art gifts for clients and partners - ship individually or in bulk, fully personalized.</p><ul class="pkinc"><li>10+ branded gift prints</li><li>Individual personalization</li><li>Recurring/seasonal scheduling available</li><li>Dedicated account contact</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Client%20Gifting%20Program">Request this package &rarr;</a></div></div></div>
+ <details class="packages"><summary class="pksummary"><span class="pktitle">Wedding &amp; corporate packages</span><span class="pkhint">Multi-piece sets, priced for gifting at scale — tap to view</span></summary><p class="pksub">Curated multi-piece sets - personalized, made to order, and priced for gifting at scale. Every set price still clears our quality and margin standards.</p><h3 class="pkgrouph">💍 Weddings</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">The Vows Set</div><div class="pkfrom">from $417.09 <span class="pkpp">(~$139.03/piece)</span></div><span class="pksave">Set price - 12% vs singles</span><p class="pkblurb">Your wedding vows or first dance lyrics as a framed centerpiece, plus two matching prints for the couple's first home.</p><ul class="pkinc"><li>1 large framed centerpiece (premium wood)</li><li>2 coordinated prints</li><li>Custom names, date & wording</li><li>Free digital proof before printing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20The%20Vows%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Guest & Gift Bundle</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">A signature framed piece for the couple plus a set of small prints as keepsake favors or bridal-party gifts.</p><ul class="pkinc"><li>1 framed signature piece</li><li>4 keepsake prints</li><li>Matching design & palette</li><li>Bulk-friendly pricing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Guest%20&%20Gift%20Bundle">Request this package &rarr;</a></div></div><h3 class="pkgrouph">🏢 Corporate &amp; bulk</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">Team Recognition Set</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Personalized award/values prints for employee recognition, onboarding or milestones - your branding, names and message.</p><ul class="pkinc"><li>5 personalized prints (poster or framed)</li><li>Your logo, colors & wording</li><li>Volume pricing - scales with quantity</li><li>Single invoice, one approval</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Team%20Recognition%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Client Gifting Program</div><div class="pkfrom">from $892.40 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Branded, made-to-order art gifts for clients and partners - ship individually or in bulk, fully personalized.</p><ul class="pkinc"><li>10+ branded gift prints</li><li>Individual personalization</li><li>Recurring/seasonal scheduling available</li><li>Dedicated account contact</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Client%20Gifting%20Program">Request this package &rarr;</a></div></div></details>
  <div class="b2b"><h2>Corporate &amp; bulk gifting</h2><p class="gsub">Personalized art for employee recognition, client gifts, weddings, realtor closings, churches &amp; schools - wholesale pricing on volume orders.</p><div class="b2bform"><input id="bz_name" aria-label="Your name" placeholder="Your name"><input id="bz_co" aria-label="Company or organization" placeholder="Company / organization"><input id="bz_email" aria-label="Your email" placeholder="Your email"><input id="bz_qty" aria-label="Approximate quantity" placeholder="Approx. quantity"><textarea id="bz_msg" aria-label="What do you need" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea><button onclick="b2bSend('ajacobusa@gmail.com')">Request a wholesale quote</button></div></div>
  <div class="foot">
    <div class="fbn">Joffiels</div>
@@ -1599,6 +1625,14 @@
   </div>
 </div>
 
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top" title="Back to top">&#8593;</button>
+<script>
+ (function(){ var b=document.getElementById('toTop');
+   if(!b) return;
+   var onScroll=function(){ b.style.display = (window.scrollY>700)?'flex':'none'; };
+   window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+ })();
+</script>
 <button id="angeBtn" onclick="toggleAnge()">💬 Ask Ange</button>
 <div id="angePanel">
   <div class="angehdr">Ask Ange<small>Joffiels assistant - quick answers</small></div>

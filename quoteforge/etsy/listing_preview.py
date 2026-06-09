@@ -988,6 +988,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  #resumeBar .rbx{{cursor:pointer;color:#9aa39d;font-size:18px}}
  /* wedding & corporate packages */
  .packages{{max-width:1100px;margin:46px auto;padding:0 20px;text-align:center}}
+ .packages>summary.pksummary{{cursor:pointer;list-style:none;display:flex;
+   flex-direction:column;align-items:center;gap:2px;padding:16px;border:1px solid var(--line);
+   border-radius:14px;background:#fff}}
+ .packages>summary.pksummary::-webkit-details-marker{{display:none}}
+ .pktitle{{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--green);font-weight:600}}
+ .pkhint{{color:var(--muted);font-size:13px}}
+ .packages[open]>summary.pksummary{{margin-bottom:14px}}
  .packages h2{{font-size:28px;color:var(--green);margin:0 0 4px}}
  .packages .pksub{{color:var(--muted);max-width:680px;margin:0 auto 14px}}
  .pkgrouph{{color:var(--green);text-align:left;margin:22px 0 10px;font-size:18px}}
@@ -1052,6 +1059,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    text-shadow:0 2px 18px rgba(0,0,0,.4)}}
  .hero-overlay p{{font-size:clamp(14px,2vw,19px);margin:10px 0 0;max-width:620px;
    text-shadow:0 1px 10px rgba(0,0,0,.45)}}
+ .herocta{{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:22px}}
+ .btn-shop{{background:var(--gold);color:#22301e;text-decoration:none;font-weight:700;
+   font-size:16px;padding:13px 28px;border-radius:26px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+   transition:transform .12s,background .15s}}
+ .btn-shop:hover{{background:var(--gold-d);transform:translateY(-2px)}}
+ .btn-find{{background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.7);
+   font-weight:600;font-size:16px;padding:12px 24px;border-radius:26px;cursor:pointer;
+   font-family:inherit;backdrop-filter:blur(2px)}}
+ .btn-find:hover{{background:rgba(255,255,255,.28)}}
  /* trust bar */
  .trust{{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 30px;
    background:var(--green);color:#eadfb9;padding:13px 16px;font-size:13px;
@@ -1114,6 +1130,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
+ /* back-to-top (bottom-left, clears the Ask Ange button on the right) */
+ #toTop{{position:fixed;left:20px;bottom:20px;z-index:60;display:none;
+   align-items:center;justify-content:center;width:46px;height:46px;border:none;
+   border-radius:50%;background:var(--green);color:#fff;font-size:20px;cursor:pointer;
+   box-shadow:0 4px 16px rgba(0,0,0,.25)}}
+ #toTop:hover{{background:var(--gold);color:#22301e}}
  /* Ask Ange chat */
  #basketBtn{{position:fixed;left:20px;bottom:20px;z-index:60;background:var(--gold);
    color:#22301e;border:none;border-radius:30px;padding:13px 20px;font-size:15px;
@@ -1416,6 +1438,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div class="hero-overlay">
      <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
      <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
+     <div class="herocta">
+       <a class="btn-shop" href="#grid">Shop the collection</a>
+       <button class="btn-find" onclick="openQuiz()">🎁 Find the perfect gift</button>
+     </div>
    </div>
  </div>
  <div class="trust">
@@ -2455,6 +2481,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   </div>
 </div>
 
+<button id="toTop" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" aria-label="Back to top" title="Back to top">&#8593;</button>
+<script>
+ (function(){{ var b=document.getElementById('toTop');
+   if(!b) return;
+   var onScroll=function(){{ b.style.display = (window.scrollY>700)?'flex':'none'; }};
+   window.addEventListener('scroll',onScroll,{{passive:true}}); onScroll();
+ }})();
+</script>
 <button id="angeBtn" onclick="toggleAnge()">💬 Ask Ange</button>
 <div id="angePanel">
   <div class="angehdr">Ask Ange<small>{SHOP_NAME} assistant - quick answers</small></div>

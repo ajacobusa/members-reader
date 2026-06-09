@@ -28,18 +28,25 @@ def social_proof_stats() -> dict:
             "avg": float(rv.get("avg", 0.0) or 0.0)}
 
 
+# Don't advertise tiny counts - "9 pieces" / "1 on the insider list" reads weaker
+# than saying nothing. Only surface a volume stat once it's genuinely reassuring.
+# (Honest: we never invent numbers; we just stay quiet until they're meaningful.)
+MIN_ORDERS_TO_SHOW = 25
+MIN_SUBSCRIBERS_TO_SHOW = 25
+
+
 def social_proof_bar() -> str:
     """A thin bar of real stats. Returns '' when there's nothing real to show."""
     s = social_proof_stats()
     items = []
-    if s["orders"] > 0:
+    if s["orders"] >= MIN_ORDERS_TO_SHOW:
         items.append(f'<span class="spi"><b>{s["orders"]:,}</b> made-to-order pieces</span>')
-    if s["reviews"] > 0:
+    if s["reviews"] > 0:  # real reviews are strong proof even in small numbers
         stars = "★" * int(round(s["avg"]))
         items.append(f'<span class="spi"><b>{s["avg"]}</b> {stars} '
                      f'from {s["reviews"]} verified review'
                      f'{"s" if s["reviews"] != 1 else ""}</span>')
-    if s["subscribers"] > 0:
+    if s["subscribers"] >= MIN_SUBSCRIBERS_TO_SHOW:
         items.append(f'<span class="spi"><b>{s["subscribers"]:,}</b> on the insider list</span>')
     if not items:
         return ""

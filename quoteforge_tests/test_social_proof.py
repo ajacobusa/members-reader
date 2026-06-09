@@ -11,9 +11,21 @@ def test_social_proof_empty_when_no_data(monkeypatch):
 def test_social_proof_shows_real_counts(monkeypatch):
     import quoteforge.etsy.social_proof as sp
     monkeypatch.setattr(sp, "social_proof_stats",
-                        lambda: {"orders": 42, "subscribers": 10, "reviews": 3, "avg": 4.7})
+                        lambda: {"orders": 42, "subscribers": 120, "reviews": 3, "avg": 4.7})
     html = sp.social_proof_bar()
-    assert "42" in html and "4.7" in html and "10" in html and "sproof" in html
+    assert "42" in html and "4.7" in html and "120" in html and "sproof" in html
+
+
+def test_social_proof_hides_weak_counts(monkeypatch):
+    """Tiny volume counts ('9 pieces', '1 on the insider list') undercut trust, so
+    we stay quiet until they're meaningful - but real reviews always show."""
+    import quoteforge.etsy.social_proof as sp
+    monkeypatch.setattr(sp, "social_proof_stats",
+                        lambda: {"orders": 9, "subscribers": 1, "reviews": 2, "avg": 5.0})
+    html = sp.social_proof_bar()
+    assert "made-to-order pieces" not in html      # 9 is below the threshold
+    assert "on the insider list" not in html       # 1 is below the threshold
+    assert "verified review" in html               # real reviews still surface
 
 
 def test_room_designer_and_gallery_in_page(tmp_path):
