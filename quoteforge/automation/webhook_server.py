@@ -303,6 +303,22 @@ def process_gelato_callback(payload: dict) -> dict:
 
 
 if FLASK_AVAILABLE and app:
+    # Serve the storefront itself so one process hosts BOTH the shop page and the
+    # API endpoints it calls (/upload, /ask, ...). Same-origin = no CORS headaches.
+    DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
+
+    @app.route("/", methods=["GET"])
+    def storefront():
+        """The customer-facing shop home (docs/index.html)."""
+        from flask import send_from_directory
+        return send_from_directory(DOCS_DIR, "index.html")
+
+    @app.route("/assets/<path:filename>", methods=["GET"])
+    def storefront_assets(filename):
+        """Static images/assets for the storefront (docs/assets/...)."""
+        from flask import send_from_directory
+        return send_from_directory(DOCS_DIR / "assets", filename)
+
     @app.route("/health", methods=["GET"])
     def health():
         """Deep health check — verifies the database is reachable."""
