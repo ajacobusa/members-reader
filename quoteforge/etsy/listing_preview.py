@@ -196,6 +196,42 @@ def _generalize_title(t: str) -> str:
     return s or t
 
 
+# Neutral qualifiers used to differentiate same-occasion designs after we strip
+# the recipient (so we never show two identical titles).
+_QUALIFIERS = ["Gift", "Keepsake", "Wall Art", "Quote Print", "Memento",
+               "Art Print", "Keepsake Print", "Custom Print"]
+
+
+def _dedupe_titles(listings: list) -> None:
+    """Ensure every display title is unique by swapping the trailing qualifier
+    (e.g. two 'Personalized Birthday Gift' -> '... Gift' and '... Keepsake')."""
+    seen: dict[str, int] = {}
+    for e in listings:
+        base = e["title"]
+        if base not in seen:
+            seen[base] = 0
+            continue
+        seen[base] += 1
+        n = seen[base]
+        qual = _QUALIFIERS[n % len(_QUALIFIERS)]
+        # replace a trailing 'Gift'/'Print' etc. with the next qualifier, else append
+        new = _re.sub(r"\b(Gift|Keepsake|Print|Wall Art|Memento)\s*$", qual, base)
+        if new == base:
+            new = f"{base} {qual}"
+        # keep uniqueness even if the swap collided
+        while new in seen:
+            n += 1
+            qual = _QUALIFIERS[n % len(_QUALIFIERS)]
+            new = _re.sub(r"\b(Gift|Keepsake|Print|Wall Art|Memento)\s*$", qual, base)
+            if new == base:
+                new = f"{base} {qual} {n}"
+        seen[new] = 0
+        # update both the card title and the modal full title's first segment
+        if e.get("full_title", "").startswith(base):
+            e["full_title"] = new + e["full_title"][len(base):]
+        e["title"] = new
+
+
 def _generalize_quote(q: str) -> str:
     """Make the DEFAULT preview wording recipient-neutral so it fits anyone:
     'Dear Emma, ...' -> 'Dear [Name], ...'; sign-offs like ', Mom' -> ', [Your name]'.
@@ -337,6 +373,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if prices:
             entry["price"] = f"{min(prices):.2f}"
         listings.append(entry)
+    _dedupe_titles(listings)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:

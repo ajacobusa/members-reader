@@ -51,3 +51,16 @@ def test_no_sample_names_on_page(tmp_path):
         assert name not in h, f"{name} still in preview quotes"
     # ([Name] placeholder is exercised by test_generalize_quote; in TEST_MODE the
     #  preview quotes fall back to a generic, already-neutral line.)
+
+
+def test_no_duplicate_titles_after_generalizing():
+    from quoteforge.etsy.listing_preview import _generalize_title, _dedupe_titles
+    from quoteforge.etsy.listing_seo import build_launch_seo
+    listings = [{"title": _generalize_title(b.title).split(" | ")[0],
+                 "full_title": _generalize_title(b.title)} for b in build_launch_seo()]
+    _dedupe_titles(listings)
+    titles = [e["title"] for e in listings]
+    assert len(titles) == len(set(titles)), "display titles must be unique"
+    # full_title stays in sync with the de-duped display title
+    for e in listings:
+        assert e["full_title"].startswith(e["title"]) or e["title"] in e["full_title"]
