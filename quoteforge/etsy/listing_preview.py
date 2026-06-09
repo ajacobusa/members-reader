@@ -182,13 +182,13 @@ def _competitive_sections() -> str:
         for q, a in faqs)
     # (The rich occasion showcase lives above the grid now - see _occasion_showcase.)
     return (
-        f'<div class="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
+        f'<div class="why" id="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
         f'{cmp_rows}</table></div>'
         f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is '
         f'made to order and approved by you on a free proof. If something isn\'t '
         f'right, we\'ll make it right.</div>'
-        f'<div class="faqs"><h2>Questions, answered</h2>{faq_html}</div>')
+        f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>')
 
 
 def _gift_and_b2b_section(owner: str) -> str:
@@ -942,6 +942,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .navbasket:hover{{background:var(--green-d)}}
  .navbasket #basketCountNav{{background:#fff;color:var(--green);border-radius:50%;
    padding:1px 8px;margin-left:4px;font-size:13px}}
+ .navlinks{{display:flex;gap:18px;margin:0 14px}}
+ .navlinks a{{color:var(--green);text-decoration:none;font-size:14px;font-weight:600;
+   padding:4px 2px;border-bottom:2px solid transparent}}
+ .navlinks a:hover{{border-bottom-color:var(--gold)}}
+ /* anchored sections clear the sticky header when jumped to */
+ #grid,#occasions,#why,#faq{{scroll-margin-top:74px}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
@@ -1073,19 +1079,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .occasions{{max-width:1200px;margin:30px auto 8px;padding:0 20px;text-align:center}}
  .occasions h2{{font-size:30px;color:var(--green);margin:0 0 4px}}
  .ocintro{{color:var(--muted);max-width:620px;margin:0 auto 18px}}
- .ocgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
-   gap:22px}}
+ .ocgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+   gap:16px}}
  .occard{{background:#fff;border:1px solid var(--line);border-radius:16px;
    overflow:hidden;cursor:pointer;padding:0;text-align:left;
    box-shadow:0 2px 12px rgba(0,0,0,.05);transition:transform .15s,box-shadow .15s}}
  .occard:hover{{transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.14)}}
- .ocimg{{width:100%;height:200px;object-fit:cover;display:block}}
+ .ocimg{{width:100%;height:140px;object-fit:cover;display:block}}
  .ocfallback{{display:flex;align-items:center;justify-content:center}}
  .ocemoji{{font-size:72px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.12))}}
  .occap{{padding:14px 16px 18px}}
- .octitle{{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;
+ .octitle{{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;
    color:var(--green)}}
- .ocsub{{color:var(--muted);font-size:14px;margin-top:2px}}
+ .ocsub{{color:var(--muted);font-size:13px;margin-top:2px}}
+ .occap{{padding:11px 13px 14px}}
  .ocall{{margin-top:18px}}
  .grid{{max-width:1200px;margin:26px auto 50px;display:grid;
    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:26px;padding:0 20px}}
@@ -1379,7 +1386,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  @media(max-width:560px){{
    .mbody{{padding:16px}} .nav .bn{{font-size:20px}}
-   .nav{{flex-wrap:wrap;gap:8px}} .navquiz,.navbasket{{margin-left:0}}
+   .nav{{flex-wrap:nowrap;gap:7px;padding:10px 8px}} .navquiz,.navbasket{{margin-left:0}}
+   .navlinks{{display:none}}  /* jump links are desktop-only; mobile keeps one row */
+   .navquiz,.navbasket{{padding:7px 11px;font-size:13px}}
+   .ocgrid{{grid-template-columns:repeat(2,1fr);gap:11px}}
+   .ocimg{{height:104px}} .octitle{{font-size:17px}}
    .photorow{{flex-wrap:wrap}} .b2bform{{grid-template-columns:1fr}}
    .b2bform textarea,.b2bform button{{grid-column:1}}
    .occrow{{gap:6px}} .occhip{{padding:6px 11px;font-size:12.5px}}
@@ -1391,6 +1402,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="nav">
    {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
    <span class="bn">{SHOP_NAME}</span>
+   <nav class="navlinks" aria-label="Sections">
+     <a href="#grid">Shop</a>
+     <a href="#occasions">Occasions</a>
+     <a href="#why">Why us</a>
+     <a href="#faq">FAQ</a>
+   </nav>
    <button class="navquiz" onclick="openQuiz()">🎁 Gift Finder</button>
    <button class="navbasket" id="basketBtnNav" onclick="toggleBasket()">🛒 Basket <span id="basketCountNav">0</span></button>
  </div>
