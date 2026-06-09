@@ -5,7 +5,18 @@ computer**, with the **source code private**. Customers browse and personalize o
 your site, then check out and pay on **Etsy** (Etsy handles payment, tax, and
 fraud; Gelato prints and ships). You never handle card data.
 
-Do the three parts in order. Parts 1 and 3 can happen in parallel.
+**Recommended low-risk launch order:** start selling on **Etsy only** (Parts 1 +
+the "make repo private" step). You host nothing public, so there's no uptime or
+security risk — Etsy runs the store. The self-hosted personalizer site (Part 3) is
+**optional and can be added later** once you're comfortable; it's a nicer funnel
+into the same Etsy listings, not a requirement to sell.
+
+| Step | When | Risk |
+|---|---|---|
+| **1. Publish on Etsy + connect Gelato** | Now | Very low — Etsy hosts, pays out, handles tax/fraud |
+| **Make repo private** | Now | None — protects your code, free |
+| **2. Wire `ETSY_SHOP_URL`** | Only if/when you self-host | Low |
+| **3. Self-host the personalizer** | Later (optional) | Adds uptime/maintenance — defer until ready |
 
 ---
 
@@ -57,7 +68,11 @@ That's the whole funnel: **browse → personalize → review proof → checkout 
 
 ---
 
-## Part 3 — Host it on your dedicated computer + make the repo private
+## Part 3 — (OPTIONAL, LATER) Host the personalizer on your dedicated computer
+
+> You do **not** need this to start selling — Etsy is already your store. Add it
+> later if you want a branded personalizer that funnels into your Etsy listings.
+> The "make repo private" step at the end, however, you can do **now** (it's free).
 
 ### 3a. Run the app (serves the shop AND the personalizer API in one process)
 On the dedicated computer (Windows):
