@@ -305,6 +305,14 @@
    border-radius:16px;padding:5px 13px;font-size:13px;font-weight:600;
    cursor:pointer;font-family:inherit}
  .occback:hover{background:var(--gold)}
+ .occallcard{display:flex;align-items:center;justify-content:center;
+   background:#f3f1ea;border:1.5px dashed var(--green)}
+ .occallinner{text-align:center;padding:24px}
+ .occallicon{font-size:30px;color:var(--green);line-height:1}
+ .occalltitle{font-size:15px;color:var(--green);font-weight:600;margin:8px 0 12px}
+ .occallbtn{background:var(--green);color:#fff;border:none;border-radius:22px;
+   padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+ .occallbtn:hover{background:var(--gold)}
  .occhip.sel{background:var(--green);color:#fff;border-color:var(--green)}
  .occnote{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}
  .baddlbl{font-size:11px;color:var(--green);font-weight:600;margin-top:3px}
@@ -817,7 +825,17 @@
          <div class="prsub">${MAT_SHORT} &middot; ${OPT_COUNT} options to $${PRICE_HI}</div>
          <span class="fb">Tap to choose frame / canvas &amp; see it</span>
        </div>
-     </div>`).join('');
+     </div>`).join('') +
+   // A tile that sits BESIDE the filtered product(s) so you can jump back to all
+   // designs / the occasion tiles without scrolling to the top. Hidden until a
+   // filter is active.
+   `<div class="card occallcard" id="occallcard" style="display:none">
+      <div class="occallinner">
+        <div class="occallicon">&#8593;</div>
+        <div class="occalltitle">Browse all occasions</div>
+        <button class="occallbtn" onclick="showAllDesigns()">Show all designs</button>
+      </div>
+    </div>`;
  }
  // Filter the product grid by occasion (Shop by occasion chips).
  // Occasion -> matching keywords (so chips match real product titles).
@@ -839,13 +857,16 @@
  function shopByOccasion(occ, el){
    const q=(occ||'').toLowerCase();
    let shown=0;
-   document.querySelectorAll('#grid .card').forEach(c=>{
+   document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>{
      const cocc=(c.getAttribute('data-occ')||'');
      // every card carries its exact occasion key, so match on that only - no fuzzy
      // keyword fallback (which used to pull e.g. Anniversary under Valentine's Day).
      const ok = !q || cocc===q;
      c.style.display = ok ? '' : 'none'; if(ok) shown++;
    });
+   // Show the "Show all designs" tile beside the filtered product(s).
+   const allCard=document.getElementById('occallcard');
+   if(allCard) allCard.style.display = (q && shown>0) ? '' : 'none';
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
    const note=document.getElementById('occnote');
    // When an occasion is active, offer a one-tap way back to the occasion tiles
@@ -865,6 +886,13 @@
  function backToOccasions(){
    const s=document.getElementById('occasions');
    if(s) s.scrollIntoView({behavior:'smooth',block:'start'});
+ }
+ function showAllDesigns(){
+   document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>c.style.display='');
+   const ac=document.getElementById('occallcard'); if(ac) ac.style.display='none';
+   document.querySelectorAll('.occhip').forEach(e=>e.classList.remove('sel'));
+   const note=document.getElementById('occnote'); if(note) note.innerHTML='';
+   backToOccasions();
  }
  function openM(i){
    CUR = i; RATING = 0; paintStars();
