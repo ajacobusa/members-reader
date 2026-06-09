@@ -144,6 +144,10 @@ def _generate_art(listing: LaunchListing, folder: Path,
         sender_name="", occasion=listing.occasion, memory_or_story="",
         scenery="Mountains", output_style="Custom Quote", count=1,
         force_real=bool(ANTHROPIC_API_KEY))[0]
+    # Burn in recipient-neutral wording ([Name]/[Your name]) so the mockup fits
+    # ANY recipient and matches the storefront's live preview - never a fixed name.
+    from quoteforge.etsy.listing_preview import _generalize_quote
+    quote = _generalize_quote(quote)
     poster = folder / "poster_18x24.png"
     (folder / "quote.txt").write_text(quote, encoding="utf-8")  # for live color preview
     render_local_poster(quote=quote, output_path=poster, size=(5400, 7200))

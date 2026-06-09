@@ -392,13 +392,21 @@ _QUALIFIERS = ["Gift", "Keepsake", "Wall Art", "Quote Print", "Memento",
                "Art Print", "Keepsake Print", "Custom Print"]
 
 
+# Calendar occasions shown in the "Shop by occasion" strip, in display order.
+# (key used for filtering, Display name used for the card title.)
+_CALENDAR_OCCASIONS = [
+    ("birthday", "Birthday"), ("anniversary", "Anniversary"), ("wedding", "Wedding"),
+    ("mother's day", "Mother's Day"), ("father's day", "Father's Day"),
+    ("valentine's day", "Valentine's Day"), ("graduation", "Graduation"),
+    ("new baby", "New Baby"), ("housewarming", "Housewarming"),
+    ("christmas", "Christmas"),
+]
+# Non-calendar concepts kept as their own (single) card, in display order.
+_EXTRA_OCCASIONS = ["faith", "memorial", "just because"]
+
+
 def _drop_duplicate_designs(listings: list) -> None:
-    """After generalizing recipients, several designs collapse to the same concept
-    (e.g. Daughter/Son/Mom Birthday -> 'Personalized Birthday Gift'). They differ
-    only in default wording, which the buyer rewrites - so showing all of them is
-    just confusing. Keep ONE per unique title; drop the rest. Genuinely distinct
-    designs (e.g. Future Nurse/Dentist/Teacher Graduation) have unique titles and
-    are kept."""
+    """Back-compat shim: keep ONE entry per unique title."""
     seen: set = set()
     keep = []
     for e in listings:
@@ -408,6 +416,61 @@ def _drop_duplicate_designs(listings: list) -> None:
         seen.add(base)
         keep.append(e)
     listings[:] = keep
+
+
+def _collapse_to_one_per_occasion(listings: list) -> None:
+    """Show exactly ONE design per occasion - every print is fully personalizable,
+    so 6 graduation cards or 3 birthday cards is just noise. We keep the first
+    design seen for each occasion, normalize calendar cards to a clean
+    'Personalized <Occasion> Gift' title, and SYNTHESIZE a card for any showcased
+    occasion the launch pack doesn't cover yet (e.g. Father's Day, New Baby) by
+    cloning a neutral base design and swapping in that occasion's title + wording.
+    Result: the 'Shop by occasion' strip and every chip always lands on a design."""
+    if not listings:
+        return
+    by_occ: dict = {}
+    for e in listings:
+        k = e.get("occ") or "just because"
+        if k not in by_occ:
+            by_occ[k] = e
+    # A neutral base to clone art from for occasions with no dedicated design.
+    base = by_occ.get("just because") or listings[0]
+    # Normalize the calendar cards to clean, uniform occasion titles + fill gaps.
+    for key, disp in _CALENDAR_OCCASIONS:
+        if key in by_occ:
+            e = by_occ[key]
+            e["title"] = f"Personalized {disp} Gift"
+            e["full_title"] = (f"Personalized {disp} Gift | {disp} Wall Art | "
+                               f"Custom Quote Print - You Personalize It")
+        else:
+            clone = dict(base)                # inherits formats only if base has them
+            clone["imgs"] = list(base.get("imgs", []))
+            clone["occ"] = key
+            clone["title"] = f"Personalized {disp} Gift"
+            clone["full_title"] = (f"Personalized {disp} Gift | {disp} Wall Art | "
+                                   f"Custom Quote Print - You Personalize It")
+            q = OCCASION_QUOTES.get(key) or [""]
+            clone["quote"] = _generalize_quote(q[0])
+            clone["desc"] = (
+                f"A personalized {disp} gift you make your own. Add any name, the "
+                f"occasion, and your own heartfelt message - we set it beautifully on "
+                f"premium wall art. HOW IT WORKS\n1. Choose your size, frame or canvas."
+                f"\n2. Add the recipient's name and your message at checkout.\n3. We "
+                f"design it and ship a ready-to-hang keepsake. Perfect for {disp}.")
+            by_occ[key] = clone
+    # Order: calendar occasions (showcase order) first, then the extras, then any
+    # remaining keys we didn't anticipate.
+    final, used = [], set()
+    for key, _ in _CALENDAR_OCCASIONS:
+        if key in by_occ:
+            final.append(by_occ[key]); used.add(key)
+    for key in _EXTRA_OCCASIONS:
+        if key in by_occ and key not in used:
+            final.append(by_occ[key]); used.add(key)
+    for key, e in by_occ.items():
+        if key not in used:
+            final.append(e); used.add(key)
+    listings[:] = final
 
 
 def _dedupe_titles(listings: list) -> None:
@@ -533,10 +596,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             continue
         # Personal, occasion-specific default wording (varied per design) so the
         # preview never looks like the same computer-generated text on every piece.
+        occ_key = _listing_occasion_key(b.listing_n, b.title, getattr(b, "category", ""))
         quote_txt = _occasion_quote(b.listing_n, b.title, getattr(b, "category", ""))
         gen_title = _generalize_title(b.title)
         entry = {
             "n": b.listing_n,
+            "occ": occ_key,
             "quote": _generalize_quote(quote_txt),
             "title": gen_title.split(" | ")[0],
             "full_title": gen_title,
@@ -573,7 +638,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if prices:
             entry["price"] = f"{min(prices):.2f}"
         listings.append(entry)
-    _drop_duplicate_designs(listings)
+    _collapse_to_one_per_occasion(listings)
     data_json = json.dumps(listings)
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
@@ -1515,7 +1580,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const g = document.getElementById('grid');
    g.innerHTML = DATA.map((d,i) => `
      <div class="card" role="button" tabindex="0" aria-label="Personalize ${{d.title}}"
-       data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" onclick="openM(${{i}})"
+       data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" data-occ="${{d.occ||''}}" onclick="openM(${{i}})"
        onkeydown="if(event.key==='Enter'||event.key===' '){{event.preventDefault();openM(${{i}});}}">
        <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="${{d.title}} - personalized wall art preview">
        <div class="cap"><div class="ttl">${{d.title}}</div>
@@ -1547,8 +1612,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const keys = q ? (OCC_SYN[q] || [q]) : [];
    let shown=0;
    document.querySelectorAll('#grid .card').forEach(c=>{{
+     const occ=(c.getAttribute('data-occ')||'');
      const t=(c.getAttribute('data-title')||'');
-     const ok = !q || keys.some(k=>t.indexOf(k)>=0);
+     // exact occasion-key match first (reliable); fall back to title keywords
+     const ok = !q || occ===q || keys.some(k=>t.indexOf(k)>=0);
      c.style.display = ok ? '' : 'none'; if(ok) shown++;
    }});
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));

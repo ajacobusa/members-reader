@@ -66,9 +66,11 @@ def test_no_duplicate_titles_after_generalizing():
         assert e["full_title"].startswith(e["title"]) or e["title"] in e["full_title"]
 
 
-def test_no_duplicate_design_cards_on_page(tmp_path):
-    """Near-duplicate designs (same concept after generalizing) are dropped, so the
-    grid shows each title once - no confusing repeats."""
+def test_one_card_per_occasion_and_all_occasions_present(tmp_path):
+    """Every print is fully personalizable, so the grid shows exactly ONE design per
+    occasion (no 6 graduations / 3 birthdays) AND every showcased occasion - even
+    ones the launch pack doesn't cover (Father's Day, Valentine's, New Baby,
+    Housewarming) - lands on a card so its chip always works."""
     import json, re
     from PIL import Image
     from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
@@ -77,15 +79,47 @@ def test_no_duplicate_design_cards_on_page(tmp_path):
         g = tmp_path / f"{l.n:02d}_x" / "gallery"; g.mkdir(parents=True)
         Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
         nums.append(l.n)
-    from quoteforge.etsy.listing_preview import build_shop_home, _drop_duplicate_designs
+    from quoteforge.etsy.listing_preview import build_shop_home, _CALENDAR_OCCASIONS
     h = build_shop_home(numbers=nums, kit_dir=tmp_path,
                         out_path=tmp_path / "h.html", frame_picker=False).read_text("utf-8")
     data = json.loads(re.search(r'const DATA = (\[.*?\]);', h, re.S).group(1))
     titles = [d["title"] for d in data]
+    occs = [d.get("occ") for d in data]
     assert len(titles) == len(set(titles)), "no duplicate design titles on the page"
-    # distinct profession graduations are KEPT
-    assert "Future Nurse Graduation Gift" in titles
-    # the drop helper keeps first per title
+    # exactly one card per occasion key
+    assert len(occs) == len(set(occs)), "exactly one design per occasion"
+    # every showcased calendar occasion has a card (chip always lands on a design)
+    for key, _disp in _CALENDAR_OCCASIONS:
+        assert key in occs, f"missing a card for occasion '{key}'"
+    # graduation collapsed to a single card (no Future Nurse/Dentist/Teacher noise)
+    assert occs.count("graduation") == 1
+    assert not any("Future Nurse" in t for t in titles)
+
+
+def test_drop_duplicate_designs_keeps_first(tmp_path):
+    from quoteforge.etsy.listing_preview import _drop_duplicate_designs
     lst = [{"title": "A"}, {"title": "A"}, {"title": "B"}]
     _drop_duplicate_designs(lst)
     assert [x["title"] for x in lst] == ["A", "B"]
+
+
+def test_collapse_one_per_occasion_normalizes_and_fills(tmp_path):
+    from quoteforge.etsy.listing_preview import _collapse_to_one_per_occasion
+    lst = [
+        {"occ": "graduation", "title": "Future Nurse", "full_title": "x",
+         "quote": "q", "imgs": ["a.jpg"]},
+        {"occ": "graduation", "title": "Future Dentist", "full_title": "x",
+         "quote": "q", "imgs": ["a.jpg"]},
+        {"occ": "just because", "title": "Encouragement", "full_title": "x",
+         "quote": "q", "imgs": ["a.jpg"]},
+    ]
+    _collapse_to_one_per_occasion(lst)
+    occs = [e["occ"] for e in lst]
+    assert occs.count("graduation") == 1
+    # normalized title
+    grad = next(e for e in lst if e["occ"] == "graduation")
+    assert grad["title"] == "Personalized Graduation Gift"
+    # a missing occasion (e.g. new baby) was synthesized from the neutral base
+    assert "new baby" in occs
+    nb = next(e for e in lst if e["occ"] == "new baby")
+    assert nb["title"] == "Personalized New Baby Gift" and nb["imgs"]
