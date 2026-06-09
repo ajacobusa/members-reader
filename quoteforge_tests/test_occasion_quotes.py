@@ -46,5 +46,8 @@ def test_occasion_showcase_present(tmp_path):
     assert 'class="occasions"' in h and 'class="ocgrid"' in h
     assert h.count('class="occard"') == len(OCCASION_SHOWCASE)
     for name, sub, *_ in OCCASION_SHOWCASE:
-        assert sub in h and f"shopByOccasion('{name}'" in h
+        # the onclick JS-escapes apostrophes (e.g. Mother's Day) so the handler
+        # isn't a syntax error; match the escaped form the page actually emits.
+        name_js = name.replace("\\", "\\\\").replace("'", "\\'")
+        assert sub in h and f"shopByOccasion('{name_js}'" in h
     assert "ocfallback" in h  # elegant fallback when no photo provided
