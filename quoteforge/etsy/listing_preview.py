@@ -1737,16 +1737,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    document.querySelectorAll('.occhip').forEach(e=>e.classList.toggle('sel',e===el));
    const note=document.getElementById('occnote');
-   // When an occasion is active, offer a one-tap way back to the occasion tiles
-   // so you don't have to scroll up to pick another.
-   const back = q ? ` <button class="occback" onclick="backToOccasions()">`+
-     `&#8593; Pick another occasion</button>` : '';
    if(q && shown===0){{                       // no matches -> show all, explain
      document.querySelectorAll('#grid .card').forEach(c=>c.style.display='');
      if(note) note.innerHTML=`No designs for <b>${{occ}}</b> yet - showing all. `+
-       `Tell us what you'd like and we'll create it!`+back;
+       `Tell us what you'd like and we'll create it!`;
    }} else if(note){{
-     note.innerHTML = q ? `Showing <b>${{shown}}</b> design${{shown!==1?'s':''}} for <b>${{occ}}</b>`+back : '';
+     note.innerHTML = q ? `Showing <b>${{shown}}</b> design${{shown!==1?'s':''}} for <b>${{occ}}</b>` : '';
    }}
    const grid=document.getElementById('grid');
    if(grid) grid.scrollIntoView({{behavior:'smooth',block:'start'}});
