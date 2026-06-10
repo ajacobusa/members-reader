@@ -854,7 +854,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     gate = "" if not password else f"""
 <div id="gate">
   <div class="gatebox">
-    {f'<img src="{logo_src}" class="glogo">' if logo_src else ''}
+    {f'<img src="{logo_src}" class="glogo" alt="{SHOP_NAME} logo">' if logo_src else ''}
     <h2>{SHOP_NAME}</h2>
     <p>This preview is private. Please enter the password to view.</p>
     <input id="pw" type="password" aria-label="Password" placeholder="Password" onkeydown="if(event.key==='Enter')check()">
@@ -891,6 +891,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <meta name="twitter:title" content="Personalized Wall Art Gifts | {SHOP_NAME}">
 <meta name="twitter:description" content="Custom wording &amp; your photo, FREE proof before printing.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23103d2e'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23e8d8a8' font-family='Georgia,serif'%3EJ%3C/text%3E%3C/svg%3E">
+<script type="application/ld+json">
+{{"@context":"https://schema.org","@graph":[
+{{"@type":"Organization","name":"{SHOP_NAME}","url":"https://joffiels.com/",
+  "description":"Personalized, made-to-order wall art - custom wording and your photo on museum-quality prints.",
+  "slogan":"Turn your words into art they'll treasure forever"}},
+{{"@type":"WebSite","name":"{SHOP_NAME}","url":"https://joffiels.com/"}},
+{{"@type":"Product","name":"Personalized Wall Art Print","brand":{{"@type":"Brand","name":"{SHOP_NAME}"}},
+  "description":"Custom-wording personalized wall art, made to order in poster, framed, canvas, acrylic or metal. Free digital proof before printing.",
+  "offers":{{"@type":"AggregateOffer","priceCurrency":"USD","lowPrice":"18.99","highPrice":"256.00","offerCount":"46","availability":"https://schema.org/InStock"}}}}
+]}}
+</script>
 {_analytics_snippet()}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -948,7 +959,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    padding:1px 8px;margin-left:4px;font-size:13px}}
  .navlinks{{display:flex;gap:18px;margin:0 14px}}
  .navlinks a{{color:var(--green);text-decoration:none;font-size:14px;font-weight:600;
-   padding:4px 2px;border-bottom:2px solid transparent}}
+   padding:9px 4px;display:inline-flex;align-items:center;min-height:34px;
+   border-bottom:2px solid transparent}}
  .navlinks a:hover{{border-bottom-color:var(--gold)}}
  /* anchored sections clear the sticky header when jumped to */
  #grid,#occasions,#why,#faq{{scroll-margin-top:74px}}
@@ -1442,7 +1454,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <button class="navbasket" id="basketBtnNav" onclick="toggleBasket()">🛒 Basket <span id="basketCountNav">0</span></button>
  </div>
  <div class="hero">
-   {f'<img class="hero-banner" src="{banner_src}">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
+   {f'<img class="hero-banner" src="{banner_src}" alt="Personalized wall art styled in a cozy living room">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
    <div class="hero-overlay">
      <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
      <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
@@ -2417,7 +2429,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      `<div class="bopt ${{BSEL.has(i)?'sel':''}}" onclick="toggleBundle(${{i}})" `+
      `title="Tap to add this design to your gallery set">`+
      `<span class="bcheck">${{BSEL.has(i)?'✓':'+'}}</span>`+
-     `<img src="${{d.imgs[0]}}" loading="lazy"><div>${{d.title.slice(0,28)}}</div>`+
+     `<img src="${{d.imgs[0]}}" loading="lazy" alt="${{d.title}}"><div>${{d.title.slice(0,28)}}</div>`+
      `<div class="baddlbl">${{BSEL.has(i)?'✓ In your set':'+ Add to set'}}</div></div>`).join('');
    const n=BSEL.size; const disc=qdisc(n);
    const t=document.getElementById('btot');
