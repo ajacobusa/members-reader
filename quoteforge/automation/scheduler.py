@@ -52,7 +52,9 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Emails the monthly sales report (1st of month)"),
     ScheduledJob(
         "QuoteForge Yearly Report", "report yearly email",
-        ["/SC", "MONTHLY", "/MO", "JAN", "/D", "1", "/ST", "07:45"],
+        # Yearly = Jan 1. schtasks MONTHLY names the month with /M (/MO expects a
+        # NUMBER, so the old "/MO JAN" was rejected as an invalid /MO value).
+        ["/SC", "MONTHLY", "/M", "JAN", "/D", "1", "/ST", "07:45"],
         "Emails the yearly sales report (Jan 1)"),
     ScheduledJob(
         "QuoteForge Daily Backup", "backup-all",

@@ -105,3 +105,19 @@ def test_format_text(tmp_path):
         db.init_db()
         text = format_backup_text(run_full_backup(runner=git))
     assert "FULL BACKUP" in text and "Push" in text
+
+
+def test_restore_all_reports_db_and_code(tmp_path):
+    """restore-all restores the DB and, without --into, reports the clone command
+    (never overwrites a working tree in place)."""
+    import quoteforge.db.database as db
+    from quoteforge.automation.full_backup import restore_all, format_restore_text
+    git = FakeGit()
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2:
+        db.init_db()
+        db.backup_database()             # create a snapshot to restore from
+        r = restore_all(into="", runner=git)
+    assert "db_restore" in r and "code_restore" in r
+    text = format_restore_text(r)
+    assert "RESTORE" in text and "Database" in text and "Code" in text

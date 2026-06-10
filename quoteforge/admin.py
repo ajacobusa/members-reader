@@ -91,6 +91,23 @@ def _cmd_restore(args: list[str]) -> int:
     return 0
 
 
+def _cmd_restore_all(args: list[str]) -> int:
+    """One-command recovery: DB (newest snapshot) + code (from the local bundle).
+
+    Usage: restore-all [--into DIR]
+      (no --into) restores the DB and prints the clone command for the code.
+      --into DIR also clones the code bundle into a fresh DIR.
+    """
+    from quoteforge.automation.full_backup import restore_all, format_restore_text
+    into = ""
+    if "--into" in args:
+        i = args.index("--into")
+        into = args[i + 1] if i + 1 < len(args) else ""
+    r = restore_all(into=into)
+    print(format_restore_text(r))
+    return 0 if "error" not in str(r.get("db_restore", "")) else 1
+
+
 def _cmd_list_backups() -> int:
     from quoteforge.db.database import list_backups
     backups = list_backups()
@@ -1833,6 +1850,7 @@ COMMANDS = {
     "backup": lambda args: _cmd_backup(),
     "backup-all": _cmd_backup_all,
     "restore": _cmd_restore,
+    "restore-all": _cmd_restore_all,
     "list-backups": lambda args: _cmd_list_backups(),
     "daily-report": lambda args: _cmd_daily_report(),
     "preflight": lambda args: _cmd_preflight(),
