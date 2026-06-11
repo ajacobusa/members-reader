@@ -274,6 +274,10 @@
    font-size:14px;text-align:center;line-height:1.55}
  .uatbar a{color:var(--green);font-weight:600}
  /* ── Design pass: hierarchy, steps, trust, mobile CTA ───────────── */
+ .pdone{background:var(--green);color:#fff;border:none;border-radius:16px;
+   padding:7px 13px;font-weight:700;cursor:pointer;font-family:inherit}
+ .pdone:hover{background:var(--gold);color:#22301e}
+
  .fb{display:inline-block;background:var(--green);color:#fff;border-radius:20px;
    padding:9px 16px;font-weight:700;font-size:13.5px;text-align:center}
  .card:hover .fb{background:var(--gold);color:#22301e}
@@ -789,6 +793,29 @@
          <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">✍️ Text</button>
          <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">🖼️ Photo</button>
        </div>
+           <div id="mphotoctl" style="display:none">
+             <div class="swrow">🖼️ Fit your photo in the frame</div>
+             <div class="photorow">
+               <span class="plbl">Zoom</span>
+               <input type="range" id="mphotozoom" min="1" max="3" step="0.05" value="1"
+                 oninput="setPhotoZoom(this.value)">
+             </div>
+             <div class="photorow">
+               <span class="plbl">Move</span>
+               <button type="button" onclick="nudgePhoto(-0.05,0)">&larr;</button>
+               <button type="button" onclick="nudgePhoto(0.05,0)">&rarr;</button>
+               <button type="button" onclick="nudgePhoto(0,-0.05)">&uarr;</button>
+               <button type="button" onclick="nudgePhoto(0,0.05)">&darr;</button>
+               <button type="button" class="pcenter" onclick="autoCenterPhoto()">Center</button>
+               <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
+               <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
+             </div>
+             <div class="note">✋ <b>Drag the photo on the preview to position it</b>
+               When the photo looks right, tap <b>Done - edit text</b> to move/edit the wording again. Use Zoom
+               for more room. AI auto-centers the subject on upload; final crop is
+               confirmed on your free proof.</div>
+           </div>
+
        <div class="fpick" id="mfpick" style="display:none">
          <div class="lbl">👉 Choose your frame / material:</div>
          <div class="fchips" id="mfchips"></div>
@@ -875,27 +902,6 @@
              onchange="checkUpload()">
            <div id="muploadmsg" class="note"></div>
            <div id="maicheck" class="note"></div>
-           <div id="mphotoctl" style="display:none">
-             <div class="swrow">🖼️ Fit your photo in the frame</div>
-             <div class="photorow">
-               <span class="plbl">Zoom</span>
-               <input type="range" id="mphotozoom" min="1" max="3" step="0.05" value="1"
-                 oninput="setPhotoZoom(this.value)">
-             </div>
-             <div class="photorow">
-               <span class="plbl">Move</span>
-               <button type="button" onclick="nudgePhoto(-0.05,0)">&larr;</button>
-               <button type="button" onclick="nudgePhoto(0.05,0)">&rarr;</button>
-               <button type="button" onclick="nudgePhoto(0,-0.05)">&uarr;</button>
-               <button type="button" onclick="nudgePhoto(0,0.05)">&darr;</button>
-               <button type="button" class="pcenter" onclick="autoCenterPhoto()">Center</button>
-               <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
-             </div>
-             <div class="note">✋ <b>Drag the photo on the preview to position it</b>
-               (switch the drag toggle to <b>Text</b> to move the wording). Use Zoom
-               for more room. AI auto-centers the subject on upload; final crop is
-               confirmed on your free proof.</div>
-           </div>
            <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
              auto-checks quality and asks for a better photo if needed; your
              approved photo is sent with the order to our print partner.</div>
