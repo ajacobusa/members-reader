@@ -361,10 +361,15 @@
  .occallbtn:hover{background:var(--gold)}
  .occbottom{text-align:center;margin:22px 0 4px}
  .occhip.sel{background:var(--green);color:#fff;border-color:var(--green)}
- .qjwrap{max-width:640px;margin:0 auto 16px;border:1px solid var(--line);
-   border-radius:14px;background:#fff;padding:4px 10px}
+ .qjwrap{max-width:640px;margin:0 auto 18px;border:2px solid var(--gold);
+   border-radius:16px;background:linear-gradient(135deg,#fff8e8,#fff);
+   padding:4px 10px;box-shadow:0 6px 22px rgba(201,168,76,.25);
+   animation:qjglow 2.2s ease-in-out infinite}
+ @keyframes qjglow{0%,100%{box-shadow:0 6px 22px rgba(201,168,76,.25)}
+   50%{box-shadow:0 6px 30px rgba(201,168,76,.55)}}
+ .qjwrap:hover{transform:translateY(-2px)}
  .qjwrap>summary.qjsum{cursor:pointer;list-style:none;text-align:center;
-   padding:9px;color:var(--green);font-weight:700;font-size:15px}
+   padding:11px;color:var(--green);font-weight:800;font-size:18px}
  .qjwrap>summary.qjsum::-webkit-details-marker{display:none}
  .qjsum small{display:block;color:var(--muted);font-weight:400;font-size:12px}
  .qjwrap[open]{padding-bottom:12px}
@@ -647,7 +652,7 @@
  <div id="gridcount" class="gridcount"></div>
  <!-- Quick-jump: every design as a tap-able thumbnail that opens its page
       directly (no scrolling through the grid). Filled by render(). -->
- <details class="qjwrap"><summary class="qjsum">Jump to a design <small>tap to pick from all designs</small></summary>
+ <details class="qjwrap"><summary class="qjsum">&#10024; Find Your Perfect Design <small>See all 13 at a glance - tap to explore!</small></summary>
  <div id="quickjump" class="quickjump" role="navigation" aria-label="Jump to a design"></div></details>
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
