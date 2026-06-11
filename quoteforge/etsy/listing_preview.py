@@ -1169,6 +1169,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
  /* ── Design pass: hierarchy, steps, trust, mobile CTA ───────────── */
+ .postadd{{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+   background:#eef7ef;border:1.5px solid #3f7d5c;border-radius:12px;
+   padding:11px 14px;margin:10px 0}}
+ .paok{{color:#2c6e49;font-weight:800;font-size:14px}}
+ .pacontinue{{background:#fff;border:1.5px solid var(--green);color:var(--green);
+   border-radius:20px;padding:8px 15px;font-weight:700;cursor:pointer;font-family:inherit}}
+ .pacheckout{{background:var(--green);border:none;color:#fff;border-radius:20px;
+   padding:9px 17px;font-weight:700;cursor:pointer;font-family:inherit}}
+ .pacheckout:hover{{background:var(--gold);color:#22301e}}
+
  .mtrust{{font-size:12.5px;color:#3f7d5c;font-weight:600;margin:-2px 0 10px;letter-spacing:.2px}}
  /* Consistent, taller product cards with equal heights in each row. */
  #grid .card{{display:flex;flex-direction:column}}
@@ -1714,6 +1724,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <button class="addbasketbtn" onclick="addToBasket()">🛒 Add to basket</button>
          </div>
          <div id="mbasketbar" class="mbasketbar" onclick="openBasketFromModal()"></div>
+         <!-- After adding to basket: clear next-step choices, so the buyer never
+              has to hunt for the X and scroll back up. -->
+         <div id="postadd" class="postadd" style="display:none">
+           <span class="paok">&#10003; Added to your basket!</span>
+           <button class="pacontinue" onclick="continueShopping()">&#8592; Continue shopping</button>
+           <button class="pacheckout" onclick="closeM();toggleBasket()">Go to checkout &#8594;</button>
+         </div>
          <div id="mcart" class="cart"></div>
          <div class="savedesignrow">
            <button type="button" class="savebtn2" onclick="saveDesign()">💾 Save this design for later</button>
@@ -1953,6 +1970,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
    const title=(DATA[CUR]||{{}}).title||'';
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title}}); renderCart();
+   var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
    // In a guided bundle: advance to the next selected design to personalize.
    if(BFLOW){{ BFLOW.idx++; nextBundleStep(); }}}}
@@ -2440,6 +2458,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      "\\nQuantity: "+g('bz_qty')+"\\n\\nDetails:\\n"+g('bz_msg'));
    window.location.href="mailto:"+to+"?subject="+
      encodeURIComponent("Wholesale / bulk gifting inquiry")+"&body="+body;
+ }}
+ function continueShopping(){{
+   // Close the editor and land the buyer back on the design grid.
+   closeM();
+   var g=document.getElementById('grid');
+   if(g) g.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function closeM(){{document.getElementById('modal').style.display='none';
    BFLOW=null; var bb=document.getElementById('bundlebanner'); if(bb)bb.style.display='none';}}
