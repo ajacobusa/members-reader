@@ -49,3 +49,7 @@ Thumbs.db
 
 # keep generated doc PDFs in docs/
 !docs/*.pdf
+
+# stock dashboard runtime junk (regenerated; never back up)
+stock_dashboard/cache/
+stock_dashboard/logs/
