@@ -92,6 +92,7 @@ def package_quote(pkg: Package, variations=None) -> dict:
 
 
 def all_packages() -> list[dict]:
+    """Quote every wedding/corporate package (floor-safe pricing) as plain dicts."""
     # Build the variations catalog ONCE and reuse it for every package quote.
     variations = None
     try:
@@ -114,6 +115,7 @@ def packages_section(b2b_email: str, extra_html: str = "") -> str:
         return extra_html or ""
 
     def card(q: dict) -> str:
+        """Render one package as an HTML card (name, blurb, includes, from-price)."""
         inc = "".join(f"<li>{i}</li>" for i in q["includes"])
         save = (f'<span class="pksave">Set price - {q["discount_pct"]}% vs singles</span>'
                 if q["discount_pct"] else "")

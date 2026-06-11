@@ -91,6 +91,24 @@ def _cmd_restore(args: list[str]) -> int:
     return 0
 
 
+def _cmd_site_doctor(args: list[str]) -> int:
+    """Daily self-healing website QA bot.
+
+    Usage: site-doctor [email] [--no-heal] [--no-tests]
+      checks the built storefront (fonts lazy-load, JSON-LD, alt coverage,
+      asset integrity, occasion filter, design count, editor JS, docs ratchet),
+      heals page-level problems by rebuilding, and runs the regression subset.
+    """
+    from quoteforge.automation.site_doctor import (
+        run_site_doctor, format_site_doctor_text, send_site_doctor_alert)
+    r = run_site_doctor(heal="--no-heal" not in args,
+                        regression="--no-tests" not in args)
+    print(format_site_doctor_text(r))
+    if "email" in args:
+        send_site_doctor_alert(r)
+    return 0 if r["overall"] == "OK" else 1
+
+
 def _cmd_restore_all(args: list[str]) -> int:
     """One-command recovery: DB (newest snapshot) + code (from the local bundle).
 
@@ -1851,6 +1869,7 @@ COMMANDS = {
     "backup-all": _cmd_backup_all,
     "restore": _cmd_restore,
     "restore-all": _cmd_restore_all,
+    "site-doctor": _cmd_site_doctor,
     "list-backups": lambda args: _cmd_list_backups(),
     "daily-report": lambda args: _cmd_daily_report(),
     "preflight": lambda args: _cmd_preflight(),
