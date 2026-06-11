@@ -30,8 +30,13 @@ def test_docs_ratchet_holds():
     assert c["status"] == "OK", c["detail"]
 
 
-def test_doctor_overall_ok_with_fake_regression():
-    """End-to-end run (no heal needed, fake pytest) reports overall OK."""
+def test_doctor_overall_ok_with_fake_regression(monkeypatch):
+    """End-to-end run (no heal needed, fake pytest) reports overall OK.
+    The untracked-code tripwire is pinned OK so a developer's WIP files don't
+    fail an unrelated test run (the real check still runs nightly)."""
+    monkeypatch.setattr(sd, "check_untracked_code",
+                        lambda runner=None: {"name": "untracked_code",
+                                             "status": "OK", "detail": "pinned"})
     r = sd.run_site_doctor(heal=False, regression=True,
                            test_runner=_fake_test_runner)
     assert r["overall"] == "OK", sd.format_site_doctor_text(r)
@@ -39,7 +44,7 @@ def test_doctor_overall_ok_with_fake_regression():
     assert {"page_fresh", "fonts_lazy", "jsonld", "alt_coverage",
             "assets_integrity", "orphan_assets", "occasion_filter",
             "design_count", "editor_hooks", "docs_ratchet",
-            "regression"} <= names
+            "untracked_code", "regression"} <= names
 
 
 def test_doctor_heals_by_rebuilding(monkeypatch, tmp_path):
@@ -68,6 +73,36 @@ def test_regression_failure_is_reported_not_healed():
     assert r["overall"].startswith("FAIL")
     reg = next(c for c in r["checks"] if c["name"] == "regression")
     assert reg["status"] == "FAIL" and "1 failed" in reg["detail"]
+
+
+def test_untracked_code_tripwire():
+    """New code files git doesn't know about are flagged (report-only);
+    junk extensions (logs/caches) are ignored."""
+    def fake_git(args, **k):
+        class P:
+            returncode = 0
+            stdout = ("?? newfeature/widget.py\n"
+                      "?? notes/idea.md\n"
+                      "?? stock_dashboard/cache/x.log\n"   # junk ext - ignored
+                      " M tracked_and_modified.py\n")      # tracked - not ours
+            stderr = ""
+        return P()
+    c = sd.check_untracked_code(runner=fake_git)
+    assert c["status"] == "FAIL"
+    assert "2 unbacked code file(s)" in c["detail"]
+    assert "git add" in c["detail"]                # tells you the exact fix
+
+
+def test_untracked_code_clean_tree_ok():
+    """A clean tree (or only junk untracked) passes."""
+    def fake_git(args, **k):
+        class P:
+            returncode = 0
+            stdout = "?? logs/run.log\n"
+            stderr = ""
+        return P()
+    c = sd.check_untracked_code(runner=fake_git)
+    assert c["status"] == "OK"
 
 
 def test_site_doctor_is_scheduled_daily():

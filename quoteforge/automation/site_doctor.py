@@ -187,6 +187,38 @@ def check_editor_hooks(html: str) -> dict:
             "detail": "all present" if not missing else f"missing: {missing}"}
 
 
+# File extensions that count as "code" worth backing up. Anything else
+# (caches, logs, images dumped by tools) is left to a human to triage.
+CODE_EXTS = (".py", ".ts", ".tsx", ".js", ".jsx", ".sql", ".md", ".html",
+             ".css", ".json", ".yml", ".yaml", ".toml", ".sh", ".ps1", ".bat")
+
+
+def check_untracked_code(runner=subprocess.run) -> dict:
+    """Backup tripwire: flag CODE files git doesn't know about.
+
+    The nightly backup auto-commits only TRACKED files (deliberately - so junk
+    and secrets can never sneak into GitHub). The cost of that safety is that a
+    brand-new file isn't backed up until someone `git add`s it. This check makes
+    that visible the SAME DAY in the doctor's email instead of weeks later.
+    Report-only: the doctor never commits unknown files itself.
+    """
+    try:
+        p = runner(["git", "status", "--porcelain", "--untracked-files=all"],
+                   cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                   timeout=60)
+        untracked = [l[3:].strip() for l in (p.stdout or "").splitlines()
+                     if l.startswith("??")]
+        code = [f for f in untracked if f.lower().endswith(CODE_EXTS)]
+        return {"name": "untracked_code",
+                "status": "OK" if not code else "FAIL",
+                "detail": ("all code files tracked & backed up" if not code
+                           else f"{len(code)} unbacked code file(s) - "
+                                f"run: git add {' '.join(code[:3])}"
+                                + (" ..." if len(code) > 3 else ""))}
+    except Exception as exc:  # noqa: BLE001
+        return {"name": "untracked_code", "status": "FAIL", "detail": f"{exc}"}
+
+
 def check_docs_ratchet() -> dict:
     """Documentation ratchet: every function in the storefront-critical modules
     must carry a docstring - coverage can only stay at 100% or the check fails."""
@@ -273,7 +305,9 @@ def run_site_doctor(heal: bool = True, regression: bool = True,
     report = {"timestamp": datetime.now().isoformat(timespec="seconds"),
               "healed": [], "checks": []}
     html = _read_page()
-    checks = [check_page_fresh(), *_page_checks(html), check_docs_ratchet()]
+    # Report-only checks (never healed): docs ratchet + unbacked-code tripwire.
+    extra = [check_docs_ratchet(), check_untracked_code()]
+    checks = [check_page_fresh(), *_page_checks(html), *extra]
 
     if heal:
         # Prune orphans first (cheap), then rebuild once for any page failure.
@@ -282,13 +316,14 @@ def run_site_doctor(heal: bool = True, regression: bool = True,
         if orphan:
             report["healed"].append(heal_prune_orphans(orphan.get("orphans", [])))
         page_failed = any(c["status"] == "FAIL" for c in checks
-                          if c["name"] not in ("docs_ratchet", "orphan_assets"))
+                          if c["name"] not in ("docs_ratchet", "orphan_assets",
+                                               "untracked_code"))
         if page_failed:
             report["healed"].append(heal_rebuild(rebuild_runner))
         if report["healed"]:
             # Re-verify everything the heals could have changed.
             html = _read_page()
-            checks = [check_page_fresh(), *_page_checks(html), check_docs_ratchet()]
+            checks = [check_page_fresh(), *_page_checks(html), *extra]
 
     report["checks"] = checks
     if regression:
