@@ -1169,6 +1169,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
  /* ── Design pass: hierarchy, steps, trust, mobile CTA ───────────── */
+ .seefinal{{display:block;margin:8px auto 2px;background:#fff;border:2px solid var(--green);
+   color:var(--green);border-radius:20px;padding:8px 18px;font-weight:800;font-size:14px;
+   cursor:pointer;font-family:inherit}}
+ .seefinal:hover{{background:var(--green);color:#fff}}
+ .dbq{{display:block;margin-bottom:7px;font-weight:700}}
+ .dbq small{{color:var(--muted);font-weight:400}}
+ .dseg{{display:inline-flex;border:1.5px solid var(--green);border-radius:22px;overflow:hidden}}
+ .dseg .dmbtn{{border:none;border-radius:0;margin:0;padding:9px 16px;background:#fff;
+   color:var(--green);font-weight:700;cursor:pointer;font-family:inherit}}
+ .dseg .dmbtn.sel{{background:var(--green);color:#fff}}
+
  .pdone{{background:var(--green);color:#fff;border:none;border-radius:16px;
    padding:7px 13px;font-weight:700;cursor:pointer;font-family:inherit}}
  .pdone:hover{{background:var(--gold);color:#22301e}}
@@ -1666,9 +1677,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="mleft">
        <canvas id="mcanvas" width="520" height="650"></canvas>
        <div id="mcrop" class="mcrop"></div>
-       <div class="dragbar">✋ Drag on the preview to move:
-         <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">✍️ Text</button>
-         <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">🖼️ Photo</button>
+       <button type="button" class="seefinal" onclick="showFinalProof('item')">
+         &#128065;&#65039; See final preview</button>
+       <div class="dragbar"><span class="dbq">&#9995; What do you want to move? <small>(drag it on the preview)</small></span>
+         <span class="dseg">
+         <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">✍️ The wording</button>
+         <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">🖼️ The photo</button>
+         </span>
        </div>
            <div id="mphotoctl" style="display:none">
              <div class="swrow">🖼️ Fit your photo in the frame</div>
