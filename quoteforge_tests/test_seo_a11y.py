@@ -21,6 +21,29 @@ def test_seo_meta_present(tmp_path):
     assert 'rel="canonical"' in h and 'rel="icon"' in h
 
 
+def test_jsonld_structured_data(tmp_path):
+    """JSON-LD (Organization/WebSite/Product) is present and valid for rich results."""
+    import json
+    import re
+    h = _page(tmp_path)
+    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', h, re.S)
+    assert m, "JSON-LD block missing"
+    data = json.loads(m.group(1))           # must parse - no trailing commas etc.
+    types = {n.get("@type") for n in data["@graph"]}
+    assert {"Organization", "WebSite", "Product"} <= types
+    offer = next(n["offers"] for n in data["@graph"] if n.get("@type") == "Product")
+    assert offer["@type"] == "AggregateOffer" and offer["priceCurrency"] == "USD"
+
+
+def test_all_images_have_alt(tmp_path):
+    """Every <img> on the page carries alt text (logo, hero, cards, thumbnails)."""
+    import re
+    h = _page(tmp_path)
+    imgs = re.findall(r'<img\b[^>]*>', h)
+    missing = [t for t in imgs if "alt=" not in t]
+    assert not missing, f"{len(missing)} <img> without alt: {missing[:2]}"
+
+
 def test_accessibility(tmp_path):
     h = _page(tmp_path)
     assert 'alt=""' not in h.replace('alt="">', "")  # no empty product alts
