@@ -225,6 +225,34 @@ def check_untracked_code(runner=subprocess.run) -> dict:
         return {"name": "untracked_code", "status": "FAIL", "detail": f"{exc}"}
 
 
+def check_github_sync(runner=subprocess.run) -> dict:
+    """High-availability tripwire: local HEAD must be ON GitHub.
+
+    The nightly backup pushes to GitHub, but a push can fail silently for weeks
+    (expired token, network) - leaving every backup copy on ONE machine. This
+    asks GitHub directly (ls-remote, no fetch) whether the current branch's HEAD
+    commit exists remotely, so a broken push pipeline surfaces the next morning.
+    """
+    try:
+        head = runner(["git", "rev-parse", "HEAD"], cwd=str(PROJECT_ROOT),
+                      capture_output=True, text=True, timeout=30).stdout.strip()
+        branch = runner(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                        cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                        timeout=30).stdout.strip()
+        remote = runner(["git", "ls-remote", "origin", branch],
+                        cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                        timeout=60).stdout.strip().split("\t")[0]
+        ok = bool(head) and head == remote
+        return {"name": "github_sync", "status": "OK" if ok else "FAIL",
+                # ASCII only: the scheduled-task console is cp1252 and a unicode
+                # checkmark here crashed the whole report once. Plain text wins.
+                "detail": (f"{branch} HEAD is on GitHub" if ok else
+                           f"{branch}: local {head[:7]} vs GitHub "
+                           f"{(remote or 'unreachable')[:7]} - push is broken/behind")}
+    except Exception as exc:  # noqa: BLE001
+        return {"name": "github_sync", "status": "FAIL", "detail": f"{exc}"}
+
+
 def check_docs_ratchet() -> dict:
     """Documentation ratchet: every function in the storefront-critical modules
     must carry a docstring - coverage can only stay at 100% or the check fails."""
@@ -316,8 +344,9 @@ def run_site_doctor(heal: bool = True, regression: bool = True,
     report = {"timestamp": datetime.now().isoformat(timespec="seconds"),
               "healed": [], "checks": []}
     html = _read_page()
-    # Report-only checks (never healed): docs ratchet + unbacked-code tripwire.
-    extra = [check_docs_ratchet(), check_untracked_code()]
+    # Report-only checks (never healed): docs ratchet, unbacked-code tripwire,
+    # and the GitHub-sync HA tripwire (a silently broken push pipeline).
+    extra = [check_docs_ratchet(), check_untracked_code(), check_github_sync()]
     checks = [check_page_fresh(), *_page_checks(html), *extra]
 
     if heal:
@@ -328,7 +357,7 @@ def run_site_doctor(heal: bool = True, regression: bool = True,
             report["healed"].append(heal_prune_orphans(orphan.get("orphans", [])))
         page_failed = any(c["status"] == "FAIL" for c in checks
                           if c["name"] not in ("docs_ratchet", "orphan_assets",
-                                               "untracked_code"))
+                                               "untracked_code", "github_sync"))
         if page_failed:
             report["healed"].append(heal_rebuild(rebuild_runner))
         if report["healed"]:

@@ -37,6 +37,9 @@ def test_doctor_overall_ok_with_fake_regression(monkeypatch):
     monkeypatch.setattr(sd, "check_untracked_code",
                         lambda runner=None: {"name": "untracked_code",
                                              "status": "OK", "detail": "pinned"})
+    monkeypatch.setattr(sd, "check_github_sync",
+                        lambda runner=None: {"name": "github_sync",
+                                             "status": "OK", "detail": "pinned"})
     r = sd.run_site_doctor(heal=False, regression=True,
                            test_runner=_fake_test_runner)
     assert r["overall"] == "OK", sd.format_site_doctor_text(r)
@@ -44,7 +47,7 @@ def test_doctor_overall_ok_with_fake_regression(monkeypatch):
     assert {"page_fresh", "fonts_lazy", "jsonld", "alt_coverage",
             "assets_integrity", "orphan_assets", "occasion_filter",
             "design_count", "editor_hooks", "docs_ratchet",
-            "untracked_code", "regression"} <= names
+            "untracked_code", "github_sync", "regression"} <= names
 
 
 def test_doctor_heals_by_rebuilding(monkeypatch, tmp_path):
@@ -103,6 +106,36 @@ def test_untracked_code_clean_tree_ok():
         return P()
     c = sd.check_untracked_code(runner=fake_git)
     assert c["status"] == "OK"
+
+
+def test_github_sync_detects_broken_push():
+    """HA tripwire: local HEAD missing from GitHub -> FAIL with both SHAs shown."""
+    def fake_git(args, **k):
+        class P:
+            returncode = 0
+            stdout = ("abc1234deadbeef\n" if "HEAD" in args and "rev-parse" == args[1]
+                      else "main\n" if "--abbrev-ref" in args
+                      else "fff9999cafebabe\trefs/heads/main\n")
+            stderr = ""
+        return P()
+    c = sd.check_github_sync(runner=fake_git)
+    assert c["status"] == "FAIL" and "abc1234" in c["detail"]
+
+
+def test_github_sync_ok_when_pushed():
+    """Local HEAD present on GitHub -> OK."""
+    def fake_git(args, **k):
+        class P:
+            returncode = 0
+            stdout = ("samesha\n" if "rev-parse" == args[1] and "HEAD" in args
+                      else "main\n" if "--abbrev-ref" in args
+                      else "samesha\trefs/heads/main\n")
+            stderr = ""
+        return P()
+    # rev-parse HEAD and rev-parse --abbrev-ref share args[1]=='rev-parse';
+    # distinguish by the --abbrev-ref flag (handled above).
+    c = sd.check_github_sync(runner=fake_git)
+    assert c["status"] == "OK", c["detail"]
 
 
 def test_site_doctor_is_scheduled_daily():
