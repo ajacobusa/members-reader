@@ -197,6 +197,7 @@ def run_maintenance(fix: bool = True, query_fn=None) -> dict:
 
 
 def format_maintenance_text(report: dict) -> str:
+    """Human-readable daily-maintenance digest (printed and emailed)."""
     lines = [f"QuoteForge Daily Maintenance - {report['overall']} ({report['mode']})",
              report["timestamp"], "=" * 56,
              "INFRASTRUCTURE:"]

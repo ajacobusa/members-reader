@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 def _b64(path: Path) -> str:
+    """Inline a PNG as a base64 data-URI (self-contained pages, no asset files)."""
     data = base64.b64encode(path.read_bytes()).decode("ascii")
     return f"data:image/png;base64,{data}"
 
@@ -92,6 +93,7 @@ OCCASION_SHOWCASE = [
 
 
 def _occasion_slug(name: str) -> str:
+    """Filename-safe slug for an occasion ("Mother's Day" -> "mothers-day")."""
     return name.lower().replace("'", "").replace("’", "").replace(" ", "-")
 
 
@@ -2654,6 +2656,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 
 def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
+    """Build a single-listing preview page (gallery + SEO copy) for listing ``n``
+    from its launch-kit folder; used to eyeball one listing before publishing."""
     from quoteforge.config import OUTPUT_DIR, ETSY_DEFAULT_LISTING_PRICE, SHOP_NAME
     from quoteforge.etsy.listing_seo import build_launch_seo
 

@@ -66,6 +66,14 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "HOURLY", "/MO", "5"],
         "Verifies DB/storage/backups/jobs every 5 hours"),
     ScheduledJob(
+        "QuoteForge Site Doctor", "site-doctor email",
+        ["/SC", "DAILY", "/ST", "02:30"],
+        "Self-healing website QA bot: daily re-verifies the storefront "
+        "(lazy-loaded editor fonts, JSON-LD, alt coverage, asset integrity, "
+        "occasion filter, design count, editor JS, docs ratchet), heals "
+        "page-level issues by rebuilding, runs the regression subset, and "
+        "emails on failure. Runs after the 01:50 rebuild + 02:00 backup."),
+    ScheduledJob(
         "QuoteForge Monthly Campaign", "campaign",
         ["/SC", "MONTHLY", "/D", "1", "/ST", "08:00"],
         "Generates the seasonal campaign plan (1st of month)"),
@@ -210,6 +218,7 @@ def build_create_command(job: ScheduledJob, python: str = None) -> list[str]:
 
 
 def build_delete_command(job: ScheduledJob) -> list[str]:
+    """The schtasks command that removes this job (used by --remove)."""
     return ["schtasks", "/Delete", "/TN", job.name, "/F"]
 
 
@@ -250,6 +259,7 @@ def install_schedule(remove: bool = False, dry_run: bool = False,
 
 
 def format_install_text(summary: dict) -> str:
+    """Human-readable result of install_schedule() (per-job OK/FAIL lines)."""
     lines = [f"QuoteForge schedule - {summary['action']}"
              + (" (dry run)" if summary["dry_run"] else ""),
              "-" * 52]

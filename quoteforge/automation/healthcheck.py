@@ -31,6 +31,7 @@ class Check:
 # ── Individual checks ────────────────────────────────────────────
 
 def check_database() -> Check:
+    """DB reachable and stats query works."""
     try:
         from quoteforge.db.database import init_db, get_order_stats
         init_db()
@@ -41,6 +42,7 @@ def check_database() -> Check:
 
 
 def check_storage() -> Check:
+    """OUTPUT_DIR is writable (probe file round-trip)."""
     try:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         probe = OUTPUT_DIR / ".health_probe"
@@ -52,6 +54,7 @@ def check_storage() -> Check:
 
 
 def check_recent_backup(max_age_hours: int = 48) -> Check:
+    """A DB backup exists and is newer than ``max_age_hours``."""
     try:
         from quoteforge.db.database import list_backups
         backups = list_backups()
@@ -68,6 +71,7 @@ def check_recent_backup(max_age_hours: int = 48) -> Check:
 
 
 def check_error_orders() -> Check:
+    """No orders stuck in the 'error' state (flags fulfillment problems)."""
     try:
         from quoteforge.db.database import get_orders_by_status
         errored = get_orders_by_status("error")
@@ -136,6 +140,7 @@ def check_file_hosting() -> Check:
 # ── Aggregate ────────────────────────────────────────────────────
 
 def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
+    """Run every health check; returns {overall, timestamp, checks[]} and logs it."""
     checks = [
         check_database(),
         check_storage(),
@@ -159,6 +164,7 @@ def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
 
 
 def _append_health_log(result: dict) -> None:
+    """Append the result to the rolling health log (best-effort, never raises)."""
     try:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         entries = []
@@ -172,6 +178,7 @@ def _append_health_log(result: dict) -> None:
 
 
 def format_health_text(result: dict) -> str:
+    """Human-readable health report (printed by the CLI / emailed on alert)."""
     lines = [f"QuoteForge Health Check — {result['overall']}",
              result["timestamp"], "-" * 44]
     for c in result["checks"]:

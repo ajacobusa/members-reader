@@ -58,6 +58,7 @@ QTY_DISCOUNT = [(4, 0.15), (3, 0.12), (2, 0.08), (1, 0.0)]
 
 
 def tier_discount(qty: int) -> float:
+    """Bundle discount for a quantity (largest threshold <= qty wins)."""
     for threshold, disc in QTY_DISCOUNT:
         if qty >= threshold:
             return disc
@@ -123,6 +124,7 @@ def min_price_for_margin(cost: float, floor_pct: int = None,
 
 def net_margin_pct(price: float, cost: float, fee: float = ETSY_FEE_PCT,
                    listing_fee: float = ETSY_LISTING_FEE) -> int:
+    """Net margin %% after Gelato cost + marketplace fee + listing fee."""
     profit = price - cost - price * fee - listing_fee
     return round(profit / price * 100) if price else 0
 
@@ -182,6 +184,7 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
 
 
 def price_range(floor_pct: int = None) -> tuple[float, float]:
+    """(lowest, highest) price across the full variations catalog."""
     prices = [v.price for v in build_variations(floor_pct)]
     return (min(prices), max(prices)) if prices else (0.0, 0.0)
 

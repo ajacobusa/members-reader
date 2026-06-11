@@ -18,6 +18,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _git(args: list[str], runner=subprocess.run) -> tuple[int, str]:
+    """Run a git command in the project root; returns (exit_code, combined output).
+    ``runner`` is injectable so tests can fake git without touching the repo."""
     try:
         p = runner(["git", *args], cwd=str(PROJECT_ROOT),
                    capture_output=True, text=True, timeout=120)
@@ -28,6 +30,9 @@ def _git(args: list[str], runner=subprocess.run) -> tuple[int, str]:
 
 def run_full_backup(push: bool = True, auto_commit: bool = True,
                     runner=subprocess.run) -> dict:
+    """The nightly full backup: DB snapshot -> auto-commit tracked changes ->
+    push to GitHub -> refresh the local git bundle -> optional Drive upload.
+    Returns a result dict consumed by format_backup_text()."""
     result = {"timestamp": datetime.now().isoformat(timespec="seconds")}
 
     # 1. Database snapshot + prune.
@@ -138,6 +143,7 @@ def restore_all(into: str = "", runner=subprocess.run) -> dict:
 
 
 def format_restore_text(r: dict) -> str:
+    """Human-readable summary of a restore_all() result (printed by the CLI)."""
     return "\n".join([
         "=" * 56, f"RESTORE - {r['timestamp']}", "=" * 56,
         f"  Database : {r.get('db_restore', '-')}",
@@ -147,6 +153,7 @@ def format_restore_text(r: dict) -> str:
 
 
 def format_backup_text(r: dict) -> str:
+    """Human-readable summary of a run_full_backup() result (printed/emailed)."""
     return "\n".join([
         "=" * 56, f"FULL BACKUP - {r['timestamp']}", "=" * 56,
         f"  Database : {r.get('db_backup', '-')}"
