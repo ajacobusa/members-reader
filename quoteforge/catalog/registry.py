@@ -53,10 +53,12 @@ def floor_for_vendor(vendor: str) -> float:
 
 
 def get_vendor(vendor_id: str) -> Vendor | None:
+    """Look up a vendor by id, or None when unknown."""
     return next((v for v in VENDORS if v.id == vendor_id), None)
 
 
 def vendor_ids() -> set[str]:
+    """All registered vendor ids (for validation)."""
     return {v.id for v in VENDORS}
 
 
@@ -110,6 +112,7 @@ def suggested_price(cost: float, vendor: str = "gelato") -> float:
 
 
 def vendor_summary() -> str:
+    """Human-readable one-screen summary of the vendor registry."""
     from collections import Counter
     prods = list_products()
     by_vendor = Counter(p["vendor"] for p in prods)

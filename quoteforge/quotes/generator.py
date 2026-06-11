@@ -62,6 +62,7 @@ RELATIONSHIPS = [
 # (calendar months, religions, milestones, emotional events) lives in
 # quoteforge.etsy.occasions; this is the de-duplicated flat list the GUI uses.
 def _build_occasions() -> list[str]:
+    """The occasion choices offered to buyers (base list + extras)."""
     base = [
         "Graduation", "Wedding", "Anniversary", "Birthday",
         "New Baby", "Baby Shower", "New Home", "New Job", "Promotion",
@@ -89,6 +90,7 @@ SCENERY_OPTIONS = [
 
 
 def _client() -> anthropic.Anthropic:
+    """An Anthropic API client (raises when no API key is configured)."""
     if not ANTHROPIC_API_KEY:
         raise ValueError("ANTHROPIC_API_KEY is not set. Open quoteforge/config.py and add your key.")
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -109,6 +111,7 @@ def _invoke(client, operation: str = "quote_generation", **kwargs):
 
 
 def _clean_lines(raw: str, count: int) -> list[str]:
+    """Split the model's raw output into exactly ``count`` clean quote lines."""
     lines = raw.strip().split("\n")
     quotes = []
     for line in lines:

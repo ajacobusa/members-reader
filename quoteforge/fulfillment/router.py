@@ -13,6 +13,7 @@ from __future__ import annotations
 
 
 def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> dict:
+    """Send the order to its vendor's API (gelato/printful/printify)."""
     vendor = (order.get("vendor") or "gelato").lower()
     order_id = order.get("order_id") or order.get("etsy_order_id") or ""
     recipient = recipient or order.get("recipient_address") or {}

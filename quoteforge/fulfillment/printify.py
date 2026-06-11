@@ -11,6 +11,7 @@ import urllib.request
 
 def create_order(order_id: str, recipient: dict, artwork_url: str,
                  blueprint=None, **kwargs) -> dict:
+    """Submit a print order to Printify (mocked in TEST_MODE)."""
     from quoteforge.config import PRINTIFY_API_KEY, PRINTIFY_SHOP_ID, TEST_MODE
     if TEST_MODE or not (PRINTIFY_API_KEY and PRINTIFY_SHOP_ID):
         return {"status": "manual", "vendor": "printify",

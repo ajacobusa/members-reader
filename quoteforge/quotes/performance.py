@@ -9,6 +9,7 @@ from __future__ import annotations
 
 
 def _orders() -> list[dict]:
+    """All orders from the DB (the dataset every metric reads)."""
     from quoteforge.db.database import init_db, get_all_orders
     init_db()
     try:
@@ -71,6 +72,7 @@ def best_quotes(category: str = "", count: int = 5) -> list[str]:
 
 
 def format_performance_text(orders: list[dict] | None = None) -> str:
+    """Human-readable quote-theme performance report (printed by the CLI)."""
     perf = theme_performance(orders)
     if not perf:
         return ("Quote performance\n" + "-" * 40 +
