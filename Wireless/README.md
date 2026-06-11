@@ -145,6 +145,19 @@ See `.env.example` for the full list of environment variables.
       inventory (carrier ref, bandwidth, status, cost, contract end), project
       milestones with progress, and cutover + post-deployment validation
       checklists with one-click toggles
+- [x] Security & RBAC — six roles (owner · admin · network engineer · property
+      manager · vendor/MSP · read-only exec) with a code-enforced permission
+      matrix, memberships for company isolation + property-level scoping,
+      AES-256-GCM credential encryption, an append-only audit log with
+      before/after change history, login-activity capture via Clerk webhook,
+      and a Security & Audit page. Dev mode (no Clerk keys) acts as Owner so
+      the demo stays public; adding Clerk keys enforces sign-in everywhere.
+- [x] Sales-ready demo — before/after health story (score history snapshots,
+      week-over-week Δ on the dashboard, sparklines on property pages,
+      trend-aware AI reports: "dropped from 91 to 30 over the past week"),
+      plus the full walkthrough script in [DEMO.md](DEMO.md) with one-command
+      demo reset
 - [ ] Step 10 — Automation (auto-ticket, auto-escalate, recommended fixes)
+      *(partially done: ticketing automation auto-creates and auto-escalates)*
 - [ ] Heavier analytics (RF tuning, anomaly detection) on Vercel Python / Fluid Compute
 ```

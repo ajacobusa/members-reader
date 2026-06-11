@@ -38,7 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <UserButton />
             ) : (
               <span className="rounded-full bg-surface-2 px-3 py-1 text-xs text-muted">
-                Dev mode · auth off
+                Dev mode · auth off · acting as Owner
               </span>
             )}
           </div>

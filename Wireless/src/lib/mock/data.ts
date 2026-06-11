@@ -11,6 +11,7 @@ import type {
   Circuit,
   ProjectMilestone,
   ProjectChecklistItem,
+  HealthSnapshot,
   Vendor,
   Project,
 } from "@/db/schema";
@@ -657,3 +658,32 @@ function check(
 ): ProjectChecklistItem {
   return { id: crypto.randomUUID(), projectId, phase, label, done, sortOrder };
 }
+
+// --- Health score history --------------------------------------------------------
+
+// Eight daily snapshots per property (Jun 3-10) — the "before/after" story.
+// Harborview is the headline: 91 a week ago, collapsing to ~30 as the AP died,
+// the captive portal failed, and the rogue IoT device appeared. Walnut shows a
+// slower slide; everyone else holds steady. Trajectories end near each
+// property's live computed score so the trend reads as one continuous story.
+const SCORE_SERIES: Record<string, number[]> = {
+  [ID.p1]: [91, 88, 84, 76, 62, 48, 35, 30], // Harborview — the demo headline
+  [ID.p5]: [89, 87, 84, 80, 72, 66, 60, 55], // Walnut — slow degradation
+  [ID.p2]: [97, 96, 96, 95, 94, 93, 92, 92], // Cedar Ridge — mild wobble
+  [ID.p3]: [100, 100, 100, 100, 100, 100, 100, 100], // Metro — rock solid
+  [ID.p4]: [93, 94, 92, 93, 91, 92, 91, 91], // Sunset Bay
+  [ID.p6]: [98, 97, 98, 99, 98, 99, 99, 100], // Grand Prairie
+  [ID.p7]: [95, 94, 93, 92, 92, 91, 91, 91], // Ironside
+  [ID.p8]: [99, 99, 98, 99, 100, 99, 100, 100], // Lakeshore
+};
+
+export const healthSnapshots: HealthSnapshot[] = Object.entries(SCORE_SERIES).flatMap(
+  ([propertyId, scores]) =>
+    scores.map((score, i) => ({
+      id: crypto.randomUUID(),
+      propertyId,
+      score,
+      // Day i maps to June (3+i), all sampled at 06:00 UTC.
+      at: d(`2026-06-${String(3 + i).padStart(2, "0")}T06:00:00Z`),
+    }))
+);

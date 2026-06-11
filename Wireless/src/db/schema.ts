@@ -591,6 +591,26 @@ export const projectChecklist = pgTable(
   (t) => [index("project_checklist_project_idx").on(t.projectId)]
 );
 
+// Point-in-time health scores per property — one row per property per sync
+// day. Powers the before/after story: week-over-week deltas on the dashboard,
+// sparklines on property pages, and trend-aware AI reports.
+export const healthSnapshots = pgTable(
+  "health_snapshots",
+  {
+    // Primary key, auto-generated UUID.
+    id: uuid("id").defaultRandom().primaryKey(),
+    // The property the score belongs to; history goes with the property.
+    propertyId: uuid("property_id")
+      .notNull()
+      .references(() => properties.id, { onDelete: "cascade" }),
+    // The computed 0-100 health score at that moment.
+    score: integer("score").notNull(),
+    // When the snapshot was taken.
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("health_snapshots_property_idx").on(t.propertyId)]
+);
+
 // ---------------------------------------------------------------------------
 // Security: memberships (RBAC) + audit log
 // ---------------------------------------------------------------------------
@@ -671,6 +691,7 @@ export type Project = typeof projects.$inferSelect;
 export type Circuit = typeof circuits.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type AuditEntry = typeof auditLog.$inferSelect;
+export type HealthSnapshot = typeof healthSnapshots.$inferSelect;
 export type ProjectMilestone = typeof projectMilestones.$inferSelect;
 export type ProjectChecklistItem = typeof projectChecklist.$inferSelect;
 

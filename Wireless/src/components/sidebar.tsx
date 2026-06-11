@@ -17,6 +17,7 @@ import {
   Wifi,
   ShieldCheck,
   ClipboardList,
+  ScrollText,
 } from "lucide-react";
 // `cn` is a small helper that joins CSS class names together (and handles conditionals).
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const NAV = [
   { href: "/incidents", label: "Incidents", icon: ClipboardList },
   { href: "/vendors", label: "Vendors & Projects", icon: Wrench },
   { href: "/integrations", label: "Integrations", icon: Plug },
+  { href: "/audit", label: "Security & Audit", icon: ScrollText },
 ];
 
 // The Sidebar component renders the left navigation column.

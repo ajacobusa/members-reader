@@ -117,3 +117,34 @@ export function computeHealth(input: HealthInput): HealthResult {
     deductions,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Score trend — the before/after story (pure, testable).
+// ---------------------------------------------------------------------------
+
+export interface ScoreTrend {
+  /** The score roughly `days` ago (closest snapshot), or null without history. */
+  weekAgo: number | null;
+  /** current − weekAgo: negative = the property got worse. Null without history. */
+  delta: number | null;
+}
+
+/**
+ * Compare the current score against history: pick the snapshot closest to
+ * `now − days` and report the change. Powers the dashboard Δ column,
+ * property sparkline captions, and trend-aware AI prompts.
+ */
+export function scoreTrend(
+  snapshots: { score: number; at: Date }[],
+  currentScore: number,
+  now: Date,
+  days = 7
+): ScoreTrend {
+  if (snapshots.length === 0) return { weekAgo: null, delta: null };
+  const target = now.getTime() - days * 86_400_000;
+  // The snapshot whose timestamp is nearest the target moment.
+  const closest = snapshots.reduce((best, s) =>
+    Math.abs(s.at.getTime() - target) < Math.abs(best.at.getTime() - target) ? s : best
+  );
+  return { weekAgo: closest.score, delta: currentScore - closest.score };
+}

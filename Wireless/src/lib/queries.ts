@@ -23,6 +23,7 @@ import type {
   Circuit,
   ProjectMilestone,
   ProjectChecklistItem,
+  HealthSnapshot,
 } from "@/db/schema";
 
 /**
@@ -96,6 +97,14 @@ export async function getProjects(): Promise<Project[]> {
 export async function getCircuits(): Promise<Circuit[]> {
   if (hasDatabase()) return getDb().select().from(schema.circuits);
   return mock.circuits;
+}
+
+export async function getHealthSnapshots(): Promise<HealthSnapshot[]> {
+  if (hasDatabase()) {
+    // Chronological — pages group by property and feed sparklines/trends.
+    return getDb().select().from(schema.healthSnapshots).orderBy(schema.healthSnapshots.at);
+  }
+  return mock.healthSnapshots;
 }
 
 export async function getProjectMilestones(): Promise<ProjectMilestone[]> {

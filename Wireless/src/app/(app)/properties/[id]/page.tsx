@@ -29,6 +29,10 @@ import {
 import { timeAgo } from "@/lib/utils";
 // Client component: AI "explain this score" button under the health breakdown.
 import { AiExplainScore } from "@/components/ai-explain-score";
+// Score history for the before/after trend.
+import { getHealthSnapshots } from "@/lib/queries";
+import { scoreTrend } from "@/lib/health";
+import { Sparkline, DeltaChip } from "@/components/sparkline";
 
 // The detail page for one property. Next.js passes route params (like the id) as props.
 export default async function PropertyDetailPage({
@@ -45,13 +49,18 @@ export default async function PropertyDetailPage({
   if (!property) notFound();
 
   // Fetch all the related data for this property in parallel for speed.
-  const [overview, accessPoints, clients, iotDevices, alerts] = await Promise.all([
-    getPropertyOverview(property),
-    getAccessPoints(id),
-    getClients(id),
-    getIotDevices(id),
-    getAlerts(id),
-  ]);
+  const [overview, accessPoints, clients, iotDevices, alerts, allSnapshots] =
+    await Promise.all([
+      getPropertyOverview(property),
+      getAccessPoints(id),
+      getClients(id),
+      getIotDevices(id),
+      getAlerts(id),
+      getHealthSnapshots(),
+    ]);
+  // This property's score history (chronological) and its week-over-week trend.
+  const history = allSnapshots.filter((s) => s.propertyId === id);
+  const trend = scoreTrend(history, overview.health.score, new Date());
 
   // Keep only the guest clients (isGuest stored as 1 = true, 0 = false).
   const guests = clients.filter((c) => c.isGuest === 1);
@@ -106,6 +115,21 @@ export default async function PropertyDetailPage({
           <div className="text-sm font-semibold">Health score breakdown</div>
           <HealthScore score={overview.health.score} band={overview.health.band} size="sm" />
         </div>
+        {/* Before/after: the score's recent trajectory + week-over-week change. */}
+        {history.length >= 2 && (
+          <div className="mt-3 flex items-center gap-4">
+            <Sparkline points={[...history.map((s) => s.score), overview.health.score]} />
+            <div className="text-sm text-muted">
+              {trend.weekAgo !== null && (
+                <>
+                  A week ago this property scored{" "}
+                  <span className="font-medium text-foreground">{trend.weekAgo}</span>{" "}
+                  <DeltaChip delta={trend.delta} />
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {/* If there are no deductions show a positive message; otherwise list each deduction. */}
         {overview.health.deductions.length === 0 ? (
           <p className="mt-3 text-sm text-good">No deductions — property is healthy.</p>

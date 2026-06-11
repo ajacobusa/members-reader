@@ -8,7 +8,13 @@ import {
   getAlertCounts,
   // Returns the most common recurring problem categories across the portfolio.
   getRecurringIssues,
+  // Score history for the week-over-week delta column.
+  getHealthSnapshots,
 } from "@/lib/queries";
+// Picks the snapshot ~7 days back and computes the change vs the live score.
+import { scoreTrend } from "@/lib/health";
+// Compact ▲/▼ delta chip.
+import { DeltaChip } from "@/components/sparkline";
 // Reusable presentational UI building blocks (header, stat cards, table parts).
 import { PageHeader, StatCard, Card, Table, Th, Td } from "@/components/ui";
 // Small colored badge components for showing a health number and an alert severity.
@@ -21,11 +27,16 @@ import { AiSummaryPanel } from "@/components/ai-summary";
 export default async function DashboardPage() {
   // Fire all three data queries at the same time (in parallel) and wait for all
   // to finish. Destructuring assigns each resolved result to its own variable.
-  const [portfolio, alertCounts, recurring] = await Promise.all([
+  const [portfolio, alertCounts, recurring, snapshots] = await Promise.all([
     getPortfolio(),
     getAlertCounts(),
     getRecurringIssues(),
+    getHealthSnapshots(),
   ]);
+  // Week-over-week delta per property: live score vs the snapshot ~7 days ago.
+  const now = new Date();
+  const deltaFor = (propertyId: string, current: number) =>
+    scoreTrend(snapshots.filter((s) => s.propertyId === propertyId), current, now).delta;
 
   // Sum every property's access-point count to get the portfolio-wide total.
   const totalAps = portfolio.reduce((n, p) => n + p.apCount, 0);
@@ -93,6 +104,7 @@ export default async function DashboardPage() {
                 <Th>Location</Th>
                 <Th className="text-right">APs</Th>
                 <Th className="text-right">Open alerts</Th>
+                <Th className="text-right">7d Δ</Th>
                 <Th className="text-right">Health</Th>
               </tr>
             </thead>
@@ -125,6 +137,10 @@ export default async function DashboardPage() {
                     {criticalAlerts > 0 && (
                       <span className="ml-1 text-critical">({criticalAlerts} crit)</span>
                     )}
+                  </Td>
+                  {/* Week-over-week change: ▲ improving, ▼ degrading. */}
+                  <Td className="text-right">
+                    <DeltaChip delta={deltaFor(property.id, health.score)} />
                   </Td>
                   {/* Compact health-score badge for this property. */}
                   <Td className="text-right">

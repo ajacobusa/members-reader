@@ -1,0 +1,37 @@
+# Continuous integration: every push/PR must lint, type-check, build, and pass
+# the embedded-Postgres database verification (migrations + seed + queries).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify database (migrations + seed against embedded Postgres)
+        run: npm run db:verify
+
+      - name: Verify alert-intelligence engine
+        run: npm run verify:intel
