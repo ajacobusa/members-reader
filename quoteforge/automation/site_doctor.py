@@ -62,6 +62,12 @@ CRITICAL_MODULES = [
     "quoteforge/automation/maintenance.py",
     "quoteforge/automation/scheduler.py",
     "quoteforge/automation/site_doctor.py",
+    # Expanded as packages reach 100%: once in, coverage can never regress.
+    "quoteforge/admin.py",
+    "quoteforge/fulfillment",          # directories are scanned recursively
+    "quoteforge/catalog",
+    "quoteforge/quotes",
+    "quoteforge/ai",
 ]
 # Fast regression subset covering the storefront's behavior (UI hooks, SEO,
 # a11y, occasion logic). The FULL suite still runs in CI on every push.
@@ -228,11 +234,16 @@ def check_docs_ratchet() -> dict:
         p = PROJECT_ROOT / rel
         if not p.exists():
             continue
-        tree = ast.parse(p.read_text(encoding="utf-8"))
-        for n in ast.walk(tree):
-            if (isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                    and not n.name.startswith("__") and not ast.get_docstring(n)):
-                undocumented.append(f"{rel}:{n.lineno}:{n.name}")
+        # An entry may be a single file or a package directory (scanned fully).
+        files = [p] if p.is_file() else sorted(p.rglob("*.py"))
+        for f in files:
+            tree = ast.parse(f.read_text(encoding="utf-8"))
+            for n in ast.walk(tree):
+                if (isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and not n.name.startswith("__")
+                        and not ast.get_docstring(n)):
+                    undocumented.append(
+                        f"{f.relative_to(PROJECT_ROOT).as_posix()}:{n.lineno}:{n.name}")
     return {"name": "docs_ratchet",
             "status": "OK" if not undocumented else "FAIL",
             "detail": ("critical modules 100% documented" if not undocumented

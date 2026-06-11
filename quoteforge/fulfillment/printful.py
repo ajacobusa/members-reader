@@ -12,6 +12,7 @@ import urllib.request
 
 def create_order(order_id: str, recipient: dict, artwork_url: str,
                  variant_id, **kwargs) -> dict:
+    """Submit a print order to Printful (mocked in TEST_MODE)."""
     from quoteforge.config import PRINTFUL_API_KEY, TEST_MODE
     if TEST_MODE or not PRINTFUL_API_KEY:
         return {"status": "manual", "vendor": "printful",

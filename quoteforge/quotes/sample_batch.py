@@ -73,6 +73,7 @@ def generate_sample_batch(force_real: bool = False,
 
 
 def format_batch_text(results: list[dict], real: bool) -> str:
+    """Human-readable sample-quote batch (flags REAL vs MOCK mode)."""
     head = ("REAL AI quotes" if real else "MOCK quotes (set ANTHROPIC_API_KEY "
             "for real ones)")
     lines = ["=" * 64, f"QUOTE QUALITY REVIEW - {head}", "=" * 64]

@@ -44,6 +44,7 @@ from quoteforge.secrets_util import generate_webhook_secret
 
 
 def _cmd_gen_secret() -> int:
+    """CLI handler for `python -m quoteforge.admin gen-secret`."""
     secret = generate_webhook_secret()
     print("Generated webhook signing secret:\n")
     print(f"  {secret}\n")
@@ -63,6 +64,7 @@ def _cmd_backup_all(args: list[str]) -> int:
 
 
 def _cmd_backup() -> int:
+    """CLI handler for `python -m quoteforge.admin backup`."""
     from quoteforge.db.database import backup_database, prune_old_backups
     path = backup_database()
     if not path:
@@ -79,6 +81,7 @@ def _cmd_backup() -> int:
 
 
 def _cmd_restore(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin restore`."""
     from pathlib import Path
     from quoteforge.db.database import restore_database
     target = Path(args[0]) if args else None
@@ -127,6 +130,7 @@ def _cmd_restore_all(args: list[str]) -> int:
 
 
 def _cmd_list_backups() -> int:
+    """CLI handler for `python -m quoteforge.admin list-backups`."""
     from quoteforge.db.database import list_backups
     backups = list_backups()
     if not backups:
@@ -140,6 +144,7 @@ def _cmd_list_backups() -> int:
 
 
 def _cmd_daily_report() -> int:
+    """CLI handler for `python -m quoteforge.admin daily-report`."""
     from quoteforge.db.database import init_db, daily_order_report
     init_db()
     r = daily_order_report()
@@ -162,6 +167,7 @@ def _cmd_daily_report() -> int:
 
 
 def _cmd_preflight() -> int:
+    """CLI handler for `python -m quoteforge.admin preflight`."""
     from quoteforge.preflight import main as preflight_main
     preflight_main()
     return 0
@@ -222,6 +228,7 @@ def _cmd_verify_keys() -> int:
 
 
 def _cmd_show_proof(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin show-proof`."""
     if not args:
         print("Usage: python -m quoteforge.admin show-proof <ORDER_ID>")
         return 2
@@ -246,6 +253,7 @@ def _cmd_show_proof(args: list[str]) -> int:
 
 
 def _cmd_customer_approved(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin customer-approved`."""
     if not args:
         print("Usage: python -m quoteforge.admin customer-approved <ORDER_ID>")
         return 2
@@ -268,6 +276,7 @@ def _cmd_customer_approved(args: list[str]) -> int:
 
 
 def _cmd_launch(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin launch`."""
     from quoteforge.etsy.launch_pack import (
         LAUNCH_PACK_20, PRICING, AVOID_INITIALLY, SCALING_PHASES,
         next_additions, current_phase,
@@ -308,6 +317,7 @@ def _cmd_launch(args: list[str]) -> int:
 
 
 def _cmd_tco(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin tco`."""
     from quoteforge.db.database import init_db
     from quoteforge.etsy.tco import estimate_tco, live_tco, format_tco_text
     init_db()
@@ -323,6 +333,7 @@ def _cmd_tco(args: list[str]) -> int:
 
 
 def _cmd_products(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin products`."""
     from quoteforge.etsy.product_lines import (
         top_ranked, bundle_value, catalog_by_category,
     )
@@ -356,6 +367,7 @@ def _cmd_products(args: list[str]) -> int:
 
 
 def _cmd_calendar(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin calendar`."""
     from quoteforge.etsy.marketing_calendar import (
         upcoming_actions, ANNUAL_CALENDAR, HIGH_REVENUE_CATEGORIES,
     )
@@ -377,6 +389,7 @@ def _cmd_calendar(args: list[str]) -> int:
 
 
 def _cmd_sales(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin sales`."""
     from quoteforge.db.database import init_db
     from quoteforge.etsy.sales_engine import sales_actions_digest, format_digest_text
     init_db()
@@ -393,6 +406,7 @@ def _cmd_sales(args: list[str]) -> int:
 
 
 def _cmd_campaign(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin campaign`."""
     from datetime import datetime
     from quoteforge.etsy.campaign import seasonal_campaign, export_campaign_excel
     month = args[0].title() if args else datetime.now().strftime("%B")
@@ -425,6 +439,7 @@ def _cmd_campaign(args: list[str]) -> int:
 
 
 def _cmd_plan(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin plan`."""
     from quoteforge.etsy.occasions import get_current_month_plan, coverage_summary
     plan = get_current_month_plan()
     cov = coverage_summary()
@@ -445,6 +460,7 @@ def _cmd_plan(args: list[str]) -> int:
 
 
 def _cmd_healthcheck(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin healthcheck`."""
     from quoteforge.automation.healthcheck import (
         run_healthcheck, format_health_text, send_health_alert,
     )
@@ -1022,6 +1038,7 @@ def _cmd_install_schedule(args: list[str]) -> int:
 
 
 def _cmd_report(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin report`."""
     from quoteforge.db.database import init_db
     from quoteforge.etsy.reports import period_report, format_report_text, PERIODS
     if not args or args[0] not in PERIODS:
@@ -1041,6 +1058,7 @@ def _cmd_report(args: list[str]) -> int:
 
 
 def _cmd_reconcile(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin reconcile`."""
     from datetime import datetime
     from quoteforge.db.database import init_db
     from quoteforge.etsy.reconciliation import export_reconciliation
@@ -1064,6 +1082,7 @@ def _cmd_reconcile(args: list[str]) -> int:
 
 
 def _cmd_email_report() -> int:
+    """CLI handler for `python -m quoteforge.admin email-report`."""
     from quoteforge.automation.emailer import send_daily_report
     result = send_daily_report()
     if result["status"] == "sent":
@@ -1314,6 +1333,7 @@ def _cmd_competitors(args: list[str]) -> int:
     if args and args[0] == "add" and len(args) >= 2:
         shop = args[1]
         def _num(i, cast):
+            """Parse args[i] with ``cast``, or None when absent/invalid."""
             try:
                 return cast(args[i])
             except (IndexError, ValueError):
@@ -1924,6 +1944,8 @@ COMMANDS = {
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Entry point: dispatch `python -m quoteforge.admin <command>` (prints usage
+    when the command is missing or unknown)."""
     try:
         from quoteforge.automation.monitoring import init_monitoring
         init_monitoring()
