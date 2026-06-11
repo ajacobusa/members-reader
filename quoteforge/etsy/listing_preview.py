@@ -1168,6 +1168,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:#6b5a2b;margin:16px auto 0;padding:13px 18px;border-radius:10px;
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
+ /* ── Design pass: hierarchy, steps, trust, mobile CTA ───────────── */
+ .mtrust{{font-size:12.5px;color:#3f7d5c;font-weight:600;margin:-2px 0 10px;letter-spacing:.2px}}
+ /* Consistent, taller product cards with equal heights in each row. */
+ #grid .card{{display:flex;flex-direction:column}}
+ #grid .card .cap{{flex:1;display:flex;flex-direction:column}}
+ #grid .card .cap .fb{{margin-top:auto}}
+ .ttl{{font-size:19px;font-weight:600;letter-spacing:.2px}}
+ .pr{{font-size:21px}}
+ .cardtrust{{display:block;margin-top:8px;font-size:11.5px;color:#3f7d5c;
+   font-weight:600;letter-spacing:.2px}}
+ /* Step-numbered personalization: each section label auto-numbers itself so
+    the editor reads as a guided 1-2-3 flow instead of a wall of options. */
+ .perso{{counter-reset:pstep}}
+ .perso>.lbl::before{{counter-increment:pstep;content:"Step " counter(pstep) " - ";
+   color:var(--gold-d);font-weight:800}}
+ /* Thumb-zone CTA: on phones the add-to-basket bar sticks to the bottom of the
+    modal so the buy action is always one thumb-tap away. */
+ @media(max-width:760px){{
+   #mbasketbar{{position:sticky;bottom:0;background:rgba(255,255,255,.97);
+     padding:10px 4px;margin:0 -4px;box-shadow:0 -8px 18px rgba(0,0,0,.10);z-index:6}}
+ }}
  /* back-to-top (bottom-left, clears the Ask Ange button on the right) */
  #toTop{{position:fixed;left:20px;bottom:20px;z-index:60;display:none;
    align-items:center;justify-content:center;width:46px;height:46px;border:none;
@@ -1635,6 +1656,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
+       <div class="mtrust">&#128737;&#65039; Happiness guarantee &nbsp;&middot;&nbsp; &#128444;&#65039; Free digital proof &nbsp;&middot;&nbsp; &#128230; Tracked shipping</div>
        <div style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
@@ -1799,7 +1821,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">Starting at $${{d.price}}</div>
          <div class="prsub">${{MAT_SHORT}} &middot; ${{OPT_COUNT}} options to $${{PRICE_HI}}</div>
-         <span class="fb">Tap to choose frame / canvas &amp; see it</span>
+         <span class="fb">Tap to choose frame / canvas &amp; see it</span><span class="cardtrust">&#10003; Free proof before printing &nbsp;&middot;&nbsp; &#10003; Happiness guarantee</span>
        </div>
      </div>`).join('') +'';
  }}
