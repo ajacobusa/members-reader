@@ -1,39 +1,31 @@
+// The shared Inngest client this function registers against.
 import { inngest } from "./client";
-import { getAdapter } from "@/integrations/registry";
+// The real sync pipeline (adapter → normalize → upsert into Postgres).
+import { syncAll } from "@/lib/sync";
+// Union of valid vendor id strings, for typing the event payload.
 import type { IntegrationVendorName } from "@/db/schema";
 
 /**
- * Vendor sync job. Triggered per-integration (event payload carries the vendor
- * and, in live mode, the integration id whose credentials to load).
+ * Vendor sync job. Trigger by sending the "vendor/sync.requested" event —
+ * optionally with { data: { vendor: "aruba_central" } } to sync one vendor;
+ * omit to sync every configured integration.
  *
- * Each step is durable: if the function crashes mid-sync, Inngest replays from
- * the last completed step. Today it pulls normalized snapshots from the adapter
- * (mock data); the marked TODO is where the upsert into Postgres goes.
+ * The heavy lifting lives in lib/sync.ts (same code the /api/admin/sync
+ * endpoint uses), so manual triggers and background jobs behave identically.
+ * Inngest adds durability: retries with backoff on failure.
  */
 export const syncVendor = inngest.createFunction(
   { id: "sync-vendor", retries: 3, triggers: [{ event: "vendor/sync.requested" }] },
   async ({ event, step }) => {
-    const vendor = (event.data?.vendor ?? "aruba_central") as IntegrationVendorName;
-    const adapter = getAdapter(vendor);
-
-    const sites = await step.run("list-sites", () => adapter.listSites());
-
-    const results: { site: string; aps: number; alerts: number }[] = [];
-    for (const site of sites) {
-      const snapshot = await step.run(`fetch-${site.externalId}`, () =>
-        adapter.fetchSiteSnapshot(site.externalId)
-      );
-      // TODO(live): upsert snapshot into Postgres via Drizzle (access_points,
-      // clients, iot_devices, alerts), then recompute property health score.
-      results.push({
-        site: snapshot.siteName,
-        aps: snapshot.accessPoints.length,
-        alerts: snapshot.alerts.length,
-      });
-    }
-
-    return { vendor, sitesSynced: sites.length, results };
+    // Narrow the optional event payload to a vendor filter.
+    const vendor = event.data?.vendor as IntegrationVendorName | undefined;
+    // One durable step: the pipeline records per-integration outcomes itself
+    // (sync_runs + integrations.lastError), so partial failures are visible.
+    // The summary includes what the post-sync ticketing automation did.
+    const summary = await step.run("sync-all", () => syncAll(vendor));
+    return summary;
   }
 );
 
+// Every function the /api/inngest endpoint serves.
 export const functions = [syncVendor];

@@ -83,12 +83,19 @@ src/
 `.env.local`, then:
 
 ```bash
-npm run db:push     # create tables from the schema
-npm run db:seed     # load the demo fixtures
+npm run db:migrate  # apply the committed SQL migrations in ./drizzle
+npm run db:seed     # load the demo portfolio (safe to re-run; clears first)
+npm run dev         # queries.ts auto-switches from mock to Postgres
 npm run db:studio   # browse the data
 ```
 
-Then switch the bodies in `src/lib/queries.ts` from `mock.*` to Drizzle queries.
+No code changes needed — `queries.ts` is dual-mode and switches to Postgres
+the moment `DATABASE_URL` exists (and back to mock when it doesn't). You can
+prove the whole DB path locally without any server via:
+
+```bash
+npm run db:verify   # applies migrations + seeds + queries an embedded Postgres (PGlite)
+```
 
 **2. Auth** — add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`.
 Auth turns on automatically; no code change needed.
@@ -107,12 +114,37 @@ See `.env.example` for the full list of environment variables.
 
 - [x] Step 1 — Dashboard shell (sidebar, company/property views)
 - [x] Step 2 — Inventory (properties, APs, clients, IoT, vendors, projects)
-- [x] Step 4 — Alerting (critical / warning / info)
+- [x] Step 4 — Alerting (critical / warning / info) + alert intelligence:
+      sync-time dedupe, root-cause tags + recommended actions (category
+      playbook), recurrence detection with severity escalation, grouped views
+      (property / category / vendor), and a raised/resolved history timeline
 - [x] Step 5 — Health scoring (explainable 0-100 formula)
-- [ ] Step 3 — Connect **live** Aruba Central (adapter + webhook)
-- [ ] Step 6 — AI summaries (Vercel AI Gateway; Python on Fluid Compute)
-- [ ] Step 7 — IoT segmentation tracking (NAC/firewall zone enrichment)
-- [ ] Step 8 — Vendor/project workflows (milestones, blockers, SLA)
-- [ ] Step 9 — More manufacturers (Meraki, UniFi, Ruckus, Fortinet, Mist)
+- [x] Step 6 — AI summaries via Vercel AI Gateway (Claude) with deterministic
+      rule-based fallbacks: alert summary, "what needs attention today" action
+      list, daily per-property brief, weekly executive report, vendor-blocker
+      summary, and per-property "explain this health score"
+- [x] Step 9 — Multi-vendor adapters (Aruba, Meraki, UniFi, RUCKUS, Fortinet, Mist)
+- [x] Step 3 — Aruba Central sync pipeline: OAuth token flow, encrypted
+      credential storage (`/api/admin/integrations`), normalized upserts into
+      Postgres, sync-failure logging (`sync_runs` + `lastError`), last-synced
+      timestamps, manual/cron trigger (`/api/admin/sync`) and Inngest job.
+      *Live-API field mapping awaits real Aruba credentials for final tuning;
+      webhook alert ingest still to come.*
+- [x] Step 7 — IoT segmentation: VLAN / SSID / firewall zone / NAC policy /
+      owner / approval lifecycle (approved · unapproved · quarantined) on every
+      device, a dedicated IoT Security page with policy findings ("unknown
+      device on staff network → move to IoT VLAN or quarantine"), and
+      unapproved devices feeding the property health score
+- [x] Ticketing & workflow automation — create incidents from alerts
+      (one click on /alerts), owners, status flow (open · investigating ·
+      vendor escalated · resolved), work-log notes, severity-based SLA timers
+      (4h/24h/72h), and post-sync automation that auto-creates incidents for
+      recurring alert groups and auto-escalates SLA breaches to the vendor
+- [x] Step 8 — Vendor/project management: vendor contracts (start/end with
+      ≤90-day renewal warnings), SLA terms, escalation paths, telecom circuit
+      inventory (carrier ref, bandwidth, status, cost, contract end), project
+      milestones with progress, and cutover + post-deployment validation
+      checklists with one-click toggles
 - [ ] Step 10 — Automation (auto-ticket, auto-escalate, recommended fixes)
+- [ ] Heavier analytics (RF tuning, anomaly detection) on Vercel Python / Fluid Compute
 ```

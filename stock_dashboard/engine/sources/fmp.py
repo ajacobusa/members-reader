@@ -1,10 +1,46 @@
 """Financial Modeling Prep provider (STABLE API). Free tier: grades, consensus,
-price-target-summary, earnings. News is paid (returns [] gracefully)."""
+price-target-summary, earnings, end-of-day price history. News is paid
+(returns [] gracefully)."""
 from typing import Callable, Optional
 from stock_dashboard.engine.sources.base import http_get_json
 
 _BASE = "https://financialmodelingprep.com/stable"
 _BUYISH = ("buy", "strong buy", "outperform", "overweight", "accumulate", "add")
+
+# Approximate trading days per yfinance-style period string, for trimming.
+_PERIOD_DAYS = {
+    "1mo": 22, "2mo": 44, "3mo": 66, "6mo": 126,
+    "1y": 252, "2y": 504, "5y": 1260, "max": 100_000,
+}
+
+
+def fetch_price_history(ticker: str, api_key: str,
+                        period: str = "3mo", get_fn: Callable = http_get_json):
+    """Daily OHLCV as a yfinance-shaped DataFrame (DatetimeIndex; Open/High/Low/
+    Close/Volume), trimmed to `period`. None on any failure. Free-tier endpoint
+    `/stable/historical-price-eod/full` returns newest-first rows."""
+    if not api_key:
+        return None
+    data = get_fn(f"{_BASE}/historical-price-eod/full",
+                  params={"symbol": ticker, "apikey": api_key})
+    if not data or not isinstance(data, list):
+        return None
+    try:
+        import pandas as pd
+        df = pd.DataFrame(data)
+        if df.empty or "date" not in df or "close" not in df:
+            return None
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date").sort_index()
+        df = df.rename(columns={"open": "Open", "high": "High", "low": "Low",
+                                "close": "Close", "volume": "Volume"})
+        keep = [c for c in ("Open", "High", "Low", "Close", "Volume") if c in df.columns]
+        df = df[keep].dropna(subset=["Close"])
+        if df.empty:
+            return None
+        return df.tail(_PERIOD_DAYS.get(period, 66))
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def fetch_price_target(ticker: str, api_key: str,

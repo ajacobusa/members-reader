@@ -211,7 +211,8 @@ def run_pipeline(
     marked_picks_count: int,
     fetch_fn: Optional[Callable] = None,
 ) -> tuple[list[PickRecord], bool]:
-    from stock_dashboard.engine.fetcher import fetch_stock_data
+    from stock_dashboard.engine.fetcher import fetch_stock_data, configure_fallback
+    configure_fallback(cfg.api_keys)  # enable Stooq/FMP price fallback if yfinance fails
     fetch = fetch_fn or fetch_stock_data
 
     vix = market_data.get("vix", 20.0)

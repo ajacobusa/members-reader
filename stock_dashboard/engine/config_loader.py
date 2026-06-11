@@ -27,9 +27,19 @@ class Config:
     performance: dict[str, Any]
     health: dict[str, Any]
     ranking: dict[str, Any]
+    # Optional blocks (default-provided): absent in older configs without breaking.
+    rate_limit: dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
-REQUIRED_KEYS = [f.name for f in dataclasses.fields(Config)]
+# Required keys are the fields that have no default value.
+REQUIRED_KEYS = [
+    f.name for f in dataclasses.fields(Config)
+    if f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING
+]
+OPTIONAL_KEYS = [
+    f.name for f in dataclasses.fields(Config)
+    if f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING
+]
 
 
 def load_config(path: Path) -> Config:
@@ -39,4 +49,8 @@ def load_config(path: Path) -> Config:
     for key in REQUIRED_KEYS:
         if key not in data:
             raise KeyError(f"Missing required config key: {key}")
-    return Config(**{k: data[k] for k in REQUIRED_KEYS})
+    kwargs = {k: data[k] for k in REQUIRED_KEYS}
+    for k in OPTIONAL_KEYS:
+        if k in data:
+            kwargs[k] = data[k]
+    return Config(**kwargs)

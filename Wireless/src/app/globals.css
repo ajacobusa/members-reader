@@ -1,52 +1,62 @@
+/* Pull in the Tailwind CSS framework so its utility classes are available. */
 @import "tailwindcss";
 
 /**
  * Wireless Ops theme — clean, light operations-console palette.
  * Semantic tokens map into Tailwind v4 utilities (bg-surface, text-muted, …).
  */
+/* `:root` targets the whole document; custom properties (--name) defined here
+   become reusable color "tokens" available everywhere on the page. */
 :root {
-  --background: #f6f7f9;
-  --foreground: #0f172a;
-  --surface: #ffffff;
-  --surface-2: #f1f5f9;
-  --border: #e2e8f0;
-  --muted: #64748b;
-  --primary: #4f46e5;
-  --primary-fg: #ffffff;
+  --background: #f6f7f9;   /* Page background color (very light gray). */
+  --foreground: #0f172a;   /* Default text color (near-black navy). */
+  --surface: #ffffff;      /* Background for raised surfaces like cards/panels (white). */
+  --surface-2: #f1f5f9;    /* A slightly darker surface, for subtle layering/contrast. */
+  --border: #e2e8f0;       /* Color for borders and dividing lines (light gray). */
+  --muted: #64748b;        /* Dimmed text color for less-important content (gray). */
+  --primary: #4f46e5;      /* Main brand/accent color (indigo) for buttons, links. */
+  --primary-fg: #ffffff;   /* Text/icon color placed on top of the primary color (white). */
 
-  --critical: #dc2626;
-  --critical-bg: #fef2f2;
-  --warning: #d97706;
-  --warning-bg: #fffbeb;
-  --info: #2563eb;
-  --info-bg: #eff6ff;
-  --good: #16a34a;
-  --good-bg: #f0fdf4;
+  --critical: #dc2626;     /* Strong red — signals errors/critical states. */
+  --critical-bg: #fef2f2;  /* Soft red background to pair with critical text. */
+  --warning: #d97706;      /* Amber/orange — signals warnings. */
+  --warning-bg: #fffbeb;   /* Soft amber background to pair with warning text. */
+  --info: #2563eb;         /* Blue — signals informational messages. */
+  --info-bg: #eff6ff;      /* Soft blue background to pair with info text. */
+  --good: #16a34a;         /* Green — signals success/healthy states. */
+  --good-bg: #f0fdf4;      /* Soft green background to pair with good/success text. */
 }
 
+/* `@theme inline` is a Tailwind v4 feature: it registers these tokens with
+   Tailwind so they generate utility classes (e.g. --color-surface -> bg-surface,
+   text-surface). Each line below points a Tailwind color name at one of our
+   tokens above via `var(...)`, keeping a single source of truth for colors. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-border: var(--border);
-  --color-muted: var(--muted);
-  --color-primary: var(--primary);
-  --color-primary-fg: var(--primary-fg);
-  --color-critical: var(--critical);
-  --color-critical-bg: var(--critical-bg);
-  --color-warning: var(--warning);
-  --color-warning-bg: var(--warning-bg);
-  --color-info: var(--info);
-  --color-info-bg: var(--info-bg);
-  --color-good: var(--good);
-  --color-good-bg: var(--good-bg);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);     /* Enables bg-background / text-background utilities. */
+  --color-foreground: var(--foreground);     /* Enables foreground-based utilities (default text). */
+  --color-surface: var(--surface);           /* Enables bg-surface for cards/panels. */
+  --color-surface-2: var(--surface-2);       /* Enables bg-surface-2 for the secondary surface. */
+  --color-border: var(--border);             /* Enables border-border for divider/border colors. */
+  --color-muted: var(--muted);               /* Enables text-muted for dimmed text. */
+  --color-primary: var(--primary);           /* Enables bg-primary / text-primary (accent color). */
+  --color-primary-fg: var(--primary-fg);     /* Enables text-primary-fg for content on primary. */
+  --color-critical: var(--critical);         /* Enables critical (error) color utilities. */
+  --color-critical-bg: var(--critical-bg);   /* Enables the critical background utilities. */
+  --color-warning: var(--warning);           /* Enables warning color utilities. */
+  --color-warning-bg: var(--warning-bg);     /* Enables the warning background utilities. */
+  --color-info: var(--info);                 /* Enables info color utilities. */
+  --color-info-bg: var(--info-bg);           /* Enables the info background utilities. */
+  --color-good: var(--good);                 /* Enables good/success color utilities. */
+  --color-good-bg: var(--good-bg);           /* Enables the good/success background utilities. */
+  --font-sans: var(--font-geist-sans);       /* Default sans-serif font (loaded elsewhere as Geist Sans). */
+  --font-mono: var(--font-geist-mono);       /* Monospace font (Geist Mono) for code-like text. */
 }
 
+/* Base styling for the whole page's <body> element. */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--background);   /* Use the theme background token for the page color. */
+  color: var(--foreground);        /* Use the theme foreground token for default text color. */
+  /* Set the default font stack: our sans token first, then safe system fallbacks
+     in case the custom font has not loaded yet. */
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
