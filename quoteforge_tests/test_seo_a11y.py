@@ -44,6 +44,21 @@ def test_all_images_have_alt(tmp_path):
     assert not missing, f"{len(missing)} <img> without alt: {missing[:2]}"
 
 
+def test_fonts_split_for_performance(tmp_path):
+    """Core fonts load normally; the editor-only preview fonts load async
+    (media=print onload) so they never block first paint - with a noscript fallback."""
+    import re
+    h = _page(tmp_path)
+    links = re.findall(r'<link\b[^>]*fonts\.googleapis\.com[^>]*>', h)
+    # the core link (Cormorant) is render-blocking: no media="print"
+    core = [l for l in links if "Cormorant" in l]
+    assert core and 'media="print"' not in core[0]
+    # the editor-font link (Dancing+Script) is async: media="print" onload swap
+    editor = [l for l in links if "Dancing+Script" in l and 'media="print"' in l]
+    assert editor and "this.media='all'" in editor[0]
+    assert "<noscript><link" in h            # JS-off fallback still loads them
+
+
 def test_accessibility(tmp_path):
     h = _page(tmp_path)
     assert 'alt=""' not in h.replace('alt="">', "")  # no empty product alts

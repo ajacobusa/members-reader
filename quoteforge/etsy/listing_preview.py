@@ -905,7 +905,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 {_analytics_snippet()}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet">
+<!-- Core fonts (above-the-fold: headings + body) load normally. -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Personalization-editor preview fonts load async (non-render-blocking); ready by
+     the time a buyer opens the editor, but they never delay first paint. -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet"></noscript>
 <style>
  :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
    --cream:#f7f4ee;--ink:#23302b;--muted:#6b7a72;--line:#e7e1d6}}
