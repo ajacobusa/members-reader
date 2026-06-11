@@ -2240,13 +2240,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _frac(ev){{ const p=_canvasPt(ev);
    return {{x:(p.x-ART.x)/ART.w, y:(p.y-ART.y)/ART.h}}; }}
  function _clamp(v,a,b){{ return Math.min(b,Math.max(a,v)); }}
+ let DRAGTARGET='text';   // what THIS gesture moves (decided at pointer-down)
  function _startDrag(ev){{ DRAGGING=true; DRAGLAST=_frac(ev);
-   if(DRAGMODE!=='photo'||!PHOTO){{ TPOS.x=_clamp(DRAGLAST.x,0.04,0.96);
+   // SMART GRAB: pressing on (or near) the wording always moves the wording,
+   // even in Photo mode - grabbing the words should move the words. Anywhere
+   // else follows the toggle (pan the photo in Photo mode).
+   const nearText = Math.abs(DRAGLAST.x-TPOS.x)<0.22 && Math.abs(DRAGLAST.y-TPOS.y)<0.16;
+   DRAGTARGET = (DRAGMODE==='photo' && PHOTO && !nearText) ? 'photo' : 'text';
+   if(DRAGTARGET==='text'){{ TPOS.x=_clamp(DRAGLAST.x,0.04,0.96);
      TPOS.y=_clamp(DRAGLAST.y,0.04,0.96); drawArt(); }}
    ev.preventDefault&&ev.preventDefault(); }}
  function _moveDrag(ev){{ if(!DRAGGING) return;
    const f=_frac(ev);
-   if(DRAGMODE==='photo' && PHOTO){{                            // pan the photo
+   if(DRAGTARGET==='photo'){{                                   // pan the photo
      if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
        PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }}
    }} else {{                                                    // move the text
