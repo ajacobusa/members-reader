@@ -1256,6 +1256,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .occallbtn:hover{{background:var(--gold)}}
  .occbottom{{text-align:center;margin:22px 0 4px}}
  .occhip.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .quickjump{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+   max-width:1100px;margin:0 auto 16px;padding:0 14px}}
+ .qjt{{border:1px solid var(--line);background:#fff;border-radius:10px;padding:5px;
+   cursor:pointer;width:74px;text-align:center;font-family:inherit}}
+ .qjt:hover{{border-color:var(--gold);transform:translateY(-2px)}}
+ .qjt img{{width:62px;height:62px;object-fit:cover;border-radius:7px;display:block}}
+ .qjt span{{font-size:10px;color:var(--green);font-weight:600;display:block;
+   margin-top:3px;text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
  .gridcount{{text-align:center;color:var(--green);font-weight:600;font-size:14px;
    letter-spacing:.3px;margin:6px 0 14px;text-transform:uppercase;opacity:.85}}
  .occnote{{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 -8px}}
@@ -1507,6 +1515,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  </div>
  {_occasion_showcase(kit_dir, external_assets, assets)}
  <div id="gridcount" class="gridcount"></div>
+ <!-- Quick-jump: every design as a tap-able thumbnail that opens its page
+      directly (no scrolling through the grid). Filled by render(). -->
+ <div id="quickjump" class="quickjump" role="navigation" aria-label="Jump to a design"></div>
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
  <div id="occbottom" class="occbottom" style="display:none"></div>
@@ -1761,6 +1772,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const g = document.getElementById('grid');
    var gc=document.getElementById('gridcount');
    if(gc) gc.textContent = DATA.length+' personalized designs - one for every occasion';
+   // Thumbnail quick-jump: tap any design to open its page instantly.
+   var qj=document.getElementById('quickjump');
+   if(qj) qj.innerHTML = DATA.map((d,i)=>`<button class="qjt" onclick="openM(${{i}})" `+
+     `title="${{d.title}}" aria-label="Open ${{d.title}}">`+
+     `<img src="${{d.imgs[0]}}" loading="lazy" alt="${{d.title}}">`+
+     `<span>${{(d.occ||'').replace("'s day",'')}}</span></button>`).join('');
    g.innerHTML = DATA.map((d,i) => `
      <div class="card" role="button" tabindex="0" aria-label="Personalize ${{d.title}}"
        data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" data-occ="${{d.occ||''}}" onclick="openM(${{i}})"
