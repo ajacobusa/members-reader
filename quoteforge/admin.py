@@ -94,6 +94,19 @@ def _cmd_restore(args: list[str]) -> int:
     return 0
 
 
+def _cmd_launch_dash(args: list[str]) -> int:
+    """CLI handler for `python -m quoteforge.admin launch-dash` - the launch KPI
+    dashboard (views/favorites/conversion/revenue/profit/keywords/occasions).
+    `launch-dash record "<listing>" <views> <favs>` stores real Etsy stats."""
+    from quoteforge.analytics.launch_dashboard import (
+        launch_metrics, format_dashboard, record_listing_stats)
+    if args and args[0] == "record" and len(args) >= 4:
+        record_listing_stats(args[1], int(args[2]), int(args[3]))
+        print(f"Recorded: {args[1]} views={args[2]} favorites={args[3]}")
+    print(format_dashboard(launch_metrics()))
+    return 0
+
+
 def _cmd_site_doctor(args: list[str]) -> int:
     """Daily self-healing website QA bot.
 
@@ -1890,6 +1903,7 @@ COMMANDS = {
     "restore": _cmd_restore,
     "restore-all": _cmd_restore_all,
     "site-doctor": _cmd_site_doctor,
+    "launch-dash": _cmd_launch_dash,
     "list-backups": lambda args: _cmd_list_backups(),
     "daily-report": lambda args: _cmd_daily_report(),
     "preflight": lambda args: _cmd_preflight(),
