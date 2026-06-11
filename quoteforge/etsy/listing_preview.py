@@ -1169,6 +1169,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-size:14px;text-align:center;line-height:1.55}}
  .uatbar a{{color:var(--green);font-weight:600}}
  /* ── Design pass: hierarchy, steps, trust, mobile CTA ───────────── */
+ .fb{{display:inline-block;background:var(--green);color:#fff;border-radius:20px;
+   padding:9px 16px;font-weight:700;font-size:13.5px;text-align:center}}
+ .card:hover .fb{{background:var(--gold);color:#22301e}}
+ .quiznudge{{text-align:center;margin:-6px 0 14px;font-size:14px;color:var(--muted)}}
+ .quiznudge a{{color:var(--green);font-weight:700;text-decoration:underline}}
+ #grid .card .hero{{aspect-ratio:1/1;object-fit:cover}}  /* no layout shift */
+
  .postadd{{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
    background:#eef7ef;border:1.5px solid #3f7d5c;border-radius:12px;
    padding:11px 14px;margin:10px 0}}
@@ -1558,6 +1565,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  </div>
  {_occasion_showcase(kit_dir, external_assets, assets)}
  <div id="gridcount" class="gridcount"></div>
+ <p class="quiznudge">Not sure which one? <a href="#" onclick="openQuiz();return false">&#127873; Take the 30-second Gift Finder</a></p>
  <!-- Quick-jump: every design as a tap-able thumbnail that opens its page
       directly (no scrolling through the grid). Filled by render(). -->
  <details class="qjwrap"><summary class="qjsum">&#10024; Find Your Perfect Design <small>See all 13 at a glance - tap to explore!</small></summary>
@@ -1838,7 +1846,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">Starting at $${{d.price}}</div>
          <div class="prsub">${{MAT_SHORT}} &middot; ${{OPT_COUNT}} options to $${{PRICE_HI}}</div>
-         <span class="fb">Tap to choose frame / canvas &amp; see it</span><span class="cardtrust">&#10003; Free proof before printing &nbsp;&middot;&nbsp; &#10003; Happiness guarantee</span>
+         <span class="fb">&#127912; Personalize now &#8594;</span><span class="cardtrust">&#10003; Free proof before printing &nbsp;&middot;&nbsp; &#10003; Happiness guarantee</span>
        </div>
      </div>`).join('') +'';
  }}
@@ -2465,6 +2473,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var g=document.getElementById('grid');
    if(g) g.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
+ // Esc closes any open overlay - expected behavior on every modern store.
+ document.addEventListener('keydown', function(e){{
+   if(e.key!=='Escape') return;
+   try{{ closeProof(); }}catch(_e){{}}
+   try{{ closeBasket(); }}catch(_e){{}}
+   try{{ closeQuiz(); }}catch(_e){{}}
+   try{{ closeExit(); }}catch(_e){{}}
+   try{{ closeM(); }}catch(_e){{}}
+ }});
  function closeM(){{document.getElementById('modal').style.display='none';
    BFLOW=null; var bb=document.getElementById('bundlebanner'); if(bb)bb.style.display='none';}}
  document.querySelectorAll('#mstars span').forEach(function(el){{
