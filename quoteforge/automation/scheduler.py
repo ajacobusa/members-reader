@@ -94,9 +94,10 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
     ScheduledJob(
         "QuoteForge Fulfillment Tracking", "track-orders",
         ["/SC", "HOURLY", "/MO", "6"],
-        "Every 6h: polls Gelato for tracking, advances orders to shipped/"
-        "delivered, and pushes the tracking number to the Etsy buyer - which "
-        "also lets the post-delivery review/delight loop fire."),
+        "Every 6h: polls each order's vendor (Gelato/Printify/Printful) for "
+        "tracking, advances orders to shipped/delivered, and pushes the "
+        "tracking number to the Etsy buyer - which also lets the "
+        "post-delivery review/delight loop fire."),
     ScheduledJob(
         "QuoteForge Weekly API Costs", "costs week email",
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:50"],

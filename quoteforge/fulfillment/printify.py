@@ -34,3 +34,53 @@ def create_order(order_id: str, recipient: dict, artwork_url: str,
                 "id": str(data.get("id", ""))}
     except Exception as exc:  # noqa: BLE001
         return {"status": "error", "vendor": "printify", "detail": str(exc), "id": ""}
+
+
+# Printify's "fulfilled" means the order has shipped.
+_STATUS_MAP = {"fulfilled": "shipped", "partially-fulfilled": "shipped"}
+
+
+def get_order_status(printify_order_id: str) -> dict:
+    """Poll Printify for order status + tracking (mocked in TEST_MODE).
+
+    Normalized to the same shape gelato_api.get_gelato_order_status returns,
+    so the fulfillment tracker can treat every vendor identically.
+    """
+    from quoteforge.config import PRINTIFY_API_KEY, PRINTIFY_SHOP_ID, TEST_MODE
+    if TEST_MODE or not (PRINTIFY_API_KEY and PRINTIFY_SHOP_ID):
+        return {"mock": True, "vendor": "printify", "status": "unknown",
+                "tracking_number": "", "tracking_url": "", "carrier": ""}
+    req = urllib.request.Request(
+        f"https://api.printify.com/v1/shops/{PRINTIFY_SHOP_ID}"
+        f"/orders/{printify_order_id}.json",
+        headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        data = json.loads(r.read().decode("utf-8"))
+    raw = (data.get("status") or "unknown").lower()
+    shipment = (data.get("shipments") or [{}])[0]
+    return {
+        "vendor": "printify",
+        "status": _STATUS_MAP.get(raw, raw),
+        "tracking_number": shipment.get("number", ""),
+        "tracking_url": shipment.get("url", ""),
+        "carrier": shipment.get("carrier", ""),
+        "raw": data,
+    }
+
+
+def verify_printify_auth() -> dict:
+    """Live check that the Printify key + shop id are valid (no order created)."""
+    from quoteforge.config import PRINTIFY_API_KEY, PRINTIFY_SHOP_ID
+    if not (PRINTIFY_API_KEY and PRINTIFY_SHOP_ID):
+        return {"ok": False,
+                "detail": "PRINTIFY_API_KEY / PRINTIFY_SHOP_ID not set"}
+    req = urllib.request.Request(
+        "https://api.printify.com/v1/shops.json",
+        headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            if r.status == 200:
+                return {"ok": True, "detail": "authenticated (shops reachable)"}
+            return {"ok": False, "detail": f"unexpected HTTP {r.status}"}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}

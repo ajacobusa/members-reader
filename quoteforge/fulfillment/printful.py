@@ -35,3 +35,52 @@ def create_order(order_id: str, recipient: dict, artwork_url: str,
                 "id": str(data.get("result", {}).get("id", ""))}
     except Exception as exc:  # noqa: BLE001
         return {"status": "error", "vendor": "printful", "detail": str(exc), "id": ""}
+
+
+# Printful's "fulfilled" means every item has shipped.
+_STATUS_MAP = {"fulfilled": "shipped", "partial": "shipped"}
+
+
+def get_order_status(printful_order_id: str) -> dict:
+    """Poll Printful for order status + tracking (mocked in TEST_MODE).
+
+    Normalized to the same shape gelato_api.get_gelato_order_status returns,
+    so the fulfillment tracker can treat every vendor identically.
+    """
+    from quoteforge.config import PRINTFUL_API_KEY, TEST_MODE
+    if TEST_MODE or not PRINTFUL_API_KEY:
+        return {"mock": True, "vendor": "printful", "status": "unknown",
+                "tracking_number": "", "tracking_url": "", "carrier": ""}
+    req = urllib.request.Request(
+        f"https://api.printful.com/orders/{printful_order_id}",
+        headers={"Authorization": f"Bearer {PRINTFUL_API_KEY}"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        data = json.loads(r.read().decode("utf-8"))
+    result = data.get("result", {}) or {}
+    raw = (result.get("status") or "unknown").lower()
+    shipment = (result.get("shipments") or [{}])[0]
+    return {
+        "vendor": "printful",
+        "status": _STATUS_MAP.get(raw, raw),
+        "tracking_number": shipment.get("tracking_number", ""),
+        "tracking_url": shipment.get("tracking_url", ""),
+        "carrier": shipment.get("carrier", ""),
+        "raw": result,
+    }
+
+
+def verify_printful_auth() -> dict:
+    """Live check that PRINTFUL_API_KEY is valid (no order created)."""
+    from quoteforge.config import PRINTFUL_API_KEY
+    if not PRINTFUL_API_KEY:
+        return {"ok": False, "detail": "PRINTFUL_API_KEY not set"}
+    req = urllib.request.Request(
+        "https://api.printful.com/orders?limit=1",
+        headers={"Authorization": f"Bearer {PRINTFUL_API_KEY}"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            if r.status == 200:
+                return {"ok": True, "detail": "authenticated (orders reachable)"}
+            return {"ok": False, "detail": f"unexpected HTTP {r.status}"}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}

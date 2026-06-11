@@ -217,6 +217,15 @@ def _cmd_verify_keys() -> int:
     print(f"  [{'PASS' if g['ok'] else ' -- ' if 'not set' in g['detail'] else 'FAIL'}] "
           f"Gelato: {g['detail']}")
 
+    # Printify / Printful — auth checks (no orders created; '--' = key not set,
+    # which is fine: these vendors are optional until you route products to them)
+    from quoteforge.fulfillment.printify import verify_printify_auth
+    from quoteforge.fulfillment.printful import verify_printful_auth
+    for label, res in (("Printify", verify_printify_auth()),
+                       ("Printful", verify_printful_auth())):
+        print(f"  [{'PASS' if res['ok'] else ' -- ' if 'not set' in res['detail'] else 'FAIL'}] "
+              f"{label}: {res['detail']}")
+
     # Gelato product UID mappings — must be real, not seed placeholders
     from quoteforge.etsy.gelato_catalog import verify_catalog_mappings
     m = verify_catalog_mappings()

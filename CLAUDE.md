@@ -2,7 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Projects in This Repository
+
+This repository contains several projects:
+
+- **QuoteForge (print-on-demand Etsy)** — ALL print-on-demand / Etsy work belongs in `quoteforge/` (tests in `quoteforge_tests/`). Etsy listings/gift finder/pricing live in `quoteforge/etsy/`, Printify/Printful fulfillment in `quoteforge/fulfillment/`, plus `catalog/`, `quotes/`, `automation/`, `marketing/`, `analytics/`. The generated storefront page is `docs/index.html`. Do not create print-on-demand Etsy files outside `quoteforge/`.
+- **members-reader** — Python library/CLI in `src/members_reader/` (documented below).
+- **stock_dashboard** — catalyst-driven stock picks dashboard (Dash + SQLite).
+
+## Project Overview (members-reader)
 
 `members-reader` — a Python library and CLI for reading member records from CSV files with automatic name-column detection. Zero runtime dependencies (standard library only). Python 3.10+.
 

@@ -134,4 +134,5 @@ def test_text_drag_and_size_controls(tmp_path):
     h = out.read_text(encoding="utf-8")
     assert "function initTextDrag" in h and "let TPOS=" in h
     assert "function setTextSize" in h and 'id="mtsize"' in h
-    assert "Drag on the preview to move" in h and "function resetTextPos" in h
+    assert "drag the wording on the preview to move it" in h
+    assert "function resetTextPos" in h
