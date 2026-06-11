@@ -1908,7 +1908,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var tl=document.getElementById('mtsizelbl'); if(tl)tl.textContent='Auto';
    var tr=document.getElementById('mtrot'); if(tr)tr.value=0;
    var trl=document.getElementById('mtrotlbl'); if(trl)trl.textContent='0°';
-   CURFMT = (d.formats && d.formats.length) ? d.formats[0].name : "";
+   // Designs without per-frame previews (synthesized occasion cards) still sell
+   // every format: default to the first material in SIZEMAP so sizes populate.
+   CURFMT = (d.formats && d.formats.length) ? d.formats[0].name
+          : (Object.keys(SIZEMAP)[0] || "");
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
    renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
@@ -1938,7 +1941,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function fillQty(){{const s=document.getElementById('mqty'); if(s&&!s.options.length){{
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
-   const rows=SIZEMAP[CURFMT]||[];
+   const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
    sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}} in - $${{r.price}}</option>`).join('');}}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
