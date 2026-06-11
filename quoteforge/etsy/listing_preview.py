@@ -1801,17 +1801,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="prsub">${{MAT_SHORT}} &middot; ${{OPT_COUNT}} options to $${{PRICE_HI}}</div>
          <span class="fb">Tap to choose frame / canvas &amp; see it</span>
        </div>
-     </div>`).join('') +
-   // A tile that sits BESIDE the filtered product(s) so you can jump back to all
-   // designs / the occasion tiles without scrolling to the top. Hidden until a
-   // filter is active.
-   `<div class="card occallcard" id="occallcard" style="display:none">
-      <div class="occallinner">
-        <div class="occallicon">&#8593;</div>
-        <div class="occalltitle">Browse all occasions</div>
-        <button class="occallbtn" onclick="showAllDesigns()">Show all designs</button>
-      </div>
-    </div>`;
+     </div>`).join('') +'';
  }}
  // Filter the product grid by occasion (Shop by occasion chips).
  // Occasion -> matching keywords (so chips match real product titles).
@@ -1840,9 +1830,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const ok = !q || cocc===q;
      c.style.display = ok ? '' : 'none'; if(ok) shown++;
    }});
-   // Show the "Show all designs" tile beside the filtered product(s).
-   const allCard=document.getElementById('occallcard');
-   if(allCard) allCard.style.display = (q && shown>0) ? '' : 'none';
    // Repeat the controls at the END of the results so you can switch occasion
    // right where you finish reading, without scrolling back up.
    const bottom=document.getElementById('occbottom');
