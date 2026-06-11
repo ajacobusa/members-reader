@@ -644,9 +644,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         return _web_img(src)
 
     # Build a compact JS data array.
+    #
+    # The grid shows ONE design per occasion (the first seen). Pre-compute that
+    # survivor set so dropped duplicates are skipped BEFORE any rendering:
+    # otherwise we'd emit their gallery JPEGs + frame previews into docs/assets
+    # as orphans on every rebuild (which the Site Doctor would then prune - a
+    # pointless churn) and waste ~half the rebuild time rendering them.
+    survivors: set = set()
+    _seen_occ: set = set()
+    for b in bundles:
+        k = _listing_occasion_key(b.listing_n, b.title, getattr(b, "category", ""))
+        if k not in _seen_occ:
+            _seen_occ.add(k)
+            survivors.add(b.listing_n)
     listings = []
     _OCC_COUNTER.clear()       # fresh occasion-quote rotation per build
     for b in bundles:
+        if b.listing_n not in survivors:
+            continue           # dropped duplicate - render nothing for it
         gallery = sorted((kit_dir).glob(f"{b.listing_n:02d}_*/gallery/*.png"))
         if not gallery:
             continue
