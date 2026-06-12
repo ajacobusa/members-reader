@@ -1540,11 +1540,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;
    line-height:1.55}}
  @media(max-width:560px){{ .fcrow{{flex-direction:column;gap:0}} }}
- #esectabs{{display:flex;gap:6px;margin:10px 0 8px}}
- #esectabs button{{flex:1;padding:8px 6px;border-radius:10px;cursor:pointer;
-   border:1px solid var(--line);background:#fff;font-size:13px;color:#5a6b62}}
+ .wordbox{{background:#fffdf4;border:2px solid var(--gold);border-radius:12px;
+   padding:10px 12px;margin:12px 0;box-shadow:0 0 0 4px rgba(199,164,77,.12)}}
+ .wordbox .wordlbl{{font-size:14.5px;font-weight:700;color:var(--green);
+   margin-bottom:6px}}
+ .wordbox textarea{{font-size:15px;min-height:88px;background:#fff}}
+ .wordbox .cc{{margin-top:4px}}
+ #esectabs{{display:flex;gap:8px;margin:12px 0 10px}}
+ #esectabs button{{flex:1;padding:12px 8px;border-radius:12px;cursor:pointer;
+   border:2px solid #cdbf98;background:#fffdf4;font-size:14.5px;
+   font-weight:600;color:var(--green)}}
  #esectabs button.sel{{background:var(--green);color:#fff;
-   border-color:var(--green);font-weight:700}}
+   border-color:var(--green);font-weight:700;
+   box-shadow:0 0 0 4px rgba(16,61,46,.14)}}
+ #esectabs button.done{{background:#eaf4ed;border-color:#9fc4ab;color:#0f7a3d}}
+ #esectabs button.done::before{{content:"✓ "}}
+ .sizeprompt{{background:#fffdf4;border:2px solid var(--gold);border-radius:10px;
+   padding:8px 12px;margin-bottom:8px;font-size:13.5px;color:var(--green)}}
+ @keyframes ctapulse{{0%{{box-shadow:0 0 0 0 rgba(16,61,46,.45)}}
+   70%{{box-shadow:0 0 0 14px rgba(16,61,46,0)}}
+   100%{{box-shadow:0 0 0 0 rgba(16,61,46,0)}}}}
+ .pulseanim{{animation:ctapulse 1.1s ease-out 3;border-radius:12px}}
  .esecnav{{display:flex;gap:8px;justify-content:space-between;margin-top:12px}}
  .esecnav .esecnext{{flex:1;padding:11px 14px;border-radius:999px;border:0;
    cursor:pointer;background:var(--green);color:#fff;font-weight:700;
@@ -1769,7 +1785,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
-       <div class="mtrust">&#128737;&#65039; Happiness guarantee &nbsp;&middot;&nbsp; &#128444;&#65039; Free digital proof &nbsp;&middot;&nbsp; &#128230; Tracked shipping</div>
        <div style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
@@ -1790,10 +1805,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="sw" id="mtxt"></div>
          <div class="swrow">🛋️ Your room wall <span style="color:#9aa49c;font-weight:400">(preview against your wall color)</span></div>
          <div class="sw" id="mwall"></div>
-         <div class="swrow">Your wording</div>
-         <textarea id="mtext" maxlength="250" rows="3" oninput="onText()"
-           placeholder="Type your own message (optional) - previews live"></textarea>
-         <div class="cc"><span id="mcc">0 / 250</span> characters</div>
+         <div class="wordbox">
+           <div class="wordlbl">✍️ Your wording - make it yours</div>
+           <textarea id="mtext" maxlength="250" rows="4" oninput="onText()"
+             placeholder="Type your message - e.g. &quot;Happy 40th, Sam - love you to the mountains and back&quot;. It previews live on the left."></textarea>
+           <div class="cc"><span id="mcc">0 / 250</span> characters &middot; leave empty to keep the quote shown</div>
+         </div>
          <div class="swrow">Font</div>
          <div class="fonts" id="mfonts"></div>
          <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span></div>
@@ -1843,7 +1860,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            tap Next - this step is optional.</div>
          <div class="esecnav">
            <button type="button" class="esecback" onclick="editStep(1)">← Back</button>
-           <button type="button" class="esecnext" onclick="editStep(3)">Next: frame &amp; size →</button>
+           <button type="button" class="esecnext" id="esec2next" onclick="editStep(3)">Next: frame &amp; size →</button>
          </div>
        </div>
        <div class="esec" id="esec3" style="display:none">
@@ -1853,6 +1870,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        <div class="orderbox" id="morderbox">
          <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)</div>
+         <div id="sizeprompt" class="sizeprompt" style="display:none">👇 Pick
+           your <b>size</b> &amp; <b>quantity</b>, then tap <b>Add to basket</b></div>
          <div class="orow">
            <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
            <label>Qty <select id="mqty"></select></label>
@@ -2161,15 +2180,25 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(s) s.style.display=(i===n)?'block':'none';
    }}
    document.querySelectorAll('#esectabs button').forEach(function(b){{
-     const cur=parseInt(b.dataset.e)===n;
+     const e=parseInt(b.dataset.e), cur=e===n;
      b.classList.toggle('sel',cur);
+     b.classList.toggle('done', e<n);     // finished sections read as progress
      if(cur) b.setAttribute('aria-current','step');
      else b.removeAttribute('aria-current');
    }});
+   if(n===3) promptSizeQty();   // never leave the customer waiting: guide them
    // On phones the sections sit below the preview - bring them into view.
    const tabs=document.getElementById('esectabs');
    if(tabs && window.matchMedia('(max-width:760px)').matches)
      tabs.scrollIntoView({{behavior:'smooth', block:'start'}});
+ }}
+ // Spotlight the size & quantity pickers (shown on arrival in Frame & size
+ // and again after a frame is chosen) so the path to Add to basket is obvious.
+ function promptSizeQty(){{
+   const p=document.getElementById('sizeprompt'); if(p)p.style.display='block';
+   const row=document.querySelector('#morderbox .orow');
+   if(row){{ row.classList.remove('pulseanim'); void row.offsetWidth;
+     row.classList.add('pulseanim'); }}
  }}
  function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
  function openBasketFromModal(){{ toggleBasket(); }}
@@ -2320,7 +2349,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        acc.onclick=function(){{ finalStep(2); }}; }}
    }} else if(n===2){{
      if(title)title.textContent='Step 2 of 3 - Your details';
-     if(sub)sub.textContent='Where should we send your free proof - and where does the order ship?';
+     if(sub)sub.textContent='Shipping address verification and final confirmation.';
      if(sum)sum.innerHTML=_contactFormHTML()+
        '<div class="fcback" role="button" tabindex="0" onclick="finalStep(1)">&larr; Back to basket</div>';
      if(acc){{ acc.textContent='Next: confirm →'; acc.disabled=false;
@@ -2374,12 +2403,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      let msg, label, action;
      if(emailed){{
        msg='✅ Accepted &amp; saved - <b>this is your final approval</b>. A '+
-         'confirmation email is on its way, with a free digital proof of each '+
-         'piece so you can see exactly what prints.';
+         'confirmation email is on its way.';
      }} else {{
-       msg='✅ Accepted &amp; saved - <b>this is your final approval</b>. We\\'ll '+
-         'email a free digital proof of each piece so you can see exactly '+
-         'what prints.';
+       msg='✅ Accepted &amp; saved - <b>this is your final approval</b>.';
      }}
      if(PAY_LINK){{
        // Same-flow payment: hosted secure checkout opens on THIS click -
@@ -2391,7 +2417,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          'this site.'+
          '<div class="nextsteps"><b>What happens next</b><ol>'+
          '<li>Pay securely (the checkout opens when you tap below).</li>'+
-         '<li>We email a <b>free digital proof</b> of each piece - spot anything wrong? Reply right away and we fix it before printing.</li>'+
          '<li>We print &amp; ship with tracking.</li></ol></div>';
      }} else if(ETSY_SHOP_URL){{ label='Continue to secure checkout →';
        action=function(){{ window.open(ETSY_SHOP_URL,'_blank'); }};
@@ -2403,12 +2428,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        label='Got it ✓'; action=function(){{ closeProof(); }};
        const em=(CONTACT&&CONTACT.email)||knownEmail();
        msg+='<div class="nextsteps"><b>What happens next</b><ol>'+
-         '<li>We prepare a <b>free digital proof</b> of each piece and email it to you.</li>'+
-         '<li>Spot anything wrong on the proof? Reply right away and we fix it before printing.</li>'+
          '<li>We send your <b>secure payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
          '<li>We print &amp; ship with tracking.</li></ol>'+
          (em?`We\\'ll email <b>${{em}}</b>.`
-           :'<div class="pfemail"><label for="pfemail">Where should we send your proof &amp; payment link?</label> '+
+           :'<div class="pfemail"><label for="pfemail">Where should we send your order confirmation &amp; payment link?</label> '+
             '<input id="pfemail" type="email" placeholder="you@email.com"> '+
             '<button type="button" onclick="saveProofEmail()">Save</button> '+
             '<span id="pfemailok" role="status" aria-live="polite"></span></div>')+
@@ -2488,7 +2511,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo');                    // dragging now moves the PHOTO
-     _showPhotoCtl(true); drawArt(); aiCheckPhoto(f);}};
+     _showPhotoCtl(true); drawArt(); aiCheckPhoto(f);
+     // Photo landed: turn Next into a pulsing, explicit call to action so
+     // the customer keeps moving instead of waiting on this screen.
+     const nx=document.getElementById('esec2next');
+     if(nx){{ nx.innerHTML='Photo added ✓ - Next: frame &amp; size →';
+       nx.classList.remove('pulseanim'); void nx.offsetWidth;
+       nx.classList.add('pulseanim'); }} }};
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
@@ -2745,6 +2774,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
    CURFMT = f.name; drawArt(); fillSizes();   // update sizes for this format
+   promptSizeQty();                  // frame picked -> move them to size & qty
  }}
  function b2bSend(to){{
    const g=id=>(document.getElementById(id)||{{}}).value||'';

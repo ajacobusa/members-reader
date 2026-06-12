@@ -125,6 +125,57 @@ def test_contact_and_shipping_collected_before_completion(tmp_path):
     assert "jf_contact" in h          # persisted across refreshes
 
 
+def test_step2_is_shipping_address_verification(tmp_path):
+    h = _page(tmp_path)
+    assert "Shipping address verification" in h
+
+
+def test_no_proof_promises_in_checkout_copy(tmp_path):
+    """Acceptance is final - the accepted screen and next-steps no longer
+    promise a proof email round."""
+    h = _page(tmp_path)
+    assert "see exactly what prints" not in h
+    assert "Spot anything wrong on the proof" not in h
+    assert "We prepare a <b>free digital proof</b>" not in h
+
+
+def test_modal_trust_line_removed(tmp_path):
+    """The 'Happiness guarantee / Free digital proof' chip line is gone from
+    the editor modal (it crowded the title; trust copy lives elsewhere)."""
+    h = _page(tmp_path)
+    assert 'class="mtrust"' not in h
+
+
+def test_section_tabs_show_completion(tmp_path):
+    """Finished sections get a visible done state so the chips read as
+    progress, and the styling is prominent (not faint gray pills)."""
+    h = _page(tmp_path)
+    assert "#esectabs button.done" in h           # completion styling exists
+    assert "classList.toggle('done'" in h         # JS marks finished tabs
+
+
+def test_customer_is_moved_forward_automatically(tmp_path):
+    """No waiting around: arriving at Frame & size auto-prompts the size &
+    quantity pickers, and a successful photo upload turns the Next button
+    into a pulsing 'Photo added - Next' call to action."""
+    h = _page(tmp_path)
+    assert 'id="sizeprompt"' in h
+    assert "function promptSizeQty" in h
+    assert h.count("promptSizeQty(") >= 2         # wired, not just defined
+    assert 'id="esec2next"' in h
+    assert "Photo added" in h
+    assert "pulseanim" in h
+
+
+def test_wording_field_is_prominent(tmp_path):
+    """The wording input is the heart of personalization - it sits in a
+    highlighted box with a bold label, not a thin gray line."""
+    h = _page(tmp_path)
+    assert 'class="wordbox"' in h
+    assert "Your wording - make it yours" in h
+    assert ".wordbox" in h            # dedicated styling exists
+
+
 def test_ship_to_heading_is_plain(tmp_path):
     """The step-3 recap card is headed 'Ship to' (not 'Send proof & ship to')."""
     h = _page(tmp_path)
