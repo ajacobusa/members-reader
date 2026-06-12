@@ -237,13 +237,21 @@ def test_section_tabs_show_completion(tmp_path):
     assert "classList.toggle('done'" in h         # JS marks finished tabs
 
 
-def test_guidance_pulse_blinks_until_task_complete(tmp_path):
-    """The size/qty spotlight and the 'Photo added - Next' button keep
-    blinking (infinite animation) until the customer actually completes
-    the step - not a fixed 3 blinks that quietly give up."""
+def test_guidance_engine_one_beacon_to_checkout(tmp_path):
+    """A single guidance engine walks the customer through the whole order:
+    Design Next -> Photo Next -> pick size -> Review -> Add to basket ->
+    Go to checkout. Exactly ONE beacon blinks at a time (infinite, until
+    that task completes), and going Back re-lights that step's beacon."""
     h = _page(tmp_path)
     assert "infinite" in h.split(".pulseon{", 1)[1].split("}", 1)[0]
-    assert "classList.remove('pulseon')" in h
+    assert "function guide" in h
+    assert "querySelectorAll('.pulseon')" in h     # engine clears, then lights
+    for el in ('id="esec1next"', 'id="esec2next"', 'id="mreviewbtn"',
+               'id="seefinalbtn"', 'id="maddbtn"'):
+        assert el in h, f"beacon target {el} missing"
+    engine = h.split("function guide", 1)[1].split("function promptSizeQty", 1)[0]
+    assert "pacheckout" in engine                  # final beacon: checkout
+    assert "tabglow" in h                          # active tab breathes
 
 
 def test_description_fills_left_column_and_is_formatted(tmp_path):
@@ -265,14 +273,12 @@ def test_no_approval_gate_in_listing_descriptions(tmp_path):
     assert "for your approval" not in h
 
 
-def test_guidance_chain_moves_to_review_button(tmp_path):
-    """One blinker at a time, in task order: size/qty blinks until a size is
-    chosen, then 'Review this design' blinks until the review is opened or
-    the item is added."""
+def test_guidance_resumes_after_going_back(tmp_path):
+    """The engine recomputes on every section change (editStep -> guide), so
+    hitting Back re-lights that earlier step's beacon until it is finished."""
     h = _page(tmp_path)
-    assert 'id="mreviewbtn"' in h
-    assert "function _guideNext" in h
-    assert "REVIEWED" in h
+    assert "REVIEWED" in h and "ADDED" in h        # completion state tracked
+    assert h.count("guide()") >= 4                 # wired into every hook
 
 
 def test_customer_is_moved_forward_automatically(tmp_path):

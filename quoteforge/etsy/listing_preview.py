@@ -1579,6 +1579,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .pulseanim{{animation:ctapulse 1.1s ease-out 3;border-radius:12px}}
  /* Task-bound pulse: blinks until the customer actually finishes the step. */
  .pulseon{{animation:ctapulse 1.2s ease-out infinite;border-radius:12px}}
+ /* The active section tab breathes softly - a quiet 'you are here' while
+    the strong pulse marks the one action that completes the task. */
+ @keyframes tabglowk{{0%,100%{{box-shadow:0 6px 16px rgba(16,61,46,.28)}}
+   50%{{box-shadow:0 2px 22px 6px rgba(16,61,46,.12)}}}}
+ #esectabs button.tabglow{{animation:tabglowk 1.8s ease-in-out infinite}}
  .esecnav{{display:flex;gap:8px;justify-content:space-between;margin-top:12px}}
  .esecnav .esecnext{{flex:1;padding:11px 14px;border-radius:999px;border:0;
    cursor:pointer;background:var(--green);color:#fff;font-weight:700;
@@ -1780,7 +1785,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="mleft" id="mleftcol">
        <canvas id="mcanvas" width="520" height="650"></canvas>
        <div id="mcrop" class="mcrop"></div>
-       <button type="button" class="seefinal" aria-label="See final preview" onclick="showFinalProof('item')">
+       <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar">
          <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
@@ -1879,7 +1884,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <b>FREE emailed proof</b> shows exactly what prints.</div>
        </div>
        <div class="esecnav">
-         <button type="button" class="esecnext" onclick="editStep(2)">Next: add your photo →</button>
+         <button type="button" class="esecnext" id="esec1next" onclick="editStep(2)">Next: add your photo →</button>
        </div>
        </div>
        <div class="esec" id="esec2" style="display:none">
@@ -1918,7 +1923,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div id="mreview" class="mreview"></div>
          <div class="orderactions">
            <button type="button" class="savebtn" id="mreviewbtn" onclick="showFinalProof('item')">👁️ Review this design</button>
-           <button class="addbasketbtn" onclick="addToBasket()">🛒 Add to basket</button>
+           <button type="button" class="addbasketbtn" id="maddbtn" onclick="addToBasket()">🛒 Add to basket</button>
          </div>
          <div id="mbasketbar" class="mbasketbar" onclick="openBasketFromModal()"></div>
          <!-- After adding to basket: clear next-step choices, so the buyer never
@@ -2085,7 +2090,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}).join('');
  }}
  function openM(i){{
-   CUR = i; RATING = 0; paintStars(); setStep(1); editStep(1); REVIEWED=false;
+   CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
+   setStep(1); editStep(1);
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
@@ -2245,11 +2251,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(cur) b.setAttribute('aria-current','step');
      else b.removeAttribute('aria-current');
    }});
+   ESEC=n;
    if(n===3) promptSizeQty();   // never leave the customer waiting: guide them
-   if(n!==2){{ // leaving the photo step completes its task - stop that blink
-     const nx=document.getElementById('esec2next');
-     if(nx) nx.classList.remove('pulseon');
-   }}
+   guide();                     // recompute the single beacon for this step
    // On phones the sections sit below the preview - bring them into view.
    const tabs=document.getElementById('esectabs');
    if(tabs && window.matchMedia('(max-width:760px)').matches)
@@ -2257,19 +2261,34 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Spotlight the size & quantity pickers (shown on arrival in Frame & size
  // and again after a frame is chosen) so the path to Add to basket is obvious.
- // ONE blinker at a time, in task order: size/qty until a size is chosen,
- // then "Review this design" until the review opens (or the item is added).
- let REVIEWED=false;
- function _guideNext(){{
-   const row=document.querySelector('#morderbox .orow');
-   const rb=document.getElementById('mreviewbtn');
-   const sv=(document.getElementById('msize')||{{}}).value;
-   if(row) row.classList.toggle('pulseon', !sv);
-   if(rb) rb.classList.toggle('pulseon', !!sv && !REVIEWED);
+ // ── Guidance engine: ONE beacon at a time walks the customer to checkout.
+ // Task order: finish Design -> finish Photo -> pick size & qty -> review
+ // the design -> add to basket -> go to checkout. The engine recomputes on
+ // every state change, so going Back re-lights that step's beacon until the
+ // task is genuinely complete.
+ let ESEC=1, REVIEWED=false, ADDED=false;
+ function guide(){{
+   document.querySelectorAll('.pulseon').forEach(function(e){{
+     e.classList.remove('pulseon'); }});
+   // The active section tab breathes softly (the strong pulse stays on the
+   // ONE action that finishes the current task).
+   document.querySelectorAll('#esectabs button').forEach(function(b){{
+     b.classList.toggle('tabglow', b.classList.contains('sel')); }});
+   const on=function(id){{ const e=document.getElementById(id);
+     if(e) e.classList.add('pulseon'); }};
+   if(ADDED){{ const pa=document.querySelector('#postadd .pacheckout');
+     if(pa) pa.classList.add('pulseon'); return; }}
+   if(ESEC===1){{ on('esec1next'); return; }}
+   if(ESEC===2){{ on('esec2next'); return; }}
+   const sv=((document.getElementById('msize')||{{}}).value)||'';
+   if(!sv){{ const row=document.querySelector('#morderbox .orow');
+     if(row) row.classList.add('pulseon'); return; }}
+   if(!REVIEWED){{ on('mreviewbtn'); on('seefinalbtn'); return; }}
+   on('maddbtn');
  }}
  function promptSizeQty(){{
    const p=document.getElementById('sizeprompt'); if(p)p.style.display='block';
-   _guideNext();
+   guide();
  }}
  function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
  function openBasketFromModal(){{ toggleBasket(); }}
@@ -2297,10 +2316,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!_placeholderOk()) return;
    const before=CART.length; addToOrder();
    if(CART.length>before){{
-     // Task complete: stop ALL guidance blinks + hide the prompt.
-     REVIEWED=true; _guideNext();
-     const row=document.querySelector('#morderbox .orow');
-     if(row) row.classList.remove('pulseon');
+     // Item added: the beacon moves to "Go to checkout" on the post-add bar.
+     ADDED=true; REVIEWED=true; guide();
      const p=document.getElementById('sizeprompt'); if(p)p.style.display='none';
      pulseBasket();
      const bar=document.getElementById('mbasketbar');
@@ -2376,7 +2393,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(img)img.style.display='none';
      _loadContact(); finalStep(1);
    }} else {{
-     REVIEWED=true; _guideNext();         // review opened: that task is done
+     REVIEWED=true; guide();              // review opened: that task is done
      if(cv&&img){{ try{{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }}catch(e){{}} }}
      if(title)title.textContent='Your final design';
      if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
@@ -2624,11 +2641,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo');                    // dragging now moves the PHOTO
      _showPhotoCtl(true); drawArt(); aiCheckPhoto(f);
-     // Photo landed: turn Next into a blinking, explicit call to action that
-     // keeps pulsing until the customer actually moves on.
+     // Photo landed: make Next explicit (the guidance engine keeps it
+     // blinking until the customer actually moves on).
      const nx=document.getElementById('esec2next');
-     if(nx){{ nx.innerHTML='Photo added ✓ - Next: frame &amp; size →';
-       nx.classList.add('pulseon'); }} }};
+     if(nx) nx.innerHTML='Photo added ✓ - Next: frame &amp; size →';
+     guide(); }};
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
@@ -2701,7 +2718,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // and move the guidance blink along to the next task (review).
    const p=document.getElementById('sizeprompt');
    if(p) p.innerHTML='👇 Pick your <b>size</b> &amp; <b>quantity</b>, then tap <b>Add to basket</b>';
-   _guideNext();
+   guide();
  }}
  // Re-check the uploaded photo's resolution against the CURRENTLY selected size.
  function recheckPhotoRes(){{
