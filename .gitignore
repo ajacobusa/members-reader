@@ -31,7 +31,9 @@ coverage.xml
 .vscode/
 .idea/
 *.swp
-.claude/
+.claude/*
+# Project agent definitions ARE versioned (the rest of .claude stays local)
+!.claude/agents/
 
 # OS
 .DS_Store
