@@ -237,6 +237,16 @@ def test_section_tabs_show_completion(tmp_path):
     assert "classList.toggle('done'" in h         # JS marks finished tabs
 
 
+def test_guidance_pulse_blinks_until_task_complete(tmp_path):
+    """The size/qty spotlight and the 'Photo added - Next' button keep
+    blinking (infinite animation) until the customer actually completes
+    the step - not a fixed 3 blinks that quietly give up."""
+    h = _page(tmp_path)
+    assert "infinite" in h.split(".pulseon{", 1)[1].split("}", 1)[0]
+    assert h.count("classList.add('pulseon')") >= 2
+    assert "classList.remove('pulseon')" in h
+
+
 def test_customer_is_moved_forward_automatically(tmp_path):
     """No waiting around: arriving at Frame & size auto-prompts the size &
     quantity pickers, and a successful photo upload turns the Next button
