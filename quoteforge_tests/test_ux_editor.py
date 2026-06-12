@@ -58,6 +58,13 @@ def test_status_regions_are_aria_live(tmp_path):
     assert h.count('aria-live="polite"') >= 3
 
 
+def test_brand_serif_font_is_global(tmp_path):
+    """The Cormorant Garamond brand font applies to the WHOLE page (body
+    root + inheritance), not just headings."""
+    h = _page(tmp_path)
+    assert "body{font-family:'Cormorant Garamond'" in h
+
+
 def test_no_native_alerts_in_purchase_flow(tmp_path):
     """Browser alert() popups are banned from the buying flow: an empty
     basket disables Checkout (no alert), and a missing size highlights the

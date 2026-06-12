@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Core fonts (above-the-fold: headings + body) load normally. -->
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
 <!-- Personalization-editor preview fonts load async (non-render-blocking); ready by
      the time a buyer opens the editor, but they never delay first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -37,8 +37,10 @@
  :root{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
    --cream:#f7f4ee;--ink:#23302b;--muted:#6b7a72;--line:#e7e1d6}
  *{box-sizing:border-box}
- body{font-family:'Inter','Segoe UI',-apple-system,Helvetica,Arial,sans-serif;margin:0;
-   background:var(--cream);color:var(--ink);line-height:1.62;font-size:16px;
+ /* Brand serif everywhere: Cormorant Garamond is the ONE site font (weight
+    500+ and a slightly larger base size keep it readable at small sizes). */
+ body{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;margin:0;
+   background:var(--cream);color:var(--ink);line-height:1.6;font-size:17px;
    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
    text-rendering:optimizeLegibility}
  h1,h2,h3,.serif{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;
@@ -365,7 +367,7 @@
    box-shadow:0 20px 50px rgba(0,0,0,.3);display:none;overflow:hidden}
  .angehdr{background:var(--green);color:#e8d8a8;padding:13px 16px;
    font-family:'Cormorant Garamond',serif;font-size:20px}
- .angehdr small{display:block;font-family:Inter,sans-serif;font-size:11px;
+ .angehdr small{display:block;font-family:inherit;font-size:11px;
    color:#cfe0d6}
  #angeMsgs{height:300px;overflow:auto;padding:12px;background:#f7f4ee}
  .amsg{margin:6px 0;padding:9px 12px;border-radius:12px;font-size:13.5px;
