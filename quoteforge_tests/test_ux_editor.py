@@ -243,8 +243,17 @@ def test_guidance_pulse_blinks_until_task_complete(tmp_path):
     the step - not a fixed 3 blinks that quietly give up."""
     h = _page(tmp_path)
     assert "infinite" in h.split(".pulseon{", 1)[1].split("}", 1)[0]
-    assert h.count("classList.add('pulseon')") >= 2
     assert "classList.remove('pulseon')" in h
+
+
+def test_guidance_chain_moves_to_review_button(tmp_path):
+    """One blinker at a time, in task order: size/qty blinks until a size is
+    chosen, then 'Review this design' blinks until the review is opened or
+    the item is added."""
+    h = _page(tmp_path)
+    assert 'id="mreviewbtn"' in h
+    assert "function _guideNext" in h
+    assert "REVIEWED" in h
 
 
 def test_customer_is_moved_forward_automatically(tmp_path):

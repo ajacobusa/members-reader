@@ -1905,7 +1905,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          </div>
          <div id="mreview" class="mreview"></div>
          <div class="orderactions">
-           <button type="button" class="savebtn" onclick="showFinalProof('item')">👁️ Review this design</button>
+           <button type="button" class="savebtn" id="mreviewbtn" onclick="showFinalProof('item')">👁️ Review this design</button>
            <button class="addbasketbtn" onclick="addToBasket()">🛒 Add to basket</button>
          </div>
          <div id="mbasketbar" class="mbasketbar" onclick="openBasketFromModal()"></div>
@@ -2061,7 +2061,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    backToOccasions();
  }}
  function openM(i){{
-   CUR = i; RATING = 0; paintStars(); setStep(1); editStep(1);
+   CUR = i; RATING = 0; paintStars(); setStep(1); editStep(1); REVIEWED=false;
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
@@ -2233,10 +2233,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Spotlight the size & quantity pickers (shown on arrival in Frame & size
  // and again after a frame is chosen) so the path to Add to basket is obvious.
+ // ONE blinker at a time, in task order: size/qty until a size is chosen,
+ // then "Review this design" until the review opens (or the item is added).
+ let REVIEWED=false;
+ function _guideNext(){{
+   const row=document.querySelector('#morderbox .orow');
+   const rb=document.getElementById('mreviewbtn');
+   const sv=(document.getElementById('msize')||{{}}).value;
+   if(row) row.classList.toggle('pulseon', !sv);
+   if(rb) rb.classList.toggle('pulseon', !!sv && !REVIEWED);
+ }}
  function promptSizeQty(){{
    const p=document.getElementById('sizeprompt'); if(p)p.style.display='block';
-   const row=document.querySelector('#morderbox .orow');
-   if(row) row.classList.add('pulseon');   // blinks until Add to basket
+   _guideNext();
  }}
  function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
  function openBasketFromModal(){{ toggleBasket(); }}
@@ -2264,7 +2273,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!_placeholderOk()) return;
    const before=CART.length; addToOrder();
    if(CART.length>before){{
-     // Task complete: stop the size/qty guidance blink + hide the prompt.
+     // Task complete: stop ALL guidance blinks + hide the prompt.
+     REVIEWED=true; _guideNext();
      const row=document.querySelector('#morderbox .orow');
      if(row) row.classList.remove('pulseon');
      const p=document.getElementById('sizeprompt'); if(p)p.style.display='none';
@@ -2342,6 +2352,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(img)img.style.display='none';
      _loadContact(); finalStep(1);
    }} else {{
+     REVIEWED=true; _guideNext();         // review opened: that task is done
      if(cv&&img){{ try{{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }}catch(e){{}} }}
      if(title)title.textContent='Your final design';
      if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
@@ -2662,9 +2673,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    drawArt();
  }}
  function onSizeChange(){{ drawArt(); updateReview(); recheckPhotoRes();
-   // Size picked: clear any "choose a size first" warning back to the default.
+   // Size picked: clear any "choose a size first" warning back to the default,
+   // and move the guidance blink along to the next task (review).
    const p=document.getElementById('sizeprompt');
    if(p) p.innerHTML='👇 Pick your <b>size</b> &amp; <b>quantity</b>, then tap <b>Add to basket</b>';
+   _guideNext();
  }}
  // Re-check the uploaded photo's resolution against the CURRENTLY selected size.
  function recheckPhotoRes(){{
