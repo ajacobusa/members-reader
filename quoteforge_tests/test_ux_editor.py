@@ -331,7 +331,8 @@ def test_design_tips_are_benefit_chips_not_text_walls(tmp_path):
     the move-toggle explainer is gone - the control explains itself."""
     h = _page(tmp_path)
     assert 'class="freebar"' in h
-    assert h.count('class="fchk"') >= 3
+    assert h.count('class="fchk"') >= 2
+    assert "Free emailed proof - exactly what prints" not in h
     assert "Use the <b>Move: Text / Photo</b> toggle" not in h
 
 

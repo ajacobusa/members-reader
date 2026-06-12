@@ -1901,7 +1901,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="freebar" role="note">
            <span class="fchk">✓ Personalization is 100% FREE</span>
            <span class="fchk">✓ Preview updates instantly</span>
-           <span class="fchk">✓ Free emailed proof - exactly what prints</span>
          </div>
        </div>
        <div class="esecnav">
