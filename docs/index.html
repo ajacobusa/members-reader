@@ -717,6 +717,10 @@
    padding:12px 14px;border-radius:999px;background:var(--green);color:#fff;
    font-weight:700}
  .bpactions button[disabled]{opacity:.45;cursor:not-allowed}
+ .bpmore{display:block;width:100%;margin:0 0 8px;padding:11px;cursor:pointer;
+   border:1.5px solid var(--green);border-radius:999px;background:#fff;
+   color:var(--green);font-weight:700;font-size:14px}
+ .bpmore:hover{background:var(--green);color:#fff}
  .mbox h2{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}
  .mprice{font-weight:700;color:var(--green);font-size:24px;margin:6px 0}
  .mdescbox{margin-top:12px;background:#fff;border:1px solid var(--line);
@@ -1343,6 +1347,10 @@
    const co=document.getElementById('bpcobtn'), cl=document.getElementById('bpclearbtn');
    if(co)co.disabled=!CART.length;
    if(cl)cl.disabled=!CART.length;
+   // "Add another design" only makes sense once something is in the basket
+   // (the empty state has its own Browse designs CTA).
+   const mo=document.getElementById('bpmorebtn');
+   if(mo)mo.style.display=CART.length?'block':'none';
    const ln=document.getElementById('basketLines'), tt=document.getElementById('basketTotal');
    if(!ln) return;
    if(!CART.length){ ln.innerHTML='<div class="note">Your basket is empty. '+
@@ -2200,6 +2208,8 @@
     <div id="basketLines"></div>
     <div id="basketTotal" class="bptot"></div>
     <div id="basketTaxNote" class="bptaxnote"></div>
+    <button type="button" class="bpmore" id="bpmorebtn"
+      onclick="toggleBasket();location.hash='#shop'">← Add another design</button>
     <div class="bpactions">
       <button class="bpclear" id="bpclearbtn" onclick="clearBasket()">Empty basket</button>
       <button class="bpco" id="bpcobtn" onclick="checkout()">Checkout &rarr;</button>

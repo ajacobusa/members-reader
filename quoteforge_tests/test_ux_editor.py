@@ -104,6 +104,16 @@ def test_editor_controls_have_aria_labels(tmp_path):
     assert 'aria-label="See final preview"' in h
 
 
+def test_basket_offers_add_another_design(tmp_path):
+    """A filled basket offers a way back to the shop to order MORE items -
+    not just Empty/Checkout."""
+    h = _page(tmp_path)
+    assert 'id="bpmorebtn"' in h
+    assert "Add another design" in h
+    assert "bpmorebtn" in h.split("function renderBasket", 1)[1] \
+        .split("function checkout", 1)[0]      # shown/hidden with contents
+
+
 def test_basket_explains_how_payment_works(tmp_path):
     """Customers must never wonder 'where do I put my credit card?' - the
     basket says payment is completed securely on Etsy, with the methods."""
