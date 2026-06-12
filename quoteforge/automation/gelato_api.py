@@ -140,8 +140,12 @@ def check_and_update_tracking(order_id: str, gelato_order_id: str) -> dict:
     status = get_gelato_order_status(gelato_order_id)
     tn = status.get("tracking_number", "")
     if tn:
-        from quoteforge.db.database import update_order
-        update_order(order_id, tracking_number=tn, status="shipped")
+        from quoteforge.db.database import get_order, update_order
+        # Write only on first appearance / change - re-polls must not rewrite
+        # (and fsync) the row every 6 hours for already-tracked orders.
+        existing = (get_order(order_id) or {}).get("tracking_number") or ""
+        if tn != existing:
+            update_order(order_id, tracking_number=tn, status="shipped")
     return status
 
 

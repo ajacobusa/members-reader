@@ -50,6 +50,14 @@ def test_ratchet_passes_fully_documented_module(tmp_path):
     assert c["status"] == "OK", c["detail"]
 
 
+def test_ratchet_reports_unparseable_file_instead_of_crashing(tmp_path):
+    """A syntax-error or non-UTF-8 file anywhere in the package must surface
+    as a FAIL finding, never crash the whole nightly doctor."""
+    root = _write_module(tmp_path, '"""Doc."""\ndef broken(:\n')
+    c = sd.check_docs_ratchet(modules=["pkg"], root=root)
+    assert c["status"] == "FAIL" and "unparseable" in c["detail"]
+
+
 # ── Rendering tripwire: every referenced image must decode ──────────────
 
 def test_render_check_flags_corrupt_image(tmp_path):

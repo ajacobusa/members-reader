@@ -7,6 +7,7 @@ raises - fulfillment errors are returned, not thrown.
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.request
 
 
@@ -58,7 +59,11 @@ def get_order_status(printful_order_id: str) -> dict:
         data = json.loads(r.read().decode("utf-8"))
     result = data.get("result", {}) or {}
     raw = (result.get("status") or "unknown").lower()
-    shipment = (result.get("shipments") or [{}])[0]
+    # Partially-fulfilled orders can carry tracking on a later shipment -
+    # scan for the first one WITH a number (Gelato-adapter parity).
+    shipments = result.get("shipments") or []
+    shipment = next((s for s in shipments if s.get("tracking_number")),
+                    shipments[0] if shipments else {})
     return {
         "vendor": "printful",
         "status": _STATUS_MAP.get(raw, raw),
@@ -78,9 +83,13 @@ def verify_printful_auth() -> dict:
         "https://api.printful.com/orders?limit=1",
         headers={"Authorization": f"Bearer {PRINTFUL_API_KEY}"})
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            if r.status == 200:
-                return {"ok": True, "detail": "authenticated (orders reachable)"}
-            return {"ok": False, "detail": f"unexpected HTTP {r.status}"}
+        # urlopen raises HTTPError on any non-2xx, so reaching here means OK.
+        with urllib.request.urlopen(req, timeout=15):
+            return {"ok": True, "detail": "authenticated (orders reachable)"}
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            return {"ok": False,
+                    "detail": f"auth rejected (HTTP {exc.code}) - check key"}
+        return {"ok": False, "detail": f"unexpected HTTP {exc.code}"}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}

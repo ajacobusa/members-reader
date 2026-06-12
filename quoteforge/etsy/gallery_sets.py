@@ -82,7 +82,7 @@ def set_economics(gset: GallerySet) -> dict:
 
 def sets_for_occasion(occasion: str) -> list[GallerySet]:
     """Sets whose occasion or relationship matches the given text."""
-    low =(occasion or "").lower()
+    low = (occasion or "").lower()
     return [s for s in GALLERY_SETS
             if low and (low in s.occasion.lower() or low in s.relationship.lower())]
 

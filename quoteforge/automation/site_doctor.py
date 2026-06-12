@@ -14,14 +14,17 @@ Daily checks (each maps to an audit guarantee):
   4. alt_coverage      - every <img> on the page carries alt text
   5. assets_integrity  - every assets/... file the page references exists on disk
                          (a missing file = broken image for a customer)
-  6. orphan_assets     - assets on disk that nothing references (repo bloat)
-  7. occasion_filter   - apostrophe occasions stay JS-escaped and product cards
+  6. assets_render     - every referenced raster image actually DECODES
+                         (a corrupt/truncated file = broken image too)
+  7. orphan_assets     - assets on disk that nothing references (repo bloat)
+  8. occasion_filter   - apostrophe occasions stay JS-escaped and product cards
                          keep their exact data-occ key (the two past filter bugs)
-  8. design_count      - the grid still carries one design per occasion (>= 13)
-  9. editor_hooks      - the personalization editor's critical JS is present
+  9. design_count      - the grid still carries one design per occasion (>= 13)
+ 10. editor_hooks      - the personalization editor's critical JS is present
                          (drag toggle, rotation, photo zoom) - a rendering
                          regression tripwire
- 10. docs_ratchet      - the storefront-critical modules stay 100% docstring'd
+ 11. docs_ratchet      - the ENTIRE quoteforge package stays 100% docstring'd
+                         (every function, class, and module header)
 
 Self-healing (only safe, reversible actions):
   - any page-level failure  -> rebuild docs/index.html from source, re-check
@@ -122,9 +125,15 @@ def check_alt_coverage(html: str) -> dict:
             "detail": f"{len(imgs)} imgs, {len(missing)} missing alt"}
 
 
+def _asset_refs(html: str) -> set:
+    """All assets/<file> names the page references - the ONE place the
+    reference pattern lives (integrity, render, and orphan checks share it)."""
+    return set(re.findall(r'assets/([A-Za-z0-9_\-.]+)', html))
+
+
 def check_assets_integrity(html: str) -> dict:
     """Every assets/<file> the page references must exist (else broken images)."""
-    refs = set(re.findall(r'assets/([A-Za-z0-9_\-.]+)', html))
+    refs = _asset_refs(html)
     present = set(os.listdir(ASSETS)) if ASSETS.exists() else set()
     missing = sorted(refs - present)
     return {"name": "assets_integrity",
@@ -141,10 +150,13 @@ def check_assets_render(html: str, assets_dir: Path = None) -> dict:
     asset with Pillow (verify = header + structure check, no full decode of
     huge files) so a bad render surfaces nightly and is healed by rebuild.
     ``assets_dir`` is injectable for unit tests."""
-    from PIL import Image
+    try:
+        from PIL import Image
+    except ImportError:
+        return {"name": "assets_render", "status": "FAIL",
+                "detail": "Pillow not installed - cannot verify image decode"}
     assets_dir = assets_dir if assets_dir is not None else ASSETS
-    refs = sorted(set(re.findall(r'assets/([A-Za-z0-9_\-.]+)', html)))
-    raster = [f for f in refs if f.lower().endswith(
+    raster = [f for f in sorted(_asset_refs(html)) if f.lower().endswith(
         (".jpg", ".jpeg", ".png", ".webp", ".gif"))]
     corrupt = []
     for f in raster:
@@ -164,7 +176,7 @@ def check_assets_render(html: str, assets_dir: Path = None) -> dict:
 
 def check_orphan_assets(html: str) -> dict:
     """Assets on disk that nothing references - repo bloat we prune on heal."""
-    refs = set(re.findall(r'assets/([A-Za-z0-9_\-.]+)', html))
+    refs = _asset_refs(html)
     present = set(os.listdir(ASSETS)) if ASSETS.exists() else set()
     orphans = sorted(f for f in present - refs
                      if f.endswith((".jpg", ".jpeg", ".png", ".webp")))
@@ -287,9 +299,15 @@ def check_docs_ratchet(modules: list = None, root: Path = None) -> dict:
         for f in files:
             if "__pycache__" in f.parts:
                 continue
-            tree = ast.parse(f.read_text(encoding="utf-8"))
             relname = f.relative_to(root).as_posix()
-            # Module header (skipped for __init__.py, which is often empty).
+            try:
+                tree = ast.parse(f.read_text(encoding="utf-8"))
+            except (SyntaxError, UnicodeDecodeError, OSError) as exc:
+                # A scratch/broken file must surface as a finding, never
+                # crash the whole nightly doctor before any check runs.
+                undocumented.append(
+                    f"{relname}:1:unparseable ({type(exc).__name__})")
+                continue
             if f.name != "__init__.py" and not ast.get_docstring(tree):
                 undocumented.append(f"{relname}:1:missing module docstring")
             for n in ast.walk(tree):

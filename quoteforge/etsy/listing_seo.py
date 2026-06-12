@@ -265,7 +265,7 @@ def _relationship_tags(relationship: str, occasion: str, niche: str) -> list[str
 
 def _relationship_title(base_title: str, relationship: str, occasion: str) -> str:
     """Extend a base title with relationship + occasion keywords, capped at 140."""
-    rd =_REL_ALIAS.get(relationship.lower(), relationship.lower()).title()
+    rd = _REL_ALIAS.get(relationship.lower(), relationship.lower()).title()
     ok = _occ_kw(occasion)
     extra = (f"{ok.title()} Gift For {rd} Wall Art" if ok
              else f"Personalized {rd} Keepsake Wall Art")

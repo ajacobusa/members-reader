@@ -27,8 +27,9 @@ class Vendor:
 # Built-in vendors. Add a line to onboard a new supplier - nothing else needed.
 VENDORS: list[Vendor] = [
     Vendor("gelato", "Gelato", "api", "Primary POD - live price/availability sync"),
-    Vendor("printful", "Printful", "manual", "Add API key to automate later"),
-    Vendor("printify", "Printify", "manual", "Alternate POD vendor"),
+    Vendor("printful", "Printful", "api", "Auto-routes when PRINTFUL_API_KEY set"),
+    Vendor("printify", "Printify", "api",
+           "Auto-routes when PRINTIFY_API_KEY + PRINTIFY_SHOP_ID set"),
     Vendor("local", "Local supplier / framer", "manual", "Hand-fulfilled items"),
     Vendor("digital", "Digital download", "digital", "Instant delivery, ~$0 COGS"),
     Vendor("service", "Service", "manual", "Custom design / framing / setup fees"),
