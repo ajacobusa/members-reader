@@ -652,6 +652,12 @@
  @media(max-width:560px){ .fcrow{flex-direction:column;gap:0} }
  .wordbox{background:#fffdf4;border:2px solid var(--gold);border-radius:12px;
    padding:10px 12px;margin:12px 0;box-shadow:0 0 0 4px rgba(199,164,77,.12)}
+ /* While the wording beacon is active, the INPUT itself glow-pulses - the
+    eye lands exactly where the customer should type. */
+ @keyframes inputglow{0%,100%{border-color:#cdbf98;
+   box-shadow:0 0 0 0 rgba(199,164,77,0)}
+   50%{border-color:var(--gold);box-shadow:0 0 0 6px rgba(199,164,77,.35)}}
+ .wordbox.pulseon textarea{animation:inputglow 1.2s ease-in-out infinite}
  .wordbox .wordlbl{font-size:14.5px;font-weight:700;color:var(--green);
    margin-bottom:6px}
  .wordbox textarea{font-size:15px;min-height:88px;background:#fff}
@@ -1210,6 +1216,12 @@
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
    WORD_DONE=false;
    setStep(1); editStep(1);
+   // Desktop: park the cursor in the wording field, ready to type (skipped
+   // on phones - auto-focus would pop the keyboard over the preview).
+   if(window.matchMedia('(min-width:761px)').matches){
+     const t=document.getElementById('mtext');
+     if(t) try{ t.focus({preventScroll:true}); }catch(e){}
+   }
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){

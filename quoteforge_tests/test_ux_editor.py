@@ -282,6 +282,16 @@ def test_wording_box_blinks_until_typing_starts(tmp_path):
     assert "WORD_DONE" in h
 
 
+def test_wording_input_itself_glows_and_gets_focus(tmp_path):
+    """Attention lands ON the input: while the wording beacon is active the
+    textarea border glow-pulses, and on desktop the cursor is already in
+    the field ready to type."""
+    h = _page(tmp_path)
+    assert ".wordbox.pulseon textarea" in h
+    assert "inputglow" in h
+    assert "preventScroll" in h
+
+
 def test_guidance_resumes_after_going_back(tmp_path):
     """The engine recomputes on every section change (editStep -> guide), so
     hitting Back re-lights that earlier step's beacon until it is finished."""
