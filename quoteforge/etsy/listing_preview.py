@@ -944,7 +944,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    background:var(--cream);color:var(--ink);line-height:1.6;font-size:17px;
    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
    text-rendering:optimizeLegibility}}
- h1,h2,h3,.serif{{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;
+ h1,h2,h3,.serif{{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;
    letter-spacing:.3px;line-height:1.2}}
  /* every control/text inherits the page font so nothing falls back to the OS font.
     (Font-PICKER chips keep their inline preview font - that's intentional.) */
@@ -1401,7 +1401,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .mthumbs img:hover{{border-color:var(--gold)}}
  .fpick{{margin-top:12px;background:#f3efe6;border:1px solid var(--line);
    border-radius:12px;padding:12px}}
- .fpick .lbl{{font-size:13px;color:var(--green);margin-bottom:8px;font-weight:600}}
+ .fpick .lbl{{font-size:13px;color:var(--green);margin-bottom:8px;font-weight:700}}
  .fchips{{display:flex;flex-wrap:wrap;gap:7px}}
  .fchip{{border:1px solid #cdbf98;background:#fff;border-radius:18px;padding:7px 13px;
    font-size:12.5px;cursor:pointer;transition:.12s;white-space:nowrap}}
@@ -1410,18 +1410,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    box-shadow:0 2px 8px rgba(16,61,46,.25)}}
  .perso{{margin-top:14px;background:#f3efe6;border:1px solid var(--line);
    border-radius:12px;padding:12px}}
- .perso .lbl{{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}}
+ .perso .lbl{{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}}
  .sw{{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}}
  .sw span{{width:26px;height:26px;border-radius:50%;cursor:pointer;
    border:2px solid #fff;box-shadow:0 0 0 1px #cdbf98;transition:.12s}}
  .sw span.sel{{box-shadow:0 0 0 2px var(--green);transform:scale(1.12)}}
  .perso input,.perso textarea{{width:100%;border:1px solid #cdbf98;border-radius:8px;
-   padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px}}
+   padding:8px 10px;font-size:13px;font-weight:600;font-family:inherit;
+   margin-bottom:6px}}
  .perso .note{{font-size:11px;color:var(--muted)}}
  .perso .cc{{font-size:11px;color:var(--muted);text-align:right;margin:-2px 0 4px}}
  .fonts{{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}}
  .fonts .fchip{{font-size:14px}}
- .perso .swrow{{font-size:11px;color:var(--muted);margin:6px 0 4px;font-weight:500}}
+ .perso .swrow{{font-size:11.5px;color:var(--ink);margin:6px 0 4px;font-weight:700}}
  .tsizerow{{display:flex;align-items:center;gap:10px;margin-bottom:6px}}
  .tsizerow input[type=range]{{flex:1;accent-color:var(--green)}}
  .rotrow{{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}}
@@ -1487,7 +1488,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .dragbar .dmbtn.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
  .orderbox{{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px}}
- .orderbox .lbl{{font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px}}
+ .orderbox .lbl{{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}}
  .orow{{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:8px}}
  .orow label{{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px}}
  .orow select{{padding:8px;border:1px solid #cdbf98;border-radius:8px;font-size:13px}}
@@ -1532,7 +1533,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .pfemail button{{padding:7px 14px;border-radius:8px;border:0;cursor:pointer;
    background:var(--green);color:#fff;font-weight:600}}
  .fcform{{text-align:left;margin-top:8px}}
- .fcform label{{display:block;font-size:13px;font-weight:600;color:#3c4a42;
+ .fcform label{{display:block;font-size:13px;font-weight:700;color:#3c4a42;
    margin:8px 0 0}}
  .fcform .fcopt{{font-weight:400;color:#9aa49c}}
  .fcform input{{display:block;width:100%;box-sizing:border-box;margin-top:3px;
@@ -1582,7 +1583,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-weight:700}}
  .bpactions button[disabled]{{opacity:.45;cursor:not-allowed}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
- .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
+ .mprice{{font-weight:700;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
    border-top:1px solid var(--line);margin-top:14px;padding-top:12px}}
  .closex{{float:right;font-size:26px;cursor:pointer;color:#9aa39d;padding:10px 16px;

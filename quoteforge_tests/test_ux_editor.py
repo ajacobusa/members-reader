@@ -58,6 +58,17 @@ def test_status_regions_are_aria_live(tmp_path):
     assert h.count('aria-live="polite"') >= 3
 
 
+def test_titles_and_key_inputs_are_bold(tmp_path):
+    """All headings are bold (700) and important labels/inputs carry weight
+    so the hierarchy reads instantly."""
+    h = _page(tmp_path)
+    assert "h1,h2,h3,.serif{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700" in h
+    assert ".perso input,.perso textarea" in h and "font-weight:600" in h
+    assert ".swrow{font-size" in h          # label rule exists...
+    sw = h.split(".perso .swrow{", 1)[1].split("}", 1)[0]
+    assert "font-weight:700" in sw          # ...and is bold
+
+
 def test_brand_serif_font_is_global(tmp_path):
     """The Cormorant Garamond brand font applies to the WHOLE page (body
     root + inheritance), not just headings."""
