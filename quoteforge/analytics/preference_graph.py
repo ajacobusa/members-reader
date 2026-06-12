@@ -21,12 +21,14 @@ DEFAULT_PAIRS = (
 
 
 def _orders(orders: list[dict] | None = None) -> list[dict]:
+    """The given orders, or all orders from the DB when none are passed."""
     from quoteforge.db.database import init_db, get_all_orders
     init_db()
     return get_all_orders(limit=100000) if orders is None else orders
 
 
 def _clean(v) -> str:
+    """Value as a stripped string; empty string for None."""
     return (str(v).strip() if v is not None else "")
 
 
@@ -74,6 +76,7 @@ def preferred_for(occasion: str = "", relationship: str = "",
     rows = _orders(orders)
 
     def _top(filt) -> dict | None:
+        """Most common choice among orders matching `filt`, with confidence."""
         choices: dict[str, int] = defaultdict(int)
         for o in rows:
             if not filt(o):
@@ -128,6 +131,7 @@ def build_graph(orders: list[dict] | None = None,
 
 def format_graph_text(orders: list[dict] | None = None,
                       min_support: int = 2) -> str:
+    """Plain-text preference-graph report (top insights from real orders)."""
     g = build_graph(orders, min_support=min_support)
     if not g["insights"]:
         return ("Customer Preference Graph\n" + "-" * 40 +

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 @dataclass
 class SeasonPlan:
+    """One season's retailer timeline: listings-live and marketing-start dates."""
     occasion: str
     listings_live: tuple[int, int]    # (month, day) — publish listings by here
     marketing_starts: tuple[int, int] # (month, day) — start ads/Pinterest here
@@ -165,6 +166,7 @@ def due_email_touch(order_created_at: str, now: datetime | None = None) -> str |
 
 
 def calendar_summary() -> dict:
+    """Snapshot of the calendar: season count, top seasons, emails, targets."""
     return {
         "seasons": len(ANNUAL_CALENDAR),
         "top_revenue": [s.occasion for s in

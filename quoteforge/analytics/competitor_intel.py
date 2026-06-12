@@ -58,6 +58,7 @@ def refresh(shops: list[str] | None = None) -> dict:
 
 
 def _delta(curr, prev):
+    """Difference curr - prev, or None when either side is missing."""
     if curr is None or prev is None:
         return None
     return curr - prev
@@ -105,6 +106,7 @@ def alerts(shop: str = "") -> list[dict]:
 
 
 def dashboard(shop: str = "") -> dict:
+    """Tracked shops, their latest snapshot each, and current alerts."""
     from quoteforge.db.database import get_competitor_snapshots
     from quoteforge.config import COMPETITORS
     snaps = get_competitor_snapshots(shop)
@@ -115,6 +117,7 @@ def dashboard(shop: str = "") -> dict:
 
 
 def format_competitor_text(shop: str = "") -> str:
+    """Plain-text competitor intelligence report (snapshots + alerts)."""
     d = dashboard(shop)
     if not d["latest"] and not d["tracked"]:
         return ("Competitor Intelligence\n" + "-" * 40 +

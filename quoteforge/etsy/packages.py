@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Package:
+    """One curated multi-piece gift package (wedding or corporate)."""
     key: str
     name: str
     audience: str          # "wedding" | "corporate"

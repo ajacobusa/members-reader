@@ -35,6 +35,7 @@ class OrderTab(tk.Frame):
         self._build_ui()
 
     def _build_ui(self) -> None:
+        """Build all widgets for the order processor tab."""
         pad = {"padx": 14, "pady": 4}
 
         # Header
@@ -136,24 +137,28 @@ class OrderTab(tk.Frame):
                    command=self._copy_output).grid(row=row, column=0, columnspan=4, pady=4)
 
     def _set_output(self, text: str) -> None:
+        """Replace the contents of the read-only output box."""
         self._output.configure(state="normal")
         self._output.delete("1.0", "end")
         self._output.insert("1.0", text)
         self._output.configure(state="disabled")
 
     def _copy_output(self) -> None:
+        """Copy the output text to the clipboard."""
         text = self._output.get("1.0", "end").strip()
         self.clipboard_clear()
         self.clipboard_append(text)
         messagebox.showinfo("Copied", "Output copied to clipboard!")
 
     def _on_generate(self) -> None:
+        """Start message generation on a background thread."""
         self._gen_btn.configure(state="disabled")
         self._bar.start(10)
         self._status.configure(text="Generating personalized message...")
         threading.Thread(target=self._run_generate, daemon=True).start()
 
     def _run_generate(self) -> None:
+        """Process the order and display message variations (worker thread)."""
         try:
             result = process_order(
                 recipient_name=self._recipient_var.get().strip() or "Friend",
@@ -178,12 +183,14 @@ class OrderTab(tk.Frame):
             self.after(0, self._gen_btn.configure, {"state": "normal"})
 
     def _on_email(self) -> None:
+        """Start follow-up email generation on a background thread."""
         self._email_btn.configure(state="disabled")
         self._bar.start(10)
         self._status.configure(text="Generating follow-up email...")
         threading.Thread(target=self._run_email, daemon=True).start()
 
     def _run_email(self) -> None:
+        """Generate the post-purchase email and display it (worker thread)."""
         try:
             email = generate_post_purchase_email(
                 recipient_name=self._recipient_var.get().strip() or "your recipient",
@@ -200,6 +207,7 @@ class OrderTab(tk.Frame):
             self.after(0, self._email_btn.configure, {"state": "normal"})
 
     def _on_export_excel(self) -> None:
+        """Export the Excel order tracker and open it."""
         try:
             path = export_order_tracker()
             subprocess.Popen(f'start "" "{path}"', shell=True)
@@ -215,6 +223,7 @@ class OrderTab(tk.Frame):
             messagebox.showerror("Export Error", str(exc))
 
     def _on_copy_form(self) -> None:
+        """Copy the Etsy personalization form template to the clipboard."""
         self.clipboard_clear()
         self.clipboard_append(ETSY_PERSONALIZATION_FORM)
         self._set_output(

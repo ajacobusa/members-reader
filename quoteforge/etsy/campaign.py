@@ -58,6 +58,7 @@ SCENERY_HINTS: list[tuple[str, str]] = [
 
 
 def _scenery_for(occasion: str) -> str:
+    """Pick the best-matching scenery theme for an occasion name."""
     low = occasion.lower()
     for key, scenery in SCENERY_HINTS:
         if key in low:

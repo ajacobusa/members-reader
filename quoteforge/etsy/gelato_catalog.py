@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class GelatoProduct:
+    """One sellable Gelato product: size, cost, tiered pricing, and fit notes."""
     product_id: str
     name: str
     category: str          # "poster", "canvas", "framed", "acrylic", "metal", "mug"

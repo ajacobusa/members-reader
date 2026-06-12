@@ -32,6 +32,8 @@ from quoteforge.etsy.resolution import resolve_issue, ISSUE_CASES, _ALIASES
 
 @dataclass
 class AutoDecision:
+    """One autopilot ruling on a customer issue: what to do, at what risk/cost,
+    and whether it executes automatically or escalates to a human."""
     category: str
     title: str
     action: str            # machine action key

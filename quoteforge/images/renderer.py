@@ -1,3 +1,4 @@
+"""Bannerbear poster renderer - submits a render job and polls until done."""
 import time
 import requests
 from quoteforge.config import BANNERBEAR_API_KEY

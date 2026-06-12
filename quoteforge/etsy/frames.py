@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Frame:
+    """One frame option: tier, Gelato SKU, modeled upcharge, availability."""
     id: str
     name: str
     tier: str          # "high" | "mid" | "low"
@@ -51,6 +52,7 @@ def _apply_overrides(f: Frame) -> Frame:
 
 
 def all_frames() -> list[Frame]:
+    """Every defined frame with live sync overrides applied."""
     return [_apply_overrides(f) for f in FRAMES]
 
 
@@ -61,6 +63,7 @@ def available_frames() -> list[Frame]:
 
 
 def frames_by_tier() -> dict[str, list[Frame]]:
+    """Available frames grouped by tier (high / mid / low)."""
     out: dict[str, list[Frame]] = {"high": [], "mid": [], "low": []}
     for f in available_frames():
         out.setdefault(f.tier, []).append(f)

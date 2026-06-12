@@ -24,6 +24,7 @@ LASTMIN_WINDOW = (2, 10)       # do the last-minute keyword + ad push here
 
 @dataclass
 class SeasonSEO:
+    """One season's demand profile: peak date, targets, and keyword sets."""
     season: str
     peak: tuple[int, int]          # (month, day) of the demand peak
     revenue_rank: int              # 1 = biggest
@@ -67,6 +68,7 @@ SEASON_SEO: list[SeasonSEO] = [
 
 
 def _phase(days_to_peak: int) -> str:
+    """Which action window the day count falls in ('' = none)."""
     if REFRESH_WINDOW[0] <= days_to_peak <= REFRESH_WINDOW[1]:
         return "SEO REFRESH"
     if LASTMIN_WINDOW[0] <= days_to_peak <= LASTMIN_WINDOW[1]:
@@ -105,6 +107,7 @@ def seasonal_seo_plan(now: datetime | None = None,
 
 
 def _action_text(phase: str, s: SeasonSEO, days: int) -> str:
+    """Concrete instruction for a season given its current phase."""
     if phase == "SEO REFRESH":
         return (f"Refresh titles+tags for {', '.join(s.relationships)} listings "
                 f"with seasonal keywords NOW ({days}d to peak gives Etsy time to "
@@ -126,6 +129,7 @@ def _low_demand_now(now: datetime) -> list[str]:
 
 
 def format_seasonal_seo(plan: dict) -> str:
+    """Render the seasonal SEO plan as printable console text."""
     lines = ["=" * 64, f"DEMAND-DRIVEN SEO PLAN  (as of {plan['now']})", "=" * 64]
     if plan["due"]:
         lines.append("ACTION DUE NOW (demand-ranked):")

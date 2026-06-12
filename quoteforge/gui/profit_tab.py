@@ -56,6 +56,7 @@ class _ScrollableFrame(tk.Frame):
 
 
 def _header_label(parent, text: str, col: int, row: int, colspan: int = 1) -> None:
+    """Create and grid a dark table header cell label."""
     tk.Label(
         parent,
         text=text,
@@ -76,6 +77,7 @@ def _value_label(
     bg: str = "#f9f9f9",
     bold: bool = False,
 ) -> tk.Label:
+    """Create and grid a right-aligned value cell label; return it."""
     font = ("Segoe UI", 9, "bold") if bold else ("Segoe UI", 9)
     lbl = tk.Label(parent, text=text, bg=bg, fg=fg, font=font, padx=6, pady=3, anchor="e")
     lbl.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
@@ -87,11 +89,14 @@ def _value_label(
 # ===========================================================================
 
 class _OrderProfitTab(tk.Frame):
+    """Single-order profit breakdown calculator."""
+
     def __init__(self, parent):
         super().__init__(parent, bg="#f5f5f5")
         self._build()
 
     def _build(self):
+        """Build the order input panel and profit breakdown panel."""
         # --- Input panel ---------------------------------------------------
         inp = tk.LabelFrame(self, text="Order Details", font=("Segoe UI", 10, "bold"),
                             bg="#f5f5f5", padx=12, pady=8)
@@ -150,6 +155,7 @@ class _OrderProfitTab(tk.Frame):
         self._verdict.grid(row=len(rows), column=0, columnspan=2, pady=(8, 2))
 
     def _calculate(self):
+        """Compute the order profit breakdown and update the result labels."""
         sale, gelato, ship_in, ship_out = (v.get() for v in self._vars)
         r = calculate_order_profit(sale, gelato, ship_in, ship_out)
 
@@ -187,11 +193,14 @@ class _OrderProfitTab(tk.Frame):
 # ===========================================================================
 
 class _MonthlyForecastTab(tk.Frame):
+    """Monthly revenue/profit forecast from daily sales assumptions."""
+
     def __init__(self, parent):
         super().__init__(parent, bg="#f5f5f5")
         self._build()
 
     def _build(self):
+        """Build the forecast input panel and results panel."""
         inp = tk.LabelFrame(self, text="Forecast Inputs", font=("Segoe UI", 10, "bold"),
                             bg="#f5f5f5", padx=12, pady=8)
         inp.pack(fill="x", padx=12, pady=(12, 6))
@@ -252,6 +261,7 @@ class _MonthlyForecastTab(tk.Frame):
         )
 
     def _forecast(self):
+        """Run the monthly forecast and update the result labels."""
         daily, aov, cost, listings, ads = (v.get() for v in self._vars)
         r = monthly_revenue_forecast(daily, aov, cost, int(listings), ads)
 
@@ -290,12 +300,15 @@ class _MonthlyForecastTab(tk.Frame):
 # ===========================================================================
 
 class _ScalingMilestonesTab(tk.Frame):
+    """Growth milestone table with current-phase highlighting and CSV export."""
+
     def __init__(self, parent):
         super().__init__(parent, bg="#f5f5f5")
         self._current_listings = tk.IntVar(value=0)
         self._build()
 
     def _build(self):
+        """Build the listings control row and milestones table."""
         ctrl = tk.Frame(self, bg="#f5f5f5")
         ctrl.pack(fill="x", padx=12, pady=(10, 4))
         tk.Label(ctrl, text="My Current Listings:", bg="#f5f5f5",
@@ -313,6 +326,7 @@ class _ScalingMilestonesTab(tk.Frame):
         self._draw_table()
 
     def _draw_table(self, highlight_listings: int = -1):
+        """Render the milestones table, highlighting phases at or below the given listing count."""
         for w in self._table.winfo_children():
             w.destroy()
 
@@ -344,9 +358,11 @@ class _ScalingMilestonesTab(tk.Frame):
             self._table.columnconfigure(col, weight=1)
 
     def _refresh(self):
+        """Redraw the table highlighting the user's current phase."""
         self._draw_table(self._current_listings.get())
 
     def _export(self):
+        """Write the milestones table to a CSV on the Desktop."""
         path = os.path.join(os.path.expanduser("~"), "Desktop", "scaling_milestones.csv")
         milestones = scaling_milestones()
         with open(path, "w", newline="", encoding="utf-8") as f:
@@ -361,12 +377,15 @@ class _ScalingMilestonesTab(tk.Frame):
 # ===========================================================================
 
 class _ProductMarginsTab(tk.Frame):
+    """Per-product profit margins by Gelato catalog category."""
+
     def __init__(self, parent):
         super().__init__(parent, bg="#f5f5f5")
         self._category = tk.StringVar(value="poster")
         self._build()
 
     def _build(self):
+        """Build the category selector and margins table."""
         ctrl = tk.Frame(self, bg="#f5f5f5")
         ctrl.pack(fill="x", padx=12, pady=(10, 4))
         tk.Label(ctrl, text="Category:", bg="#f5f5f5",
@@ -383,6 +402,7 @@ class _ProductMarginsTab(tk.Frame):
         self._draw_table("poster")
 
     def _draw_table(self, category: str):
+        """Render the per-product margin table for a catalog category."""
         for w in self._table.winfo_children():
             w.destroy()
 
@@ -424,6 +444,7 @@ class _ProductMarginsTab(tk.Frame):
             self._table.columnconfigure(col, weight=1)
 
     def _refresh(self):
+        """Redraw the margins table for the selected category."""
         self._draw_table(self._category.get())
 
 
@@ -439,6 +460,7 @@ class ProfitTab(tk.Frame):
         self._build_ui()
 
     def _build_ui(self):
+        """Assemble the four sub-tabs into an inner notebook."""
         inner = ttk.Notebook(self)
         inner.pack(fill="both", expand=True, padx=6, pady=6)
 

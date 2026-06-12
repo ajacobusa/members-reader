@@ -16,6 +16,7 @@ from __future__ import annotations
 
 
 def _etsy_block() -> dict:
+    """Today and month-to-date Etsy orders/revenue from our own ledger."""
     from quoteforge.etsy.ledger import build_ledger
     t = build_ledger("today")["totals"]
     mtd = build_ledger("month")["totals"]
@@ -27,6 +28,7 @@ def _etsy_block() -> dict:
 
 
 def _ga_block() -> dict:
+    """Google Analytics status plus GA4 metrics when API access is configured."""
     import os
     from quoteforge.config import GA_MEASUREMENT_ID
     out = {"configured": bool(GA_MEASUREMENT_ID), "id": GA_MEASUREMENT_ID,
@@ -58,6 +60,7 @@ def _ga_block() -> dict:
 
 
 def _clarity_block() -> dict:
+    """Microsoft Clarity status plus live insights when an API token is set."""
     import os
     from quoteforge.config import CLARITY_PROJECT_ID
     out = {"configured": bool(CLARITY_PROJECT_ID),
@@ -81,7 +84,9 @@ def _clarity_block() -> dict:
 
 
 def analytics_summary() -> dict:
+    """Collect Etsy, GA, and Clarity blocks; each is best-effort."""
     def _s(fn):
+        """Run fn(), returning an error dict instead of raising."""
         try:
             return fn()
         except Exception as exc:  # noqa: BLE001
@@ -91,6 +96,7 @@ def analytics_summary() -> dict:
 
 
 def format_analytics_text(a: dict) -> str:
+    """Render the analytics summary as indented plain-text report lines."""
     e = a.get("etsy", {})
     ga = a.get("ga", {})
     cl = a.get("clarity", {})

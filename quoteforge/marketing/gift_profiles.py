@@ -22,6 +22,7 @@ def _days_until_anniversary(event_date: str, now: datetime) -> int | None:
         else:
             return None
         def _on(year: int) -> datetime:
+            """The occasion date in the given year (Feb 29 observed on Feb 28)."""
             try:
                 return datetime(year, month, day)
             except ValueError:
@@ -72,6 +73,7 @@ def upcoming_gift_reminders(days_ahead: int = 21,
 
 def format_reminders_text(days_ahead: int = 21,
                           now: datetime | None = None) -> str:
+    """Render upcoming gift reminders as a human-readable list."""
     rem = upcoming_gift_reminders(days_ahead, now)
     if not rem:
         return ("Gift-profile reminders\n" + "-" * 40 +

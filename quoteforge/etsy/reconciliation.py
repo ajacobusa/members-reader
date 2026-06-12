@@ -19,6 +19,7 @@ TOTAL_BG = "D6E4F0"
 
 
 def _border():
+    """Thin light-grey border on all four sides."""
     s = Side(style="thin", color="CCCCCC")
     return Border(left=s, right=s, top=s, bottom=s)
 

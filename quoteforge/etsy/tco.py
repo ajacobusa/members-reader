@@ -48,6 +48,7 @@ def variable_monthly_costs(orders_per_month: int,
 
 
 def startup_costs(listings: int) -> dict:
+    """One-time startup cost items and their total for a listing count."""
     items = {
         "Etsy listing fees ($0.20 each)": round(listings * 0.20, 2),
         "Sample print (1 poster + ship)": 13.0,
@@ -100,6 +101,7 @@ def live_tco(listings: int = 100) -> dict:
 
 
 def format_tco_text(tco: dict) -> str:
+    """Render the TCO breakdown as printable console text."""
     i = tco["inputs"]
     lines = ["=" * 56, "QUOTEFORGE TOTAL COST OF OWNERSHIP", "=" * 56,
              f"Assumptions: {i['listings']} listings, {i['orders_per_month']} orders/mo, "

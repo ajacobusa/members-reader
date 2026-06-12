@@ -20,6 +20,7 @@ from quoteforge.config import POLICY_DEFECT_WINDOW_DAYS, POLICY_LOST_WINDOW_DAYS
 
 @dataclass
 class Policy:
+    """Etsy/Gelato policy facts for one issue category."""
     category: str
     etsy_returnable: bool          # does Etsy require/allow a return here?
     etsy_protection_risk: bool     # could Etsy Purchase Protection force a refund?
@@ -72,6 +73,7 @@ POLICIES: dict[str, Policy] = {
 
 
 def policy_for(category: str) -> Policy | None:
+    """Look up the Policy for an issue category (None if unmapped)."""
     return POLICIES.get(category)
 
 
@@ -93,6 +95,7 @@ def policy_facts(category: str) -> dict:
 
 
 def format_policy_text(category: str) -> str:
+    """Render a category's policy facts as printable console text."""
     p = policy_for(category)
     if not p:
         return f"No policy mapping for '{category}' - manual review."

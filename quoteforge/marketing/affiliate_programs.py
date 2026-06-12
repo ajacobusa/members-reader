@@ -25,6 +25,7 @@ NETWORK_SIGNUP = {
 
 @dataclass(frozen=True)
 class Program:
+    """One retail affiliate program: brand, category, network and typical commission."""
     name: str
     category: str        # flowers | giftcards | gifts | home | marketplace
     network: str         # key into NETWORK_SIGNUP
@@ -33,6 +34,7 @@ class Program:
 
     @property
     def signup_url(self) -> str:
+        """Publisher signup URL for this program's affiliate network."""
         return NETWORK_SIGNUP.get(self.network, "")
 
 

@@ -21,6 +21,7 @@ def customer_id(email: str, name: str = "") -> str:
 
 
 def customer_dir(email: str, name: str = "") -> Path:
+    """Path of the customer's record folder under OUTPUT_DIR/customers/."""
     from quoteforge.config import OUTPUT_DIR
     return OUTPUT_DIR / "customers" / customer_id(email, name)
 

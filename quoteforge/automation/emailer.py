@@ -51,6 +51,7 @@ def build_report_html() -> tuple[str, str]:
     subject = f"QuoteForge Daily Report — {today} ({today_count} new orders today)"
 
     def _row(label: str, value) -> str:
+        """Build one label/value HTML table row for the report."""
         return (f"<tr><td style='padding:6px 14px;border:1px solid #ddd'>{html.escape(label)}</td>"
                 f"<td style='padding:6px 14px;border:1px solid #ddd;font-weight:bold'>{value}</td></tr>")
 
@@ -153,6 +154,10 @@ def send_cost_report(period: str = "today") -> dict:
 
 
 def _send_email(subject: str, body: str, to: str = "", attachments=None) -> dict:
+    """Send an HTML email via Gmail SMTP, BCC'ing the owner on every message.
+
+    Skips gracefully when Gmail credentials are not configured.
+    """
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         return {"status": "skipped",
                 "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}

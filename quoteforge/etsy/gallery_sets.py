@@ -15,6 +15,7 @@ from quoteforge.etsy.profit_calculator import calculate_order_profit
 
 @dataclass
 class GallerySet:
+    """One coordinated multi-print bundle with its pricing inputs."""
     name: str
     occasion: str            # maps to the message generator / launch taxonomy
     relationship: str        # who it's for
@@ -25,14 +26,17 @@ class GallerySet:
 
     @property
     def gelato_cost(self) -> float:
+        """Total Gelato cost (USD) for all pieces in the set."""
         return round(self.per_piece_gelato * self.pieces, 2)
 
     @property
     def net_profit(self) -> float:
+        """Net profit (USD) for the whole set after Etsy fees."""
         return calculate_order_profit(self.set_price, self.gelato_cost)["net_profit"]
 
     @property
     def margin_pct(self) -> float:
+        """Net margin percentage for the set after Etsy fees."""
         return calculate_order_profit(self.set_price, self.gelato_cost)["margin_pct"]
 
 
@@ -59,6 +63,7 @@ GALLERY_SETS: list[GallerySet] = [
 
 
 def set_economics(gset: GallerySet) -> dict:
+    """Full economics for one set: price, cost, profit, margin, per-piece price."""
     p = calculate_order_profit(gset.set_price, gset.gelato_cost)
     return {
         "name": gset.name,
@@ -76,7 +81,8 @@ def set_economics(gset: GallerySet) -> dict:
 
 
 def sets_for_occasion(occasion: str) -> list[GallerySet]:
-    low = (occasion or "").lower()
+    """Sets whose occasion or relationship matches the given text."""
+    low =(occasion or "").lower()
     return [s for s in GALLERY_SETS
             if low and (low in s.occasion.lower() or low in s.relationship.lower())]
 
@@ -94,6 +100,7 @@ def aov_uplift(single_price: float = 29.99) -> dict:
 
 
 def format_sets_text() -> str:
+    """Render the gallery-set catalog and AOV uplift as printable console text."""
     lines = ["=" * 60, "QUOTEFORGE GALLERY SETS - high-ticket bundles", "=" * 60,
              f"{'Set':32}{'Pieces':>7}{'Price':>8}{'Profit':>8}{'Margin':>8}"]
     for s in GALLERY_SETS:

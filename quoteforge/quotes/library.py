@@ -1,3 +1,4 @@
+"""Curated original quote library, organized by occasion category."""
 import random
 
 QUOTE_LIBRARY: dict[str, list[str]] = {

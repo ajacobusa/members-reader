@@ -17,11 +17,14 @@ from quoteforge.etsy.order_tracker import export_order_tracker
 
 
 class CatalogTab(tk.Frame):
+    """Bulk catalog and SEO pack generator tab."""
+
     def __init__(self, parent: tk.Widget):
         super().__init__(parent)
         self._build_ui()
 
     def _build_ui(self) -> None:
+        """Build all widgets for the catalog tab."""
         pad = {"padx": 14, "pady": 4}
 
         tk.Label(self, text="Bulk Catalog & SEO Pack Generator",
@@ -119,21 +122,25 @@ class CatalogTab(tk.Frame):
                    command=self._copy).grid(row=row, column=0, columnspan=4, pady=4)
 
     def _set_output(self, text: str) -> None:
+        """Replace the contents of the read-only output box."""
         self._output.configure(state="normal")
         self._output.delete("1.0", "end")
         self._output.insert("1.0", text)
         self._output.configure(state="disabled")
 
     def _copy(self) -> None:
+        """Copy the output text to the clipboard."""
         self.clipboard_clear()
         self.clipboard_append(self._output.get("1.0", "end").strip())
         messagebox.showinfo("Copied", "Output copied to clipboard!")
 
     def _open_folder(self) -> None:
+        """Open the output folder in Windows Explorer."""
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         subprocess.Popen(f'explorer "{OUTPUT_DIR}"')
 
     def _on_roadmap(self) -> None:
+        """Export the scaling roadmap workbook and open it."""
         try:
             path = export_scaling_roadmap()
             subprocess.Popen(f'start "" "{path}"', shell=True)
@@ -144,6 +151,7 @@ class CatalogTab(tk.Frame):
             messagebox.showerror("Error", str(exc))
 
     def _on_catalog(self) -> None:
+        """Start bulk catalog generation on a background thread."""
         self._cat_btn.configure(state="disabled")
         self._bar.start(10)
         qty = self._qty_var.get()
@@ -151,6 +159,7 @@ class CatalogTab(tk.Frame):
         threading.Thread(target=self._run_catalog, args=(qty,), daemon=True).start()
 
     def _run_catalog(self, qty: int) -> None:
+        """Generate the bulk catalog CSV and report results (worker thread)."""
         try:
             path = generate_bulk_catalog(quotes_per_relationship=qty)
             total = 8 * qty
@@ -180,6 +189,7 @@ class CatalogTab(tk.Frame):
             self.after(0, self._cat_btn.configure, {"state": "normal"})
 
     def _on_seo(self) -> None:
+        """Generate and display the SEO title/tag pack for the selected niche."""
         niche = self._niche_var.get()
         pack = generate_seo_pack(niche)
         lines = [

@@ -42,6 +42,7 @@ def make_listing_video(image_path, out_path, seconds: float = 6.0,
 
 
 def _to_array(img):
+    """Convert a PIL image to a numpy array for the video writer."""
     import numpy as np
     return np.asarray(img)
 

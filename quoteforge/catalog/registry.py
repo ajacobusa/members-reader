@@ -17,6 +17,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Vendor:
+    """A fulfillment supplier: id, display name, and how its orders are filled."""
     id: str
     name: str
     fulfillment: str           # api | manual | digital

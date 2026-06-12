@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 @dataclass
 class TierRule:
+    """One service plan's capacity and the upgrade path beyond it."""
     service: str
     plan: str
     monthly_limit: int       # orders/images this plan comfortably supports

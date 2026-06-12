@@ -13,6 +13,7 @@ from datetime import datetime
 
 # Per-active-season uplift weight by revenue rank (rank 1 = biggest season).
 def _season_weight(rank: int) -> float:
+    """Uplift weight for a season by revenue rank (rank 1 = biggest)."""
     if rank <= 1:
         return 0.10
     if rank <= 3:
@@ -86,6 +87,7 @@ def dynamic_price(list_price: float, cost: float = 0.0, tier: str = "entry",
 
 
 def format_dynamic_text(now: datetime | None = None) -> str:
+    """Render the current dynamic-pricing status as printable console text."""
     from quoteforge.config import DYNAMIC_PRICING_ENABLED
     seasons = active_seasons(now)
     mult = demand_multiplier(now)

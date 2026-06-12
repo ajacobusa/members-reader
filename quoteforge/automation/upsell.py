@@ -61,18 +61,21 @@ def generate_upsell_message(
 
 
 def _base_canvas_upsell(name: str, shop: str) -> str:
+    """Template canvas-upgrade upsell used when AI output is missing."""
     return (f"Hi {name}! I noticed you ordered a poster — did you know I also offer "
             f"this design on canvas? Canvas prints have a stunning gallery-wrapped finish "
             f"and make a truly special gift. Message me if you'd like to upgrade!")
 
 
 def _base_framed_upsell(name: str, shop: str) -> str:
+    """Template framed-version upsell used when AI output is missing."""
     return (f"Hi {name}! Your personalized print is being created. "
             f"If you'd like it to arrive ready to hang, I offer a beautifully framed version. "
             f"Just reply here and I can swap your order!")
 
 
 def _base_bundle_upsell(name: str, shop: str) -> str:
+    """Template 3-print bundle upsell used when AI output is missing."""
     return (f"Hi {name}! Many customers love ordering a matching 3-print set — "
             f"one for the recipient, one to keep, and one as a gift. "
             f"I offer a 15% discount on sets of 3. Interested?")
@@ -113,6 +116,7 @@ def generate_review_request(
 
 
 def _base_review_request(name: str, recipient: str, shop: str) -> str:
+    """Template review-request message used when no AI key is available."""
     return (
         f"Hi {name}! I hope your personalized print arrived safely and that {recipient} "
         f"loved it. If you have a moment, I would be so grateful if you could leave a review "

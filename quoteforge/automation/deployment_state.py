@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 def _has(env: str) -> bool:
+    """Check whether the environment variable `env` is set and non-blank."""
     return bool(os.getenv(env, "").strip())
 
 
@@ -22,6 +23,7 @@ def readiness() -> dict:
     items = []
 
     def add(name, status, current, action):
+        """Append one readiness item to the checklist."""
         items.append({"name": name, "status": status,
                       "current": current, "action": action})
 
@@ -86,6 +88,7 @@ def readiness() -> dict:
 
 
 def format_text(state: dict | None = None) -> str:
+    """Render the readiness checklist as plain text with status icons."""
     s = state or readiness()
     icon = {"ready": "[OK]  ", "todo": "[TODO]", "optional": "[opt] "}
     lines = ["Production Readiness - move-to-server tracker", "=" * 52,

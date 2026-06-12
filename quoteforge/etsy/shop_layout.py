@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Section:
+    """One Etsy shop section with the keywords that route listings into it."""
     name: str
     blurb: str                       # short note on what goes here
     match: list[str] = field(default_factory=list)  # category/occasion keywords
@@ -42,10 +43,12 @@ SHOP_SECTIONS: list[Section] = [
 
 
 def _section_for(listing) -> str:
+    """Pick the best shop section for a listing by keyword match."""
     import re
     text = f"{listing.category} {listing.occasion} {listing.title}".lower()
 
     def has(kw: str) -> bool:
+        """Whole-word match of a keyword in the listing text."""
         # Word-boundary match so 'son' doesn't match inside 'perSONalized'.
         return re.search(r"\b" + re.escape(kw) + r"\b", text) is not None
 
@@ -83,11 +86,13 @@ STOREFRONT_CHECKLIST = [
 
 
 def shop_blueprint() -> dict:
+    """The full storefront plan: sections, listing assignments, checklist."""
     return {"sections": SHOP_SECTIONS, "assignments": assign_listings(),
             "checklist": STOREFRONT_CHECKLIST}
 
 
 def format_shop_text() -> str:
+    """Render the storefront blueprint as printable console text."""
     bp = shop_blueprint()
     lines = ["=" * 64, "JOFFIELS STOREFRONT BLUEPRINT - expert-looking shop",
              "=" * 64, "\n## SHOP SECTIONS (create these, in order):\n"]

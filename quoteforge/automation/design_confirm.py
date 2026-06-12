@@ -10,6 +10,7 @@ from __future__ import annotations
 
 
 def _email_body(email: str, summary: str) -> str:
+    """Confirmation email body - AI-personalized when available, template otherwise."""
     try:
         from quoteforge.ai.assistant import ai_text
         txt = ai_text(

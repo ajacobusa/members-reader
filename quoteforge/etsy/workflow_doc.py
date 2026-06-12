@@ -125,6 +125,7 @@ GAPS = [
 
 
 def build_workflow_pdf(out_path=None):
+    """Build the end-to-end workflow PDF and return its path."""
     from pathlib import Path
     from datetime import date
     from reportlab.lib.pagesizes import letter
@@ -182,6 +183,7 @@ def build_workflow_pdf(out_path=None):
     el.append(tbl)
 
     def _bullets(title, items):
+        """Append a heading plus a bulleted list to the document."""
         el.append(Paragraph(title, h2))
         el.append(ListFlowable(
             [ListItem(Paragraph(i, body), leftIndent=10) for i in items],

@@ -1,3 +1,4 @@
+"""Claude-powered personal message generator with a TEST_MODE mock fallback."""
 import re
 import anthropic
 from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL, TEST_MODE

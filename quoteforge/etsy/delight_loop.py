@@ -28,6 +28,7 @@ def referral_code(customer_key: str) -> str:
 
 
 def _parse_dt(s: str) -> datetime:
+    """Parse a timestamp string in any of the known formats; fall back to now."""
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
             return datetime.strptime((s or "")[:19], fmt)
@@ -37,6 +38,7 @@ def _parse_dt(s: str) -> datetime:
 
 
 def delight_message(order: dict) -> str:
+    """Compose the combined review-ask + referral message for one order."""
     customer = order.get("customer_name") or "there"
     recipient = order.get("recipient_name") or "your recipient"
     occ = (order.get("occasion") or "gift").lower()
@@ -73,6 +75,7 @@ def _affiliate_block() -> str:
 
 
 def _already_delighted(order_id: str) -> bool:
+    """True if this order already has a recorded delight message (idempotency)."""
     from quoteforge.db.database import get_customer_messages
     return any(m.get("message_type") == "delight"
                for m in get_customer_messages(order_id))
@@ -118,6 +121,7 @@ def send_delight_touches(now: datetime | None = None, record: bool = True) -> di
 
 
 def format_delight_text(result: dict) -> str:
+    """Render the delight-touch result as printable console text."""
     lines = ["=" * 60, "DELIGHT LOOP - reviews + referrals", "=" * 60,
              f"{result['due']} post-delivery touch(es) ready to send:"]
     for d in result["touches"][:15]:
@@ -131,6 +135,7 @@ def format_delight_text(result: dict) -> str:
 
 
 def send_delight_email(now: datetime | None = None) -> dict:
+    """Stage due delight touches and email the digest to the shop owner."""
     result = send_delight_touches(now)
     if not result["due"]:
         return {"status": "no_action", "result": result}

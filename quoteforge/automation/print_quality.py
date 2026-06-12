@@ -18,6 +18,7 @@ SUPPORTED = (".jpg", ".jpeg", ".png", ".pdf", ".tif", ".tiff")
 
 
 def _size_inches(size: str) -> tuple[float, float]:
+    """Parse a size string like '18x24' into (width, height) inches; 18x24 default."""
     try:
         a, b = (size or "18x24").lower().split("x")[0:2]
         return float(a), float(b.split()[0])
@@ -170,6 +171,7 @@ def validate_order_for_gelato(order: dict) -> dict:
 
 
 def format_assessment_text(a: dict) -> str:
+    """Render a photo assessment as a short plain-text block."""
     v = a["validation"]
     lines = ["Print-quality assessment", "-" * 32,
              f"  Decision   : {a['decision'].upper()}",

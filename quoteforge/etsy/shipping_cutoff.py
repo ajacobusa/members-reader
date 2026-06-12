@@ -16,12 +16,14 @@ _FIXED = [(2, 14, "Valentine's Day"), (12, 25, "Christmas"),
 
 
 def _nth_weekday(year, month, weekday, n):
+    """Date of the nth given weekday (0=Mon) in a month."""
     d = date(year, month, 1)
     offset = (weekday - d.weekday()) % 7
     return d + timedelta(days=offset + 7 * (n - 1))
 
 
 def _occasions(year):
+    """All (date, label) gift occasions for a year, fixed and computed."""
     occ = [(date(year, m, d), label) for m, d, label in _FIXED]
     occ.append((_nth_weekday(year, 5, 6, 2), "Mother's Day"))   # 2nd Sun May
     occ.append((_nth_weekday(year, 6, 6, 3), "Father's Day"))   # 3rd Sun Jun
@@ -53,6 +55,7 @@ def upcoming_cutoff(today: date = None, within_days: int = 45,
 
 
 def banner_text(cut: dict) -> str:
+    """Customer-facing urgency banner line for an upcoming cutoff."""
     from datetime import date as _d
     ob = _d.fromisoformat(cut["order_by"])
     try:

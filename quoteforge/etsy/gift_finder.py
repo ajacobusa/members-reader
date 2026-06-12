@@ -24,6 +24,7 @@ STYLES = [("classic", "Classic", "Premium Solid Oak", ["#0f3d2e", "#f4efe6"]),
 
 
 def _material_for_budget(budget: str) -> str:
+    """Map a budget bracket to the recommended product material."""
     return {"under50": "Poster", "50to100": "Framed", "100plus": "Acrylic"}.get(
         budget, "Framed")
 

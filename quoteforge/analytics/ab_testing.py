@@ -59,10 +59,12 @@ def experiment_stats(experiment: str) -> dict:
 
 
 def all_stats() -> dict:
+    """Cumulative A/B stats for every experiment key."""
     return {k: experiment_stats(k) for k in EXPERIMENTS}
 
 
 def format_ab_text() -> str:
+    """Plain-text A/B testing report for the analytics dashboard."""
     data = all_stats()
     lines = ["Automated A/B testing", "-" * 40]
     any_data = False

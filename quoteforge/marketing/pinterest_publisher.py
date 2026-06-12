@@ -21,6 +21,7 @@ API = "https://api.pinterest.com/v5/pins"
 
 def _post_pin(token: str, board_id: str, image_b64: str,
               title: str, description: str, link: str) -> tuple[bool, str]:
+    """POST one pin to the Pinterest API. Returns (success, pin id or error)."""
     body = json.dumps({
         "board_id": board_id,
         "title": title[:100],

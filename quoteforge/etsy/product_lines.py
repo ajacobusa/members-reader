@@ -13,6 +13,7 @@ from quoteforge.etsy.profit_calculator import calculate_order_profit
 
 @dataclass
 class ProductLine:
+    """One sellable product line: cost, price, rank, and personalization type."""
     name: str
     category: str           # print | drinkware | apparel | paper | accessory | seasonal | baby | pet
     gelato_cost: float      # what Gelato charges you per unit (USD)
@@ -23,10 +24,12 @@ class ProductLine:
 
     @property
     def net_profit(self) -> float:
+        """Net profit (USD) per unit at the mid-tier price after Etsy fees."""
         return calculate_order_profit(self.sell_price, self.gelato_cost)["net_profit"]
 
     @property
     def margin_pct(self) -> float:
+        """Net margin percentage at the mid-tier price after Etsy fees."""
         return calculate_order_profit(self.sell_price, self.gelato_cost)["margin_pct"]
 
 
@@ -89,6 +92,7 @@ OCCASION_PRODUCTS: list[tuple[str, list[str]]] = [
 
 
 def _by_name(name: str) -> ProductLine | None:
+    """Find a product line by exact name (None if not found)."""
     return next((p for p in PRODUCT_LINES if p.name == name), None)
 
 
@@ -131,6 +135,7 @@ def bundle_value(occasion: str, max_products: int = 8) -> dict:
 
 
 def catalog_by_category() -> dict[str, list[ProductLine]]:
+    """Product lines grouped by category."""
     cats: dict[str, list[ProductLine]] = {}
     for p in PRODUCT_LINES:
         cats.setdefault(p.category, []).append(p)
@@ -138,4 +143,5 @@ def catalog_by_category() -> dict[str, list[ProductLine]]:
 
 
 def top_ranked(n: int = 10) -> list[ProductLine]:
+    """The n product lines with the highest strategic rank."""
     return sorted(PRODUCT_LINES, key=lambda p: p.rank)[:n]

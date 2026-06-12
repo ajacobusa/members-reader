@@ -95,6 +95,7 @@ def bundle_table(list_price: float, cost: float, tier: str = "entry") -> list[di
 
 @dataclass
 class Variation:
+    """One sellable material/size/frame combination with its cost and price."""
     material: str
     size: str
     frame_color: str          # frame NAME for framed, else ""

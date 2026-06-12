@@ -25,6 +25,7 @@ from quoteforge.config import (
 
 
 def _headers() -> dict:
+    """Build Etsy v3 auth headers (API key + OAuth bearer token)."""
     return {"x-api-key": ETSY_API_KEY,
             "Authorization": f"Bearer {ETSY_OAUTH_TOKEN}"}
 
@@ -122,6 +123,7 @@ def apply_variations(listing_id, live: bool = False, floor_pct: int = None,
 
 
 def upload_image(listing_id, image_path: Path, rank: int, runner=requests) -> bool:
+    """Upload one listing image at the given rank; False unless live-ready."""
     if TEST_MODE or prerequisites() or not listing_id:
         return False
     url = (f"{ETSY_API_BASE}/application/shops/{ETSY_SHOP_ID}"
@@ -133,6 +135,7 @@ def upload_image(listing_id, image_path: Path, rank: int, runner=requests) -> bo
 
 
 def _gallery_for(kit_dir: Path, n: int) -> list[Path]:
+    """Find the gallery PNGs for launch-kit listing number `n`, sorted."""
     matches = list(kit_dir.glob(f"{n:02d}_*/gallery/*.png"))
     return sorted(matches)
 
@@ -162,6 +165,7 @@ def publish_launch_kit(live: bool = False, kit_dir=None, runner=requests) -> dic
 
 
 def format_publish_text(r: dict) -> str:
+    """Render the publish-run results as plain text, noting live vs dry-run."""
     mode = "LIVE (creating Etsy drafts)" if r["live"] else "DRY RUN (nothing sent)"
     lines = ["=" * 64, f"ETSY AUTO-PUBLISH - {mode}", "=" * 64]
     if r["missing_prereqs"]:

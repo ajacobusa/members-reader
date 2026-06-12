@@ -21,6 +21,7 @@ CLR = {
 
 def _cell(ws, row, col, value="", bold=False, bg=None, fg="000000",
           center=False, wrap=False, size=10):
+    """Write one styled, bordered cell and return it."""
     c = ws.cell(row=row, column=col, value=value)
     c.font = Font(name="Arial", bold=bold, color=fg, size=size)
     if bg:
@@ -34,6 +35,7 @@ def _cell(ws, row, col, value="", bold=False, bg=None, fg="000000",
 
 
 def export_scaling_roadmap(output_path: Path | None = None) -> Path:
+    """Export the phased scaling roadmap workbook. Returns the path."""
     if output_path is None:
         output_path = OUTPUT_DIR / "QuoteForge_Scaling_Roadmap.xlsx"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

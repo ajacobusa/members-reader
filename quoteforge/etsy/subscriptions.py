@@ -10,6 +10,7 @@ from datetime import date
 
 
 def _days_left(end_date: str) -> int:
+    """Days from today until an ISO end date (0 if unparseable)."""
     try:
         return (date.fromisoformat(end_date[:10]) - date.today()).days
     except Exception:  # noqa: BLE001
@@ -46,6 +47,7 @@ def send_expiry_reminders(within_days: int = 7, record: bool = True) -> dict:
 
 
 def format_reminders_text(result: dict) -> str:
+    """Render the reminder-run summary as printable console text."""
     lines = ["=" * 56, "SUBSCRIPTION EXPIRY REMINDERS", "=" * 56,
              f"  Due / reminded: {result['due']}"]
     for s in result["sent"]:

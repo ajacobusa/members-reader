@@ -28,6 +28,7 @@ _SANS_FONTS = [
 
 
 def _load_font(size: int, serif: bool = True) -> ImageFont.FreeTypeFont:
+    """Load the first available candidate font, falling back to Pillow's default."""
     candidates = _SERIF_FONTS if serif else _SANS_FONTS
     for path in candidates:
         if Path(path).exists():
@@ -39,6 +40,7 @@ def _load_font(size: int, serif: bool = True) -> ImageFont.FreeTypeFont:
 
 
 def _download_background(url: str, size: tuple[int, int]) -> Image.Image:
+    """Fetch a background image and cover-resize it to the target size."""
     resp = requests.get(url, timeout=30)
     resp.raise_for_status()
     from io import BytesIO

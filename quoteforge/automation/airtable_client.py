@@ -16,6 +16,7 @@ BASE_URL = "https://api.airtable.com/v0"
 
 
 def _headers() -> dict:
+    """Build Airtable auth headers; raises if the API key is missing."""
     if not AIRTABLE_API_KEY:
         raise ValueError("AIRTABLE_API_KEY not set. Add to config.py or environment.")
     return {"Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -23,6 +24,7 @@ def _headers() -> dict:
 
 
 def _is_configured() -> bool:
+    """Check whether both the Airtable API key and base ID are set."""
     return bool(AIRTABLE_API_KEY and AIRTABLE_BASE_ID)
 
 
@@ -62,6 +64,7 @@ def update_airtable_order(airtable_record_id: str, fields: dict) -> bool:
 
 
 def get_airtable_setup_instructions() -> str:
+    """Return step-by-step instructions for creating the Airtable base and token."""
     return """
 AIRTABLE SETUP — QuoteForge Database
 ======================================

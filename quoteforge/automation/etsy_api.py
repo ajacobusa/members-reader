@@ -18,12 +18,14 @@ from quoteforge.config import (
 
 
 def _headers() -> dict:
+    """Build Etsy v3 auth headers (API key + OAuth bearer token)."""
     return {"x-api-key": ETSY_API_KEY,
             "Authorization": f"Bearer {ETSY_OAUTH_TOKEN}",
             "Content-Type": "application/json"}
 
 
 def _credentials_ready() -> bool:
+    """Check whether the Etsy API key, OAuth token, and shop ID are all set."""
     return bool(ETSY_API_KEY and ETSY_OAUTH_TOKEN and ETSY_SHOP_ID)
 
 

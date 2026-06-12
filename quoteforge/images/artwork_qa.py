@@ -65,6 +65,7 @@ def run_artwork_qa(output_dir: Path | None = None,
 
 
 def format_qa_text(report: dict) -> str:
+    """Render the QA report as a human-readable summary with a visual-review nudge."""
     lines = ["=" * 64, "ARTWORK QA - edge-case render + preflight", "=" * 64,
              f"Output folder: {report['output_dir']}",
              f"Preflight: {report['passed']}/{report['total']} passed", ""]

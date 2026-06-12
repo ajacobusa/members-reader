@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 @dataclass
 class SampleScenario:
+    """One representative personalization scenario to review for quote quality."""
     label: str
     relationship: str
     recipient_name: str

@@ -24,6 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 @dataclass(frozen=True)
 class ScheduledJob:
+    """One Windows Task Scheduler job: task name, admin CLI args, and schedule."""
     name: str                 # Windows Task Scheduler task name
     admin_args: str           # arguments passed to `python -m quoteforge.admin`
     schtasks_flags: list[str] = field(default_factory=list)  # /SC, /MO, /D, /ST …

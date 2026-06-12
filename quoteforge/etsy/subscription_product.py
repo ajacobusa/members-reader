@@ -12,6 +12,7 @@ from datetime import date
 
 @dataclass(frozen=True)
 class Plan:
+    """One membership plan: duration, deliveries, and price."""
     id: str
     name: str
     months: int
@@ -27,6 +28,7 @@ PLANS: list[Plan] = [
 
 
 def get_plan(plan_id: str) -> Plan | None:
+    """Look up a plan by id (None if unknown)."""
     return next((p for p in PLANS if p.id == plan_id), None)
 
 

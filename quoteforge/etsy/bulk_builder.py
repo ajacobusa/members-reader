@@ -19,12 +19,14 @@ from quoteforge.etsy.listing_seo import optimize_listing, format_seo_text
 
 
 def _to_listing(d: dict, n: int) -> LaunchListing:
+    """Convert a next_additions dict into a numbered LaunchListing."""
     return LaunchListing(n, d.get("relationship", "Daughter"),
                          d["title"], d.get("occasion", "Just Because"),
                          d.get("relationship", "Daughter"))
 
 
 def _slug(text: str) -> str:
+    """Turn a title into a short filesystem-safe folder slug."""
     return "".join(c if c.isalnum() else "_" for c in text)[:50].strip("_")
 
 
@@ -117,6 +119,7 @@ def build_launch_kit(with_art: bool = True, output_dir=None) -> dict:
 
 
 def _write_checklist(results: list[dict], out_dir: Path) -> None:
+    """Write a section-grouped UPLOAD_CHECKLIST.txt covering every built listing."""
     lines = ["JOFFIELS LAUNCH UPLOAD CHECKLIST", "=" * 40,
              "For EACH listing below, in Etsy: create listing -> paste title/tags/",
              "description from seo.txt -> upload the 5 gallery images -> set the",
@@ -155,6 +158,7 @@ def _generate_art(listing: LaunchListing, folder: Path,
 
 
 def _export_master(bundles, out_dir: Path) -> Path:
+    """Write all SEO bundles to a single master Excel sheet for fast copy-paste."""
     from openpyxl import Workbook
     path = out_dir / "batch_seo_master.xlsx"
     wb = Workbook(); ws = wb.active; ws.title = "Batch SEO"
@@ -170,6 +174,7 @@ def _export_master(bundles, out_dir: Path) -> Path:
 
 
 def format_batch_text(report: dict) -> str:
+    """Render a build_batch report as printable console text."""
     lines = ["=" * 64, "BULK LISTING BUILDER", "=" * 64,
              f"Built {report['batch']} listing package(s) "
              f"(starting after #{report['start_count']}).",

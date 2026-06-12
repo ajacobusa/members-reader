@@ -77,6 +77,7 @@ def optimize(orders: list[dict] | None = None) -> dict:
     total_rev = round(sum(s["_revenue"] for s in sales), 2)
 
     def _top(dim):
+        """Most profitable row for a dimension, or None when empty."""
         rows = breakdowns[dim]
         return rows[0] if rows else None
 
@@ -100,6 +101,7 @@ def optimize(orders: list[dict] | None = None) -> dict:
 
 
 def format_profit_text(orders: list[dict] | None = None) -> str:
+    """Plain-text profit report: totals, per-dimension breakdowns, insights."""
     o = optimize(orders)
     if not o["sales"]:
         return ("Profit Optimization Engine\n" + "-" * 44 +

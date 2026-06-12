@@ -28,6 +28,7 @@ _FALLBACK_TAGS = [
 
 @dataclass
 class SeoBundle:
+    """Complete SEO package for one listing: title, tags, attributes, description."""
     listing_n: int
     category: str
     niche: str
@@ -117,6 +118,7 @@ def _product_options_block() -> str:
 
 
 def _build_description(listing, niche: str) -> str:
+    """Compose the full listing description: hook, how-it-works, options, policies."""
     from quoteforge.config import SHOP_NAME
     data = KEYWORD_DB.get(niche, {})
     hook_kw = (data.get("buyer_intent") or data.get("long_tail") or [""])[0]
@@ -206,6 +208,7 @@ def _profession_tags(prof: str) -> list[str]:
 
 
 def _profession_title(base_title: str, prof: str) -> str:
+    """Extend a base title with profession-graduation keywords, capped at 140."""
     extra = f"{prof} School Graduation Wall Art"
     cand = f"{base_title} | {extra}"
     if len(cand) > 120:
@@ -261,7 +264,8 @@ def _relationship_tags(relationship: str, occasion: str, niche: str) -> list[str
 
 
 def _relationship_title(base_title: str, relationship: str, occasion: str) -> str:
-    rd = _REL_ALIAS.get(relationship.lower(), relationship.lower()).title()
+    """Extend a base title with relationship + occasion keywords, capped at 140."""
+    rd =_REL_ALIAS.get(relationship.lower(), relationship.lower()).title()
     ok = _occ_kw(occasion)
     extra = (f"{ok.title()} Gift For {rd} Wall Art" if ok
              else f"Personalized {rd} Keepsake Wall Art")
@@ -328,6 +332,7 @@ def validate_seo(bundle: SeoBundle) -> list[str]:
 
 
 def build_launch_seo() -> list[SeoBundle]:
+    """SEO bundles for all 20 launch-pack listings."""
     from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
     return [optimize_listing(l) for l in LAUNCH_PACK_20]
 
@@ -360,6 +365,7 @@ def all_profession_seo() -> list[SeoBundle]:
 
 
 def format_seo_text(bundle: SeoBundle) -> str:
+    """Render one SEO bundle as printable console text."""
     lines = [
         "=" * 70,
         f"#{bundle.listing_n}  {bundle.category}  (niche: {bundle.niche})",

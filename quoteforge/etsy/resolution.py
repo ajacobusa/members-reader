@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Resolution:
+    """One issue category's decision: fault, outcome, workflow, and reply text."""
     category: str
     title: str
     fault: str            # "customer" | "production" | "shipping" | "none"
@@ -180,6 +181,7 @@ def resolve_issue(category: str, order: dict | None = None) -> dict:
 
 
 def format_resolution_text(res: dict) -> str:
+    """Render a resolution decision as printable console text."""
     if not res["recognized"]:
         return ("Unrecognized issue. Choose one of:\n  "
                 + "\n  ".join(res["options"]))

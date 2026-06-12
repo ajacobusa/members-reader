@@ -54,6 +54,7 @@ def record_flat_cost(provider: str, cost_usd: float, operation: str = "",
 # ── Reporting ────────────────────────────────────────────────────
 
 def _day_bounds(day: datetime) -> tuple[str, str]:
+    """Start/end timestamp strings covering the calendar day of `day`."""
     start = day.replace(hour=0, minute=0, second=0, microsecond=0)
     return (start.strftime("%Y-%m-%d %H:%M:%S"),
             (start + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"))
@@ -101,6 +102,7 @@ def cost_report(period: str = "today") -> dict:
 
 
 def format_cost_text(rep: dict) -> str:
+    """Render the cost report as console-friendly plain text."""
     lines = ["=" * 60, f"API COST REPORT - {rep['period']} (since {rep['since']})",
              "=" * 60,
              f"  Total cost      : ${rep['total_cost']:.4f}",
@@ -122,6 +124,7 @@ def format_cost_text(rep: dict) -> str:
 
 
 def format_cost_html(rep: dict) -> str:
+    """Render the cost report as an HTML block for email reports."""
     rows = "".join(
         f"<tr><td>{op}</td><td align=right>{d['calls']}</td>"
         f"<td align=right>${d['cost']:.4f}</td></tr>"

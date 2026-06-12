@@ -24,6 +24,7 @@ _ALLOWED_MODES = {"RGB", "RGBA"}
 
 
 def _check(name: str, ok: bool, detail: str) -> dict:
+    """Build a single named pass/fail check entry."""
     return {"name": name, "ok": ok, "detail": detail}
 
 
@@ -66,6 +67,7 @@ def run_preflight(image_path, product_identifier: str = "") -> dict:
 
     # Allow either orientation (portrait/landscape) match.
     def _fits(w, h, rw, rh):
+        """True if the image meets the required pixel size in either orientation."""
         tol = PREFLIGHT_DIMENSION_TOLERANCE
         return (w >= rw * (1 - tol) and h >= rh * (1 - tol)) or \
                (w >= rh * (1 - tol) and h >= rw * (1 - tol))
@@ -104,6 +106,7 @@ def run_preflight(image_path, product_identifier: str = "") -> dict:
 
 
 def format_preflight_text(report: dict) -> str:
+    """Render the preflight report as a human-readable pass/fail checklist."""
     head = "ARTWORK PREFLIGHT - " + ("PASS" if report["ok"] else "FAIL (blocking)")
     lines = ["=" * 56, head, "=" * 56]
     for c in report["checks"]:

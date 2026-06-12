@@ -18,12 +18,14 @@ from datetime import date, datetime, timedelta
 
 
 def _daily_opex() -> float:
+    """Fixed monthly overhead prorated to a per-day USD figure."""
     from quoteforge.config import MONTHLY_FIXED_COSTS, USE_MAKE_COM, MAKE_COM_COST
     monthly = float(MONTHLY_FIXED_COSTS) + (MAKE_COM_COST if USE_MAKE_COM else 0.0)
     return round(monthly / 30.4, 4)
 
 
 def _range_for(period: str):
+    """Start/end dates for a period name (today/week/month/year/all)."""
     today = date.today()
     if period == "today":
         return today, today
@@ -37,6 +39,7 @@ def _range_for(period: str):
 
 
 def _day_of(iso: str) -> str:
+    """Date part (YYYY-MM-DD) of an ISO timestamp; today if missing."""
     try:
         return (iso or "")[:10] or date.today().isoformat()
     except Exception:  # noqa: BLE001
@@ -55,6 +58,7 @@ def build_ledger(period: str = "month") -> dict:
     days: dict[str, dict] = {}
 
     def _row(d):
+        """Get-or-create the ledger row for a day."""
         return days.setdefault(d, {"day": d, "revenue": 0.0, "cogs": 0.0,
                                    "etsy_fees": 0.0, "api_cost": 0.0,
                                    "opex": 0.0, "net_profit": 0.0, "orders": 0})
@@ -154,6 +158,7 @@ def build_breakdown(period: str = "month") -> dict:
     by_product: dict[str, dict] = {}
 
     def _acc(bucket, key):
+        """Get-or-create the accumulator row for a grouping key."""
         return bucket.setdefault(key, {"revenue": 0.0, "cost": 0.0,
                                        "net": 0.0, "orders": 0})
 
@@ -184,6 +189,7 @@ def build_breakdown(period: str = "month") -> dict:
         a["orders"] += 1
 
     def _round(bucket):
+        """Round all money fields in a bucket to 2 decimals (in place)."""
         for k in bucket:
             for f in ("revenue", "cost", "net"):
                 bucket[k][f] = round(bucket[k][f], 2)
@@ -195,6 +201,7 @@ def build_breakdown(period: str = "month") -> dict:
 
 
 def format_breakdown_text(bd: dict) -> str:
+    """Render the channel/vendor/product breakdown as printable console text."""
     lines = ["=" * 60, f"LEDGER BREAKDOWN ({bd['period']})", "=" * 60]
     for title, key in (("BY CHANNEL", "by_channel"),
                        ("BY VENDOR", "by_vendor"),
@@ -225,6 +232,7 @@ def snapshot_today() -> dict:
 
 
 def format_ledger_text(led: dict) -> str:
+    """Render the daily ledger plus totals as printable console text."""
     t = led["totals"]
     lines = ["=" * 70,
              f"GENERAL LEDGER  ({led['period']}: {led['start']} -> {led['end']})",

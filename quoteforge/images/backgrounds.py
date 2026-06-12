@@ -1,3 +1,4 @@
+"""Unsplash background fetcher - finds scenic photos for poster backgrounds."""
 import random
 import requests
 from quoteforge.config import UNSPLASH_ACCESS_KEY

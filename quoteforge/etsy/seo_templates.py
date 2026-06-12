@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ListingTemplate:
+    """One ready-made Etsy listing: title, 13 tags, hook, price tier, product."""
     niche: str
     title: str          # <=140 chars, keyword-rich
     tags: list[str]     # exactly 13 tags, each <=20 chars
@@ -1355,12 +1356,15 @@ SEO_TEMPLATES: list[ListingTemplate] = [
 
 
 def get_templates_by_niche(niche: str) -> list[ListingTemplate]:
+    """Templates whose niche contains the given text (case-insensitive)."""
     return [t for t in SEO_TEMPLATES if niche.lower() in t.niche.lower()]
 
 
 def get_templates_by_price(price_tier: str) -> list[ListingTemplate]:
+    """Templates in the given price tier (budget/mid/premium)."""
     return [t for t in SEO_TEMPLATES if t.price_tier == price_tier]
 
 
 def get_all_niches() -> list[str]:
+    """Sorted unique niche names across all templates."""
     return sorted(set(t.niche for t in SEO_TEMPLATES))

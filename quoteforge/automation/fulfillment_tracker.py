@@ -33,6 +33,8 @@ def _poll_vendor(order: dict, vendor_order_id: str) -> dict:
 
 
 def sync_tracking(limit: int = 500) -> dict:
+    """Poll vendors for all open orders, advance statuses, and push new
+    tracking numbers to the Etsy buyer once."""
     from quoteforge.db.database import init_db, get_all_orders, update_order
     init_db()
     newly_shipped, delivered, pushed = [], [], []
@@ -75,6 +77,7 @@ def sync_tracking(limit: int = 500) -> dict:
 
 
 def format_tracking_text(r: dict) -> str:
+    """Render the sync result counts as a short plain-text block."""
     return ("Fulfillment tracking sync\n" + "-" * 34 + "\n"
             f"  Newly shipped : {len(r['newly_shipped'])}\n"
             f"  Pushed to Etsy: {len(r['pushed_to_etsy'])}\n"

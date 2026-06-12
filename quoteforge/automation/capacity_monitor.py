@@ -16,6 +16,7 @@ DEFECT_STATUSES = ("reprint", "defect", "refunded", "remake")
 
 
 def _parse(ts: str):
+    """Parse an ISO timestamp (tolerating trailing Z); None on failure."""
     try:
         return datetime.fromisoformat((ts or "").replace("Z", ""))
     except (ValueError, TypeError):
@@ -23,6 +24,7 @@ def _parse(ts: str):
 
 
 def _hours(a: str, b: str):
+    """Elapsed hours between two ISO timestamps, or None if either is invalid."""
     da, db = _parse(a), _parse(b)
     if not da or not db:
         return None
@@ -104,6 +106,7 @@ def best_vendor(metrics: dict | None = None) -> str | None:
 
 
 def capacity_report(now: datetime | None = None) -> dict:
+    """Combine vendor metrics, overdue orders, SLA alerts and best-vendor pick."""
     m = vendor_metrics()
     late = overdue_orders(now)
     from quoteforge.config import PRODUCTION_DAYS, SHIPPING_DAYS
@@ -120,6 +123,7 @@ def capacity_report(now: datetime | None = None) -> dict:
 
 
 def format_capacity_text(now: datetime | None = None) -> str:
+    """Render the capacity report as plain text for console/email."""
     r = capacity_report(now)
     if not r["vendors"]:
         return ("Production Capacity Monitor\n" + "-" * 40 +

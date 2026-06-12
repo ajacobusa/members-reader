@@ -1,3 +1,8 @@
+"""QuoteForge desktop GUI entry point.
+
+Builds the tabbed Tkinter app (bulk generator, custom messages, order
+processor, catalog/SEO, prompts, profit, pipeline monitor) and runs it.
+"""
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -36,6 +41,7 @@ def _build_bulk_tab(frame: tk.Frame) -> None:
     sub_menu.pack(**pad)
 
     def on_cat_change(*_: object) -> None:
+        """Refresh the sub-category dropdown when the category changes."""
         subs = CATEGORIES.get(cat_var.get(), {}).get("subcategories", [])
         sub_menu["values"] = subs
         if subs:
@@ -53,6 +59,7 @@ def _build_bulk_tab(frame: tk.Frame) -> None:
                       anchor="w", wraplength=520, font=("Helvetica", 9))
 
     def on_done(count: int) -> None:
+        """Show the completion dialog and re-enable the Generate button."""
         bar["value"] = 100
         status.configure(text=f"Done! {count} designs saved to {OUTPUT_DIR}")
         messagebox.showinfo(
@@ -62,10 +69,12 @@ def _build_bulk_tab(frame: tk.Frame) -> None:
         btn.configure(state="normal")
 
     def run_gen() -> None:
+        """Worker-thread body: run the pipeline, export the CSV, report back via the UI."""
         root = frame.winfo_toplevel()
         tracker = ProgressTracker(root, bar, status)
 
         def on_progress(current: int, total: int, quote: str) -> None:
+            """Forward per-design pipeline progress to the progress bar."""
             tracker.update(current, total, f"Rendering: {quote[:50]}")
 
         try:
@@ -88,6 +97,7 @@ def _build_bulk_tab(frame: tk.Frame) -> None:
             frame.winfo_toplevel().after(0, btn.configure, {"state": "normal"})
 
     def on_generate() -> None:
+        """Disable the button and start generation in a background thread."""
         btn.configure(state="disabled")
         bar["value"] = 0
         status.configure(text="Starting generation...")
@@ -100,6 +110,7 @@ def _build_bulk_tab(frame: tk.Frame) -> None:
 
 
 def main() -> None:
+    """Build the tabbed QuoteForge window and run the Tk main loop."""
     root = tk.Tk()
     root.title("QuoteForge — Professional Wall Art Generator")
     root.geometry("680x860")

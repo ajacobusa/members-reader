@@ -1,3 +1,4 @@
+"""Claude-powered Etsy listing copy generation (title, tags, description)."""
 import anthropic
 from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 

@@ -34,6 +34,7 @@ def _uid_map() -> dict:
 
 
 def _all_skus() -> list[str]:
+    """Every Gelato SKU we sell (catalog products + frames), sorted."""
     from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
     from quoteforge.etsy.frames import FRAMES
     skus = {p.gelato_sku for p in GELATO_CATALOG}
@@ -104,6 +105,7 @@ def sync_catalog() -> dict:
 
 
 def format_sync_text(r: dict) -> str:
+    """Render the catalog sync summary as a short plain-text block."""
     return ("Gelato catalog sync\n" + "-" * 32 + "\n"
             f"  Checked     : {r.get('checked', 0)} SKUs\n"
             f"  Updated     : {r.get('updated', 0)}\n"

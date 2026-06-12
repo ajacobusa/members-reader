@@ -11,6 +11,7 @@ from datetime import datetime
 
 
 def _safe(fn, default):
+    """Run fn(), returning `default` if it raises - keeps the briefing rendering."""
     try:
         return fn()
     except Exception:  # noqa: BLE001
@@ -18,6 +19,7 @@ def _safe(fn, default):
 
 
 def morning_briefing(now: datetime | None = None) -> dict:
+    """Aggregate every agent's daily signals into one prioritised briefing dict."""
     now = now or datetime.now()
     from quoteforge.db.database import (
         init_db, get_order_stats, get_orders_by_status, get_pending_approvals,
@@ -92,6 +94,7 @@ def morning_briefing(now: datetime | None = None) -> dict:
 
 
 def format_briefing_text(b: dict) -> str:
+    """Render the briefing dict as a readable plain-text email body."""
     lines = ["=" * 60, f"JOFFIELS MORNING BRIEFING - {b['now']}", "=" * 60,
              f"Health: {b['health']}   Orders: {b['orders_total']}   "
              f"API spend today: ${b['api_cost_today']:.4f}"]
@@ -120,6 +123,7 @@ def format_briefing_text(b: dict) -> str:
 
 
 def send_briefing(now: datetime | None = None) -> dict:
+    """Build the briefing and email it; subject reflects how many actions are due."""
     b = morning_briefing(now)
     from quoteforge.automation.emailer import _send_email
     n_actions = len(b["actions"])

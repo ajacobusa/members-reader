@@ -15,12 +15,14 @@ def collect_signals() -> dict:
     s: dict = {}
 
     def _try(key, fn):
+        """Store fn() under `key`, capturing any exception as an error dict."""
         try:
             s[key] = fn()
         except Exception as exc:  # noqa: BLE001
             s[key] = {"error": str(exc)}
 
     def _orders_by_status():
+        """Tally all orders grouped by their status field."""
         from quoteforge.db.database import init_db, get_all_orders
         init_db()
         from collections import Counter
@@ -32,6 +34,7 @@ def collect_signals() -> dict:
          "get_pending_approvals")()))
 
     def _holds():
+        """Count orders blocked by bad photos or preflight failures."""
         from quoteforge.db.database import get_all_orders
         held = [o for o in get_all_orders(limit=100000)
                 if (o.get("status") or "") in ("needs_better_photo", "preflight_failed")]
@@ -39,6 +42,7 @@ def collect_signals() -> dict:
     _try("orders_on_hold", _holds)
 
     def _margins():
+        """Count product variations whose margin is below the 60% floor."""
         from quoteforge.etsy.variations import build_variations
         vs = build_variations()
         below = [v for v in vs if v.margin_pct < 60]
@@ -46,6 +50,7 @@ def collect_signals() -> dict:
     _try("margins", _margins)
 
     def _pnl():
+        """Pull this month's P&L totals from the ledger."""
         from quoteforge.etsy.ledger import build_ledger
         t = build_ledger("month")["totals"]
         return {"revenue": t["revenue"], "net_profit": t["net_profit"],
@@ -53,6 +58,7 @@ def collect_signals() -> dict:
     _try("pnl_month", _pnl)
 
     def _catalog():
+        """Summarize catalog size and vendor coverage."""
         from quoteforge.catalog.registry import list_products, VENDORS
         prods = list_products()
         vendors_used = {p["vendor"] for p in prods}
@@ -61,12 +67,14 @@ def collect_signals() -> dict:
     _try("catalog", _catalog)
 
     def _backups():
+        """Report database backup count and the most recent backup."""
         from quoteforge.db.database import list_backups
         bs = list_backups()
         return {"count": len(bs), "latest": (bs[0] if bs else None)}
     _try("backups", _backups)
 
     def _subs():
+        """Count subscriptions expiring within the next 7 days."""
         from quoteforge.db.database import get_expiring_subscriptions
         return {"expiring_7d": len(get_expiring_subscriptions(7))}
     _try("subscriptions", _subs)
@@ -75,6 +83,7 @@ def collect_signals() -> dict:
 
 
 def _imp(mod, name):
+    """Import `mod` lazily and return its attribute `name`."""
     import importlib
     return getattr(importlib.import_module(mod), name)
 
@@ -141,6 +150,7 @@ def ai_review(email: bool = False) -> dict:
 
 
 def format_review_text(r: dict) -> str:
+    """Render the review report as console-friendly plain text."""
     lines = ["=" * 60, "AI OPS REVIEW - issues & continuous improvement", "=" * 60,
              "\nIMPROVEMENT PLAN:", r["plan"], "\nDETERMINISTIC FLAGS:"]
     lines += [f"  - {x}" for x in r["findings"]]
@@ -152,5 +162,6 @@ def format_review_text(r: dict) -> str:
 
 
 def format_review_html(r: dict) -> str:
+    """Wrap the plain-text review in minimal HTML for email delivery."""
     return ("<html><body style='font-family:Arial'><pre style='font-size:13px;"
             f"white-space:pre-wrap'>{format_review_text(r)}</pre></body></html>")

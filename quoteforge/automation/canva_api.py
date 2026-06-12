@@ -14,6 +14,7 @@ CANVA_BASE_URL = "https://api.canva.com/rest/v1"
 
 
 def _canva_headers() -> dict:
+    """Build bearer-auth headers for Canva API requests."""
     return {
         "Authorization": f"Bearer {CANVA_API_KEY}",
         "Content-Type": "application/json",
@@ -21,6 +22,7 @@ def _canva_headers() -> dict:
 
 
 def is_configured() -> bool:
+    """Check whether a Canva API key is set."""
     return bool(CANVA_API_KEY)
 
 
@@ -111,6 +113,7 @@ def export_design_as_png(design_id: str) -> str | None:
 
 
 def get_canva_setup_guide() -> str:
+    """Return step-by-step instructions for enabling the Canva Connect API."""
     return """
 CANVA API SETUP
 ===============

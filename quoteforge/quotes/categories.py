@@ -1,3 +1,4 @@
+"""Occasion category taxonomy with per-category mood and Unsplash search keyword."""
 # Maps every occasion category → subcategories → mood → Unsplash search keyword
 
 CATEGORIES: dict[str, dict] = {

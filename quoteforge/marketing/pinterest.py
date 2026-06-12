@@ -31,6 +31,7 @@ PIN_VARIANTS = [
 
 @dataclass
 class Pin:
+    """One scheduled Pinterest pin: image, SEO copy, board and destination link."""
     listing_n: int
     image: str            # relative path of the generated pin PNG
     title: str
@@ -41,6 +42,7 @@ class Pin:
 
 
 def _hashtags(tags: list[str], k: int = 5) -> str:
+    """Turn the first k tags into CamelCase hashtags, space-joined."""
     out = []
     for t in tags[:k]:
         out.append("#" + "".join(w.capitalize() for w in t.split()))
@@ -48,6 +50,7 @@ def _hashtags(tags: list[str], k: int = 5) -> str:
 
 
 def _font(size: int):
+    """Load the first available serif-ish font, falling back to Pillow's default."""
     from PIL import ImageFont
     for name in ("Georgia.ttf", "georgia.ttf", "DejaVuSerif.ttf", "arial.ttf"):
         try:
@@ -58,6 +61,7 @@ def _font(size: int):
 
 
 def _wrap(draw, text: str, font, max_w: int) -> list[str]:
+    """Greedy word-wrap of text into lines that fit max_w pixels."""
     words, lines, cur = text.split(), [], ""
     for w in words:
         trial = (cur + " " + w).strip()
@@ -160,6 +164,7 @@ def build_pin_pack(numbers=None, kit_dir=None, out_dir=None) -> list[Pin]:
 
 
 def _themed_pins(shop_link: str) -> list[Pin]:
+    """Evergreen gift-guide / seasonal / decor pin rows pointing at the shop home."""
     themes = [
         ("Gift Guides", "10 Personalized Gifts They'll Actually Keep",
          "Gift Guides", ["personalized gift", "sentimental gift", "custom gift"]),

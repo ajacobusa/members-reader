@@ -45,6 +45,7 @@ def rising_demand(orders: list[dict] | None = None) -> list[dict]:
     early, late = rows[:mid], rows[mid:]
 
     def _count(sample):
+        """Order count per occasion within a sample of orders."""
         c: dict[str, int] = {}
         for o in sample:
             k = (o.get("occasion") or "").strip()
@@ -96,6 +97,8 @@ def predict(now: datetime | None = None) -> dict:
 
 
 def _narrative(data: dict) -> str:
+    """Short what-to-make-next summary - AI-written when Claude is configured,
+    deterministic from the seasonal/rising signals otherwise."""
     facts = (f"Upcoming seasons: {[s['occasion'] for s in data['seasonal'][:5]]}; "
              f"rising occasions: {[r['occasion'] for r in data['rising_demand'][:5]]}; "
              f"external trends configured: {data['external']['configured']}.")
@@ -121,6 +124,7 @@ def _narrative(data: dict) -> str:
 
 
 def format_trend_text(now: datetime | None = None) -> str:
+    """Plain-text trend report: narrative, holiday recs, listing ideas."""
     d = predict(now)
     lines = ["Trend Prediction Engine", "-" * 40, _narrative(d), ""]
     if d["holiday_recommendations"]:

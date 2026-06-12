@@ -30,6 +30,7 @@ class PersonalTab(tk.Frame):
         self._build_ui()
 
     def _build_ui(self) -> None:
+        """Build all widgets for the personalized message tab."""
         pad = {"padx": 14, "pady": 4}
 
         # ── Header ──────────────────────────────────────────────
@@ -126,23 +127,27 @@ class PersonalTab(tk.Frame):
     # ── Helpers ──────────────────────────────────────────────────
 
     def _set_output(self, text: str) -> None:
+        """Replace the contents of the read-only output preview."""
         self._output_text.configure(state="normal")
         self._output_text.delete("1.0", "end")
         self._output_text.insert("1.0", text)
         self._output_text.configure(state="disabled")
 
     def _set_status(self, text: str) -> None:
+        """Update the status label text."""
         self._status.configure(text=text)
 
     # ── Event handlers ───────────────────────────────────────────
 
     def _on_generate(self) -> None:
+        """Start message generation on a background thread."""
         self._btn.configure(state="disabled")
         self._bar.start(10)
         self._set_status("Generating your personalized message...")
         threading.Thread(target=self._run, daemon=True).start()
 
     def _run(self) -> None:
+        """Generate message variations, save them to disk, and show a preview (worker thread)."""
         try:
             relationship = self._relationship_var.get()
             recipient = self._recipient_var.get().strip() or "Friend"

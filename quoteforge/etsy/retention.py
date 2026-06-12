@@ -38,6 +38,7 @@ _RECURRING = ("birthday", "anniversary", "graduation")
 
 @dataclass
 class Coupon:
+    """A discount code with its percentage and the reason it's offered."""
     code: str
     pct: int
     reason: str
@@ -55,6 +56,7 @@ def coupon_for(order_count: int, days_since_last: int) -> Coupon:
 
 
 def _next_date(month: int, day: int, now: datetime) -> datetime:
+    """Next occurrence of a month/day on or after now (rolls to next year)."""
     cand = datetime(now.year, month, day)
     if cand < now:
         cand = datetime(now.year + 1, month, day)
@@ -62,6 +64,7 @@ def _next_date(month: int, day: int, now: datetime) -> datetime:
 
 
 def _parse_dt(s: str) -> datetime:
+    """Parse a timestamp string in any of the known formats; fall back to now."""
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
             return datetime.strptime((s or "")[:19], fmt)
@@ -205,6 +208,7 @@ def retention_digest(now: datetime | None = None) -> dict:
 
 
 def format_retention_text(d: dict) -> str:
+    """Render the retention digest as printable console text."""
     lines = ["=" * 64, f"RETENTION & LTV ACTIONS  (as of {d['now']})", "=" * 64,
              f"Analyzed {d['order_count']} order(s)."]
     lines.append(f"\nREPEAT-GIFT OUTREACH ({len(d['repeat_gift'])}) - "
@@ -225,6 +229,7 @@ def format_retention_text(d: dict) -> str:
 
 
 def send_retention_digest(now: datetime | None = None) -> dict:
+    """Email the retention digest to the shop owner (skips when nothing is due)."""
     d = retention_digest(now)
     if not (d["repeat_gift"] or d["cross_sell"] or d["lapsed"]):
         return {"status": "no_action", "digest": d}

@@ -9,12 +9,14 @@ from __future__ import annotations
 
 
 def _all_orders():
+    """All orders from the DB (initializes the schema first)."""
     from quoteforge.db.database import init_db, get_all_orders
     init_db()
     return get_all_orders(limit=100000)
 
 
 def _key(o: dict) -> str:
+    """Normalized customer key for an order: email, falling back to name."""
     return (o.get("customer_email") or o.get("customer_name") or "").strip().lower()
 
 
@@ -82,6 +84,7 @@ def customer_360(email: str) -> dict:
 
 
 def format_customer_text(email: str) -> str:
+    """Plain-text 360 profile for one customer, keyed by email."""
     c = customer_360(email)
     if not c["orders"] and not c["gift_profiles"] and not c["subscriptions"]:
         return (f"CRM - {email}\n" + "-" * 40 +
@@ -104,6 +107,7 @@ def format_customer_text(email: str) -> str:
 
 
 def format_crm_overview(top: int = 20) -> str:
+    """Plain-text table of the top customers by revenue."""
     rows = customer_list()
     if not rows:
         return ("CRM overview\n" + "-" * 40 +

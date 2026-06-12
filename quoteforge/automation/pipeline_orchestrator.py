@@ -150,11 +150,13 @@ def run_full_pipeline(
     """
 
     def _notify(stage: str, msg: str) -> None:
+        """Log a stage update and forward it to the on_stage callback."""
         logger.info(f"[{stage}] {msg}")
         if on_stage:
             on_stage(stage, msg)
 
     def _log(order_id: str, stage: str, status: str, msg: str = "") -> None:
+        """Record the stage result and advance the order's status."""
         log_pipeline_stage(order_id, stage, status, msg)
         update_order(order_id, status=STATUS_MAP.get(stage, stage))
 

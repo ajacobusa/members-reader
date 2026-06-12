@@ -13,6 +13,10 @@ DB_PATH: Path = OUTPUT_DIR / "quoteforge.db"
 
 @contextmanager
 def _conn():
+    """Context-managed SQLite connection (WAL mode, 30s lock timeout, Row factory).
+
+    Commits on clean exit and always closes; creates OUTPUT_DIR on first use.
+    """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     # timeout=30 → wait up to 30s for a lock instead of failing instantly.
     conn = sqlite3.connect(DB_PATH, timeout=30)
@@ -320,6 +324,7 @@ def init_db() -> None:
 
 
 def upsert_ledger_snapshot(day: str, row: dict) -> None:
+    """Insert or replace the daily ledger snapshot for `day` (idempotent per day)."""
     with _conn() as conn:
         conn.execute("""
             INSERT INTO ledger_snapshots
@@ -336,6 +341,7 @@ def upsert_ledger_snapshot(day: str, row: dict) -> None:
 
 
 def get_ledger_snapshots(limit: int = 90) -> list[dict]:
+    """Return the most recent daily ledger snapshots, newest day first."""
     with _conn() as conn:
         return [dict(r) for r in conn.execute(
             "SELECT * FROM ledger_snapshots ORDER BY day DESC LIMIT ?", (limit,))]
@@ -435,6 +441,7 @@ def update_order(order_id: str, **fields) -> None:
 
 
 def get_order(order_id: str) -> Optional[dict]:
+    """Fetch a single order by its internal order_id, or None if absent."""
     with _conn() as conn:
         row = conn.execute("SELECT * FROM orders WHERE order_id=?", (order_id,)).fetchone()
         return dict(row) if row else None
@@ -456,6 +463,7 @@ def get_order_by_etsy_id(etsy_order_id: str) -> Optional[dict]:
 
 
 def get_orders_by_status(status: str) -> list[dict]:
+    """Return all orders with the given status, newest first."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM orders WHERE status=? ORDER BY created_at DESC", (status,)
@@ -464,6 +472,7 @@ def get_orders_by_status(status: str) -> list[dict]:
 
 
 def get_all_orders(limit: int = 100) -> list[dict]:
+    """Return up to `limit` orders, newest first."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM orders ORDER BY created_at DESC LIMIT ?", (limit,)
@@ -472,6 +481,7 @@ def get_all_orders(limit: int = 100) -> list[dict]:
 
 
 def log_pipeline_stage(order_id: str, stage: str, status: str, message: str = "") -> None:
+    """Append a pipeline stage event (stage, status, message) for an order."""
     with _conn() as conn:
         conn.execute(
             "INSERT INTO pipeline_log (order_id, stage, status, message) VALUES (?,?,?,?)",
@@ -480,6 +490,7 @@ def log_pipeline_stage(order_id: str, stage: str, status: str, message: str = ""
 
 
 def get_pipeline_log(order_id: str) -> list[dict]:
+    """Return an order's pipeline events in chronological order."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM pipeline_log WHERE order_id=? ORDER BY created_at",
@@ -491,6 +502,7 @@ def get_pipeline_log(order_id: str) -> list[dict]:
 # ── Product CRUD ─────────────────────────────────────────────────
 
 def upsert_product(data: dict) -> None:
+    """Insert or replace a product row keyed by product_id."""
     with _conn() as conn:
         conn.execute("""
             INSERT OR REPLACE INTO products
@@ -506,6 +518,7 @@ def upsert_product(data: dict) -> None:
 
 
 def get_products_by_category(category: str) -> list[dict]:
+    """Return active products in a category."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM products WHERE category=? AND active=1", (category,)
@@ -516,6 +529,7 @@ def get_products_by_category(category: str) -> list[dict]:
 # ── Template CRUD ─────────────────────────────────────────────────
 
 def upsert_template(data: dict) -> None:
+    """Insert or replace a design template row keyed by template_id."""
     with _conn() as conn:
         conn.execute("""
             INSERT OR REPLACE INTO templates
@@ -531,6 +545,7 @@ def upsert_template(data: dict) -> None:
 
 
 def get_templates_by_scenery(scenery_type: str) -> list[dict]:
+    """Return active templates matching a scenery type."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM templates WHERE scenery_type=? AND active=1", (scenery_type,)
@@ -564,6 +579,7 @@ def save_customer_message(order_id: str, message_type: str, message_body: str,
 
 
 def get_customer_messages(order_id: str) -> list[dict]:
+    """Return an order's customer messages in chronological order."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM customer_messages WHERE order_id=? ORDER BY created_at",
@@ -573,6 +589,7 @@ def get_customer_messages(order_id: str) -> list[dict]:
 
 
 def mark_message_sent(message_id: int) -> None:
+    """Flag a customer message as sent."""
     with _conn() as conn:
         conn.execute("UPDATE customer_messages SET sent=1 WHERE id=?", (message_id,))
 
@@ -580,6 +597,7 @@ def mark_message_sent(message_id: int) -> None:
 # ── Upsell persistence ───────────────────────────────────────────
 
 def save_upsell(order_id: str, offer_type: str, offer_body: str) -> int:
+    """Persist an upsell offer for an order. Returns the new row id."""
     with _conn() as conn:
         cur = conn.execute(
             "INSERT INTO upsells (order_id, offer_type, offer_body) VALUES (?,?,?)",
@@ -589,6 +607,7 @@ def save_upsell(order_id: str, offer_type: str, offer_body: str) -> int:
 
 
 def get_upsells(order_id: str) -> list[dict]:
+    """Return an order's upsell offers in chronological order."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM upsells WHERE order_id=? ORDER BY created_at", (order_id,)
@@ -599,6 +618,7 @@ def get_upsells(order_id: str) -> list[dict]:
 # ── Review persistence ───────────────────────────────────────────
 
 def save_review(order_id: str, review_message: str, scheduled_for: str = "") -> int:
+    """Persist a review-request message (optionally scheduled). Returns the row id."""
     with _conn() as conn:
         cur = conn.execute(
             """INSERT INTO reviews (order_id, review_message, scheduled_for)
@@ -618,6 +638,7 @@ def get_pending_reviews() -> list[dict]:
 
 
 def mark_review_sent(review_id: int) -> None:
+    """Flag a review-request message as sent."""
     with _conn() as conn:
         conn.execute("UPDATE reviews SET sent=1 WHERE id=?", (review_id,))
 
@@ -640,12 +661,14 @@ def add_subscriber(email: str, source: str = "manual",
 
 
 def get_subscribers() -> list[dict]:
+    """Return all mailing-list subscribers, newest first."""
     with _conn() as conn:
         return [dict(r) for r in conn.execute(
             "SELECT * FROM subscribers ORDER BY created_at DESC")]
 
 
 def subscriber_count() -> int:
+    """Return the total number of mailing-list subscribers."""
     with _conn() as conn:
         return conn.execute("SELECT COUNT(*) AS n FROM subscribers").fetchone()["n"]
 
@@ -673,6 +696,7 @@ def save_design(email: str, design_json: str = "", design_id: str = "",
 
 
 def accept_design(email: str, design_id: str = "default") -> None:
+    """Mark a saved design as customer-accepted, stamping accepted_at."""
     from datetime import datetime as _dt
     with _conn() as conn:
         conn.execute(
@@ -683,6 +707,7 @@ def accept_design(email: str, design_id: str = "default") -> None:
 
 
 def get_designs(email: str = "") -> list[dict]:
+    """Return saved designs (all, or one customer's), most recently updated first."""
     with _conn() as conn:
         if email:
             rows = conn.execute(
@@ -715,6 +740,7 @@ def add_competitor_snapshot(shop: str, listings: int = None, min_price: float = 
 
 
 def get_competitor_snapshots(shop: str = "") -> list[dict]:
+    """Return competitor snapshots (all shops, or one), oldest first for diffing."""
     with _conn() as conn:
         if shop:
             rows = conn.execute(
@@ -743,6 +769,7 @@ def record_ab_event(experiment: str, variant: str, event: str,
 
 
 def get_ab_events(experiment: str = "") -> list[dict]:
+    """Return A/B events, optionally filtered to one experiment."""
     with _conn() as conn:
         if experiment:
             rows = conn.execute(
@@ -770,6 +797,7 @@ def add_reward(email: str, kind: str, points: int, ref: str = "",
 
 
 def get_rewards(email: str = "") -> list[dict]:
+    """Return loyalty/referral reward rows (all, or one customer's), newest first."""
     with _conn() as conn:
         if email:
             rows = conn.execute(
@@ -831,6 +859,7 @@ def get_open_customizations(older_than_minutes: int = 0) -> list[dict]:
 
 def mark_customization(email: str, listing: str, status: str,
                        recovered: bool = False) -> None:
+    """Set an abandoned customization's status; `recovered` also stamps recovered_at."""
     email = (email or "").strip().lower()
     from datetime import datetime as _dt
     with _conn() as conn:
@@ -874,6 +903,7 @@ def save_gift_profile(owner_email: str, recipient_name: str,
 
 
 def get_gift_profiles(owner_email: str = "") -> list[dict]:
+    """Return saved gift profiles (all, or one buyer's), newest first."""
     with _conn() as conn:
         if owner_email:
             rows = conn.execute(
@@ -886,6 +916,7 @@ def get_gift_profiles(owner_email: str = "") -> list[dict]:
 
 
 def mark_profile_reminded(profile_id: int, when: str = "") -> None:
+    """Stamp reminded_at on a gift profile (idempotency guard for reminders)."""
     from datetime import datetime as _dt
     with _conn() as conn:
         conn.execute("UPDATE gift_profiles SET reminded_at=? WHERE id=?",
@@ -897,6 +928,7 @@ def mark_profile_reminded(profile_id: int, when: str = "") -> None:
 def add_review(customer_name: str, rating: int, text: str = "",
                photo_url: str = "", listing: str = "", verified: bool = True,
                published: bool = True) -> int:
+    """Store a verified customer review (rating clamped to 1..5). Returns the row id."""
     rating = max(1, min(5, int(rating)))
     with _conn() as conn:
         cur = conn.execute(
@@ -909,6 +941,7 @@ def add_review(customer_name: str, rating: int, text: str = "",
 
 
 def get_published_reviews(limit: int = 50) -> list[dict]:
+    """Return up to `limit` published customer reviews, newest first."""
     with _conn() as conn:
         return [dict(r) for r in conn.execute(
             "SELECT * FROM customer_reviews WHERE published=1 "
@@ -916,6 +949,7 @@ def get_published_reviews(limit: int = 50) -> list[dict]:
 
 
 def review_stats() -> dict:
+    """Return count and average rating of published reviews."""
     with _conn() as conn:
         row = conn.execute(
             "SELECT COUNT(*) n, AVG(rating) a FROM customer_reviews WHERE published=1"
@@ -929,6 +963,7 @@ def review_stats() -> dict:
 def add_catalog_item(name: str, vendor: str = "gelato", sku: str = "",
                      category: str = "", item_type: str = "print",
                      cost: float = 0.0, price: float = 0.0) -> int:
+    """Add a catalog item; duplicates on (vendor, sku, name) are ignored."""
     with _conn() as conn:
         cur = conn.execute(
             """INSERT OR IGNORE INTO catalog_items
@@ -939,6 +974,7 @@ def add_catalog_item(name: str, vendor: str = "gelato", sku: str = "",
 
 
 def get_catalog_items(vendor: str = "", active_only: bool = True) -> list[dict]:
+    """Return catalog items, optionally filtered by vendor and/or active flag."""
     q, args = "SELECT * FROM catalog_items WHERE 1=1", []
     if vendor:
         q += " AND vendor=?"; args.append(vendor)
@@ -950,6 +986,7 @@ def get_catalog_items(vendor: str = "", active_only: bool = True) -> list[dict]:
 
 
 def set_catalog_item_active(item_id: int, active: bool) -> None:
+    """Activate or deactivate a catalog item."""
     with _conn() as conn:
         conn.execute("UPDATE catalog_items SET active=? WHERE id=?",
                      (1 if active else 0, item_id))
@@ -959,6 +996,7 @@ def set_catalog_item_active(item_id: int, active: bool) -> None:
 
 def add_income(amount: float, channel: str = "affiliate", source: str = "",
                note: str = "", day: str = "") -> int:
+    """Record a miscellaneous income entry (defaults to today). Returns the row id."""
     from datetime import date as _date
     with _conn() as conn:
         cur = conn.execute(
@@ -968,6 +1006,7 @@ def add_income(amount: float, channel: str = "affiliate", source: str = "",
 
 
 def get_income(since_iso: str = "", until_iso: str = "") -> list[dict]:
+    """Return misc income rows in [since, until] by day (both bounds optional)."""
     q, args = "SELECT * FROM misc_income WHERE 1=1", []
     if since_iso:
         q += " AND day >= ?"; args.append(since_iso)
@@ -982,6 +1021,7 @@ def get_income(since_iso: str = "", until_iso: str = "") -> list[dict]:
 
 def add_subscription(customer_email: str, end_date: str, customer_name: str = "",
                      plan: str = "monthly", start_date: str = "") -> int:
+    """Create a subscription record (email lowercased). Returns the row id."""
     with _conn() as conn:
         cur = conn.execute(
             """INSERT INTO subscriptions
@@ -993,6 +1033,7 @@ def add_subscription(customer_email: str, end_date: str, customer_name: str = ""
 
 
 def get_subscriptions(status: str = "") -> list[dict]:
+    """Return subscriptions (optionally by status), soonest end_date first."""
     q = "SELECT * FROM subscriptions"
     args: tuple = ()
     if status:
@@ -1018,6 +1059,7 @@ def get_expiring_subscriptions(within_days: int = 7) -> list[dict]:
 
 
 def mark_subscription_reminded(sub_id: int) -> None:
+    """Stamp reminded_at on a subscription so expiry reminders send only once."""
     from datetime import datetime
     with _conn() as conn:
         conn.execute("UPDATE subscriptions SET reminded_at=? WHERE id=?",
@@ -1025,6 +1067,7 @@ def mark_subscription_reminded(sub_id: int) -> None:
 
 
 def set_subscription_status(sub_id: int, status: str) -> None:
+    """Update a subscription's status (active|expired|cancelled|renewed)."""
     with _conn() as conn:
         conn.execute("UPDATE subscriptions SET status=? WHERE id=?", (status, sub_id))
 
@@ -1052,6 +1095,7 @@ def enqueue_approval(kind: str, summary: str, ref: str = "",
 
 
 def get_pending_approvals() -> list[dict]:
+    """Return approvals still awaiting a human decision, oldest first."""
     with _conn() as conn:
         rows = conn.execute(
             "SELECT * FROM approvals WHERE status='pending' ORDER BY created_at"
@@ -1060,6 +1104,7 @@ def get_pending_approvals() -> list[dict]:
 
 
 def get_approval(approval_id: int) -> Optional[dict]:
+    """Fetch a single approval row by id, or None if absent."""
     with _conn() as conn:
         row = conn.execute("SELECT * FROM approvals WHERE id=?",
                            (approval_id,)).fetchone()
@@ -1068,6 +1113,7 @@ def get_approval(approval_id: int) -> Optional[dict]:
 
 def resolve_approval(approval_id: int, status: str,
                      decided_by: str = "owner") -> None:
+    """Record the decision on an approval (approved/rejected), stamping decided_at."""
     from datetime import datetime
     with _conn() as conn:
         conn.execute(
@@ -1082,6 +1128,7 @@ def record_api_cost(provider: str, cost_usd: float, model: str = "",
                     operation: str = "", input_tokens: int = 0,
                     output_tokens: int = 0, units: int = 0,
                     order_id: str = "") -> int:
+    """Log an API usage cost row (provider, tokens/units, USD). Returns the row id."""
     # Store created_at in LOCAL time so the daily cost report's local-date
     # window matches (SQLite's datetime('now') is UTC and would misbucket
     # evening-local costs into the next day).

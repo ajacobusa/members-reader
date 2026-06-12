@@ -34,6 +34,7 @@ def best_sellers(orders: list[dict], top_n: int = 5) -> dict:
         by_relationship[rel] = by_relationship.get(rel, 0) + 1
 
     def _top(d):
+        """The top_n entries of a counter dict, highest count first."""
         return sorted(d.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
 
     return {
@@ -138,6 +139,7 @@ def sales_actions_digest(now: datetime | None = None) -> dict:
 
 
 def format_digest_text(digest: dict) -> str:
+    """Render the sales-actions digest as printable console text."""
     lines = ["=" * 52, "AUTOMATED SALES ACTIONS — send these to make more $",
              "=" * 52]
     lines.append(f"\nUPSELLS TO SEND ({len(digest['upsells'])}):")

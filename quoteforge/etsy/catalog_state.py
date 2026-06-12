@@ -13,11 +13,13 @@ from pathlib import Path
 
 
 def _state_path() -> Path:
+    """Location of the gelato_state.json file under OUTPUT_DIR."""
     from quoteforge.config import OUTPUT_DIR
     return OUTPUT_DIR / "gelato_state.json"
 
 
 def load_state() -> dict:
+    """Read the state JSON; return an empty state if missing or corrupt."""
     p = _state_path()
     if not p.exists():
         return {"updated": None, "skus": {}}
@@ -28,6 +30,7 @@ def load_state() -> dict:
 
 
 def save_state(skus: dict) -> Path:
+    """Write the per-SKU state JSON (with a timestamp) and return its path."""
     p = _state_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(

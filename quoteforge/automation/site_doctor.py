@@ -50,32 +50,20 @@ ASSETS = DOCS / "assets"
 MAX_PAGE_AGE_HOURS = 26
 # The grid must keep at least one design per calendar occasion + extras.
 MIN_DESIGNS = 13
-# Modules whose functions must ALL stay documented (the docs ratchet).
+# What the docs ratchet scans. The WHOLE package is in: every function, class,
+# and module header must carry a docstring, and coverage can never regress.
 CRITICAL_MODULES = [
-    "quoteforge/etsy/listing_preview.py",
-    "quoteforge/etsy/packages.py",
-    "quoteforge/etsy/social_proof.py",
-    "quoteforge/etsy/gelato_catalog.py",
-    "quoteforge/etsy/variations.py",
-    "quoteforge/automation/full_backup.py",
-    "quoteforge/automation/healthcheck.py",
-    "quoteforge/automation/maintenance.py",
-    "quoteforge/automation/scheduler.py",
-    "quoteforge/automation/site_doctor.py",
-    # Expanded as packages reach 100%: once in, coverage can never regress.
-    "quoteforge/admin.py",
-    "quoteforge/fulfillment",          # directories are scanned recursively
-    "quoteforge/catalog",
-    "quoteforge/quotes",
-    "quoteforge/ai",
+    "quoteforge",                      # directories are scanned recursively
 ]
 # Fast regression subset covering the storefront's behavior (UI hooks, SEO,
-# a11y, occasion logic). The FULL suite still runs in CI on every push.
+# a11y, occasion logic, personalization editor). The FULL suite still runs in
+# CI on every push.
 REGRESSION_TESTS = [
     "quoteforge_tests/test_seo_a11y.py",
     "quoteforge_tests/test_basket_photo.py",
     "quoteforge_tests/test_generalized_titles.py",
     "quoteforge_tests/test_occasion_quotes.py",
+    "quoteforge_tests/test_packages_exit.py",
 ]
 
 
@@ -143,6 +131,35 @@ def check_assets_integrity(html: str) -> dict:
             "status": "OK" if not missing else "FAIL",
             "detail": (f"{len(refs)} referenced, all present" if not missing
                        else f"missing: {missing[:5]}")}
+
+
+def check_assets_render(html: str, assets_dir: Path = None) -> dict:
+    """Rendering tripwire: every referenced raster image must actually DECODE.
+
+    assets_integrity only proves the file exists; a truncated or corrupt file
+    still ships a broken image to the customer. This opens each referenced
+    asset with Pillow (verify = header + structure check, no full decode of
+    huge files) so a bad render surfaces nightly and is healed by rebuild.
+    ``assets_dir`` is injectable for unit tests."""
+    from PIL import Image
+    assets_dir = assets_dir if assets_dir is not None else ASSETS
+    refs = sorted(set(re.findall(r'assets/([A-Za-z0-9_\-.]+)', html)))
+    raster = [f for f in refs if f.lower().endswith(
+        (".jpg", ".jpeg", ".png", ".webp", ".gif"))]
+    corrupt = []
+    for f in raster:
+        p = assets_dir / f
+        if not p.exists():
+            continue            # missing files are assets_integrity's finding
+        try:
+            with Image.open(p) as im:
+                im.verify()
+        except Exception:  # noqa: BLE001
+            corrupt.append(f)
+    return {"name": "assets_render",
+            "status": "OK" if not corrupt else "FAIL",
+            "detail": (f"{len(raster)} images decode cleanly" if not corrupt
+                       else f"corrupt: {corrupt[:5]}")}
 
 
 def check_orphan_assets(html: str) -> dict:
@@ -253,28 +270,37 @@ def check_github_sync(runner=subprocess.run) -> dict:
         return {"name": "github_sync", "status": "FAIL", "detail": f"{exc}"}
 
 
-def check_docs_ratchet() -> dict:
-    """Documentation ratchet: every function in the storefront-critical modules
-    must carry a docstring - coverage can only stay at 100% or the check fails."""
+def check_docs_ratchet(modules: list = None, root: Path = None) -> dict:
+    """Documentation ratchet: every function, class, AND module header in the
+    scanned packages must carry a docstring - coverage can only stay at 100%
+    or the check fails. ``modules``/``root`` are injectable for unit tests."""
     import ast
+    modules = modules if modules is not None else CRITICAL_MODULES
+    root = root if root is not None else PROJECT_ROOT
     undocumented = []
-    for rel in CRITICAL_MODULES:
-        p = PROJECT_ROOT / rel
+    for rel in modules:
+        p = root / rel
         if not p.exists():
             continue
         # An entry may be a single file or a package directory (scanned fully).
         files = [p] if p.is_file() else sorted(p.rglob("*.py"))
         for f in files:
+            if "__pycache__" in f.parts:
+                continue
             tree = ast.parse(f.read_text(encoding="utf-8"))
+            relname = f.relative_to(root).as_posix()
+            # Module header (skipped for __init__.py, which is often empty).
+            if f.name != "__init__.py" and not ast.get_docstring(tree):
+                undocumented.append(f"{relname}:1:missing module docstring")
             for n in ast.walk(tree):
-                if (isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                        and not n.name.startswith("__")
+                fn = isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                cls = isinstance(n, ast.ClassDef)
+                if ((fn or cls) and not n.name.startswith("__")
                         and not ast.get_docstring(n)):
-                    undocumented.append(
-                        f"{f.relative_to(PROJECT_ROOT).as_posix()}:{n.lineno}:{n.name}")
+                    undocumented.append(f"{relname}:{n.lineno}:{n.name}")
     return {"name": "docs_ratchet",
             "status": "OK" if not undocumented else "FAIL",
-            "detail": ("critical modules 100% documented" if not undocumented
+            "detail": ("package 100% documented" if not undocumented
                        else f"{len(undocumented)} undocumented: {undocumented[:5]}")}
 
 
@@ -328,9 +354,9 @@ def run_regression(runner=subprocess.run) -> dict:
 def _page_checks(html: str) -> list[dict]:
     """All checks that read the built page (re-run after a heal)."""
     return [check_fonts_lazy(html), check_jsonld(html), check_alt_coverage(html),
-            check_assets_integrity(html), check_orphan_assets(html),
-            check_occasion_filter(html), check_design_count(html),
-            check_editor_hooks(html)]
+            check_assets_integrity(html), check_assets_render(html),
+            check_orphan_assets(html), check_occasion_filter(html),
+            check_design_count(html), check_editor_hooks(html)]
 
 
 def run_site_doctor(heal: bool = True, regression: bool = True,

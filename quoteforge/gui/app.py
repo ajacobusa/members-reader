@@ -1,3 +1,4 @@
+"""Main QuoteForge application window for generating wall art designs."""
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -21,6 +22,8 @@ PERSONALIZED_CATEGORIES = {
 
 
 class QuoteForgeApp:
+    """Main QuoteForge window: category-driven wall art design generator."""
+
     def __init__(self, root: tk.Tk):
         self._root = root
         root.title("QuoteForge — Wall Art Generator")
@@ -29,6 +32,7 @@ class QuoteForgeApp:
         self._build_ui()
 
     def _build_ui(self) -> None:
+        """Build all widgets for the main window."""
         pad = {"padx": 16, "pady": 5}
 
         tk.Label(self._root, text="QuoteForge", font=("Helvetica", 20, "bold")).pack(pady=(18, 2))
@@ -95,6 +99,7 @@ class QuoteForgeApp:
         self._on_category_change()
 
     def _on_category_change(self, *_) -> None:
+        """Refresh sub-categories and toggle personalized fields for the category."""
         cat = self._cat_var.get()
         subs = CATEGORIES.get(cat, {}).get("subcategories", [])
         self._sub_menu["values"] = subs
@@ -109,12 +114,14 @@ class QuoteForgeApp:
             self._family_frame.pack(fill="x")
 
     def _on_generate(self) -> None:
+        """Start generation on a background thread and lock the UI."""
         self._btn.configure(state="disabled")
         self._bar["value"] = 0
         self._status.configure(text="Starting generation...")
         threading.Thread(target=self._run_generation, daemon=True).start()
 
     def _run_generation(self) -> None:
+        """Dispatch generation to the right workflow (worker thread)."""
         cat = self._cat_var.get()
         sub = self._sub_var.get()
         count = self._count_var.get()
@@ -132,7 +139,9 @@ class QuoteForgeApp:
             self._root.after(0, self._btn.configure, {"state": "normal"})
 
     def _run_standard(self, cat: str, sub: str, count: int, tracker: ProgressTracker) -> None:
+        """Run the full design pipeline for a standard category and export listings."""
         def on_progress(current, total, quote):
+            """Relay pipeline progress to the GUI tracker."""
             tracker.update(current, total, f"Rendering: {quote[:50]}")
 
         results = run_pipeline(
@@ -148,6 +157,7 @@ class QuoteForgeApp:
         self._root.after(0, self._on_done, len(results))
 
     def _run_life_chapters(self, count: int, tracker: ProgressTracker) -> None:
+        """Generate Life Chapter poster texts and save them as .txt files."""
         name = self._name_var.get().strip()
         goal = self._goal_var.get().strip()
         age_str = self._age_var.get().strip()
@@ -172,6 +182,7 @@ class QuoteForgeApp:
         self._root.after(0, self._on_done_text, len(variations), out_dir)
 
     def _run_family_legacy(self, count: int, tracker: ProgressTracker) -> None:
+        """Generate Family Legacy poster texts and save them as .txt files."""
         family = self._family_name_var.get().strip()
         values = self._values_var.get().strip()
         if not family:
@@ -190,6 +201,7 @@ class QuoteForgeApp:
         self._root.after(0, self._on_done_text, len(variations), out_dir)
 
     def _on_done(self, count: int) -> None:
+        """Show completion state for standard design runs (main thread)."""
         self._bar["value"] = 100
         self._status.configure(text=f"Done! {count} designs saved to {OUTPUT_DIR}")
         messagebox.showinfo(
@@ -199,6 +211,7 @@ class QuoteForgeApp:
         self._btn.configure(state="normal")
 
     def _on_done_text(self, count: int, out_dir) -> None:
+        """Show completion state for personalized text-file runs (main thread)."""
         self._bar["value"] = 100
         self._status.configure(text=f"Done! {count} text files saved.")
         messagebox.showinfo(

@@ -69,6 +69,7 @@ def audit_catalog(floor_pct: float = None) -> dict:
 
 
 def format_audit_text(audit: dict) -> str:
+    """Render the margin audit as printable console text."""
     lines = ["=" * 60,
              f"MARGIN GUARD - floor {audit['floor_pct']:.0f}% "
              f"({audit['checked']} items checked)", "=" * 60]

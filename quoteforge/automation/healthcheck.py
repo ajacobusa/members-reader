@@ -23,6 +23,7 @@ HEALTH_LOG = OUTPUT_DIR / "health_log.json"
 
 @dataclass
 class Check:
+    """Result of one health check: name, OK/WARN/FAIL status, and detail."""
     name: str
     status: str   # "OK" | "WARN" | "FAIL"
     detail: str = ""

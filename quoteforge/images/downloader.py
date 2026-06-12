@@ -1,3 +1,4 @@
+"""Simple HTTP image downloader for finished render URLs."""
 import requests
 from pathlib import Path
 

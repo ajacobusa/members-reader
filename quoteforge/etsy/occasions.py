@@ -195,6 +195,7 @@ def all_occasions() -> list[str]:
 
 
 def occasion_count() -> int:
+    """Total number of distinct occasions across all groups."""
     return len(all_occasions())
 
 

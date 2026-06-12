@@ -39,6 +39,7 @@ def make_qr(url: str, out: Path, box: int = 10) -> tuple[Path | None, str]:
 
 
 def announcement_copy(shop: str, signup_url: str) -> str:
+    """Etsy shop-announcement copy with a mailing-list signup CTA."""
     return (
         f"Welcome to {shop}! Every piece is personalized to order - a name, a "
         f"date, your own words - with a free digital proof before anything "
@@ -49,6 +50,7 @@ def announcement_copy(shop: str, signup_url: str) -> str:
 
 
 def linktree_blocks(shop: str, shop_url: str, signup_url: str) -> list[str]:
+    """Suggested Linktree link blocks (shop, signup, Pinterest, reviews)."""
     return [
         f"🛍  Shop {shop} on Etsy  ->  {shop_url}",
         f"💌  Join the list (early access + welcome offer)  ->  {signup_url or '[SIGNUP]'}",
@@ -58,6 +60,7 @@ def linktree_blocks(shop: str, shop_url: str, signup_url: str) -> list[str]:
 
 
 def signup_html_snippet(signup_url: str) -> str:
+    """Drop-in HTML email-signup form for the website."""
     action = signup_url or "[YOUR_FORM_ACTION_URL]"
     return (
         '<form class="jf-signup" action="' + action + '" method="post">\n'
@@ -70,6 +73,7 @@ def signup_html_snippet(signup_url: str) -> str:
 
 
 def insert_card_copy(shop: str, signup_url: str) -> str:
+    """Copy for the printable thank-you package insert (review ask + QR signup)."""
     return (
         f"Thank you for your order from {shop}!\n\n"
         "We hope your personalized piece brings a little more meaning to your "

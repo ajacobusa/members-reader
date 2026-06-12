@@ -18,11 +18,13 @@ _SEED = [
 
 
 def _store() -> Path:
+    """Path of the reminders JSON store under OUTPUT_DIR."""
     from quoteforge.config import OUTPUT_DIR
     return OUTPUT_DIR / "reminders.json"
 
 
 def _load() -> list[dict]:
+    """Load reminders from disk, seeding the defaults on first use."""
     p = _store()
     if not p.exists():
         items = [{"id": i + 1, "text": t, "added": datetime.now().isoformat(timespec="seconds")}
@@ -36,16 +38,19 @@ def _load() -> list[dict]:
 
 
 def _save(items: list[dict]) -> None:
+    """Write the full reminder list back to the JSON store."""
     p = _store()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(items, indent=2))
 
 
 def get_reminders() -> list[dict]:
+    """Return all pending setup reminders."""
     return _load()
 
 
 def add_reminder(text: str) -> int:
+    """Add a reminder and return its new id."""
     items = _load()
     new_id = (max((i["id"] for i in items), default=0)) + 1
     items.append({"id": new_id, "text": text,
@@ -55,6 +60,7 @@ def add_reminder(text: str) -> int:
 
 
 def done_reminder(reminder_id: int) -> bool:
+    """Remove a reminder by id. Returns True if one was removed."""
     items = _load()
     kept = [i for i in items if i["id"] != reminder_id]
     _save(kept)
@@ -62,6 +68,7 @@ def done_reminder(reminder_id: int) -> bool:
 
 
 def format_reminders_text() -> str:
+    """Plain-text reminder list for CLI output and the daily report email."""
     items = _load()
     if not items:
         return "No pending setup reminders. [OK]"
@@ -73,6 +80,7 @@ def format_reminders_text() -> str:
 
 
 def reminders_html() -> str:
+    """HTML reminder block for the daily report email; empty string when none."""
     items = _load()
     if not items:
         return ""

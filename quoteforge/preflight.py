@@ -16,12 +16,14 @@ from pathlib import Path
 
 @dataclass
 class CheckResult:
+    """Outcome of one preflight check: name, status, and evidence detail."""
     name: str
     status: str   # "PASS" | "FAIL" | "MANUAL" | "CONFIG"
     detail: str = ""
 
 
 def _safe(fn) -> tuple[bool, str]:
+    """Run a check function, returning (ok, detail) instead of raising."""
     try:
         return True, fn() or ""
     except Exception as exc:  # noqa: BLE001
@@ -34,6 +36,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Imports / wiring ─────────────────────────────────────────
     def _imports():
+        """Verify every core module imports (GUI optional on headless hosts)."""
         # Server / pipeline core — must import in any environment.
         for mod in [
             "quoteforge.automation.pipeline_orchestrator",
@@ -59,6 +62,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Database init + migration ────────────────────────────────
     def _db():
+        """Exercise init + order CRUD + column migration against a temp database."""
         import quoteforge.db.database as db
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
@@ -79,6 +83,7 @@ def check_software() -> list[CheckResult]:
 
     # ── WAL concurrency mode ─────────────────────────────────────
     def _wal():
+        """Confirm a fresh database comes up in WAL journal mode."""
         import quoteforge.db.database as db
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
@@ -97,6 +102,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Idempotency function ─────────────────────────────────────
     def _idem():
+        """Confirm the duplicate-webhook idempotency lookup exists."""
         from quoteforge.db.database import get_order_by_etsy_id
         assert callable(get_order_by_etsy_id)
         return "get_order_by_etsy_id present"
@@ -105,6 +111,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Backup + prune ───────────────────────────────────────────
     def _backup():
+        """Take an online backup of a temp database and verify the file exists."""
         import quoteforge.db.database as db
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
@@ -123,6 +130,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Retry / transient classification ─────────────────────────
     def _retry():
+        """Check transient-error classification (429/529/5xx) and retry helper."""
         from quoteforge.automation.retry import is_transient, retry_call
         e = Exception(); e.status_code = 529
         assert is_transient(e) is True
@@ -134,6 +142,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Webhook signature verification ───────────────────────────
     def _sig():
+        """Round-trip HMAC webhook signing and reject a bad signature."""
         from quoteforge.automation.webhook_security import compute_signature, verify_signature
         body = b'{"x":1}'
         sig = compute_signature(body, "secret")
@@ -145,6 +154,7 @@ def check_software() -> list[CheckResult]:
 
     # ── 7-stage pipeline end-to-end (TEST_MODE) ──────────────────
     def _pipeline():
+        """Run the full 7-stage order pipeline end-to-end in TEST_MODE."""
         import quoteforge.db.database as db
         from quoteforge.automation import pipeline_orchestrator as po
         with tempfile.TemporaryDirectory() as d:
@@ -174,6 +184,7 @@ def check_software() -> list[CheckResult]:
 
     # ── Production WSGI server availability ──────────────────────
     def _waitress():
+        """Check the production WSGI server (waitress) is installed."""
         try:
             import waitress  # noqa: F401
             return "waitress installed"
@@ -246,7 +257,9 @@ def run_preflight() -> dict:
 
 
 def _print_report(report: dict) -> None:
+    """Print the preflight report (software, config, manual sections) to stdout."""
     def line(r: CheckResult) -> str:
+        """Format one check result as an '[ICON] name (detail)' report line."""
         icon = {"PASS": "[PASS]", "FAIL": "[FAIL]",
                 "CONFIG": "[ -- ]", "MANUAL": "[MANUAL]"}[r.status]
         return f"  {icon} {r.name}" + (f"  ({r.detail})" if r.detail else "")
@@ -273,6 +286,7 @@ def _print_report(report: dict) -> None:
 
 
 def main() -> None:
+    """Run the full preflight and print the report."""
     _print_report(run_preflight())
 
 

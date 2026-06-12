@@ -59,6 +59,7 @@ FAQ = [
 
 
 def format_custom_copy() -> str:
+    """Assemble all custom-quote/photo listing copy blocks into one printable text."""
     lines = ["=" * 64, "JOFFIELS - CUSTOM QUOTE / PHOTO LISTING COPY", "=" * 64,
              "\n## PERSONALIZATION BOX INSTRUCTIONS\n", PERSONALIZATION_INSTRUCTIONS,
              "\n## DESCRIPTION BLOCK (add to listing body)\n", DESCRIPTION_BLOCK,

@@ -16,6 +16,7 @@ CREAM = (247, 244, 238)
 
 
 def _placeholder(draw, box, label):
+    """Draw a brand-green placeholder tile with a centered gold label."""
     from PIL import ImageFont
     x0, y0, x1, y1 = box
     draw.rectangle(box, fill=BRAND_GREEN)

@@ -39,6 +39,7 @@ class PipelineTab(tk.Frame):
         self._refresh()
 
     def _build_ui(self) -> None:
+        """Build all widgets for the pipeline monitor tab."""
         pad = {"padx": 14, "pady": 4}
 
         tk.Label(self, text="Pipeline Monitor — 7-Stage Automation",
@@ -117,9 +118,11 @@ class PipelineTab(tk.Frame):
         self._status_lbl.pack(fill="x", padx=14)
 
     def _refresh(self) -> None:
+        """Reload order data on a background thread."""
         threading.Thread(target=self._load_orders, daemon=True).start()
 
     def _load_orders(self) -> None:
+        """Fetch orders and stats from the database (worker thread)."""
         try:
             from quoteforge.db.database import init_db, get_all_orders, get_order_stats
             init_db()
@@ -131,6 +134,7 @@ class PipelineTab(tk.Frame):
                        {"text": f"DB not ready yet: {exc}"})
 
     def _update_table(self, orders: list[dict], stats: dict) -> None:
+        """Refresh the stats counters and order table from DB data (main thread)."""
         # Update stats
         by_status = stats.get("by_status", {})
         in_progress = sum(v for k, v in by_status.items()
@@ -160,6 +164,7 @@ class PipelineTab(tk.Frame):
             text=f"Last refreshed: {__import__('datetime').datetime.now().strftime('%H:%M:%S')} — {len(orders)} orders loaded")
 
     def _get_selected_order_id(self) -> str:
+        """Return the selected order ID, or empty string after warning if none."""
         sel = self._tree.selection()
         if not sel:
             messagebox.showwarning("No Selection", "Please select an order first.")
@@ -167,6 +172,7 @@ class PipelineTab(tk.Frame):
         return self._tree.item(sel[0])["values"][0]
 
     def _on_run_selected(self) -> None:
+        """Explain how to run the pipeline for the selected order."""
         oid = self._get_selected_order_id()
         if not oid:
             return
@@ -177,6 +183,7 @@ class PipelineTab(tk.Frame):
                             "or Make.com → POST /order")
 
     def _on_approve_proof(self) -> None:
+        """Mark the selected order's proof as approved in the database."""
         oid = self._get_selected_order_id()
         if not oid:
             return
@@ -190,6 +197,7 @@ class PipelineTab(tk.Frame):
             messagebox.showerror("Error", str(exc))
 
     def _open_tracker(self) -> None:
+        """Open the Excel order tracker if it has been exported."""
         path = OUTPUT_DIR / "QuoteForge_Order_Tracker.xlsx"
         if path.exists():
             subprocess.Popen(f'start "" "{path}"', shell=True)
@@ -198,6 +206,7 @@ class PipelineTab(tk.Frame):
                                 "Order Tracker not yet generated.\nGo to Order Processor tab → Export Excel Tracker.")
 
     def _start_webhook(self) -> None:
+        """Show instructions for starting the webhook server."""
         messagebox.showinfo(
             "Start Webhook Server",
             "To start the webhook server:\n\n"

@@ -16,6 +16,7 @@ from datetime import date
 
 
 def _kpis(period: str) -> dict:
+    """Headline KPIs for the period: P&L totals, AOV, subscribers, reviews."""
     from quoteforge.etsy.ledger import build_ledger
     from quoteforge.db.database import (init_db, subscriber_count, review_stats,
                                         get_subscriptions)
@@ -217,6 +218,7 @@ def build_exec_report(period: str = "month", out_path=None):
     inf = wb.create_sheet("Infrastructure")
 
     def _section(ws, r, title, pairs_or_list):
+        """Write a titled section of pairs or bullets; return the next free row."""
         ws.cell(r, 1, title).font = Font(bold=True, size=12, color="103D2E"); r += 1
         if pairs_or_list and isinstance(pairs_or_list[0], tuple):
             for item in pairs_or_list:
@@ -270,6 +272,7 @@ def build_exec_report(period: str = "month", out_path=None):
 
 
 def _ai_exec_summary(shop: str, k: dict, facts: dict) -> str:
+    """AI-written executive summary (Claude) with a deterministic fallback."""
     import json
     from quoteforge.ai.assistant import ai_text
     fallback = (

@@ -57,10 +57,13 @@ def _own_funnel() -> dict:
 
 
 def journey_summary() -> dict:
+    """Combine Clarity metrics and our own funnel data into one dict."""
     return {"clarity": _clarity_metrics(), "funnel": _own_funnel()}
 
 
 def _ai_narrative(data: dict) -> str:
+    """Short CRO narrative from the real funnel numbers - AI when available,
+    deterministic fallback otherwise."""
     f = data["funnel"]
     facts = (f"Abandoned designs (open): {f['started_open']}; converted: "
              f"{f['converted']}; abandon rate: {f['abandon_rate_pct']}%; "
@@ -90,6 +93,7 @@ def _ai_narrative(data: dict) -> str:
 
 
 def format_journey_text() -> str:
+    """Render the journey analysis (narrative + funnel + Clarity) as plain text."""
     data = journey_summary()
     f, cl = data["funnel"], data["clarity"]
     lines = ["Customer Journey Analysis", "-" * 40, _ai_narrative(data), "",

@@ -17,6 +17,7 @@ MIN_ORDERS_FOR_SIGNAL = 10   # below this, recommend the launch plan, not analyt
 
 
 def _billable(orders: list[dict]) -> list[dict]:
+    """Orders that count as real sales (drop errored/unprocessed ones)."""
     return [o for o in orders if o.get("status") not in (None, "error", "received")]
 
 
@@ -36,6 +37,7 @@ def segment_performance(orders: list[dict]) -> dict:
 
 
 def _ranked(seg: dict) -> list[tuple[str, dict]]:
+    """Segments sorted by profit, highest first."""
     return sorted(seg.items(), key=lambda kv: kv[1]["profit"], reverse=True)
 
 
@@ -87,6 +89,7 @@ def growth_actions(now: datetime | None = None,
 
 
 def format_growth_text(g: dict) -> str:
+    """Render the growth recommendations as printable console text."""
     lines = ["=" * 64, f"GROWTH INTELLIGENCE  (phase: {g['phase']}, "
              f"{g['orders']} orders)", "=" * 64, g["message"]]
     if g["phase"] == "launch":
@@ -112,6 +115,7 @@ def format_growth_text(g: dict) -> str:
 
 
 def send_growth_report(now: datetime | None = None) -> dict:
+    """Email the growth-intelligence report to the shop owner."""
     g = growth_actions(now)
     from quoteforge.automation.emailer import _send_email
     subject = f"Joffiels Growth Intelligence ({g['phase']}, {g['orders']} orders)"

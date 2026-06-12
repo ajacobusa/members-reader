@@ -1,3 +1,7 @@
+"""Bulk generation pipeline: quotes -> background -> rendered poster -> Etsy listing.
+
+Drives the standard (non-personalized) flow used by the Bulk Generator tab.
+"""
 from collections.abc import Callable
 from pathlib import Path
 import re
@@ -11,6 +15,7 @@ from quoteforge.etsy.listings import generate_listing
 
 
 def _safe_filename(text: str, index: int) -> str:
+    """Filesystem-safe slug like '001_some_quote_text' (lowercased, max 40 chars)."""
     slug = re.sub(r"[^a-z0-9]+", "_", text.lower())[:40]
     return f"{index:03d}_{slug}"
 

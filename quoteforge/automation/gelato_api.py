@@ -14,6 +14,7 @@ GELATO_CATALOG_URL = "https://catalog.gelatoapis.com"
 
 
 def _gelato_headers() -> dict:
+    """Build Gelato API headers; raises if the API key is missing."""
     if not GELATO_API_KEY:
         raise ValueError("GELATO_API_KEY not set. Get it from gelato.com → Settings → API.")
     return {"X-API-KEY": GELATO_API_KEY, "Content-Type": "application/json"}
@@ -92,6 +93,7 @@ def get_gelato_order_status(gelato_order_id: str) -> dict:
 
 
 def _extract_tracking(data: dict) -> str:
+    """Pull the first tracking number from a Gelato order payload, or ''."""
     items = data.get("items", [])
     for item in items:
         for shipment in item.get("fulfillments", []):
@@ -102,6 +104,7 @@ def _extract_tracking(data: dict) -> str:
 
 
 def _extract_tracking_url(data: dict) -> str:
+    """Pull the first tracking URL from a Gelato order payload, or ''."""
     items = data.get("items", [])
     for item in items:
         for shipment in item.get("fulfillments", []):
@@ -165,6 +168,7 @@ def verify_gelato_auth() -> dict:
 
 
 def get_gelato_api_setup() -> str:
+    """Return step-by-step instructions for obtaining and setting a Gelato API key."""
     return """
 GELATO API SETUP
 ================

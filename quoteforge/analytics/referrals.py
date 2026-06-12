@@ -78,6 +78,7 @@ def leaderboard(top: int = 20, sync_repeats: bool = True) -> list[dict]:
 
 
 def format_leaderboard_text(top: int = 20) -> str:
+    """Plain-text loyalty leaderboard with a per-kind points breakdown."""
     rows = leaderboard(top)
     if not rows:
         return ("Referral & loyalty leaderboard\n" + "-" * 44 +

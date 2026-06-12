@@ -593,6 +593,8 @@ if FLASK_AVAILABLE and app:
 
     @app.route("/order", methods=["POST"])
     def receive_order():
+        """Order intake webhook - verify signature, validate, dedupe, then
+        process in a background thread (ACK 202 immediately)."""
         from quoteforge.automation.webhook_security import verify_signature
         raw_body = request.get_data()
         signature = request.headers.get("X-Webhook-Signature", "")
@@ -683,6 +685,7 @@ if FLASK_AVAILABLE and app:
 
 
 def run_server(host: str = "0.0.0.0", port: int = None, debug: bool = False) -> None:
+    """Start the webhook server - waitress when available, Flask dev otherwise."""
     # Hosts (Render/Railway/Fly/Heroku) inject the port via $PORT.
     if port is None:
         port = int(os.getenv("PORT", "5050"))

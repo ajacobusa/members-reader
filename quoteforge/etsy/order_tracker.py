@@ -56,23 +56,28 @@ NCOLS = len(COLUMNS)
 
 
 def _thin_border(color: str = "CCCCCC") -> Border:
+    """Thin border on all four sides in the given color."""
     s = Side(style="thin", color=color)
     return Border(left=s, right=s, top=s, bottom=s)
 
 
 def _cell_fill(hex_color: str) -> PatternFill:
+    """Solid cell fill in the given hex color."""
     return PatternFill("solid", fgColor=hex_color)
 
 
 def _hdr_font(bold: bool = True) -> Font:
+    """Header font in the tracker's header color."""
     return Font(name="Arial", bold=bold, color=CLR["header_fg"], size=11)
 
 
 def _body_font(bold: bool = False) -> Font:
+    """Standard body font for data cells."""
     return Font(name="Arial", bold=bold, size=10)
 
 
 def _read_order_log() -> list[dict]:
+    """Read order_log.csv rows as dicts; empty list if the log doesn't exist."""
     log_path = OUTPUT_DIR / "order_log.csv"
     if not log_path.exists():
         return []
@@ -154,6 +159,7 @@ def export_order_tracker(output_path: Path | None = None) -> Path:
 
     # ── Dropdowns (data validation) ──────────────────────────────
     def _add_dropdown(col: int, options: list[str]) -> None:
+        """Attach a list data-validation dropdown to a column's data rows."""
         formula = f'"{",".join(options)}"'
         dv = DataValidation(type="list", formula1=formula, allow_blank=True, showDropDown=False)
         dv.sqref = f"{get_column_letter(col)}2:{get_column_letter(col)}{last_data_row}"
@@ -165,6 +171,7 @@ def export_order_tracker(output_path: Path | None = None) -> Path:
 
     # ── Conditional formatting: status colors ────────────────────
     def _status_rule(col: int, value: str, fill_hex: str) -> None:
+        """Color cells in a column when they contain the given status text."""
         col_letter = get_column_letter(col)
         fill = PatternFill(start_color=fill_hex, end_color=fill_hex, fill_type="solid")
         font = Font(name="Arial", size=10, bold=True)
@@ -195,6 +202,7 @@ def export_order_tracker(output_path: Path | None = None) -> Path:
     dash.sheet_view.showGridLines = False
 
     def _dash_header(row: int, text: str) -> None:
+        """Write a merged, styled section header on the dashboard sheet."""
         cell = dash.cell(row=row, column=2, value=text)
         cell.font = Font(name="Arial", bold=True, size=13, color=CLR["header_fg"])
         cell.fill = _cell_fill(CLR["dash_header"])
@@ -204,6 +212,7 @@ def export_order_tracker(output_path: Path | None = None) -> Path:
         dash.row_dimensions[row].height = 24
 
     def _dash_row(row: int, label: str, formula: str) -> None:
+        """Write one dashboard metric row: label plus a formula value cell."""
         lbl = dash.cell(row=row, column=2, value=label)
         lbl.font = _body_font(bold=True)
         lbl.fill = _cell_fill(CLR["dash_bg"])

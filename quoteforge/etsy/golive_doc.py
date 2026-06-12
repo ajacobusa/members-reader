@@ -65,6 +65,7 @@ CHEAT = [
 
 
 def build_golive_pdf(out_path=None):
+    """Build the go-live checklist PDF and return its path."""
     from pathlib import Path
     from datetime import date
     from reportlab.lib.pagesizes import letter

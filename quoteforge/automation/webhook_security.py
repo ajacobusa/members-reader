@@ -40,6 +40,7 @@ def verify_gelato_signature(payload_bytes: bytes, provided_signature: str,
 
 
 def _verify(payload_bytes: bytes, provided_signature: str, secret: str) -> bool:
+    """Constant-time HMAC check; skipped (True) when no secret is configured."""
     if not secret:
         return True  # no secret configured — verification disabled (dev mode)
     if not provided_signature:

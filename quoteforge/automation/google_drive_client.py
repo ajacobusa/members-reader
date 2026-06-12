@@ -11,6 +11,7 @@ GOOGLE_SERVICE_ACCOUNT_FILE: str = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
 
 
 def is_configured() -> bool:
+    """Check whether the Drive folder ID and service-account key file are set."""
     return bool(GOOGLE_DRIVE_FOLDER_ID and GOOGLE_SERVICE_ACCOUNT_FILE
                 and Path(GOOGLE_SERVICE_ACCOUNT_FILE).exists())
 
@@ -116,6 +117,7 @@ def upload_public_image(file_path: Path, filename: str,
 
 
 def get_google_drive_setup() -> str:
+    """Return step-by-step instructions for wiring up the Drive service account."""
     return """
 GOOGLE DRIVE API SETUP
 ======================

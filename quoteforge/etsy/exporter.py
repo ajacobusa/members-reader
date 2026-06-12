@@ -1,3 +1,4 @@
+"""CSV exporter for Etsy listing data, with timestamped backups."""
 import csv
 import shutil
 from datetime import datetime

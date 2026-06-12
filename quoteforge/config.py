@@ -1,3 +1,9 @@
+"""Central configuration — all tunables in one place, sourced from environment
+variables (and an optional .env file) with safe defaults.
+
+Covers API keys, pricing/margin policy, pipeline behavior, autopilot limits,
+backup retention, and the product/size catalog.
+"""
 import os
 from pathlib import Path
 
@@ -15,6 +21,7 @@ except ImportError:
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
+    """Read a boolean env var; true/1/yes/on (any case) count as True."""
     return os.getenv(name, str(default)).strip().lower() in ("true", "1", "yes", "on")
 
 

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 @dataclass
 class LaunchListing:
+    """One launch-pack listing: number, category, title, occasion, relationship."""
     n: int
     category: str
     title: str
@@ -107,6 +108,7 @@ def next_additions(current_count: int, batch: int = 10) -> list[dict]:
     }
 
     def _ok(rel: str, occ: str) -> bool:
+        """True if the occasion makes sense for this relationship."""
         allowed = _occ_only.get(occ)
         return allowed is None or rel in allowed
 
@@ -133,6 +135,7 @@ def next_additions(current_count: int, batch: int = 10) -> list[dict]:
 
 
 def launch_summary() -> dict:
+    """Snapshot of the launch strategy: pack size, categories, pricing, phases."""
     return {
         "starter_listings": len(LAUNCH_PACK_20),
         "categories": sorted({l.category for l in LAUNCH_PACK_20}),

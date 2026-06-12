@@ -8,6 +8,7 @@ from __future__ import annotations
 
 
 def _orders() -> list[dict]:
+    """All orders from the DB, or an empty list if the query fails."""
     from quoteforge.db.database import init_db, get_all_orders
     init_db()
     try:
@@ -17,6 +18,7 @@ def _orders() -> list[dict]:
 
 
 def _price(o: dict) -> float:
+    """Sale price of an order as a float, 0.0 when missing or malformed."""
     try:
         return float(o.get("sale_price") or 0.0)
     except (TypeError, ValueError):
@@ -66,6 +68,7 @@ def build_clv(orders: list[dict] | None = None) -> dict:
 
 
 def format_clv_text(clv: dict | None = None, orders: list[dict] | None = None) -> str:
+    """Plain-text CLV report (headline metrics + top customers by revenue)."""
     c = clv if clv is not None else build_clv(orders)
     if not c["customers"]:
         return ("Customer Lifetime Value\n" + "-" * 40 +

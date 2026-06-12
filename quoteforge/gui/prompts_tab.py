@@ -53,6 +53,7 @@ class PromptsTab(tk.Frame):
         self._build_ui()
 
     def _build_ui(self) -> None:
+        """Assemble the two sub-tabs into an inner notebook."""
         # Use inner notebook for sub-tabs
         inner = ttk.Notebook(self)
         inner.pack(fill="both", expand=True, padx=6, pady=6)
@@ -70,6 +71,7 @@ class PromptsTab(tk.Frame):
     # ── SECTION A: Quote Prompt Templates ───────────────────────
 
     def _build_prompts(self, frame: tk.Frame) -> None:
+        """Build the Quote Prompts sub-tab widgets."""
         pad = {"padx": 14, "pady": 4}
 
         tk.Label(frame, text="Quote Prompt Templates",
@@ -162,6 +164,7 @@ class PromptsTab(tk.Frame):
             row=ctrl_row + 6, column=0, columnspan=4, pady=4)
 
     def _on_prompt_type_change(self, *_: object) -> None:
+        """Show only the field frame matching the selected prompt type."""
         pt = self._prompt_type.get()
         self._heartfelt_frame.grid_remove()
         self._christian_frame.grid_remove()
@@ -174,12 +177,14 @@ class PromptsTab(tk.Frame):
             self._grad_frame.grid()
 
     def _on_prompt_generate(self) -> None:
+        """Start prompt generation on a background thread."""
         self._prompt_btn.configure(state="disabled")
         self._prompt_bar.start(10)
         self._prompt_status.configure(text="Generating...")
         threading.Thread(target=self._run_prompt, daemon=True).start()
 
     def _run_prompt(self) -> None:
+        """Generate variations for the selected prompt type (worker thread)."""
         try:
             pt = self._prompt_type.get()
             count = self._prompt_count.get()
@@ -219,6 +224,7 @@ class PromptsTab(tk.Frame):
     # ── SECTION B: Customer Messages ────────────────────────────
 
     def _build_customer_messages(self, frame: tk.Frame) -> None:
+        """Build the Customer Messages sub-tab widgets."""
         pad = {"padx": 14, "pady": 4}
 
         tk.Label(frame, text="Etsy Customer Messages",
@@ -296,11 +302,13 @@ class PromptsTab(tk.Frame):
             row=row, column=0, columnspan=4, pady=4)
 
     def _on_personalize(self) -> None:
+        """Start AI message personalization on a background thread."""
         self._cm_bar.start(10)
         self._cm_status.configure(text="Personalizing message with AI...")
         threading.Thread(target=self._run_personalize, daemon=True).start()
 
     def _run_personalize(self) -> None:
+        """Generate the AI-personalized customer message (worker thread)."""
         try:
             text = generate_personalized_customer_message(
                 message_type=self._msg_type.get(),
@@ -318,6 +326,7 @@ class PromptsTab(tk.Frame):
             self.after(0, self._cm_bar.stop)
 
     def _on_base_copy(self) -> None:
+        """Copy the selected base template to the clipboard and show it."""
         text = get_base_template(self._msg_type.get())
         self._set_text(self._cm_output, text)
         self.clipboard_clear()
@@ -325,6 +334,7 @@ class PromptsTab(tk.Frame):
         self._cm_status.configure(text=f"✓ Base '{self._msg_type.get()}' template copied to clipboard.")
 
     def _on_copy_all(self) -> None:
+        """Copy all four base customer message templates to the clipboard."""
         text = get_all_base_templates_formatted()
         self._set_text(self._cm_output, text)
         self.clipboard_clear()
@@ -335,6 +345,7 @@ class PromptsTab(tk.Frame):
 
     def _labeled_entry(self, parent: tk.Widget, row: int, label: str,
                         default: str = "") -> tk.StringVar:
+        """Create a labeled entry row; return its StringVar."""
         tk.Label(parent, text=label, anchor="w").grid(row=row, column=0, sticky="w",
                                                         padx=4, pady=3)
         var = tk.StringVar(value=default)
@@ -344,6 +355,7 @@ class PromptsTab(tk.Frame):
 
     def _labeled_combo(self, parent: tk.Widget, row: int, label: str,
                         values: list[str], default: str) -> tk.StringVar:
+        """Create a labeled read-only combobox row; return its StringVar."""
         tk.Label(parent, text=label, anchor="w").grid(row=row, column=0, sticky="w",
                                                         padx=4, pady=3)
         var = tk.StringVar(value=default)
@@ -354,6 +366,7 @@ class PromptsTab(tk.Frame):
 
     def _labeled_spinbox(self, parent: tk.Widget, row: int, label: str,
                           min_val: int, max_val: int, default: int) -> tk.IntVar:
+        """Create a labeled spinbox row; return its IntVar."""
         tk.Label(parent, text=label, anchor="w").grid(row=row, column=0, sticky="w",
                                                         padx=4, pady=3)
         var = tk.IntVar(value=default)
@@ -362,12 +375,14 @@ class PromptsTab(tk.Frame):
         return var
 
     def _set_text(self, widget: tk.Text, text: str) -> None:
+        """Replace the contents of a read-only text widget."""
         widget.configure(state="normal")
         widget.delete("1.0", "end")
         widget.insert("1.0", text)
         widget.configure(state="disabled")
 
     def _copy(self, widget: tk.Text) -> None:
+        """Copy a text widget's contents to the clipboard."""
         text = widget.get("1.0", "end").strip()
         self.clipboard_clear()
         self.clipboard_append(text)

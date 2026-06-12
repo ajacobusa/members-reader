@@ -8,31 +8,37 @@ from __future__ import annotations
 
 
 def collect_metrics() -> dict:
+    """Gather P&L, TCO, AOV, counts, and margin metrics. Never raises."""
     m: dict = {}
 
     def _try(k, fn):
+        """Store fn() under `k`, capturing any exception as an error dict."""
         try:
             m[k] = fn()
         except Exception as exc:  # noqa: BLE001
             m[k] = {"error": str(exc)}
 
     def _pnl():
+        """This month's P&L totals from the ledger."""
         from quoteforge.etsy.ledger import build_ledger
         return build_ledger("month")["totals"]
     _try("pnl_month", _pnl)
 
     def _tco():
+        """Estimated total cost of ownership at 100 listings."""
         from quoteforge.etsy.tco import live_tco
         return live_tco(listings=100)
     _try("tco", _tco)
 
     def _aov():
+        """Average order value from this month's revenue/orders."""
         p = m.get("pnl_month", {})
         rev, n = p.get("revenue", 0), p.get("orders", 0)
         return round(rev / n, 2) if n else 0.0
     _try("aov", _aov)
 
     def _counts():
+        """Subscriber/review/subscription/approval/order counts from the DB."""
         from quoteforge.db.database import (
             init_db, subscriber_count, review_stats, get_subscriptions,
             get_pending_approvals, get_all_orders)
@@ -49,6 +55,7 @@ def collect_metrics() -> dict:
     _try("counts", _counts)
 
     def _margins():
+        """Count product variations whose margin is below the 60% floor."""
         from quoteforge.etsy.variations import build_variations
         vs = build_variations()
         return {"variations": len(vs),
@@ -58,6 +65,7 @@ def collect_metrics() -> dict:
 
 
 def weekly_review(email: bool = False) -> dict:
+    """Build the Friday review (metrics + AI summary), archive it, optionally email."""
     import json
     from quoteforge.config import SHOP_NAME
     m = collect_metrics()
@@ -196,6 +204,8 @@ def monthly_review(email: bool = False) -> dict:
 
 
 def format_review_text(r: dict) -> str:
+    """Render the full Friday review as plain text - AI summary, key metrics,
+    trend, plus every analytics section that renders without error."""
     m = r["metrics"]
     p = m.get("pnl_month", {})
     c = m.get("counts", {})
@@ -300,5 +310,6 @@ def format_review_text(r: dict) -> str:
 
 
 def format_review_html(r: dict) -> str:
+    """Wrap the plain-text review in minimal HTML for email delivery."""
     return ("<html><body style='font-family:Arial'><pre style='font-size:13px;"
             f"white-space:pre-wrap'>{format_review_text(r)}</pre></body></html>")

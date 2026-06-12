@@ -30,10 +30,12 @@ SIZE = (2000, 2000)
 
 
 def _canvas(bg=EMERALD) -> Image.Image:
+    """New 2000x2000 RGB canvas in the given background colour."""
     return Image.new("RGB", SIZE, bg)
 
 
 def _center_text(draw, text, font, y, fill, w=SIZE[0]):
+    """Draw text horizontally centered at the given y; returns y."""
     tw = draw.textlength(text, font=font)
     draw.text(((w - tw) // 2, y), text, font=font, fill=fill)
     return y
@@ -76,6 +78,7 @@ def _stamp_frame_badge(path: Path) -> Path:
 
 
 def hero_room(poster_path: Path, out: Path) -> Path:
+    """Image 1: framed print styled on a wall, badged 'frame not included'."""
     render_room_mockup(poster_path, out, wall="sage", frame_style="oak", size=SIZE)
     return _stamp_frame_badge(out)
 
@@ -83,6 +86,7 @@ def hero_room(poster_path: Path, out: Path) -> Path:
 # ── Image 2: close-up detail ─────────────────────────────────────
 
 def closeup(poster_path: Path, out: Path) -> Path:
+    """Image 2: detail crop of the personalized text band on a cream backdrop."""
     poster = Image.open(poster_path).convert("RGB")
     pw, ph = poster.size
     # Crop the UPPER text band so the personalized name leads the detail shot
@@ -116,6 +120,7 @@ _SIZES = [("8x10\"", 8, 10), ("11x14\"", 11, 14), ("16x20\"", 16, 20), ("18x24\"
 
 
 def size_chart(poster_path: Path, out: Path) -> Path:
+    """Image 3: all four print sizes rendered to scale for confident size picks."""
     poster = Image.open(poster_path).convert("RGB")
     canvas = _canvas(CREAM)
     draw = ImageDraw.Draw(canvas)
@@ -158,6 +163,7 @@ _STEPS = [
 
 
 def how_it_works(out: Path) -> Path:
+    """Image 4: numbered personalize -> proof -> approve -> ship flow graphic."""
     canvas = _canvas(EMERALD)
     draw = ImageDraw.Draw(canvas)
     title = _load_font(110, serif=True)
@@ -193,6 +199,7 @@ _INCLUDED = [
 
 
 def whats_included(out: Path) -> Path:
+    """Image 5: trust-building checklist of everything the buyer gets."""
     canvas = _canvas(CREAM)
     draw = ImageDraw.Draw(canvas)
     title = _load_font(104, serif=True)
@@ -244,6 +251,7 @@ def build_listing_pack(poster_path, output_dir=None) -> dict:
 
 
 def format_pack_text(report: dict) -> str:
+    """Render the listing-pack report as a human-readable upload checklist."""
     lines = ["=" * 56, "LISTING IMAGE PACK", "=" * 56,
              f"Folder: {report['output_dir']}",
              f"Generated {report['passed']}/{report['total']} images:", ""]

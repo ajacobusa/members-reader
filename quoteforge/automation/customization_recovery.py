@@ -77,6 +77,7 @@ def run_recovery(older_than_minutes: int = ABANDON_AFTER_MINUTES,
 
 
 def format_recovery_text(older_than_minutes: int = ABANDON_AFTER_MINUTES) -> str:
+    """List abandoned designs awaiting recovery as plain text (dry run, no emails)."""
     r = run_recovery(older_than_minutes, send=False)
     if not r["candidates"]:
         return ("Abandoned customization recovery\n" + "-" * 40 +
