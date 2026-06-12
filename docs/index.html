@@ -570,12 +570,25 @@
  .dmbtn{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
    font-size:12px;cursor:pointer;color:var(--green)}
  .dmbtn.sel{background:var(--green);color:#fff;border-color:var(--green)}
- .photorow{display:flex;align-items:center;gap:6px;margin:5px 0}
- .photorow .plbl{font-size:11px;color:var(--muted);width:40px}
- .photorow input[type=range]{flex:1;accent-color:var(--green)}
- .photorow button{background:#fff;border:1px solid var(--line);border-radius:8px;
-   padding:4px 9px;font-size:13px;cursor:pointer;color:var(--green)}
- .photorow .pcenter{background:var(--green);color:#fff;border:none}
+ /* Photo-fit tool card: same gold-cream system as the wordbox/dragbar. */
+ #mphotoctl{background:#fffdf4;border:1.5px solid var(--gold);
+   border-radius:12px;padding:12px 14px;margin:0 0 10px}
+ .pctitle{font-size:14px;font-weight:800;color:var(--green);margin:0 0 8px}
+ .photorow{display:flex;align-items:center;gap:7px;margin:8px 0;flex-wrap:wrap}
+ .photorow .plbl{font-size:12px;font-weight:700;color:var(--ink);width:40px}
+ .photorow input[type=range]{flex:1;accent-color:var(--green);height:6px}
+ .zico{font-size:16px;font-weight:800;color:var(--green)}
+ .photorow button{min-width:40px;height:38px;background:#fff;cursor:pointer;
+   border:1.5px solid var(--green);border-radius:999px;padding:0 12px;
+   font-size:15px;font-weight:800;color:var(--green);
+   transition:transform .12s, box-shadow .12s}
+ .photorow button:hover{transform:translateY(-1px);
+   box-shadow:0 3px 10px rgba(16,61,46,.15)}
+ .photorow .pcenter{background:var(--green);color:#fff;border-color:var(--green);
+   font-size:13.5px}
+ .photorow .tposreset{border-color:var(--line);color:#5a6b62}
+ #mphotoctl .pdone{display:block;width:100%;margin-top:8px;padding:11px;
+   border-radius:999px;font-size:14px}
  #mcanvas{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:4px;background:#103d2e}
  .mcrop{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}
@@ -923,11 +936,13 @@
          <div class="dbhint">Select one, then drag it on the preview.</div>
        </div>
            <div id="mphotoctl" style="display:none">
-             <div class="swrow">🖼️ Fit your photo in the frame</div>
+             <div class="pctitle">🖼️ Fit your photo in the frame</div>
              <div class="photorow">
                <span class="plbl">Zoom</span>
+               <span class="zico" aria-hidden="true">−</span>
                <input type="range" id="mphotozoom" min="1" max="3" step="0.05" value="1"
-                 oninput="setPhotoZoom(this.value)">
+                 oninput="setPhotoZoom(this.value)" aria-label="Photo zoom">
+               <span class="zico" aria-hidden="true">+</span>
              </div>
              <div class="photorow">
                <span class="plbl">Move</span>
@@ -935,14 +950,12 @@
                <button type="button" aria-label="Nudge photo right" onclick="nudgePhoto(0.05,0)">&rarr;</button>
                <button type="button" aria-label="Nudge photo up" onclick="nudgePhoto(0,-0.05)">&uarr;</button>
                <button type="button" aria-label="Nudge photo down" onclick="nudgePhoto(0,0.05)">&darr;</button>
-               <button type="button" class="pcenter" onclick="autoCenterPhoto()">Center</button>
+               <button type="button" class="pcenter" onclick="autoCenterPhoto()">🎯 Center</button>
                <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
-               <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
              </div>
-             <div class="note">✋ <b>Drag the photo on the preview to position it</b>
-               When the photo looks right, tap <b>Done - edit text</b> to move/edit the wording again. Use Zoom
-               for more room. AI auto-centers the subject on upload; the preview
-               shows your final crop and we double-check quality before printing.</div>
+             <div class="dbhint">✋ Or just drag the photo on the preview.
+               AI auto-centered your subject on upload.</div>
+             <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
            </div>
 
        <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>

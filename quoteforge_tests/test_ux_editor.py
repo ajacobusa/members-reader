@@ -313,6 +313,18 @@ def test_customer_is_moved_forward_automatically(tmp_path):
     assert "pulseanim" in h
 
 
+def test_photo_fit_controls_are_a_vibrant_card(tmp_path):
+    """The photo-fit controls read as a polished tool card: gold-cream panel,
+    bold green title, round tactile nudge buttons, and -/+ cues on the zoom
+    slider - matching the wordbox/dragbar design system."""
+    h = _page(tmp_path)
+    assert "#mphotoctl{" in h                 # dedicated card styling
+    assert 'class="pctitle"' in h
+    assert h.count('class="zico"') >= 2       # -/+ ends on the zoom slider
+    photorow_btn = h.split(".photorow button{", 1)[1].split("}", 1)[0]
+    assert "999px" in photorow_btn            # round tactile buttons
+
+
 def test_design_tips_are_benefit_chips_not_text_walls(tmp_path):
     """The two dense 11px tip paragraphs are replaced by large, scannable
     benefit chips (free personalization / instant preview / emailed proof);
