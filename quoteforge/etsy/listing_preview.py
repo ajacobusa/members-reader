@@ -1702,7 +1702,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    </ol>
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
-     <div class="mleft">
+     <div class="mleft" id="mleftcol">
        <canvas id="mcanvas" width="520" height="650"></canvas>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" aria-label="See final preview" onclick="showFinalProof('item')">
@@ -1790,7 +1790,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            wording are all <b>free</b> - the preview updates instantly and final
            details are confirmed on your <b>FREE digital proof</b> before printing.</div>
        </div>
-       <div class="orderbox">
+       <div id="morderhome"></div>
+       <div class="orderbox" id="morderbox">
          <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)</div>
          <div class="orow">
            <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
@@ -1961,7 +1962,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    backToOccasions();
  }}
  function openM(i){{
-   CUR = i; RATING = 0; paintStars(); setStep(1);
+   CUR = i; RATING = 0; paintStars(); setStep(1); placeOrderBox();
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
@@ -2097,6 +2098,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!CART.length){{ alert('Your basket is empty.'); return; }}
    closeBasket(); showFinalProof('final');   // final review of ALL items, then accept all
  }}
+ // Desktop: the order box fills the blank space UNDER the preview (purchase
+ // actions next to the product, photo upload next to the photo controls).
+ // Mobile (single column): it returns below the personalization steps so the
+ // flow stays personalize-first. Reparenting beats CSS here because the two
+ // positions live in different columns.
+ function placeOrderBox(){{
+   const ob=document.getElementById('morderbox');
+   const left=document.getElementById('mleftcol');
+   const home=document.getElementById('morderhome');
+   if(!ob||!left||!home) return;
+   if(window.matchMedia('(min-width:761px)').matches){{
+     if(ob.parentNode!==left) left.appendChild(ob);
+   }} else if(home.nextElementSibling!==ob){{
+     home.parentNode.insertBefore(ob, home.nextSibling);
+   }}
+ }}
+ window.addEventListener('resize', placeOrderBox);
  function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
  function openBasketFromModal(){{ toggleBasket(); }}
  function pulseBasket(){{ const b=document.getElementById('basketBtnNav'); if(!b)return;

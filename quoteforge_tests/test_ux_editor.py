@@ -74,6 +74,18 @@ def test_basket_explains_how_payment_works(tmp_path):
     assert 'id="paynote"' in h
 
 
+def test_order_box_balances_into_left_column_on_desktop(tmp_path):
+    """The 'Build your order' box fills the blank space under the preview on
+    desktop (purchase actions live next to the product) and returns below the
+    personalization steps on mobile - via responsive reparenting."""
+    h = _page(tmp_path)
+    assert 'id="morderbox"' in h          # the relocatable order box
+    assert 'id="mleftcol"' in h           # desktop target (under the preview)
+    assert 'id="morderhome"' in h         # mobile anchor (original position)
+    assert "function placeOrderBox" in h
+    assert "addEventListener('resize'" in h
+
+
 def test_checkout_has_no_dead_end_without_shop_url(tmp_path):
     """When the Etsy shop isn't live yet (preview/UAT), accepting the basket
     must show a clear numbered 'What happens next' path + email capture -
