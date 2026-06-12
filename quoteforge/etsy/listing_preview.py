@@ -1431,7 +1431,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .rotrow button:hover{{border-color:var(--gold)}}
  .tposreset{{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}}
- .tposhint{{margin-left:8px;color:#b8860b;font-weight:700}}
+ .tposhint{{margin-left:8px;color:#8a6210;font-weight:700}}
  .perso .note.tip{{color:#1f3d2e;font-weight:600;background:#eef6f0;
    border:1px solid #cfe3d6;border-radius:8px;padding:8px 10px}}
  .perso .note.tip b{{color:#0a6b3b}}
@@ -1480,12 +1480,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:4px;background:#103d2e}}
  .mcrop{{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}}
- .dragbar{{display:flex;align-items:center;justify-content:center;gap:8px;
-   font-size:13.5px;font-weight:800;color:#b8860b;margin:0 0 10px;flex-wrap:wrap;
-   background:#fff7e0;border:1.5px solid var(--gold);border-radius:12px;padding:8px 10px}}
- .dragbar .dmbtn{{background:#fff;border:1.5px solid var(--gold);border-radius:14px;
-   padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#b8860b}}
- .dragbar .dmbtn.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .dragbar{{margin:0 0 10px;background:#fff7e0;border:1.5px solid var(--gold);
+   border-radius:12px;padding:12px 14px}}
+ .dragbar .dbq{{font-size:14px;font-weight:700;color:var(--green);
+   text-align:center;margin-bottom:8px}}
+ .dragbar .dseg{{display:flex;width:100%;border:2px solid var(--green);
+   border-radius:999px;overflow:hidden;background:#fff}}
+ .dragbar .dmbtn{{flex:1;border:0;border-radius:0;margin:0;padding:10px 8px;
+   background:transparent;font-size:14px;font-weight:700;cursor:pointer;
+   color:var(--green)}}
+ .dragbar .dmbtn.sel{{background:var(--green);color:#fff}}
+ .dbhint{{font-size:12.5px;color:var(--muted);font-weight:500;
+   text-align:center;margin-top:7px}}
  .orderbox{{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px}}
  .orderbox .lbl{{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}}
@@ -1766,11 +1772,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
-       <div class="dragbar"><span class="dbq">&#8596;&#65039; Reposition the wording or photo - select one: <small>(then drag it on the preview)</small></span>
-         <span class="dseg">
-         <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ The wording</button>
-         <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ The photo</button>
-         </span>
+       <div class="dragbar">
+         <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
+         <div class="dseg" role="group" aria-label="Select what to move">
+           <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ Wording</button>
+           <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ Photo</button>
+         </div>
+         <div class="dbhint">Select one, then drag it on the preview.</div>
        </div>
            <div id="mphotoctl" style="display:none">
              <div class="swrow">🖼️ Fit your photo in the frame</div>

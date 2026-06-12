@@ -87,11 +87,14 @@ def test_no_native_alerts_in_purchase_flow(tmp_path):
     assert "bpcobtn').disabled" in h or "co.disabled" in h
 
 
-def test_move_toggle_copy_is_self_explanatory(tmp_path):
-    """The drag toggle says exactly what it does: reposition the wording or
-    photo - select one, then drag."""
+def test_move_toggle_is_a_clean_segmented_control(tmp_path):
+    """The drag toggle reads as one component: bold heading, a full-width
+    50/50 segmented control, and a quiet one-line hint - no mid-sentence
+    wrapping."""
     h = _page(tmp_path)
-    assert "Reposition the wording or photo - select one" in h
+    assert "Reposition the wording or photo" in h
+    assert 'class="dbhint"' in h
+    assert "Select one, then drag it on the preview." in h
 
 
 def test_editor_controls_have_aria_labels(tmp_path):
