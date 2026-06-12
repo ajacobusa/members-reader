@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repository contains several projects:
 
 - **QuoteForge (print-on-demand Etsy)** — ALL print-on-demand / Etsy work belongs in `quoteforge/` (tests in `quoteforge_tests/`). Etsy listings/gift finder/pricing live in `quoteforge/etsy/`, Printify/Printful fulfillment in `quoteforge/fulfillment/`, plus `catalog/`, `quotes/`, `automation/`, `marketing/`, `analytics/`. The generated storefront page is `docs/index.html`. Do not create print-on-demand Etsy files outside `quoteforge/`.
+  - After ANY storefront change is implemented and pushed, always give the owner the UAT link for review: https://ajacobusa.github.io/members-reader/ (gate password: `Jesus`). Customer-facing copy must never mention "Etsy" by name.
 - **members-reader** — Python library/CLI in `src/members_reader/` (documented below).
 - **stock_dashboard** — catalyst-driven stock picks dashboard (Dash + SQLite).
 
