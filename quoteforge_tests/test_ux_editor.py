@@ -74,16 +74,25 @@ def test_basket_explains_how_payment_works(tmp_path):
     assert 'id="paynote"' in h
 
 
-def test_order_box_balances_into_left_column_on_desktop(tmp_path):
-    """The 'Build your order' box fills the blank space under the preview on
-    desktop (purchase actions live next to the product) and returns below the
-    personalization steps on mobile - via responsive reparenting."""
+def test_editor_is_sectioned_with_next_buttons(tmp_path):
+    """The customize panel is a one-section-at-a-time wizard: 1 Design ->
+    2 Photo -> 3 Frame & size + add, each finished with a Next button -
+    no scrolling hunt for the photo upload."""
     h = _page(tmp_path)
-    assert 'id="morderbox"' in h          # the relocatable order box
-    assert 'id="mleftcol"' in h           # desktop target (under the preview)
-    assert 'id="morderhome"' in h         # mobile anchor (original position)
-    assert "function placeOrderBox" in h
-    assert "addEventListener('resize'" in h
+    for sec in ("esec1", "esec2", "esec3"):
+        assert f'id="{sec}"' in h, f"missing editor section {sec}"
+    assert "function editStep" in h
+    assert "Next: add your photo" in h
+    assert "Next: frame &amp; size" in h or "Next: frame & size" in h
+    assert 'id="esectabs"' in h           # clickable section chips
+
+
+def test_photo_upload_is_its_own_section(tmp_path):
+    """The photo upload lives in section 2, not buried at the bottom of the
+    order box."""
+    h = _page(tmp_path)
+    sec2 = h.split('id="esec2"', 1)[1].split('id="esec3"', 1)[0]
+    assert 'id="mupload"' in sec2
 
 
 def test_checkout_has_no_dead_end_without_shop_url(tmp_path):

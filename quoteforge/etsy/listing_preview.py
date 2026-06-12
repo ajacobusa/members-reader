@@ -1536,6 +1536,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;
    line-height:1.55}}
  @media(max-width:560px){{ .fcrow{{flex-direction:column;gap:0}} }}
+ #esectabs{{display:flex;gap:6px;margin:10px 0 8px}}
+ #esectabs button{{flex:1;padding:8px 6px;border-radius:10px;cursor:pointer;
+   border:1px solid var(--line);background:#fff;font-size:13px;color:#5a6b62}}
+ #esectabs button.sel{{background:var(--green);color:#fff;
+   border-color:var(--green);font-weight:700}}
+ .esecnav{{display:flex;gap:8px;justify-content:space-between;margin-top:12px}}
+ .esecnav .esecnext{{flex:1;padding:11px 14px;border-radius:999px;border:0;
+   cursor:pointer;background:var(--green);color:#fff;font-weight:700;
+   font-size:14.5px}}
+ .esecnav .esecnext:hover{{background:var(--green-d)}}
+ .esecnav .esecback{{padding:11px 16px;border-radius:999px;cursor:pointer;
+   border:1px solid var(--line);background:#fff;color:#5a6b62}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -1749,10 +1761,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                confirmed on your free proof.</div>
            </div>
 
-       <div class="fpick" id="mfpick" style="display:none">
-         <div class="lbl">👉 Choose your frame / material:</div>
-         <div class="fchips" id="mfchips"></div>
-       </div>
        <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
      </div>
      <div class="mright">
@@ -1763,6 +1771,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <b>Frame not included</b> unless you choose a Framed option
          (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
        </div>
+       <!-- One section at a time: finish it, tap Next - no scrolling hunt. -->
+       <div id="esectabs" role="tablist" aria-label="Customize sections">
+         <button type="button" data-e="1" class="sel" aria-current="step" onclick="editStep(1)">1. Design</button>
+         <button type="button" data-e="2" onclick="editStep(2)">2. Photo</button>
+         <button type="button" data-e="3" onclick="editStep(3)">3. Frame &amp; size</button>
+       </div>
+       <div class="esec" id="esec1">
        <div class="perso">
          <div class="lbl">🎨 Your colors - the preview on the left updates live</div>
          <div class="swrow">Background</div>
@@ -1803,7 +1818,35 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            wording are all <b>free</b> - the preview updates instantly and final
            details are confirmed on your <b>FREE digital proof</b> before printing.</div>
        </div>
-       <div id="morderhome"></div>
+       <div class="esecnav">
+         <button type="button" class="esecnext" onclick="editStep(2)">Next: add your photo →</button>
+       </div>
+       </div>
+       <div class="esec" id="esec2" style="display:none">
+         <div class="uploadbox">
+           <div class="lbl">📷 Add your own photo (optional)</div>
+           <input type="file" id="mupload"
+             accept="image/jpeg,image/png,application/pdf,image/tiff"
+             onchange="checkUpload()">
+           <div id="muploadmsg" class="note" role="status" aria-live="polite"></div>
+           <div id="maicheck" class="note" role="status" aria-live="polite"></div>
+           <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
+             auto-checks quality and asks for a better photo if needed; your
+             approved photo is sent with the order to our print partner.</div>
+         </div>
+         <div class="note">🖼️ After uploading, the <b>photo zoom &amp; move
+           controls appear under the preview</b> on the left. No photo? Just
+           tap Next - this step is optional.</div>
+         <div class="esecnav">
+           <button type="button" class="esecback" onclick="editStep(1)">← Back</button>
+           <button type="button" class="esecnext" onclick="editStep(3)">Next: frame &amp; size →</button>
+         </div>
+       </div>
+       <div class="esec" id="esec3" style="display:none">
+       <div class="fpick" id="mfpick" style="display:none">
+         <div class="lbl">👉 Choose your frame / material:</div>
+         <div class="fchips" id="mfchips"></div>
+       </div>
        <div class="orderbox" id="morderbox">
          <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)</div>
          <div class="orow">
@@ -1829,17 +1872,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          </div>
          <div class="note taxnote">🧾 Prices are per item. <b>Tax &amp; shipping are
            calculated at checkout</b> based on your location.</div>
-         <div class="uploadbox">
-           <div class="lbl">📷 Add your own photo (optional)</div>
-           <input type="file" id="mupload"
-             accept="image/jpeg,image/png,application/pdf,image/tiff"
-             onchange="checkUpload()">
-           <div id="muploadmsg" class="note" role="status" aria-live="polite"></div>
-           <div id="maicheck" class="note" role="status" aria-live="polite"></div>
-           <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
-             auto-checks quality and asks for a better photo if needed; your
-             approved photo is sent with the order to our print partner.</div>
-         </div>
+       </div>
+       <div class="esecnav">
+         <button type="button" class="esecback" onclick="editStep(2)">← Back</button>
+       </div>
        </div>
        <div class="rate" id="mrate" style="display:none">
          <div class="lbl">How likely are you to buy this as a gift?</div>
@@ -1975,7 +2011,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    backToOccasions();
  }}
  function openM(i){{
-   CUR = i; RATING = 0; paintStars(); setStep(1); placeOrderBox();
+   CUR = i; RATING = 0; paintStars(); setStep(1); editStep(1);
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){{
@@ -2111,23 +2147,25 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!CART.length){{ alert('Your basket is empty.'); return; }}
    closeBasket(); showFinalProof('final');   // final review of ALL items, then accept all
  }}
- // Desktop: the order box fills the blank space UNDER the preview (purchase
- // actions next to the product, photo upload next to the photo controls).
- // Mobile (single column): it returns below the personalization steps so the
- // flow stays personalize-first. Reparenting beats CSS here because the two
- // positions live in different columns.
- function placeOrderBox(){{
-   const ob=document.getElementById('morderbox');
-   const left=document.getElementById('mleftcol');
-   const home=document.getElementById('morderhome');
-   if(!ob||!left||!home) return;
-   if(window.matchMedia('(min-width:761px)').matches){{
-     if(ob.parentNode!==left) left.appendChild(ob);
-   }} else if(home.nextElementSibling!==ob){{
-     home.parentNode.insertBefore(ob, home.nextSibling);
+ // Customize-panel wizard: one section at a time (1 Design, 2 Photo,
+ // 3 Frame & size + add) - finish a section, tap Next. The preview stays
+ // visible on the left throughout.
+ function editStep(n){{
+   for(let i=1;i<=3;i++){{
+     const s=document.getElementById('esec'+i);
+     if(s) s.style.display=(i===n)?'block':'none';
    }}
+   document.querySelectorAll('#esectabs button').forEach(function(b){{
+     const cur=parseInt(b.dataset.e)===n;
+     b.classList.toggle('sel',cur);
+     if(cur) b.setAttribute('aria-current','step');
+     else b.removeAttribute('aria-current');
+   }});
+   // On phones the sections sit below the preview - bring them into view.
+   const tabs=document.getElementById('esectabs');
+   if(tabs && window.matchMedia('(max-width:760px)').matches)
+     tabs.scrollIntoView({{behavior:'smooth', block:'start'}});
  }}
- window.addEventListener('resize', placeOrderBox);
  function closeBasket(){{ const p=document.getElementById('basketPanel'); if(p)p.style.display='none'; }}
  function openBasketFromModal(){{ toggleBasket(); }}
  function pulseBasket(){{ const b=document.getElementById('basketBtnNav'); if(!b)return;
