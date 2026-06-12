@@ -1849,7 +1849,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="sw" id="mtxt"></div>
          <div class="swrow">🛋️ Your room wall <span style="color:#9aa49c;font-weight:400">(preview against your wall color)</span></div>
          <div class="sw" id="mwall"></div>
-         <div class="wordbox">
+         <div class="wordbox" id="mwordbox">
            <div class="wordlbl">✍️ Your wording - make it yours</div>
            <textarea id="mtext" maxlength="250" rows="4" oninput="onText()"
              placeholder="Type your message - e.g. &quot;Happy 40th, Sam - love you to the mountains and back&quot;. It previews live on the left."></textarea>
@@ -2091,6 +2091,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
+   WORD_DONE=false;
    setStep(1); editStep(1);
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
@@ -2252,6 +2253,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      else b.removeAttribute('aria-current');
    }});
    ESEC=n;
+   if(n>=2) WORD_DONE=true;     // moving on = keeping the shown quote
    if(n===3) promptSizeQty();   // never leave the customer waiting: guide them
    guide();                     // recompute the single beacon for this step
    // On phones the sections sit below the preview - bring them into view.
@@ -2266,7 +2268,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // the design -> add to basket -> go to checkout. The engine recomputes on
  // every state change, so going Back re-lights that step's beacon until the
  // task is genuinely complete.
- let ESEC=1, REVIEWED=false, ADDED=false;
+ let ESEC=1, REVIEWED=false, ADDED=false, WORD_DONE=false;
  function guide(){{
    document.querySelectorAll('.pulseon').forEach(function(e){{
      e.classList.remove('pulseon'); }});
@@ -2278,7 +2280,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(e) e.classList.add('pulseon'); }};
    if(ADDED){{ const pa=document.querySelector('#postadd .pacheckout');
      if(pa) pa.classList.add('pulseon'); return; }}
-   if(ESEC===1){{ on('esec1next'); return; }}
+   if(ESEC===1){{
+     // First task: their own words. The wording box blinks until they start
+     // typing; moving on counts as keeping the shown quote.
+     on(WORD_DONE?'esec1next':'mwordbox'); return; }}
    if(ESEC===2){{ on('esec2next'); return; }}
    const sv=((document.getElementById('msize')||{{}}).value)||'';
    if(!sv){{ const row=document.querySelector('#morderbox .orow');
@@ -2711,6 +2716,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function onText(){{
    const v=(document.getElementById('mtext').value||'');
    document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;
+   if(!WORD_DONE && v.trim()){{ WORD_DONE=true; guide(); }}  // typing started
    drawArt();
  }}
  function onSizeChange(){{ drawArt(); updateReview(); recheckPhotoRes();

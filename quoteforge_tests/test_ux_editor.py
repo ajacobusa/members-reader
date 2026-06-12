@@ -273,6 +273,15 @@ def test_no_approval_gate_in_listing_descriptions(tmp_path):
     assert "for your approval" not in h
 
 
+def test_wording_box_blinks_until_typing_starts(tmp_path):
+    """The first beacon is the wording box itself - it blinks until the
+    customer starts typing (or deliberately moves on, which counts as
+    keeping the shown quote)."""
+    h = _page(tmp_path)
+    assert 'id="mwordbox"' in h
+    assert "WORD_DONE" in h
+
+
 def test_guidance_resumes_after_going_back(tmp_path):
     """The engine recomputes on every section change (editStep -> guide), so
     hitting Back re-lights that earlier step's beacon until it is finished."""
