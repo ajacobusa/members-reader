@@ -87,9 +87,40 @@ def test_order_box_balances_into_left_column_on_desktop(tmp_path):
 
 
 def test_checkout_has_no_dead_end_without_shop_url(tmp_path):
-    """When the Etsy shop isn't live yet (preview/UAT), accepting the basket
+    """When the shop isn't live yet (preview/UAT), accepting the basket
     must show a clear numbered 'What happens next' path + email capture -
     never a bare 'Done' that strands the customer."""
     h = _page(tmp_path)
     assert "What happens next" in h
     assert "function saveProofEmail" in h
+
+
+def test_final_review_is_a_three_step_wizard(tmp_path):
+    """The accept screen is broken into sections: review basket -> your
+    details -> confirm & complete, each with its own Next action."""
+    h = _page(tmp_path)
+    assert "function finalStep" in h
+    assert "Next: your details" in h
+    assert "Next: confirm" in h
+    assert "Complete order" in h
+    assert "Step 1 of 3" in h and "Step 3 of 3" in h
+
+
+def test_contact_and_shipping_collected_before_completion(tmp_path):
+    """Name, email, phone, and shipping address are collected on their own
+    step BEFORE final approval (previously only email was captured)."""
+    h = _page(tmp_path)
+    for fid in ("fc_name", "fc_email", "fc_phone", "fc_addr", "fc_city",
+                "fc_state", "fc_zip", "fc_country"):
+        assert f'id="{fid}"' in h, f"missing contact field {fid}"
+    assert "jf_contact" in h          # persisted across refreshes
+
+
+def test_no_customer_facing_etsy_in_page_copy(tmp_path):
+    """The marketplace behind the payment link is an implementation detail -
+    customer copy says 'secure checkout / payment link', never 'Etsy'."""
+    h = _page(tmp_path)
+    assert "Etsy's secure checkout" not in h
+    assert "secure Etsy" not in h
+    assert "Etsy checkout" not in h
+    assert "live Etsy page" not in h

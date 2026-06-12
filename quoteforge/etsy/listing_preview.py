@@ -1523,6 +1523,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-size:13px;min-width:200px}}
  .pfemail button{{padding:7px 14px;border-radius:8px;border:0;cursor:pointer;
    background:var(--green);color:#fff;font-weight:600}}
+ .fcform{{text-align:left;margin-top:8px}}
+ .fcform label{{display:block;font-size:13px;font-weight:600;color:#3c4a42;
+   margin:8px 0 0}}
+ .fcform .fcopt{{font-weight:400;color:#9aa49c}}
+ .fcform input{{display:block;width:100%;box-sizing:border-box;margin-top:3px;
+   padding:8px 10px;border:1px solid #cdd9d0;border-radius:8px;font-size:14px}}
+ .fcrow{{display:flex;gap:8px}} .fcrow label{{flex:1}}
+ .fcback{{color:var(--green);cursor:pointer;margin-top:10px;font-size:13px;
+   text-decoration:underline;text-align:left}}
+ .fcship{{text-align:left;background:#f6f9f7;border:1px solid #dfe9e2;
+   border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;
+   line-height:1.55}}
+ @media(max-width:560px){{ .fcrow{{flex-direction:column;gap:0}} }}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -2196,10 +2209,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(acc){{ acc.disabled=false; acc.onclick=proofAccept; }}
    if(PROOFMODE==='final'){{
      if(img)img.style.display='none';
-     if(title)title.textContent='Review your basket ('+CART.length+')';
-     if(sub)sub.textContent="Here's everything you picked. Remove anything you don't want, or accept all to confirm - we'll still send a free proof of each piece before printing.";
-     if(sum)sum.innerHTML=_basketSummary().replace(/\\n/g,'<br>');
-     if(acc)acc.textContent='✓ Accept all & confirm';
+     _loadContact(); finalStep(1);
    }} else {{
      if(cv&&img){{ try{{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }}catch(e){{}} }}
      if(title)title.textContent='Your final design';
@@ -2208,6 +2218,79 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(acc)acc.textContent='✓ Add to basket';
    }}
    document.getElementById('proofPop').style.display='flex';
+ }}
+ // ── Final checkout wizard: 1 review basket -> 2 your details -> 3 confirm ──
+ let FSTEP=1, CONTACT={{}};
+ function _loadContact(){{
+   try{{ CONTACT=JSON.parse(localStorage.getItem('jf_contact')||'{{}}'); }}
+   catch(e){{ CONTACT={{}}; }}
+   if(!CONTACT.email){{ const e=knownEmail(); if(e) CONTACT.email=e; }}
+ }}
+ function _saveContact(){{
+   try{{ localStorage.setItem('jf_contact', JSON.stringify(CONTACT));
+     if(CONTACT.email) localStorage.setItem('jf_email', CONTACT.email);
+   }}catch(e){{}}
+ }}
+ function _fv(v){{ return (v||'').replace(/"/g,'&quot;'); }}
+ function _contactFormHTML(){{ const c=CONTACT;
+   return '<div class="fcform">'+
+    '<label>Full name *<input id="fc_name" value="'+_fv(c.name)+'" autocomplete="name"></label>'+
+    '<label>Email *<input id="fc_email" type="email" value="'+_fv(c.email)+'" autocomplete="email"></label>'+
+    '<label>Phone <span class="fcopt">(optional - delivery questions only)</span><input id="fc_phone" value="'+_fv(c.phone)+'" autocomplete="tel"></label>'+
+    '<label>Street address *<input id="fc_addr" value="'+_fv(c.addr)+'" autocomplete="street-address"></label>'+
+    '<div class="fcrow">'+
+    '<label>City *<input id="fc_city" value="'+_fv(c.city)+'" autocomplete="address-level2"></label>'+
+    '<label>State/Region<input id="fc_state" value="'+_fv(c.state)+'" autocomplete="address-level1"></label>'+
+    '<label>ZIP/Postcode *<input id="fc_zip" value="'+_fv(c.zip)+'" autocomplete="postal-code"></label>'+
+    '</div>'+
+    '<label>Country *<input id="fc_country" value="'+_fv(c.country||'United States')+'" autocomplete="country-name"></label>'+
+    '<div id="fcerr" class="upbad" role="status" aria-live="polite"></div></div>';
+ }}
+ function _readContact(){{
+   const g=function(id){{ return ((document.getElementById(id)||{{}}).value||'').trim(); }};
+   CONTACT={{name:g('fc_name'), email:g('fc_email'), phone:g('fc_phone'),
+     addr:g('fc_addr'), city:g('fc_city'), state:g('fc_state'),
+     zip:g('fc_zip'), country:g('fc_country')}};
+   const err=document.getElementById('fcerr');
+   const need=[['name','full name'],['email','email address'],
+     ['addr','street address'],['city','city'],['zip','ZIP/postcode'],
+     ['country','country']];
+   for(let i=0;i<need.length;i++){{
+     if(!CONTACT[need[i][0]]){{ if(err)err.textContent='Please add your '+need[i][1]+'.'; return false; }}
+   }}
+   if(CONTACT.email.indexOf('@')<1){{ if(err)err.textContent='Please enter a valid email address.'; return false; }}
+   _saveContact(); return true;
+ }}
+ function _shipToHTML(){{ const c=CONTACT;
+   return c.name+'<br>'+c.addr+'<br>'+c.city+(c.state?', '+c.state:'')+' '+c.zip+
+     '<br>'+c.country+'<br>'+c.email+(c.phone?' &middot; '+c.phone:'');
+ }}
+ function finalStep(n){{ FSTEP=n;
+   const title=document.getElementById('proofTitle'), sub=document.getElementById('proofSub');
+   const sum=document.getElementById('proofSummary'), acc=document.getElementById('proofAcceptBtn');
+   const st=document.getElementById('proofStatus'); if(st)st.textContent='';
+   if(n===1){{
+     if(title)title.textContent='Step 1 of 3 - Review your basket ('+CART.length+')';
+     if(sub)sub.textContent="Here's everything you picked. Remove anything you don't want (Edit), then continue.";
+     if(sum)sum.innerHTML=_basketSummary().replace(/\\n/g,'<br>');
+     if(acc){{ acc.textContent='Next: your details →'; acc.disabled=false;
+       acc.onclick=function(){{ finalStep(2); }}; }}
+   }} else if(n===2){{
+     if(title)title.textContent='Step 2 of 3 - Your details';
+     if(sub)sub.textContent='Where should we send your free proof - and where does the order ship?';
+     if(sum)sum.innerHTML=_contactFormHTML()+
+       '<div class="fcback" role="button" tabindex="0" onclick="finalStep(1)">&larr; Back to basket</div>';
+     if(acc){{ acc.textContent='Next: confirm →'; acc.disabled=false;
+       acc.onclick=function(){{ if(_readContact()) finalStep(3); }}; }}
+   }} else {{
+     if(title)title.textContent='Step 3 of 3 - Confirm & complete';
+     if(sub)sub.textContent='One last look. Completing approves your design for proofing - nothing prints until you approve the emailed proof.';
+     if(sum)sum.innerHTML=_basketSummary().replace(/\\n/g,'<br>')+
+       '<div class="fcship"><b>Send proof &amp; ship to</b><br>'+_shipToHTML()+'</div>'+
+       '<div class="fcback" role="button" tabindex="0" onclick="finalStep(2)">&larr; Edit details</div>';
+     if(acc){{ acc.textContent='Complete order ✓'; acc.disabled=false;
+       acc.onclick=acceptProof; }}
+   }}
  }}
  function closeProof(){{ document.getElementById('proofPop').style.display='none';
    if(PROOFMODE!=='final') setStep(1); }}
@@ -2223,8 +2306,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let ACCEPTED=false;
  function acceptProof(){{
    if(ACCEPTED) return;            // guard against double-accept
-   const email=knownEmail();
-   const summary=_basketSummary();
+   const email=(CONTACT&&CONTACT.email)||knownEmail();
+   // Ship-to/contact rides with the summary AND inside the design payload so
+   // the saved order record carries everything needed to fulfil it.
+   const summary=_basketSummary()
+     +(CONTACT&&CONTACT.name?('\\nShip to: '+CONTACT.name+', '+CONTACT.addr+', '
+       +CONTACT.city+(CONTACT.state?', '+CONTACT.state:'')+' '+CONTACT.zip+', '
+       +CONTACT.country+(CONTACT.phone?(' · '+CONTACT.phone):'')):'');
    const acc=document.getElementById('proofAcceptBtn');
    if(acc){{ acc.textContent='Confirming…'; acc.disabled=true; }}
    const done=function(emailed){{
@@ -2238,19 +2326,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      }} else {{
        msg='✅ Accepted &amp; saved! We\\'ll send a free digital proof of each piece for your approval before anything prints.';
      }}
-     if(ETSY_SHOP_URL){{ label='Continue to secure Etsy checkout →';
+     if(ETSY_SHOP_URL){{ label='Continue to secure checkout →';
        action=function(){{ window.open(ETSY_SHOP_URL,'_blank'); }};
-       msg+=' Tap below to pay on Etsy\\'s secure checkout - card, PayPal, '+
+       msg+=' Tap below to pay via our secure checkout - card, PayPal, '+
          'Apple Pay or Google Pay. You never enter card details on this site.';
      }} else {{
        // No live shop yet (preview/UAT): never strand the customer on a bare
        // 'Done' - spell out the path to payment and capture their email.
        label='Got it ✓'; action=function(){{ closeProof(); }};
-       const em=knownEmail();
+       const em=(CONTACT&&CONTACT.email)||knownEmail();
        msg+='<div class="nextsteps"><b>What happens next</b><ol>'+
          '<li>We prepare a <b>free digital proof</b> of each piece.</li>'+
          '<li>You approve (or tweak) the proof by email - nothing prints before you say so.</li>'+
-         '<li>We send your <b>secure Etsy payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
+         '<li>We send your <b>secure payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
          '<li>We print &amp; ship with tracking.</li></ol>'+
          (em?`We\\'ll email <b>${{em}}</b>.`
            :'<div class="pfemail"><label for="pfemail">Where should we send your proof &amp; payment link?</label> '+
@@ -2263,8 +2351,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(acc){{ acc.textContent=label; acc.disabled=false; acc.onclick=action; }}
    }};
    if(email && CONFIRM_API){{
+     const dsn=_designState(); dsn.contact=CONTACT;
      fetch(CONFIRM_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
-       body:JSON.stringify({{email:email, summary:summary, design:_designState()}})}})
+       body:JSON.stringify({{email:email, summary:summary, design:dsn}})}})
        .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
    }} else {{ done(false); }}
  }}
@@ -2733,9 +2822,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
       <button class="bpco" onclick="checkout()">Checkout &rarr;</button>
     </div>
     <p class="ftc" id="paynote">💳 <b>You never enter card details on this site.</b>
-      Payment is completed on Etsy's secure checkout - credit/debit card,
-      PayPal, Apple Pay or Google Pay. Your personalization is attached to the
-      order automatically.</p>
+      Payment is completed via a secure payment link we send you - credit/debit
+      card, PayPal, Apple Pay or Google Pay. Your personalization is attached
+      to the order automatically.</p>
     <p class="ftc">Items are added as you personalize each design. Personalization &amp;
       exact layout are confirmed on your free proof before printing.</p>
   </div>
@@ -2959,7 +3048,7 @@ def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
  </div>
 </div>
 <div style="text-align:center;color:#aaa;font-size:12px;margin:24px">
-  Mock preview generated by QuoteForge - not a live Etsy page.</div>
+  Mock preview generated by QuoteForge - preview only, not a live shop.</div>
 </body></html>"""
 
     out = Path(out_path) if out_path else (kit_dir / f"preview_{n:02d}.html")
