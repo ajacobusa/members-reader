@@ -770,6 +770,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         etsy_shop_url = ""
     try:
+        from quoteforge.config import PAYMENT_LINK_URL as payment_link_url
+    except Exception:  # noqa: BLE001
+        payment_link_url = ""
+    try:
         from quoteforge.config import ESTIMATED_TAX_RATE_PCT as est_tax_pct
     except Exception:  # noqa: BLE001
         est_tax_pct = 0
@@ -2105,6 +2109,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
  // ── Persistent basket (across designs) ──
  const ETSY_SHOP_URL = "{etsy_shop_url}";
+ const PAY_LINK = "{payment_link_url}";
  const EST_TAX_PCT = {est_tax_pct};   // 0 = tax calculated at checkout
  function toggleBasket(){{const p=document.getElementById('basketPanel');
    const open=p.style.display!=='flex'; renderBasket(); p.style.display=open?'flex':'none';}}
@@ -2322,13 +2327,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        acc.onclick=function(){{ if(_readContact()) finalStep(3); }}; }}
    }} else {{
      if(title)title.textContent='Step 3 of 3 - Confirm & complete';
-     if(sub)sub.textContent='One last look. Completing approves your design for proofing - nothing prints until you approve the emailed proof.';
+     if(sub)sub.textContent='Check everything below, then tap Complete order.';
      if(sum)sum.innerHTML=_basketSummary().replace(/\\n/g,'<br>')+
-       '<div class="fcship"><b>Send proof &amp; ship to</b><br>'+_shipToHTML()+'</div>'+
+       '<div class="fcship"><b>Ship to</b><br>'+_shipToHTML()+'</div>'+
        '<div class="fcback" role="button" tabindex="0" onclick="finalStep(2)">&larr; Edit details</div>';
      if(acc){{ acc.textContent='Complete order ✓'; acc.disabled=false;
        acc.onclick=acceptProof; }}
    }}
+ }}
+ function restartCheckout(){{
+   // Undo the acceptance and walk back to Step 1 so the customer can change
+   // anything (items, details) and approve again - nothing is lost.
+   ACCEPTED=false; setStep(3);
+   const edit=document.querySelector('#proofPop .pedit');
+   if(edit) edit.style.display='';
+   finalStep(1);
  }}
  function closeProof(){{ document.getElementById('proofPop').style.display='none';
    if(PROOFMODE!=='final') setStep(1); }}
@@ -2360,11 +2373,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(edit) edit.style.display='none';
      let msg, label, action;
      if(emailed){{
-       msg='✅ Accepted! A confirmation email is on its way. We\\'ll send a free proof of each piece before printing.';
+       msg='✅ Accepted &amp; saved - <b>this is your final approval</b>. A '+
+         'confirmation email is on its way, with a free digital proof of each '+
+         'piece so you can see exactly what prints.';
      }} else {{
-       msg='✅ Accepted &amp; saved! We\\'ll send a free digital proof of each piece for your approval before anything prints.';
+       msg='✅ Accepted &amp; saved - <b>this is your final approval</b>. We\\'ll '+
+         'email a free digital proof of each piece so you can see exactly '+
+         'what prints.';
      }}
-     if(ETSY_SHOP_URL){{ label='Continue to secure checkout →';
+     if(PAY_LINK){{
+       // Same-flow payment: hosted secure checkout opens on THIS click -
+       // the customer never has to wait for an email to pay.
+       label='Pay now - secure checkout →';
+       action=function(){{ window.open(PAY_LINK,'_blank'); }};
+       msg+=' <b>Tap below to pay now</b> on our secure checkout - card, '+
+         'PayPal, Apple Pay or Google Pay. You never enter card details on '+
+         'this site.'+
+         '<div class="nextsteps"><b>What happens next</b><ol>'+
+         '<li>Pay securely (the checkout opens when you tap below).</li>'+
+         '<li>We email a <b>free digital proof</b> of each piece - spot anything wrong? Reply right away and we fix it before printing.</li>'+
+         '<li>We print &amp; ship with tracking.</li></ol></div>';
+     }} else if(ETSY_SHOP_URL){{ label='Continue to secure checkout →';
        action=function(){{ window.open(ETSY_SHOP_URL,'_blank'); }};
        msg+=' Tap below to pay via our secure checkout - card, PayPal, '+
          'Apple Pay or Google Pay. You never enter card details on this site.';
@@ -2374,8 +2403,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        label='Got it ✓'; action=function(){{ closeProof(); }};
        const em=(CONTACT&&CONTACT.email)||knownEmail();
        msg+='<div class="nextsteps"><b>What happens next</b><ol>'+
-         '<li>We prepare a <b>free digital proof</b> of each piece.</li>'+
-         '<li>You approve (or tweak) the proof by email - nothing prints before you say so.</li>'+
+         '<li>We prepare a <b>free digital proof</b> of each piece and email it to you.</li>'+
+         '<li>Spot anything wrong on the proof? Reply right away and we fix it before printing.</li>'+
          '<li>We send your <b>secure payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
          '<li>We print &amp; ship with tracking.</li></ol>'+
          (em?`We\\'ll email <b>${{em}}</b>.`
@@ -2385,6 +2414,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             '<span id="pfemailok" role="status" aria-live="polite"></span></div>')+
          '</div>';
      }}
+     // Always offer a way back: changed your mind AFTER accepting? Start over.
+     msg+='<div class="fcback" role="button" tabindex="0" onclick="restartCheckout()">'+
+       '&#8617; Need to change something? Start over</div>';
      if(st) st.innerHTML=msg;
      if(acc){{ acc.textContent=label; acc.disabled=false; acc.onclick=action; }}
    }};

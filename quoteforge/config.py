@@ -80,6 +80,13 @@ DYNAMIC_MAX_UPLIFT_PCT: float = float(os.getenv("DYNAMIC_MAX_UPLIFT_PCT", "15"))
 # Welcome / first-order promo (exit-intent capture). Set the code in your Etsy
 # shop coupons; these just drive the on-site copy. Empty code hides the offer.
 ETSY_SHOP_URL: str = os.getenv("ETSY_SHOP_URL", "").strip().rstrip("/")
+# Same-flow payment: a hosted checkout link (Stripe Payment Link / PayPal /
+# Square). When set, completing an order opens it IMMEDIATELY - the customer
+# pays in the same visit instead of waiting for an emailed link. Takes
+# priority over the Etsy redirect. (Etsy has no payments API; off-site card
+# entry for Etsy orders is not possible - this is the industry-standard
+# hosted-checkout handoff instead.)
+PAYMENT_LINK_URL: str = os.getenv("PAYMENT_LINK_URL", "").strip()
 # Buyer tax is calculated & collected by Etsy (marketplace facilitator) at checkout
 # based on the buyer's location - we do NOT compute it. Optionally show an ESTIMATE
 # on-site for transparency; 0 hides it and we just say "tax calculated by Etsy".

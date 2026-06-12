@@ -125,6 +125,34 @@ def test_contact_and_shipping_collected_before_completion(tmp_path):
     assert "jf_contact" in h          # persisted across refreshes
 
 
+def test_ship_to_heading_is_plain(tmp_path):
+    """The step-3 recap card is headed 'Ship to' (not 'Send proof & ship to')."""
+    h = _page(tmp_path)
+    assert "<b>Ship to</b>" in h
+    assert "Send proof &amp; ship to" not in h
+
+
+def test_same_page_payment_when_payment_link_configured(tmp_path, monkeypatch):
+    """With PAYMENT_LINK_URL set, completing the order pays NOW in the same
+    flow (hosted secure checkout opens immediately) - no 'we'll email you a
+    payment link later'."""
+    monkeypatch.setattr("quoteforge.config.PAYMENT_LINK_URL",
+                        "https://buy.stripe.com/test_abc", raising=False)
+    h = _page(tmp_path)
+    assert 'const PAY_LINK = "https://buy.stripe.com/test_abc"' in h
+    assert "Pay now" in h
+
+
+def test_acceptance_is_final_approval_with_start_over(tmp_path):
+    """The accepted screen says plainly that acceptance IS the final
+    approval, and offers a Start over control to go back and change
+    anything before production."""
+    h = _page(tmp_path)
+    assert "final approval" in h
+    assert "function restartCheckout" in h
+    assert "Start over" in h
+
+
 def test_no_customer_facing_etsy_in_page_copy(tmp_path):
     """The marketplace behind the payment link is an implementation detail -
     customer copy says 'secure checkout / payment link', never 'Etsy'."""
