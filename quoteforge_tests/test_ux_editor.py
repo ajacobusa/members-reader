@@ -58,6 +58,13 @@ def test_status_regions_are_aria_live(tmp_path):
     assert h.count('aria-live="polite"') >= 3
 
 
+def test_move_toggle_copy_is_self_explanatory(tmp_path):
+    """The drag toggle says exactly what it does: reposition the wording or
+    photo - select one, then drag."""
+    h = _page(tmp_path)
+    assert "Reposition the wording or photo - select one" in h
+
+
 def test_editor_controls_have_aria_labels(tmp_path):
     h = _page(tmp_path)
     assert 'aria-label="Move the wording"' in h
