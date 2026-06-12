@@ -1512,6 +1512,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-top-color:var(--green);border-radius:50%;vertical-align:-2px;
    animation:spinrot .8s linear infinite}}
  @keyframes spinrot{{to{{transform:rotate(360deg)}}}}
+ .nextsteps{{text-align:left;background:#f6f9f7;border:1px solid #dfe9e2;
+   border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;
+   line-height:1.55}}
+ .nextsteps ol{{margin:6px 0 4px 18px;padding:0}}
+ .nextsteps li{{margin:4px 0}}
+ .pfemail{{margin-top:8px}}
+ .pfemail label{{display:block;font-weight:600;margin-bottom:4px}}
+ .pfemail input{{padding:7px 9px;border:1px solid #cdd9d0;border-radius:8px;
+   font-size:13px;min-width:200px}}
+ .pfemail button{{padding:7px 14px;border-radius:8px;border:0;cursor:pointer;
+   background:var(--green);color:#fff;font-weight:600}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -2209,10 +2220,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      }} else {{
        msg='✅ Accepted &amp; saved! We\\'ll send a free digital proof of each piece for your approval before anything prints.';
      }}
-     if(ETSY_SHOP_URL){{ label='Continue to checkout →';
+     if(ETSY_SHOP_URL){{ label='Continue to secure Etsy checkout →';
        action=function(){{ window.open(ETSY_SHOP_URL,'_blank'); }};
-       msg+=' Tap below to complete your purchase.';
-     }} else {{ label='Done ✓'; action=function(){{ closeProof(); }}; }}
+       msg+=' Tap below to pay on Etsy\\'s secure checkout - card, PayPal, '+
+         'Apple Pay or Google Pay. You never enter card details on this site.';
+     }} else {{
+       // No live shop yet (preview/UAT): never strand the customer on a bare
+       // 'Done' - spell out the path to payment and capture their email.
+       label='Got it ✓'; action=function(){{ closeProof(); }};
+       const em=knownEmail();
+       msg+='<div class="nextsteps"><b>What happens next</b><ol>'+
+         '<li>We prepare a <b>free digital proof</b> of each piece.</li>'+
+         '<li>You approve (or tweak) the proof by email - nothing prints before you say so.</li>'+
+         '<li>We send your <b>secure Etsy payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
+         '<li>We print &amp; ship with tracking.</li></ol>'+
+         (em?`We\\'ll email <b>${{em}}</b>.`
+           :'<div class="pfemail"><label for="pfemail">Where should we send your proof &amp; payment link?</label> '+
+            '<input id="pfemail" type="email" placeholder="you@email.com"> '+
+            '<button type="button" onclick="saveProofEmail()">Save</button> '+
+            '<span id="pfemailok" role="status" aria-live="polite"></span></div>')+
+         '</div>';
+     }}
      if(st) st.innerHTML=msg;
      if(acc){{ acc.textContent=label; acc.disabled=false; acc.onclick=action; }}
    }};
@@ -2221,6 +2249,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        body:JSON.stringify({{email:email, summary:summary, design:_designState()}})}})
        .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
    }} else {{ done(false); }}
+ }}
+ // Save the proof/payment-link email captured on the 'What happens next' panel.
+ function saveProofEmail(){{
+   const i=document.getElementById('pfemail'), ok=document.getElementById('pfemailok');
+   const v=((i&&i.value)||'').trim();
+   if(v.indexOf('@')<1){{ if(ok)ok.textContent='Please enter a valid email.'; return; }}
+   try{{ localStorage.setItem('jf_email', v); }}catch(e){{}}
+   if(CONFIRM_API){{
+     fetch(CONFIRM_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{email:v, summary:_basketSummary(), design:_designState()}})}})
+       .catch(function(){{}});
+   }}
+   if(ok)ok.textContent='✓ Saved - watch your inbox for the proof.';
  }}
  let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5;
  function _showPhotoCtl(on){{
@@ -2673,6 +2714,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
       <button class="bpclear" onclick="clearBasket()">Empty basket</button>
       <button class="bpco" onclick="checkout()">Checkout &rarr;</button>
     </div>
+    <p class="ftc" id="paynote">💳 <b>You never enter card details on this site.</b>
+      Payment is completed on Etsy's secure checkout - credit/debit card,
+      PayPal, Apple Pay or Google Pay. Your personalization is attached to the
+      order automatically.</p>
     <p class="ftc">Items are added as you personalize each design. Personalization &amp;
       exact layout are confirmed on your free proof before printing.</p>
   </div>

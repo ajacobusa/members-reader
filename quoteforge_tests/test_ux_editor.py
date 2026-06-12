@@ -63,3 +63,21 @@ def test_editor_controls_have_aria_labels(tmp_path):
     assert 'aria-label="Move the wording"' in h
     assert 'aria-label="Move the photo"' in h
     assert 'aria-label="See final preview"' in h
+
+
+def test_basket_explains_how_payment_works(tmp_path):
+    """Customers must never wonder 'where do I put my credit card?' - the
+    basket says payment is completed securely on Etsy, with the methods."""
+    h = _page(tmp_path)
+    assert "never enter card details" in h.lower()
+    assert "PayPal" in h
+    assert 'id="paynote"' in h
+
+
+def test_checkout_has_no_dead_end_without_shop_url(tmp_path):
+    """When the Etsy shop isn't live yet (preview/UAT), accepting the basket
+    must show a clear numbered 'What happens next' path + email capture -
+    never a bare 'Done' that strands the customer."""
+    h = _page(tmp_path)
+    assert "What happens next" in h
+    assert "function saveProofEmail" in h
