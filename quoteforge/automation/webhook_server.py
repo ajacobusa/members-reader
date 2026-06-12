@@ -42,6 +42,9 @@ from quoteforge.config import OUTPUT_DIR
 
 app = Flask(__name__) if FLASK_AVAILABLE else None
 
+# Upload cap: a poster-quality JPG is well under this; bigger is abuse/error.
+MAX_UPLOAD_MB = 25
+
 WEBHOOK_LOG = OUTPUT_DIR / "webhook_log.json"
 
 
@@ -409,12 +412,32 @@ if FLASK_AVAILABLE and app:
             resp = jsonify({"status": "error", "message": "file and email required"})
             resp.headers["Access-Control-Allow-Origin"] = "*"
             return resp, 400
+        # Hardening gate BEFORE anything touches disk:
+        #  - filename is attacker-controlled: strip any path components
+        #  - only print-supported extensions are ever written
+        #  - cap the size (a poster-quality JPG is well under 25 MB)
+        from werkzeug.utils import secure_filename
+        safe_name = secure_filename(f.filename or "") or "upload.jpg"
+        from quoteforge.automation.print_quality import SUPPORTED
+        if not safe_name.lower().endswith(SUPPORTED):
+            resp = jsonify({"status": "error",
+                            "message": "unsupported file type - please upload "
+                                       "a JPG, PNG, PDF or TIFF"})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            return resp, 400
+        max_bytes = MAX_UPLOAD_MB * 1024 * 1024
+        if (request.content_length or 0) > max_bytes:
+            resp = jsonify({"status": "error",
+                            "message": f"file too large - the maximum is "
+                                       f"{MAX_UPLOAD_MB} MB"})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            return resp, 413
         try:
             import tempfile, os as _os
             from quoteforge.customers import save_upload
             from quoteforge.automation.print_quality import (assess_photo,
                                                              reupload_request)
-            tmp = _os.path.join(tempfile.gettempdir(), f.filename or "upload.jpg")
+            tmp = _os.path.join(tempfile.gettempdir(), safe_name)
             f.save(tmp)
             # Always keep the LOCAL copy in the customer folder.
             saved = save_upload(email, tmp, name=request.form.get("name", ""))

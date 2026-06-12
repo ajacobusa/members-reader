@@ -10,8 +10,8 @@ shipping (and are not re-polled once tracking is known - the API has nothing
 new to say). This is what advances orders to delivery and lets the
 post-delivery review/delight loop fire. Scheduled; TEST_MODE-safe.
 
-The order's `gelato_order_id` column holds the vendor order id for ALL vendors
-(the pipeline stores the router's returned id there regardless of vendor).
+The vendor order id is read from `vendor_order_id` (honestly named, added by
+migration) with `gelato_order_id` as the legacy fallback for old rows.
 """
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def sync_tracking(limit: int = 500) -> dict:
     init_db()
     newly_shipped, delivered, pushed = [], [], []
     for o in get_all_orders(limit):
-        gid = o.get("gelato_order_id")
+        gid = o.get("vendor_order_id") or o.get("gelato_order_id")
         if not gid or o.get("status") in ("delivered", "cancelled", "refunded"):
             continue
         had_tracking = bool(o.get("tracking_number"))

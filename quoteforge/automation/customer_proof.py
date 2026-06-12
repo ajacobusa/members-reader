@@ -76,11 +76,19 @@ def record_customer_approval(order_id: str,
     # you fairly deny "I changed my mind" / "I don't like it" after approval,
     # while still honouring genuine defects/damage (see resolution engine).
     approved_at = datetime.now().isoformat(timespec="seconds")
-    update_order(order_id, proof_approved=1, proof_approved_at=approved_at)
+    # Parity gate: fingerprint the exact file being approved so the pre-Gelato
+    # validation can prove the production file is the one the customer saw.
+    from quoteforge.automation.print_quality import (file_sha256,
+                                                     hashable_print_file)
+    proof_hash = file_sha256(hashable_print_file(order)) if \
+        hashable_print_file(order) else ""
+    update_order(order_id, proof_approved=1, proof_approved_at=approved_at,
+                 proof_file_hash=proof_hash)
     log_pipeline_stage(
         order_id, "proof", "customer_approved",
         f"Customer approved the proof at {approved_at}; "
-        f"approved quote+artwork on record")
+        f"approved quote+artwork on record"
+        + (f"; file sha256={proof_hash[:12]}..." if proof_hash else ""))
     return resume_after_proof_approval(
         order_id,
         gelato_product_uid=gelato_product_uid,

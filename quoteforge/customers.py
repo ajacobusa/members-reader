@@ -72,5 +72,11 @@ def save_upload(email: str, src_path, name: str = "") -> Path | None:
         return None
     dest_dir = ensure_customer(email, name) / "uploads"
     dest = dest_dir / f"{datetime.now():%Y%m%d_%H%M%S}_{src.name}"
+    # Never overwrite: two same-named uploads in the same second must BOTH
+    # survive (every customer upload is part of the audit trail).
+    n = 1
+    while dest.exists():
+        dest = dest_dir / f"{datetime.now():%Y%m%d_%H%M%S}_{n}_{src.name}"
+        n += 1
     shutil.copy2(src, dest)
     return dest

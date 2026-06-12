@@ -397,7 +397,10 @@ def run_full_pipeline(
             if status in ("submitted", "fulfilled"):
                 gelato_order_id = resp.get("id", "")
                 if gelato_order_id:
-                    update_order(order_id, gelato_order_id=gelato_order_id)
+                    # vendor_order_id is the honest name; gelato_order_id kept
+                    # in sync for legacy readers (reports, Airtable export).
+                    update_order(order_id, gelato_order_id=gelato_order_id,
+                                 vendor_order_id=gelato_order_id)
                 _log(order_id, "gelato_order", "success",
                      f"{resp.get('vendor')}: {status} {gelato_order_id}")
                 _notify("gelato_order", f"{resp.get('vendor')} {status}")

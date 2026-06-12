@@ -151,6 +151,25 @@ def reupload_request(assessment: dict, recipient: str = "") -> str:
 REQUIRED_ADDRESS = ("name", "address", "city", "postCode", "country")
 
 
+def file_sha256(path) -> str:
+    """SHA-256 of a local file, or '' when it does not exist / can't be read."""
+    import hashlib
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def hashable_print_file(order: dict) -> str:
+    """The local file that will actually be printed, when one exists on disk:
+    the customer's print_file, else a local artwork path. '' when remote-only."""
+    for key in ("print_file", "artwork_url"):
+        p = order.get(key) or ""
+        if p and "://" not in str(p) and Path(p).exists():
+            return str(p)
+    return ""
+
+
 def validate_order_for_gelato(order: dict) -> dict:
     """Final pre-submission validation. Returns {ok, issues}."""
     issues = []
@@ -167,6 +186,14 @@ def validate_order_for_gelato(order: dict) -> dict:
         issues.append("no print file attached")
     if (order.get("print_quality") or "").lower() == "reject":
         issues.append("print file failed quality check")
+    # Parity gate: the file the customer APPROVED must be the file we print.
+    # (Orders approved before the hash feature have no hash - not blocked.)
+    approved_hash = order.get("proof_file_hash") or ""
+    if approved_hash:
+        current = hashable_print_file(order)
+        if current and file_sha256(current) != approved_hash:
+            issues.append("print file changed since customer approval - "
+                          "re-approve required before production")
     return {"ok": not issues, "issues": issues}
 
 

@@ -606,6 +606,17 @@
  .uploadbox{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
  .uploadbox input[type=file]{font-size:12px}
  .upok{color:#0f7a3d} .upbad{color:#b3261e}
+ #mstepper{display:flex;gap:6px;list-style:none;margin:0 0 4px;padding:10px 16px 0;
+   font-size:12.5px;color:#7c867f;flex-wrap:wrap}
+ #mstepper li{display:flex;align-items:center}
+ #mstepper li::after{content:"\203A";color:#c9d6cd;margin:0 7px}
+ #mstepper li:last-child::after{content:""}
+ #mstepper li.cur{color:var(--green);font-weight:700}
+ #mstepper li.done{color:#0f7a3d}
+ .spin{display:inline-block;width:12px;height:12px;border:2px solid #c9d6cd;
+   border-top-color:var(--green);border-radius:50%;vertical-align:-2px;
+   animation:spinrot .8s linear infinite}
+ @keyframes spinrot{to{transform:rotate(360deg)}}
  .mbox h2{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}
  .mprice{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}
  .mdesc{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -768,7 +779,7 @@
       Add it to your basket - we'll still send a FREE proof before printing.</p>
     <img id="proofImg" class="proofimg" alt="Your design preview">
     <div class="proofsum"><span id="proofSummary"></span></div>
-    <div id="proofStatus" class="proofstatus"></div>
+    <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
     <div class="proofactions">
       <button class="pedit" onclick="proofEdit()">&larr; Go back &amp; edit</button>
       <button id="proofAcceptBtn" class="paccept" onclick="proofAccept()">✓ Add to basket</button>
@@ -795,17 +806,23 @@
 <div id="modal" onclick="if(event.target.id==='modal')closeM()">
  <div class="mbox">
    <span class="closex" role="button" tabindex="0" aria-label="Close" onclick="closeM()" onkeydown="if(event.key=='Enter')closeM()">&times;</span>
+   <ol id="mstepper" aria-label="Order progress">
+     <li data-s="1" class="cur" aria-current="step">1. Customize</li>
+     <li data-s="2">2. Review</li>
+     <li data-s="3">3. Approve</li>
+     <li data-s="4">4. Checkout</li>
+   </ol>
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft">
        <canvas id="mcanvas" width="520" height="650"></canvas>
        <div id="mcrop" class="mcrop"></div>
-       <button type="button" class="seefinal" onclick="showFinalProof('item')">
+       <button type="button" class="seefinal" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar"><span class="dbq">&#9995; What do you want to move? <small>(drag it on the preview)</small></span>
          <span class="dseg">
-         <button type="button" class="dmbtn sel" data-m="text" onclick="setDragMode('text')">✍️ The wording</button>
-         <button type="button" class="dmbtn" data-m="photo" onclick="setDragMode('photo')">🖼️ The photo</button>
+         <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ The wording</button>
+         <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ The photo</button>
          </span>
        </div>
            <div id="mphotoctl" style="display:none">
@@ -817,10 +834,10 @@
              </div>
              <div class="photorow">
                <span class="plbl">Move</span>
-               <button type="button" onclick="nudgePhoto(-0.05,0)">&larr;</button>
-               <button type="button" onclick="nudgePhoto(0.05,0)">&rarr;</button>
-               <button type="button" onclick="nudgePhoto(0,-0.05)">&uarr;</button>
-               <button type="button" onclick="nudgePhoto(0,0.05)">&darr;</button>
+               <button type="button" aria-label="Nudge photo left" onclick="nudgePhoto(-0.05,0)">&larr;</button>
+               <button type="button" aria-label="Nudge photo right" onclick="nudgePhoto(0.05,0)">&rarr;</button>
+               <button type="button" aria-label="Nudge photo up" onclick="nudgePhoto(0,-0.05)">&uarr;</button>
+               <button type="button" aria-label="Nudge photo down" onclick="nudgePhoto(0,0.05)">&darr;</button>
                <button type="button" class="pcenter" onclick="autoCenterPhoto()">Center</button>
                <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
                <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
@@ -915,8 +932,8 @@
            <input type="file" id="mupload"
              accept="image/jpeg,image/png,application/pdf,image/tiff"
              onchange="checkUpload()">
-           <div id="muploadmsg" class="note"></div>
-           <div id="maicheck" class="note"></div>
+           <div id="muploadmsg" class="note" role="status" aria-live="polite"></div>
+           <div id="maicheck" class="note" role="status" aria-live="polite"></div>
            <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
              auto-checks quality and asks for a better photo if needed; your
              approved photo is sent with the order to our print partner.</div>
@@ -1056,7 +1073,7 @@
    backToOccasions();
  }
  function openM(i){
-   CUR = i; RATING = 0; paintStars();
+   CUR = i; RATING = 0; paintStars(); setStep(1);
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    if(d.formats && d.formats.length){
@@ -1246,8 +1263,24 @@
      (l.title?` - ${l.title}`:'')).join('\n')+'\n'+_taxLine(_cartTotal());
  }
  let PROOFMODE='item';
+ // Order-progress stepper: 1 Customize, 2 Review, 3 Approve, 4 Checkout.
+ function setStep(n){ document.querySelectorAll('#mstepper li').forEach(function(li){
+   const s=parseInt(li.dataset.s);
+   li.classList.toggle('cur',s===n); li.classList.toggle('done',s<n);
+   if(s===n) li.setAttribute('aria-current','step');
+   else li.removeAttribute('aria-current'); }); }
+ // Client-side upload cap (the server enforces the same limit).
+ const MAX_UPLOAD_MB=25;
+ // Photos already used in basket items (name|bytes) - powers the gentle
+ // duplicate-upload heads-up without ever blocking an intentional reuse.
+ let USED_PHOTOS=[], PHOTO_META=null;
+ function dupPhotoNote(f){ const k=f.name+'|'+f.size; PHOTO_META=k;
+   return USED_PHOTOS.indexOf(k)>=0
+     ? "<br>&#8505;&#65039; Heads up: this looks like the <b>same photo</b> used in another basket item - totally fine if intentional."
+     : ""; }
  function showFinalProof(mode){
    PROOFMODE=(mode==='final')?'final':'item';
+   setStep(PROOFMODE==='final'?3:2);
    const cv=document.getElementById('mcanvas'), img=document.getElementById('proofImg');
    const title=document.getElementById('proofTitle'), sub=document.getElementById('proofSub');
    const acc=document.getElementById('proofAcceptBtn'), sum=document.getElementById('proofSummary');
@@ -1270,12 +1303,16 @@
    }
    document.getElementById('proofPop').style.display='flex';
  }
- function closeProof(){ document.getElementById('proofPop').style.display='none'; }
+ function closeProof(){ document.getElementById('proofPop').style.display='none';
+   if(PROOFMODE!=='final') setStep(1); }
  function proofEdit(){ closeProof(); }                 // back to the open design / basket
  function proofAccept(){ if(PROOFMODE==='final') acceptProof(); else addFromProof(); }
  function addFromProof(){
    const before=CART.length; addToOrder(); closeProof(); pulseBasket();
-   if(CART.length>before) toggleBasket();    // open the basket so they see it landed
+   if(CART.length>before){
+     if(PHOTO&&PHOTO_META&&USED_PHOTOS.indexOf(PHOTO_META)<0) USED_PHOTOS.push(PHOTO_META);
+     toggleBasket();    // open the basket so they see it landed
+   }
  }
  let ACCEPTED=false;
  function acceptProof(){
@@ -1285,7 +1322,7 @@
    const acc=document.getElementById('proofAcceptBtn');
    if(acc){ acc.textContent='Confirming…'; acc.disabled=true; }
    const done=function(emailed){
-     ACCEPTED=true; abConvert && abConvert();
+     ACCEPTED=true; setStep(4); abConvert && abConvert();
      const st=document.getElementById('proofStatus');
      const edit=document.querySelector('#proofPop .pedit');
      if(edit) edit.style.display='none';
@@ -1336,6 +1373,10 @@
    const f=inp.files&&inp.files[0]; if(!f){removePhoto();return;}
    if(!/(jpe?g|png|pdf|tiff?)$/i.test(f.name)){msg.className='note upbad';
      msg.textContent='Unsupported format. Use JPG, PNG, PDF or TIFF.';return;}
+   if(f.size>MAX_UPLOAD_MB*1048576){msg.className='note upbad';
+     msg.textContent='That file is '+(f.size/1048576).toFixed(1)+' MB - too large (max '
+       +MAX_UPLOAD_MB+' MB). Tip: export the photo as a JPG and try again.';
+     inp.value='';return;}
    if(/pdf$/i.test(f.name)){PHOTO=null;drawArt();
      msg.className='note upok';msg.innerHTML="PDF received - we'll verify print quality. "
        +"<span class='rmphoto' onclick='removePhoto()'>remove</span>";aiCheckPhoto(f);return;}
@@ -1344,10 +1385,11 @@
    img.onload=function(){const nw=(inches[0]||18)*150, nh=(inches[1]||24)*150;
      const big=Math.max(img.width,img.height), small=Math.min(img.width,img.height);
      const rm=" <span class='rmphoto' onclick='removePhoto()'>remove</span>";
+     const dup=dupPhotoNote(f);
      if(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)){msg.className='note upok';
-       msg.innerHTML=`Great - ${img.width}x${img.height}px works for ${inches[0]}x${inches[1]}". Previewing on the left.`+rm;}
+       msg.innerHTML=`Great - ${img.width}x${img.height}px works for ${inches[0]}x${inches[1]}". Previewing on the left.`+rm+dup;}
      else{msg.className='note upbad';
-       msg.innerHTML=`Only ${img.width}x${img.height}px - too low for a sharp ${inches[0]}x${inches[1]}" print (previewing anyway). Please upload a higher-resolution original.`+rm;}
+       msg.innerHTML=`Only ${img.width}x${img.height}px - too low for a sharp ${inches[0]}x${inches[1]}" print (previewing anyway). Please upload a higher-resolution original.`+rm+dup;}
      PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo');                    // dragging now moves the PHOTO
@@ -1796,7 +1838,8 @@
    const size=((document.getElementById('msize')||{}).value||'18x24|0').split('|')[0];
    const fd=new FormData(); fd.append('file',file); fd.append('email',email);
    fd.append('size',size);
-   const note=document.getElementById('maicheck'); if(note)note.textContent='🤖 AI checking photo quality…';
+   const note=document.getElementById('maicheck');
+   if(note)note.innerHTML='<span class="spin"></span> 🤖 AI checking photo quality…';
    fetch(UPLOAD_API,{method:'POST',body:fd}).then(r=>r.json()).then(function(d){
      if(d && d.focal) applyFocal(d.focal);   // AI auto-centers the subject
      if(!note) return;

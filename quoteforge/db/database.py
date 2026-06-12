@@ -388,6 +388,18 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN shipped_at TEXT")
     if "delivered_at" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN delivered_at TEXT")
+    # Honestly-named vendor order id (gelato_order_id historically held the id
+    # for EVERY vendor); backfilled so old orders keep tracking.
+    if "vendor_order_id" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN vendor_order_id TEXT")
+    conn.execute(
+        "UPDATE orders SET vendor_order_id = gelato_order_id "
+        "WHERE (vendor_order_id IS NULL OR vendor_order_id = '') "
+        "AND gelato_order_id IS NOT NULL AND gelato_order_id != ''")
+    # SHA-256 of the print file at customer-approval time - the parity gate
+    # proving the approved proof IS the file sent to production.
+    if "proof_file_hash" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN proof_file_hash TEXT")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
