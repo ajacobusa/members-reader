@@ -157,7 +157,7 @@ def _competitive_sections() -> str:
     from quoteforge.config import SHOP_NAME
     rows = [
         ("Designed by a real person for your story", "Templated, mass-produced"),
-        ("FREE digital proof - approve before we print", "What you upload is what prints"),
+        ("FREE digital proof emailed - see exactly what prints", "What you upload is what prints"),
         ("Made to order, museum-quality materials", "Bulk factory runs"),
         ("Custom wording, colors &amp; frame - you preview it live", "Limited presets"),
         ("Personal note + gift e-card included free", "Add-on fees"),
@@ -173,11 +173,12 @@ def _competitive_sections() -> str:
          "Yes! Upload a high-resolution photo and type your own words - we "
          "auto-check quality and send a free proof before printing."),
         ("How fast will it arrive?",
-         "We send your proof within ~24h; once approved it's printed and shipped "
-         "with tracking, typically within 3-5 business days."),
+         "We email your proof within ~24h and double-check every file, then "
+         "print and ship with tracking, typically within 3-5 business days. "
+         "Spot something on the proof? Reply right away and we fix it first."),
         ("What if I don't love it?",
          "Message us - our happiness guarantee means we'll fix or remake it. "
-         "Personalized items are made to order, so approval happens on the proof."),
+         "Personalized items are made to order from the design you approved."),
     ]
     faq_html = "".join(
         f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
@@ -188,8 +189,9 @@ def _competitive_sections() -> str:
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
         f'{cmp_rows}</table></div>'
         f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is '
-        f'made to order and approved by you on a free proof. If something isn\'t '
-        f'right, we\'ll make it right.</div>'
+        f'made to order from the design you approved, with a free emailed proof '
+        f'so you see exactly what prints. If something isn\'t right, we\'ll '
+        f'make it right.</div>'
         f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>')
 
 
@@ -1546,15 +1548,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    margin-bottom:6px}}
  .wordbox textarea{{font-size:15px;min-height:88px;background:#fff}}
  .wordbox .cc{{margin-top:4px}}
- #esectabs{{display:flex;gap:8px;margin:12px 0 10px}}
- #esectabs button{{flex:1;padding:12px 8px;border-radius:12px;cursor:pointer;
-   border:2px solid #cdbf98;background:#fffdf4;font-size:14.5px;
-   font-weight:600;color:var(--green)}}
+ #esectabs{{display:flex;gap:10px;margin:14px 0 12px}}
+ #esectabs button{{flex:1;display:flex;flex-direction:column;align-items:center;
+   gap:4px;padding:13px 8px 11px;border-radius:14px;cursor:pointer;
+   border:2px solid #cdbf98;background:#fffdf4;color:var(--green);
+   transition:transform .15s, box-shadow .15s}}
+ #esectabs .eicon{{font-size:24px;line-height:1}}
+ #esectabs .elbl{{font-size:14px;font-weight:800;letter-spacing:.2px}}
  #esectabs button.sel{{background:var(--green);color:#fff;
-   border-color:var(--green);font-weight:700;
-   box-shadow:0 0 0 4px rgba(16,61,46,.14)}}
- #esectabs button.done{{background:#eaf4ed;border-color:#9fc4ab;color:#0f7a3d}}
- #esectabs button.done::before{{content:"✓ "}}
+   border-color:var(--green);transform:translateY(-2px);
+   box-shadow:0 6px 16px rgba(16,61,46,.28)}}
+ #esectabs button:not(.sel):hover{{transform:translateY(-1px);
+   box-shadow:0 3px 10px rgba(16,61,46,.12)}}
+ #esectabs button.done{{background:#eaf4ed;border-color:#0f7a3d;color:#0f7a3d}}
+ #esectabs button.done .elbl::before{{content:"✓ "}}
  .sizeprompt{{background:#fffdf4;border:2px solid var(--gold);border-radius:10px;
    padding:8px 12px;margin-bottom:8px;font-size:13.5px;color:var(--green)}}
  @keyframes ctapulse{{0%{{box-shadow:0 0 0 0 rgba(16,61,46,.45)}}
@@ -1568,6 +1575,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .esecnav .esecnext:hover{{background:var(--green-d)}}
  .esecnav .esecback{{padding:11px 16px;border-radius:999px;cursor:pointer;
    border:1px solid var(--line);background:#fff;color:#5a6b62}}
+ .ordmail{{display:block;text-align:center;text-decoration:none;margin-top:10px;
+   padding:12px 14px;border-radius:999px;background:var(--green);color:#fff;
+   font-weight:700}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}}
  .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -1709,7 +1719,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeProof()">&times;</span>
     <h2 id="proofTitle">Your final design</h2>
     <p class="qsub" id="proofSub">This is how your piece will look. Happy with it?
-      Add it to your basket - we'll still send a FREE proof before printing.</p>
+      Add it to your basket - a FREE proof is emailed so you see exactly what prints.</p>
     <img id="proofImg" class="proofimg" alt="Your design preview">
     <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
@@ -1777,8 +1787,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
              </div>
              <div class="note">✋ <b>Drag the photo on the preview to position it</b>
                When the photo looks right, tap <b>Done - edit text</b> to move/edit the wording again. Use Zoom
-               for more room. AI auto-centers the subject on upload; final crop is
-               confirmed on your free proof.</div>
+               for more room. AI auto-centers the subject on upload; the preview
+               shows your final crop and we double-check quality before printing.</div>
            </div>
 
        <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
@@ -1792,9 +1802,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        <!-- One section at a time: finish it, tap Next - no scrolling hunt. -->
        <div id="esectabs" role="tablist" aria-label="Customize sections">
-         <button type="button" data-e="1" class="sel" aria-current="step" onclick="editStep(1)">1. Design</button>
-         <button type="button" data-e="2" onclick="editStep(2)">2. Photo</button>
-         <button type="button" data-e="3" onclick="editStep(3)">3. Frame &amp; size</button>
+         <button type="button" data-e="1" class="sel" aria-current="step" onclick="editStep(1)">
+           <span class="eicon">🎨</span><span class="elbl">1. Design</span></button>
+         <button type="button" data-e="2" onclick="editStep(2)">
+           <span class="eicon">📷</span><span class="elbl">2. Photo</span></button>
+         <button type="button" data-e="3" onclick="editStep(3)">
+           <span class="eicon">🖼️</span><span class="elbl">3. Frame &amp; size</span></button>
        </div>
        <div class="esec" id="esec1">
        <div class="perso">
@@ -1834,10 +1847,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="note tip">💡 Use the <b>Move: Text / Photo</b> toggle under the
            preview to drag the wording or the photo (one at a time). Resize &amp;
            rotate the text above; fine-tune the photo fit below. Nothing is final
-           until you review &amp; accept - and we still send a free proof.</div>
+           until you review &amp; accept.</div>
          <div class="note tip">✅ Background, text color, font, size, position &amp;
-           wording are all <b>free</b> - the preview updates instantly and final
-           details are confirmed on your <b>FREE digital proof</b> before printing.</div>
+           wording are all <b>free</b> - the preview updates instantly, and a
+           <b>FREE emailed proof</b> shows exactly what prints.</div>
        </div>
        <div class="esecnav">
          <button type="button" class="esecnext" onclick="editStep(2)">Next: add your photo →</button>
@@ -2205,9 +2218,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function pulseBasket(){{ const b=document.getElementById('basketBtnNav'); if(!b)return;
    b.classList.add('pulse'); setTimeout(()=>b.classList.remove('pulse'),1000); }}
  // Primary action: add the current personalized design to the basket.
+ // Default quotes carry literal [Name]/[Your name] tokens - never let one
+ // reach production unnoticed. Returns true when the wording is safe (or the
+ // buyer explicitly confirms it as-is).
+ function _placeholderOk(){{
+   const w=((document.getElementById('mtext')||{{}}).value||'').trim()||CURQUOTE||'';
+   if(!/\\[(your\\s+)?name\\]/i.test(w)) return true;
+   return confirm('Your wording still contains "[Name]". Tap Cancel to type '+
+     'the real name (recommended), or OK to print it exactly as shown.');
+ }}
  function addToBasket(){{
    const sv=(document.getElementById('msize')||{{}}).value;
    if(!sv){{ alert('Please choose a size first.'); return; }}
+   if(!_placeholderOk()) return;
    const before=CART.length; addToOrder();
    if(CART.length>before){{ pulseBasket();
      const bar=document.getElementById('mbasketbar');
@@ -2285,7 +2308,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }} else {{
      if(cv&&img){{ try{{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }}catch(e){{}} }}
      if(title)title.textContent='Your final design';
-     if(sub)sub.textContent="This is how your piece will look. Add it to your basket - we'll still send a free proof before printing.";
+     if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
      if(sum)sum.innerHTML=_currentDesignSummary().replace(/\\n/g,'<br>');
      if(acc)acc.textContent='✓ Add to basket';
    }}
@@ -2377,6 +2400,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function proofEdit(){{ closeProof(); }}                 // back to the open design / basket
  function proofAccept(){{ if(PROOFMODE==='final') acceptProof(); else addFromProof(); }}
  function addFromProof(){{
+   if(!_placeholderOk()) return;
    const before=CART.length; addToOrder(); closeProof(); pulseBasket();
    if(CART.length>before){{
      if(PHOTO&&PHOTO_META&&USED_PHOTOS.indexOf(PHOTO_META)<0) USED_PHOTOS.push(PHOTO_META);
@@ -2430,6 +2454,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        msg+='<div class="nextsteps"><b>What happens next</b><ol>'+
          '<li>We send your <b>secure payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
          '<li>We print &amp; ship with tracking.</li></ol>'+
+         // No backend reachable: give a channel that WORKS RIGHT NOW instead
+         // of a promise this static preview can't keep.
+         (CONFIRM_API?'':('<a class="esecnext ordmail" href="'+_orderMailto()+'">'+
+           '📧 Email us your order now</a>'+
+           '<div class="note">One tap opens an email with your full order - '+
+           'send it and we take it from there.</div>'))+
          (em?`We\\'ll email <b>${{em}}</b>.`
            :'<div class="pfemail"><label for="pfemail">Where should we send your order confirmation &amp; payment link?</label> '+
             '<input id="pfemail" type="email" placeholder="you@email.com"> '+
@@ -2450,6 +2480,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
    }} else {{ done(false); }}
  }}
+ // Prefilled order email to the owner - the always-works completion channel.
+ function _orderMailto(){{
+   const c=CONTACT||{{}};
+   const body=_basketSummary()
+     +'\\n\\nShip to: '+[c.name,c.addr,c.city,c.state,c.zip,c.country].filter(Boolean).join(', ')
+     +(c.phone?'\\nPhone: '+c.phone:'')+(c.email?'\\nEmail: '+c.email:'');
+   return 'mailto:'+OWNER+'?subject='+encodeURIComponent('New order - '+(c.name||'website'))
+     +'&body='+encodeURIComponent(body);
+ }}
  // Save the proof/payment-link email captured on the 'What happens next' panel.
  function saveProofEmail(){{
    const i=document.getElementById('pfemail'), ok=document.getElementById('pfemailok');
@@ -2461,7 +2500,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        body:JSON.stringify({{email:v, summary:_basketSummary(), design:_designState()}})}})
        .catch(function(){{}});
    }}
-   if(ok)ok.textContent='✓ Saved - watch your inbox for the proof.';
+   if(ok)ok.textContent=CONFIRM_API
+     ?'✓ Saved - watch your inbox for the proof.'
+     :'✓ Saved on this device - please also tap "Email us your order now" above so we receive it.';
  }}
  let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5;
  function _showPhotoCtl(on){{
@@ -2926,7 +2967,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
       card, PayPal, Apple Pay or Google Pay. Your personalization is attached
       to the order automatically.</p>
     <p class="ftc">Items are added as you personalize each design. Personalization &amp;
-      exact layout are confirmed on your free proof before printing.</p>
+      exact layout print exactly as previewed.</p>
   </div>
 </div>
 
@@ -3012,7 +3053,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let EXIT_SHOWN = false;
  function _exitDone(){{ try{{localStorage.setItem('jf_exit','1');}}catch(e){{}} }}
  function _exitSeen(){{ try{{return localStorage.getItem('jf_exit')==='1';}}catch(e){{return false;}} }}
- function openExit(){{ if(EXIT_SHOWN||_exitSeen())return; EXIT_SHOWN=true;
+ // True while the editor / proof / basket is open - i.e. an active purchase.
+ function _overlayOpen(){{
+   return ['modal','proofPop','basketPanel'].some(function(id){{
+     const e=document.getElementById(id);
+     return e && e.style.display && e.style.display!=='none';
+   }});
+ }}
+ function openExit(){{ if(EXIT_SHOWN||_exitSeen())return;
+   // Never interrupt someone mid-purchase with a discount popup.
+   if(_overlayOpen()||CART.length) return;
+   EXIT_SHOWN=true;
    document.getElementById('exitpop').style.display='flex'; }}
  function closeExit(){{ document.getElementById('exitpop').style.display='none'; _exitDone(); }}
  function submitExit(){{
@@ -3142,7 +3193,7 @@ def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
      <textarea placeholder="Recipient name, occasion, relationship, a short story, and (optional) your own exact wording..."></textarea>
    </div>
    <button class="btn">Add to cart</button>
-   <div class="note">Free digital proof before printing - nothing prints until you approve.</div>
+   <div class="note">Free digital proof emailed before printing - see exactly what prints.</div>
    <div class="tags">{tags}</div>
    <div class="desc">{desc}</div>
  </div>

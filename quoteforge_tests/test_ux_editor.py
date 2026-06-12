@@ -125,6 +125,42 @@ def test_contact_and_shipping_collected_before_completion(tmp_path):
     assert "jf_contact" in h          # persisted across refreshes
 
 
+def test_offline_completion_has_working_email_fallback(tmp_path):
+    """With no payment link and no backend, Complete order must still have a
+    WORKING channel (prefilled mailto with the order) - never a false
+    'saved, watch your inbox' promise."""
+    h = _page(tmp_path)
+    assert "function _orderMailto" in h
+    assert "Email us your order now" in h
+
+
+def test_single_approval_model_everywhere(tmp_path):
+    """One approval story on the whole page: acceptance is final, the proof
+    shows what prints (reply fast to fix) - no 'approve before we print'
+    gate language anywhere."""
+    h = _page(tmp_path)
+    assert "approve before we print" not in h
+    assert "once approved" not in h
+    assert "nothing prints until you approve" not in h
+    assert "still send a" not in h          # "we'll still send a free proof"
+
+
+def test_placeholder_wording_blocked_from_ordering(tmp_path):
+    """Default quotes contain literal [Name] tokens - adding to basket with
+    one still present asks the buyer to confirm or fix it."""
+    h = _page(tmp_path)
+    assert "function _placeholderOk" in h
+    assert h.count("_placeholderOk(") >= 3   # defined + wired into both adds
+
+
+def test_exit_popup_never_covers_active_purchase(tmp_path):
+    """The 40s exit-intent popup must not interrupt someone mid-purchase
+    (editor/proof/basket open, or items in the cart)."""
+    h = _page(tmp_path)
+    assert "function _overlayOpen" in h
+    assert "_overlayOpen()" in h
+
+
 def test_step2_is_shipping_address_verification(tmp_path):
     h = _page(tmp_path)
     assert "Shipping address verification" in h
@@ -132,9 +168,8 @@ def test_step2_is_shipping_address_verification(tmp_path):
 
 def test_no_proof_promises_in_checkout_copy(tmp_path):
     """Acceptance is final - the accepted screen and next-steps no longer
-    promise a proof email round."""
+    promise a proof-approval round."""
     h = _page(tmp_path)
-    assert "see exactly what prints" not in h
     assert "Spot anything wrong on the proof" not in h
     assert "We prepare a <b>free digital proof</b>" not in h
 
@@ -144,6 +179,15 @@ def test_modal_trust_line_removed(tmp_path):
     the editor modal (it crowded the title; trust copy lives elsewhere)."""
     h = _page(tmp_path)
     assert 'class="mtrust"' not in h
+
+
+def test_section_tabs_are_bold_icon_cards(tmp_path):
+    """The section chips are big visual cards: an icon over a bold label,
+    not faint text pills."""
+    h = _page(tmp_path)
+    assert h.count('class="eicon"') >= 3      # one icon per section card
+    assert h.count('class="elbl"') >= 3
+    assert "#esectabs .eicon" in h            # dedicated icon styling
 
 
 def test_section_tabs_show_completion(tmp_path):

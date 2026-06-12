@@ -35,18 +35,19 @@ KB = [
      "for a better version before anything prints."),
     (["proof", "approve", "see before", "preview"],
      "Do I see it before it prints?",
-     "Always. We send a FREE digital proof and nothing prints until you approve "
-     "it - so it's exactly right."),
+     "Always. The live preview shows exactly what prints, and we email a FREE "
+     "digital proof too - spot anything off, reply right away and we fix it "
+     "before printing."),
     (["ship", "shipping", "delivery", "how long", "arrive", "turnaround", "fast"],
      "How long does it take?",
-     "We send your proof within about a day; once you approve, it's printed and "
-     "shipped with tracking - typically 3-6 business days. Watch for the "
-     "\"order by\" date near big holidays."),
+     "We email your proof within about a day and double-check every file, then "
+     "it's printed and shipped with tracking - typically 3-6 business days. "
+     "Watch for the \"order by\" date near big holidays."),
     (["return", "refund", "guarantee", "not happy", "wrong"],
      "What if I'm not happy?",
      "We stand behind every piece with our happiness guarantee - if something "
-     "isn't right, message us and we'll make it right. (Because each item is "
-     "personalized and made to order, approval happens on your free proof.) For "
+     "isn't right, message us and we'll make it right. (Each item is "
+     "personalized and made to order from the design you approved.) For "
      "a specific order issue, a team member will help you personally."),
     (["material", "materials", "canvas", "acrylic", "metal", "paper", "quality"],
      "What materials are available?",
@@ -109,8 +110,9 @@ KB = [
      "I'll suggest a size!"),
     (["pay", "payment", "paypal", "card", "afterpay", "klarna"],
      "What payment methods can I use?",
-     "Checkout is secure through Etsy - credit/debit cards, PayPal, Apple Pay, "
-     "Google Pay, Etsy gift cards, and (where available) Klarna/Afterpay."),
+     "Payment is completed via our secure checkout - credit/debit cards, "
+     "PayPal, Apple Pay or Google Pay. You never enter card details on this "
+     "site."),
     (["how long", "processing", "make time", "production"],
      "How long does it take to make?",
      "Because each piece is personalized and made to order: proof within ~1 day, "

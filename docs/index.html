@@ -647,15 +647,20 @@
    margin-bottom:6px}
  .wordbox textarea{font-size:15px;min-height:88px;background:#fff}
  .wordbox .cc{margin-top:4px}
- #esectabs{display:flex;gap:8px;margin:12px 0 10px}
- #esectabs button{flex:1;padding:12px 8px;border-radius:12px;cursor:pointer;
-   border:2px solid #cdbf98;background:#fffdf4;font-size:14.5px;
-   font-weight:600;color:var(--green)}
+ #esectabs{display:flex;gap:10px;margin:14px 0 12px}
+ #esectabs button{flex:1;display:flex;flex-direction:column;align-items:center;
+   gap:4px;padding:13px 8px 11px;border-radius:14px;cursor:pointer;
+   border:2px solid #cdbf98;background:#fffdf4;color:var(--green);
+   transition:transform .15s, box-shadow .15s}
+ #esectabs .eicon{font-size:24px;line-height:1}
+ #esectabs .elbl{font-size:14px;font-weight:800;letter-spacing:.2px}
  #esectabs button.sel{background:var(--green);color:#fff;
-   border-color:var(--green);font-weight:700;
-   box-shadow:0 0 0 4px rgba(16,61,46,.14)}
- #esectabs button.done{background:#eaf4ed;border-color:#9fc4ab;color:#0f7a3d}
- #esectabs button.done::before{content:"✓ "}
+   border-color:var(--green);transform:translateY(-2px);
+   box-shadow:0 6px 16px rgba(16,61,46,.28)}
+ #esectabs button:not(.sel):hover{transform:translateY(-1px);
+   box-shadow:0 3px 10px rgba(16,61,46,.12)}
+ #esectabs button.done{background:#eaf4ed;border-color:#0f7a3d;color:#0f7a3d}
+ #esectabs button.done .elbl::before{content:"✓ "}
  .sizeprompt{background:#fffdf4;border:2px solid var(--gold);border-radius:10px;
    padding:8px 12px;margin-bottom:8px;font-size:13.5px;color:var(--green)}
  @keyframes ctapulse{0%{box-shadow:0 0 0 0 rgba(16,61,46,.45)}
@@ -669,6 +674,9 @@
  .esecnav .esecnext:hover{background:var(--green-d)}
  .esecnav .esecback{padding:11px 16px;border-radius:999px;cursor:pointer;
    border:1px solid var(--line);background:#fff;color:#5a6b62}
+ .ordmail{display:block;text-align:center;text-decoration:none;margin-top:10px;
+   padding:12px 14px;border-radius:999px;background:var(--green);color:#fff;
+   font-weight:700}
  .mbox h2{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}
  .mprice{font-weight:600;color:var(--green);font-size:24px;margin:6px 0}
  .mdesc{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
@@ -791,7 +799,7 @@
  </div>
  
  
- <div class="why" id="why"><h2>Why Joffiels (not a mass printer)</h2><table class="cmp"><tr><th>Joffiels</th><th>Big-box printers</th></tr><tr><td class="us">✓ Designed by a real person for your story</td><td class="them">Templated, mass-produced</td></tr><tr><td class="us">✓ FREE digital proof - approve before we print</td><td class="them">What you upload is what prints</td></tr><tr><td class="us">✓ Made to order, museum-quality materials</td><td class="them">Bulk factory runs</td></tr><tr><td class="us">✓ Custom wording, colors &amp; frame - you preview it live</td><td class="them">Limited presets</td></tr><tr><td class="us">✓ Personal note + gift e-card included free</td><td class="them">Add-on fees</td></tr><tr><td class="us">✓ Happiness guarantee - we make it right</td><td class="them">Rigid return windows</td></tr></table></div><div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is made to order and approved by you on a free proof. If something isn't right, we'll make it right.</div><div class="faqs" id="faq"><h2>Questions, answered</h2><details class="faq"><summary>Is the frame included?</summary><p>Poster, canvas, acrylic and metal ship without a frame. Choose a "Framed" option to add a real wood frame (6 styles).</p></details><details class="faq"><summary>Can I use my own photo or exact wording?</summary><p>Yes! Upload a high-resolution photo and type your own words - we auto-check quality and send a free proof before printing.</p></details><details class="faq"><summary>How fast will it arrive?</summary><p>We send your proof within ~24h; once approved it's printed and shipped with tracking, typically within 3-5 business days.</p></details><details class="faq"><summary>What if I don't love it?</summary><p>Message us - our happiness guarantee means we'll fix or remake it. Personalized items are made to order, so approval happens on the proof.</p></details></div>
+ <div class="why" id="why"><h2>Why Joffiels (not a mass printer)</h2><table class="cmp"><tr><th>Joffiels</th><th>Big-box printers</th></tr><tr><td class="us">✓ Designed by a real person for your story</td><td class="them">Templated, mass-produced</td></tr><tr><td class="us">✓ FREE digital proof emailed - see exactly what prints</td><td class="them">What you upload is what prints</td></tr><tr><td class="us">✓ Made to order, museum-quality materials</td><td class="them">Bulk factory runs</td></tr><tr><td class="us">✓ Custom wording, colors &amp; frame - you preview it live</td><td class="them">Limited presets</td></tr><tr><td class="us">✓ Personal note + gift e-card included free</td><td class="them">Add-on fees</td></tr><tr><td class="us">✓ Happiness guarantee - we make it right</td><td class="them">Rigid return windows</td></tr></table></div><div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is made to order from the design you approved, with a free emailed proof so you see exactly what prints. If something isn't right, we'll make it right.</div><div class="faqs" id="faq"><h2>Questions, answered</h2><details class="faq"><summary>Is the frame included?</summary><p>Poster, canvas, acrylic and metal ship without a frame. Choose a "Framed" option to add a real wood frame (6 styles).</p></details><details class="faq"><summary>Can I use my own photo or exact wording?</summary><p>Yes! Upload a high-resolution photo and type your own words - we auto-check quality and send a free proof before printing.</p></details><details class="faq"><summary>How fast will it arrive?</summary><p>We email your proof within ~24h and double-check every file, then print and ship with tracking, typically within 3-5 business days. Spot something on the proof? Reply right away and we fix it first.</p></details><details class="faq"><summary>What if I don't love it?</summary><p>Message us - our happiness guarantee means we'll fix or remake it. Personalized items are made to order from the design you approved.</p></details></div>
  <details class="packages"><summary class="pksummary"><span class="pktitle">Wedding &amp; corporate packages</span><span class="pkhint">Multi-piece sets, priced for gifting at scale — tap to view</span></summary><p class="pksub">Curated multi-piece sets - personalized, made to order, and priced for gifting at scale. Every set price still clears our quality and margin standards.</p><h3 class="pkgrouph">💍 Weddings</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">The Vows Set</div><div class="pkfrom">from $417.09 <span class="pkpp">(~$139.03/piece)</span></div><span class="pksave">Set price - 12% vs singles</span><p class="pkblurb">Your wedding vows or first dance lyrics as a framed centerpiece, plus two matching prints for the couple's first home.</p><ul class="pkinc"><li>1 large framed centerpiece (premium wood)</li><li>2 coordinated prints</li><li>Custom names, date & wording</li><li>Free digital proof before printing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20The%20Vows%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Guest & Gift Bundle</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">A signature framed piece for the couple plus a set of small prints as keepsake favors or bridal-party gifts.</p><ul class="pkinc"><li>1 framed signature piece</li><li>4 keepsake prints</li><li>Matching design & palette</li><li>Bulk-friendly pricing</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Guest%20&%20Gift%20Bundle">Request this package &rarr;</a></div></div><h3 class="pkgrouph">🏢 Corporate &amp; bulk</h3><div class="pkgrid"><div class="pkcard"><div class="pkname">Team Recognition Set</div><div class="pkfrom">from $446.20 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Personalized award/values prints for employee recognition, onboarding or milestones - your branding, names and message.</p><ul class="pkinc"><li>5 personalized prints (poster or framed)</li><li>Your logo, colors & wording</li><li>Volume pricing - scales with quantity</li><li>Single invoice, one approval</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Team%20Recognition%20Set">Request this package &rarr;</a></div><div class="pkcard"><div class="pkname">Client Gifting Program</div><div class="pkfrom">from $892.40 <span class="pkpp">(~$89.24/piece)</span></div><span class="pksave">Set price - 15% vs singles</span><p class="pkblurb">Branded, made-to-order art gifts for clients and partners - ship individually or in bulk, fully personalized.</p><ul class="pkinc"><li>10+ branded gift prints</li><li>Individual personalization</li><li>Recurring/seasonal scheduling available</li><li>Dedicated account contact</li></ul><a class="pkcta" href="mailto:ajacobusa@gmail.com?subject=Package%20inquiry:%20Client%20Gifting%20Program">Request this package &rarr;</a></div></div><div class="b2b"><h3 class="b2bh">Need a custom volume quote?</h3><p class="gsub">For employee recognition, client gifts, weddings, realtor closings, churches &amp; schools - tell us what you need and we'll send wholesale pricing.</p><div class="b2bform"><input id="bz_name" aria-label="Your name" placeholder="Your name"><input id="bz_co" aria-label="Company or organization" placeholder="Company / organization"><input id="bz_email" aria-label="Your email" placeholder="Your email"><input id="bz_qty" aria-label="Approximate quantity" placeholder="Approx. quantity"><textarea id="bz_msg" aria-label="What do you need" rows="2" placeholder="What do you need? (occasion, timeline)"></textarea><button onclick="b2bSend('ajacobusa@gmail.com')">Request a wholesale quote</button></div></div></details>
  
  <div class="foot">
@@ -828,7 +836,7 @@
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeProof()">&times;</span>
     <h2 id="proofTitle">Your final design</h2>
     <p class="qsub" id="proofSub">This is how your piece will look. Happy with it?
-      Add it to your basket - we'll still send a FREE proof before printing.</p>
+      Add it to your basket - a FREE proof is emailed so you see exactly what prints.</p>
     <img id="proofImg" class="proofimg" alt="Your design preview">
     <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
@@ -896,8 +904,8 @@
              </div>
              <div class="note">✋ <b>Drag the photo on the preview to position it</b>
                When the photo looks right, tap <b>Done - edit text</b> to move/edit the wording again. Use Zoom
-               for more room. AI auto-centers the subject on upload; final crop is
-               confirmed on your free proof.</div>
+               for more room. AI auto-centers the subject on upload; the preview
+               shows your final crop and we double-check quality before printing.</div>
            </div>
 
        <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
@@ -911,9 +919,12 @@
        </div>
        <!-- One section at a time: finish it, tap Next - no scrolling hunt. -->
        <div id="esectabs" role="tablist" aria-label="Customize sections">
-         <button type="button" data-e="1" class="sel" aria-current="step" onclick="editStep(1)">1. Design</button>
-         <button type="button" data-e="2" onclick="editStep(2)">2. Photo</button>
-         <button type="button" data-e="3" onclick="editStep(3)">3. Frame &amp; size</button>
+         <button type="button" data-e="1" class="sel" aria-current="step" onclick="editStep(1)">
+           <span class="eicon">🎨</span><span class="elbl">1. Design</span></button>
+         <button type="button" data-e="2" onclick="editStep(2)">
+           <span class="eicon">📷</span><span class="elbl">2. Photo</span></button>
+         <button type="button" data-e="3" onclick="editStep(3)">
+           <span class="eicon">🖼️</span><span class="elbl">3. Frame &amp; size</span></button>
        </div>
        <div class="esec" id="esec1">
        <div class="perso">
@@ -953,10 +964,10 @@
          <div class="note tip">💡 Use the <b>Move: Text / Photo</b> toggle under the
            preview to drag the wording or the photo (one at a time). Resize &amp;
            rotate the text above; fine-tune the photo fit below. Nothing is final
-           until you review &amp; accept - and we still send a free proof.</div>
+           until you review &amp; accept.</div>
          <div class="note tip">✅ Background, text color, font, size, position &amp;
-           wording are all <b>free</b> - the preview updates instantly and final
-           details are confirmed on your <b>FREE digital proof</b> before printing.</div>
+           wording are all <b>free</b> - the preview updates instantly, and a
+           <b>FREE emailed proof</b> shows exactly what prints.</div>
        </div>
        <div class="esecnav">
          <button type="button" class="esecnext" onclick="editStep(2)">Next: add your photo →</button>
@@ -1324,9 +1335,19 @@
  function pulseBasket(){ const b=document.getElementById('basketBtnNav'); if(!b)return;
    b.classList.add('pulse'); setTimeout(()=>b.classList.remove('pulse'),1000); }
  // Primary action: add the current personalized design to the basket.
+ // Default quotes carry literal [Name]/[Your name] tokens - never let one
+ // reach production unnoticed. Returns true when the wording is safe (or the
+ // buyer explicitly confirms it as-is).
+ function _placeholderOk(){
+   const w=((document.getElementById('mtext')||{}).value||'').trim()||CURQUOTE||'';
+   if(!/\[(your\s+)?name\]/i.test(w)) return true;
+   return confirm('Your wording still contains "[Name]". Tap Cancel to type '+
+     'the real name (recommended), or OK to print it exactly as shown.');
+ }
  function addToBasket(){
    const sv=(document.getElementById('msize')||{}).value;
    if(!sv){ alert('Please choose a size first.'); return; }
+   if(!_placeholderOk()) return;
    const before=CART.length; addToOrder();
    if(CART.length>before){ pulseBasket();
      const bar=document.getElementById('mbasketbar');
@@ -1404,7 +1425,7 @@
    } else {
      if(cv&&img){ try{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }catch(e){} }
      if(title)title.textContent='Your final design';
-     if(sub)sub.textContent="This is how your piece will look. Add it to your basket - we'll still send a free proof before printing.";
+     if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
      if(sum)sum.innerHTML=_currentDesignSummary().replace(/\n/g,'<br>');
      if(acc)acc.textContent='✓ Add to basket';
    }
@@ -1496,6 +1517,7 @@
  function proofEdit(){ closeProof(); }                 // back to the open design / basket
  function proofAccept(){ if(PROOFMODE==='final') acceptProof(); else addFromProof(); }
  function addFromProof(){
+   if(!_placeholderOk()) return;
    const before=CART.length; addToOrder(); closeProof(); pulseBasket();
    if(CART.length>before){
      if(PHOTO&&PHOTO_META&&USED_PHOTOS.indexOf(PHOTO_META)<0) USED_PHOTOS.push(PHOTO_META);
@@ -1549,6 +1571,12 @@
        msg+='<div class="nextsteps"><b>What happens next</b><ol>'+
          '<li>We send your <b>secure payment link</b> - card, PayPal, Apple Pay or Google Pay. You never enter card details on this site.</li>'+
          '<li>We print &amp; ship with tracking.</li></ol>'+
+         // No backend reachable: give a channel that WORKS RIGHT NOW instead
+         // of a promise this static preview can't keep.
+         (CONFIRM_API?'':('<a class="esecnext ordmail" href="'+_orderMailto()+'">'+
+           '📧 Email us your order now</a>'+
+           '<div class="note">One tap opens an email with your full order - '+
+           'send it and we take it from there.</div>'))+
          (em?`We\'ll email <b>${em}</b>.`
            :'<div class="pfemail"><label for="pfemail">Where should we send your order confirmation &amp; payment link?</label> '+
             '<input id="pfemail" type="email" placeholder="you@email.com"> '+
@@ -1569,6 +1597,15 @@
        .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
    } else { done(false); }
  }
+ // Prefilled order email to the owner - the always-works completion channel.
+ function _orderMailto(){
+   const c=CONTACT||{};
+   const body=_basketSummary()
+     +'\n\nShip to: '+[c.name,c.addr,c.city,c.state,c.zip,c.country].filter(Boolean).join(', ')
+     +(c.phone?'\nPhone: '+c.phone:'')+(c.email?'\nEmail: '+c.email:'');
+   return 'mailto:'+OWNER+'?subject='+encodeURIComponent('New order - '+(c.name||'website'))
+     +'&body='+encodeURIComponent(body);
+ }
  // Save the proof/payment-link email captured on the 'What happens next' panel.
  function saveProofEmail(){
    const i=document.getElementById('pfemail'), ok=document.getElementById('pfemailok');
@@ -1580,7 +1617,9 @@
        body:JSON.stringify({email:v, summary:_basketSummary(), design:_designState()})})
        .catch(function(){});
    }
-   if(ok)ok.textContent='✓ Saved - watch your inbox for the proof.';
+   if(ok)ok.textContent=CONFIRM_API
+     ?'✓ Saved - watch your inbox for the proof.'
+     :'✓ Saved on this device - please also tap "Email us your order now" above so we receive it.';
  }
  let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5;
  function _showPhotoCtl(on){
@@ -2045,7 +2084,7 @@
       card, PayPal, Apple Pay or Google Pay. Your personalization is attached
       to the order automatically.</p>
     <p class="ftc">Items are added as you personalize each design. Personalization &amp;
-      exact layout are confirmed on your free proof before printing.</p>
+      exact layout print exactly as previewed.</p>
   </div>
 </div>
 
@@ -2069,7 +2108,7 @@
   </div>
 </div>
 <script>
- const ANGE_KB = [{"q": "Is a frame included?", "k": ["frame", "framed", "included", "frame included"], "a": "Poster, canvas, acrylic and metal ship WITHOUT a frame. If you'd like it framed, choose the \"Framed\" material at checkout and pick your frame style (6 options, from a slim black to premium oak, walnut or gold)."}, {"q": "What sizes do you offer?", "k": ["size", "sizes", "dimensions", "how big"], "a": "Sizes range from 8x10 up to 24x36 inches depending on the material. You pick the size (and quantity) right on the product page."}, {"q": "Can I personalize it?", "k": ["personalize", "custom", "wording", "name", "text", "quote", "message"], "a": "Yes - that's our specialty. Add the recipient's name, the occasion, and your own words. You can even preview your colors, font and frame live before you buy."}, {"q": "Can I use my own photo?", "k": ["photo", "upload", "picture", "image", "my own"], "a": "Absolutely. Upload a high-resolution photo (JPG, PNG, PDF or TIFF). We auto-check the quality and, if it's too low for a sharp print, we'll ask for a better version before anything prints."}, {"q": "Do I see it before it prints?", "k": ["proof", "approve", "see before", "preview"], "a": "Always. We send a FREE digital proof and nothing prints until you approve it - so it's exactly right."}, {"q": "How long does it take?", "k": ["ship", "shipping", "delivery", "how long", "arrive", "turnaround", "fast"], "a": "We send your proof within about a day; once you approve, it's printed and shipped with tracking - typically 3-6 business days. Watch for the \"order by\" date near big holidays."}, {"q": "What if I'm not happy?", "k": ["return", "refund", "guarantee", "not happy", "wrong"], "a": "We stand behind every piece with our happiness guarantee - if something isn't right, message us and we'll make it right. (Because each item is personalized and made to order, approval happens on your free proof.) For a specific order issue, a team member will help you personally."}, {"q": "What materials are available?", "k": ["material", "materials", "canvas", "acrylic", "metal", "paper", "quality"], "a": "Premium poster prints, gallery-wrapped canvas, framed prints, acrylic and metal - all museum-quality, made to order."}, {"q": "Can I send it as a gift?", "k": ["gift", "ecard", "e-card", "gift card", "send a gift", "surprise"], "a": "Yes! Add a gift e-card and we'll send your recipient a beautiful announcement with a free personal note - perfect for surprises and last-minute or long-distance gifts."}, {"q": "How much does it cost / are there discounts?", "k": ["price", "cost", "discount", "bundle", "how much", "cheaper"], "a": "Prices depend on material and size (shown live as you choose). Order more than one and a quantity discount applies automatically - great for gallery sets or gifting several people."}, {"q": "Do you do bulk / corporate orders?", "k": ["bulk", "wholesale", "corporate", "business", "many", "b2b"], "a": "Yes - we offer wholesale pricing for corporate gifts, weddings, realtors, churches and schools. Use the 'Corporate & bulk gifting' form and we'll send a quote."}, {"q": "Can you make a pet or memorial piece?", "k": ["pet", "dog", "cat", "memorial", "remembrance", "loss"], "a": "Yes - pet portraits and memorial keepsakes are some of our most loved pieces. Upload a clear photo and add your words; we'll send a free proof."}, {"q": "Can I choose colors and fonts?", "k": ["color", "colour", "background", "font", "change colors"], "a": "Yes! On each product you can preview different background colors, text colors and fonts live, and we confirm everything on your free proof."}, {"q": "Do you offer a subscription?", "k": ["subscription", "membership", "monthly", "club"], "a": "We do - a membership delivers a fresh personalized piece on a schedule (quarterly, half-year or annual). A lovely ongoing gift."}, {"q": "Can I track my order?", "k": ["track", "tracking", "where is", "status"], "a": "Yes, every order ships with tracking. For the status of a specific order, message the team and we'll look it up for you."}, {"q": "Do you sell digital downloads?", "k": ["digital", "download", "printable", "file"], "a": "Selected designs are available as instant printable digital files - a great budget or last-minute option. Check the product options."}, {"q": "Do you ship internationally?", "k": ["international", "worldwide", "country", "outside us"], "a": "Yes - we ship worldwide with tracking via our global print network, so your order is produced close to the destination where possible."}, {"q": "How do I care for it?", "k": ["care", "clean", "wash", "maintain", "fade", "last"], "a": "Wipe gently with a soft, dry (or barely damp) cloth - no harsh cleaners. Hang out of direct, harsh sunlight to keep colors vivid for years. Canvas and acrylic just need an occasional light dusting."}, {"q": "Will it arrive in time?", "k": ["when", "in time", "deadline", "order by", "before christmas", "rush", "how soon"], "a": "We send your proof within ~1 day; after you approve, it prints and ships (typically 3-6 business days). Near big holidays, watch the 'order by' date on the site, and message us if it's urgent - we'll do our best."}, {"q": "What size should I get?", "k": ["what size", "which size", "how big should", "wall", "room", "recommend size"], "a": "For a desk, nightstand or gallery wall, 8x10-11x14 is perfect. For above a sofa, bed or as a statement piece, go 16x20-24x36. Tell me the spot and I'll suggest a size!"}, {"q": "What payment methods can I use?", "k": ["pay", "payment", "paypal", "card", "afterpay", "klarna"], "a": "Checkout is secure through Etsy - credit/debit cards, PayPal, Apple Pay, Google Pay, Etsy gift cards, and (where available) Klarna/Afterpay."}, {"q": "How long does it take to make?", "k": ["how long", "processing", "make time", "production"], "a": "Because each piece is personalized and made to order: proof within ~1 day, then production + tracked shipping, usually 3-6 business days after you approve the proof."}];
+ const ANGE_KB = [{"q": "Is a frame included?", "k": ["frame", "framed", "included", "frame included"], "a": "Poster, canvas, acrylic and metal ship WITHOUT a frame. If you'd like it framed, choose the \"Framed\" material at checkout and pick your frame style (6 options, from a slim black to premium oak, walnut or gold)."}, {"q": "What sizes do you offer?", "k": ["size", "sizes", "dimensions", "how big"], "a": "Sizes range from 8x10 up to 24x36 inches depending on the material. You pick the size (and quantity) right on the product page."}, {"q": "Can I personalize it?", "k": ["personalize", "custom", "wording", "name", "text", "quote", "message"], "a": "Yes - that's our specialty. Add the recipient's name, the occasion, and your own words. You can even preview your colors, font and frame live before you buy."}, {"q": "Can I use my own photo?", "k": ["photo", "upload", "picture", "image", "my own"], "a": "Absolutely. Upload a high-resolution photo (JPG, PNG, PDF or TIFF). We auto-check the quality and, if it's too low for a sharp print, we'll ask for a better version before anything prints."}, {"q": "Do I see it before it prints?", "k": ["proof", "approve", "see before", "preview"], "a": "Always. The live preview shows exactly what prints, and we email a FREE digital proof too - spot anything off, reply right away and we fix it before printing."}, {"q": "How long does it take?", "k": ["ship", "shipping", "delivery", "how long", "arrive", "turnaround", "fast"], "a": "We email your proof within about a day and double-check every file, then it's printed and shipped with tracking - typically 3-6 business days. Watch for the \"order by\" date near big holidays."}, {"q": "What if I'm not happy?", "k": ["return", "refund", "guarantee", "not happy", "wrong"], "a": "We stand behind every piece with our happiness guarantee - if something isn't right, message us and we'll make it right. (Each item is personalized and made to order from the design you approved.) For a specific order issue, a team member will help you personally."}, {"q": "What materials are available?", "k": ["material", "materials", "canvas", "acrylic", "metal", "paper", "quality"], "a": "Premium poster prints, gallery-wrapped canvas, framed prints, acrylic and metal - all museum-quality, made to order."}, {"q": "Can I send it as a gift?", "k": ["gift", "ecard", "e-card", "gift card", "send a gift", "surprise"], "a": "Yes! Add a gift e-card and we'll send your recipient a beautiful announcement with a free personal note - perfect for surprises and last-minute or long-distance gifts."}, {"q": "How much does it cost / are there discounts?", "k": ["price", "cost", "discount", "bundle", "how much", "cheaper"], "a": "Prices depend on material and size (shown live as you choose). Order more than one and a quantity discount applies automatically - great for gallery sets or gifting several people."}, {"q": "Do you do bulk / corporate orders?", "k": ["bulk", "wholesale", "corporate", "business", "many", "b2b"], "a": "Yes - we offer wholesale pricing for corporate gifts, weddings, realtors, churches and schools. Use the 'Corporate & bulk gifting' form and we'll send a quote."}, {"q": "Can you make a pet or memorial piece?", "k": ["pet", "dog", "cat", "memorial", "remembrance", "loss"], "a": "Yes - pet portraits and memorial keepsakes are some of our most loved pieces. Upload a clear photo and add your words; we'll send a free proof."}, {"q": "Can I choose colors and fonts?", "k": ["color", "colour", "background", "font", "change colors"], "a": "Yes! On each product you can preview different background colors, text colors and fonts live, and we confirm everything on your free proof."}, {"q": "Do you offer a subscription?", "k": ["subscription", "membership", "monthly", "club"], "a": "We do - a membership delivers a fresh personalized piece on a schedule (quarterly, half-year or annual). A lovely ongoing gift."}, {"q": "Can I track my order?", "k": ["track", "tracking", "where is", "status"], "a": "Yes, every order ships with tracking. For the status of a specific order, message the team and we'll look it up for you."}, {"q": "Do you sell digital downloads?", "k": ["digital", "download", "printable", "file"], "a": "Selected designs are available as instant printable digital files - a great budget or last-minute option. Check the product options."}, {"q": "Do you ship internationally?", "k": ["international", "worldwide", "country", "outside us"], "a": "Yes - we ship worldwide with tracking via our global print network, so your order is produced close to the destination where possible."}, {"q": "How do I care for it?", "k": ["care", "clean", "wash", "maintain", "fade", "last"], "a": "Wipe gently with a soft, dry (or barely damp) cloth - no harsh cleaners. Hang out of direct, harsh sunlight to keep colors vivid for years. Canvas and acrylic just need an occasional light dusting."}, {"q": "Will it arrive in time?", "k": ["when", "in time", "deadline", "order by", "before christmas", "rush", "how soon"], "a": "We send your proof within ~1 day; after you approve, it prints and ships (typically 3-6 business days). Near big holidays, watch the 'order by' date on the site, and message us if it's urgent - we'll do our best."}, {"q": "What size should I get?", "k": ["what size", "which size", "how big should", "wall", "room", "recommend size"], "a": "For a desk, nightstand or gallery wall, 8x10-11x14 is perfect. For above a sofa, bed or as a statement piece, go 16x20-24x36. Tell me the spot and I'll suggest a size!"}, {"q": "What payment methods can I use?", "k": ["pay", "payment", "paypal", "card", "afterpay", "klarna"], "a": "Payment is completed via our secure checkout - credit/debit cards, PayPal, Apple Pay or Google Pay. You never enter card details on this site."}, {"q": "How long does it take to make?", "k": ["how long", "processing", "make time", "production"], "a": "Because each piece is personalized and made to order: proof within ~1 day, then production + tracked shipping, usually 3-6 business days after you approve the proof."}];
  const ANGE_OWNER = "ajacobusa@gmail.com";
  const ANGE_API = "";
  // ── Exit-intent email capture ──
@@ -2131,7 +2170,17 @@
  let EXIT_SHOWN = false;
  function _exitDone(){ try{localStorage.setItem('jf_exit','1');}catch(e){} }
  function _exitSeen(){ try{return localStorage.getItem('jf_exit')==='1';}catch(e){return false;} }
- function openExit(){ if(EXIT_SHOWN||_exitSeen())return; EXIT_SHOWN=true;
+ // True while the editor / proof / basket is open - i.e. an active purchase.
+ function _overlayOpen(){
+   return ['modal','proofPop','basketPanel'].some(function(id){
+     const e=document.getElementById(id);
+     return e && e.style.display && e.style.display!=='none';
+   });
+ }
+ function openExit(){ if(EXIT_SHOWN||_exitSeen())return;
+   // Never interrupt someone mid-purchase with a discount popup.
+   if(_overlayOpen()||CART.length) return;
+   EXIT_SHOWN=true;
    document.getElementById('exitpop').style.display='flex'; }
  function closeExit(){ document.getElementById('exitpop').style.display='none'; _exitDone(); }
  function submitExit(){
