@@ -1592,8 +1592,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .bpactions button[disabled]{{opacity:.45;cursor:not-allowed}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:700;color:var(--green);font-size:24px;margin:6px 0}}
- .mdesc{{font-size:13px;line-height:1.65;color:#4a564f;white-space:pre-wrap;
-   border-top:1px solid var(--line);margin-top:14px;padding-top:12px}}
+ .mdescbox{{margin-top:12px;background:#fff;border:1px solid var(--line);
+   border-radius:12px;padding:12px 14px;text-align:left}}
+ .mdescbox .lbl{{font-size:13px;color:var(--green);font-weight:700;
+   margin-bottom:4px}}
+ .dsh{{font-weight:800;color:var(--green);margin:10px 0 4px;font-size:13px;
+   letter-spacing:.4px}}
+ .dsb{{position:relative;padding-left:14px;margin:3px 0;font-size:13px}}
+ .dsb::before{{content:"•";position:absolute;left:2px;color:var(--gold)}}
+ .dsl{{margin:3px 0;font-size:13px}}
+ .mdesc{{font-size:13px;line-height:1.65;color:#4a564f}}
  .closex{{float:right;font-size:26px;cursor:pointer;color:#9aa39d;padding:10px 16px;
    line-height:1}}
  .fbbtn{{display:block;background:var(--gold);color:#22301e;text-align:center;
@@ -1806,6 +1814,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            </div>
 
        <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
+       <div class="mdescbox">
+         <div class="lbl">📋 About this piece</div>
+         <div class="mdesc" id="mdesc"></div>
+       </div>
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
@@ -1935,7 +1947,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="ratemsg" id="mratemsg"></div>
        </div>
        <a id="mfb" class="fbbtn" href="#">💬 Tell us what you think</a>
-       <div class="mdesc" id="mdesc"></div>
      </div>
    </div>
  </div>
@@ -2060,6 +2071,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const note=document.getElementById('occnote'); if(note) note.innerHTML='';
    backToOccasions();
  }}
+ // Pretty-print the plain-text listing description: ALL-CAPS lines become
+ // section headers, "- " lines become bullets - readable, not a text wall.
+ function fmtDesc(t){{
+   const esc=function(s){{ return s.replace(/&/g,'&amp;')
+     .replace(/</g,'&lt;').replace(/>/g,'&gt;'); }};
+   return (t||'').split('\\n').map(function(l){{
+     l=l.trim(); if(!l) return '';
+     if(l.length<46 && /^[A-Z0-9][A-Z0-9 '&(),:+-]+$/.test(l))
+       return '<div class="dsh">'+esc(l)+'</div>';
+     if(l.indexOf('- ')===0) return '<div class="dsb">'+esc(l.slice(2))+'</div>';
+     return '<div class="dsl">'+esc(l)+'</div>';
+   }}).join('');
+ }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); setStep(1); editStep(1); REVIEWED=false;
    const d = DATA[i];
@@ -2073,7 +2097,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mtitle').textContent = d.full_title;
    if(!(d.formats && d.formats.length && d.formats[0].price))
      document.getElementById('mprice').textContent = "from $" + d.price;
-   document.getElementById('mdesc').textContent = d.desc;
+   document.getElementById('mdesc').innerHTML = fmtDesc(d.desc);
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];

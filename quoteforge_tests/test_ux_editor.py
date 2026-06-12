@@ -246,6 +246,25 @@ def test_guidance_pulse_blinks_until_task_complete(tmp_path):
     assert "classList.remove('pulseon')" in h
 
 
+def test_description_fills_left_column_and_is_formatted(tmp_path):
+    """The product description lives in the left column (the blank space
+    under the preview) as a styled card with bold section headers and
+    bullets - not a wall of plain text at the bottom right."""
+    h = _page(tmp_path)
+    mleft = h.split('class="mleft"', 1)[1].split('class="mright"', 1)[0]
+    assert 'id="mdesc"' in mleft
+    assert "About this piece" in mleft
+    assert "function fmtDesc" in h
+    assert 'class="dsh"' in h               # section-header styling applied
+
+
+def test_no_approval_gate_in_listing_descriptions(tmp_path):
+    """The HOW IT WORKS steps no longer ask for a reply-to-approve round."""
+    h = _page(tmp_path)
+    assert "Reply APPROVED" not in h
+    assert "for your approval" not in h
+
+
 def test_guidance_chain_moves_to_review_button(tmp_path):
     """One blinker at a time, in task order: size/qty blinks until a size is
     chosen, then 'Review this design' blinks until the review is opened or
