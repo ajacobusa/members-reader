@@ -6,7 +6,6 @@ otherwise returns a 'manual' result. Never raises.
 from __future__ import annotations
 
 import json
-import urllib.error
 import urllib.request
 
 
@@ -48,21 +47,16 @@ def get_order_status(printify_order_id: str) -> dict:
     so the fulfillment tracker can treat every vendor identically.
     """
     from quoteforge.config import PRINTIFY_API_KEY, PRINTIFY_SHOP_ID, TEST_MODE
+    from quoteforge.fulfillment.vendor_http import (first_tracked_shipment,
+                                                    get_json)
     if TEST_MODE or not (PRINTIFY_API_KEY and PRINTIFY_SHOP_ID):
         return {"mock": True, "vendor": "printify", "status": "unknown",
                 "tracking_number": "", "tracking_url": "", "carrier": ""}
-    req = urllib.request.Request(
+    data = get_json(
         f"https://api.printify.com/v1/shops/{PRINTIFY_SHOP_ID}"
-        f"/orders/{printify_order_id}.json",
-        headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"})
-    with urllib.request.urlopen(req, timeout=15) as r:
-        data = json.loads(r.read().decode("utf-8"))
+        f"/orders/{printify_order_id}.json", PRINTIFY_API_KEY)
     raw = (data.get("status") or "unknown").lower()
-    # Partially-fulfilled orders can carry tracking on a later shipment -
-    # scan for the first one WITH a number (Gelato-adapter parity).
-    shipments = data.get("shipments") or []
-    shipment = next((s for s in shipments if s.get("number")),
-                    shipments[0] if shipments else {})
+    shipment = first_tracked_shipment(data.get("shipments"), "number")
     return {
         "vendor": "printify",
         "status": _STATUS_MAP.get(raw, raw),
@@ -76,20 +70,9 @@ def get_order_status(printify_order_id: str) -> dict:
 def verify_printify_auth() -> dict:
     """Live check that the Printify key + shop id are valid (no order created)."""
     from quoteforge.config import PRINTIFY_API_KEY, PRINTIFY_SHOP_ID
+    from quoteforge.fulfillment.vendor_http import verify_auth
     if not (PRINTIFY_API_KEY and PRINTIFY_SHOP_ID):
         return {"ok": False,
                 "detail": "PRINTIFY_API_KEY / PRINTIFY_SHOP_ID not set"}
-    req = urllib.request.Request(
-        "https://api.printify.com/v1/shops.json",
-        headers={"Authorization": f"Bearer {PRINTIFY_API_KEY}"})
-    try:
-        # urlopen raises HTTPError on any non-2xx, so reaching here means OK.
-        with urllib.request.urlopen(req, timeout=15):
-            return {"ok": True, "detail": "authenticated (shops reachable)"}
-    except urllib.error.HTTPError as exc:
-        if exc.code in (401, 403):
-            return {"ok": False,
-                    "detail": f"auth rejected (HTTP {exc.code}) - check key"}
-        return {"ok": False, "detail": f"unexpected HTTP {exc.code}"}
-    except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+    return verify_auth("https://api.printify.com/v1/shops.json",
+                       PRINTIFY_API_KEY, "authenticated (shops reachable)")
