@@ -313,6 +313,16 @@ def test_customer_is_moved_forward_automatically(tmp_path):
     assert "pulseanim" in h
 
 
+def test_design_tips_are_benefit_chips_not_text_walls(tmp_path):
+    """The two dense 11px tip paragraphs are replaced by large, scannable
+    benefit chips (free personalization / instant preview / emailed proof);
+    the move-toggle explainer is gone - the control explains itself."""
+    h = _page(tmp_path)
+    assert 'class="freebar"' in h
+    assert h.count('class="fchk"') >= 3
+    assert "Use the <b>Move: Text / Photo</b> toggle" not in h
+
+
 def test_wording_field_is_prominent(tmp_path):
     """The wording input is the heart of personalization - it sits in a
     highlighted box with a bold label, not a thin gray line."""

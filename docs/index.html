@@ -650,6 +650,10 @@
    border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;
    line-height:1.55}
  @media(max-width:560px){ .fcrow{flex-direction:column;gap:0} }
+ /* Benefit chips: the section's reassurances as large scannable pills. */
+ .freebar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+ .fchk{background:#eaf4ed;border:1px solid #9fc4ab;color:#0f7a3d;
+   border-radius:999px;padding:8px 13px;font-size:13.5px;font-weight:700}
  .wordbox{background:#fffdf4;border:2px solid var(--gold);border-radius:12px;
    padding:10px 12px;margin:12px 0;box-shadow:0 0 0 4px rgba(199,164,77,.12)}
  /* While the wording beacon is active, the INPUT itself glow-pulses - the
@@ -998,13 +1002,11 @@
            <button type="button" onclick="setRot(90)">Sideways ⟳</button>
            <button type="button" onclick="setRot(180)">Flip</button>
          </div>
-         <div class="note tip">💡 Use the <b>Move: Text / Photo</b> toggle under the
-           preview to drag the wording or the photo (one at a time). Resize &amp;
-           rotate the text above; fine-tune the photo fit below. Nothing is final
-           until you review &amp; accept.</div>
-         <div class="note tip">✅ Background, text color, font, size, position &amp;
-           wording are all <b>free</b> - the preview updates instantly, and a
-           <b>FREE emailed proof</b> shows exactly what prints.</div>
+         <div class="freebar" role="note">
+           <span class="fchk">✓ Personalization is 100% FREE</span>
+           <span class="fchk">✓ Preview updates instantly</span>
+           <span class="fchk">✓ Free emailed proof - exactly what prints</span>
+         </div>
        </div>
        <div class="esecnav">
          <button type="button" class="esecnext" id="esec1next" onclick="editStep(2)">Next: add your photo →</button>
