@@ -58,6 +58,17 @@ def test_status_regions_are_aria_live(tmp_path):
     assert h.count('aria-live="polite"') >= 3
 
 
+def test_no_native_alerts_in_purchase_flow(tmp_path):
+    """Browser alert() popups are banned from the buying flow: an empty
+    basket disables Checkout (no alert), and a missing size highlights the
+    size picker inline instead of interrupting."""
+    h = _page(tmp_path)
+    assert "alert('Your basket is empty" not in h
+    assert "alert('Please choose a size" not in h
+    assert 'id="bpcobtn"' in h
+    assert "bpcobtn').disabled" in h or "co.disabled" in h
+
+
 def test_move_toggle_copy_is_self_explanatory(tmp_path):
     """The drag toggle says exactly what it does: reposition the wording or
     photo - select one, then drag."""
