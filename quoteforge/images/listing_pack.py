@@ -156,14 +156,13 @@ def size_chart(poster_path: Path, out: Path) -> Path:
 
 _STEPS = [
     ("1", "Personalize", "Add the name, occasion & story at checkout"),
-    ("2", "We Design", "We craft your custom piece and send a digital proof"),
-    ("3", "You Approve", "Review the proof - reply APPROVED (or ask for changes)"),
-    ("4", "We Ship", "Printed on premium stock and shipped with tracking"),
+    ("2", "We Design", "We craft your piece & email a proof - exactly what prints"),
+    ("3", "We Ship", "Printed on premium stock and shipped with tracking"),
 ]
 
 
 def how_it_works(out: Path) -> Path:
-    """Image 4: numbered personalize -> proof -> approve -> ship flow graphic."""
+    """Image 4: numbered personalize -> design+proof -> ship flow graphic."""
     canvas = _canvas(EMERALD)
     draw = ImageDraw.Draw(canvas)
     title = _load_font(110, serif=True)

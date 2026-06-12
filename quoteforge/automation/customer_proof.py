@@ -30,13 +30,13 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
     from quoteforge.config import SHOP_NAME
 
     message = (
-        f"Hi! Thank you so much for your order from {SHOP_NAME}. I've created the "
-        f"proof for your personalized {occasion} print for {recipient} — please "
-        f"review it.\n\n"
-        f"Take a look at the attached image and check the name, spelling, "
-        f"wording, and overall design. If everything looks perfect, just reply "
-        f"\"APPROVED\" and I'll send it to print right away. If you'd like any "
-        f"changes, tell me and I'll update it — no rush, and no extra charge.\n\n"
+        f"Hi! Thank you so much for your order from {SHOP_NAME}. Here's the "
+        f"proof of your personalized {occasion} print for {recipient} — this "
+        f"is exactly what will print.\n\n"
+        f"Please check the name, spelling, wording, and overall design. Spot "
+        f"anything you'd like changed? Just reply within 24 hours and I'll fix "
+        f"it free before printing. If it's perfect, you don't need to do a "
+        f"thing — it heads to print right away.\n\n"
         f"With gratitude,\nThe {SHOP_NAME} team"
     )
 
@@ -55,7 +55,8 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
         "artwork_path": artwork_path or order.get("artwork_url", ""),
         "instructions": (
             "Send the proof_message to the buyer in the Etsy order conversation "
-            "and attach the artwork image. When they reply APPROVED, run: "
+            "and attach the artwork image. If no change request arrives within "
+            "the 24h window (or they confirm it's perfect), run: "
             f"python -m quoteforge.admin customer-approved {order_id}"
         ),
     }

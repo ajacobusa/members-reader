@@ -19,7 +19,10 @@ def test_prepare_customer_proof_blocks_printing(tmp_path):
     # Order is parked awaiting the customer; a proof message was saved
     assert order["status"] == "awaiting_customer_approval"
     assert "Emma" in pkg["proof_message"]
-    assert "APPROVED" in pkg["proof_message"]
+    # Final-approval model: the buyer is never asked to reply APPROVED -
+    # they only reply if something needs CHANGING (fix-it window).
+    assert "APPROVED" not in pkg["proof_message"]
+    assert "reply within 24 hours" in pkg["proof_message"]
     assert pkg["artwork_path"] == "/path/art.png"
     assert any(m["message_type"] == "Proof Ready" for m in msgs)
 
