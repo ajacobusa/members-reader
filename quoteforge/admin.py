@@ -1601,6 +1601,35 @@ def _cmd_import_etsy_finance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_monitor_orders(args: list[str]) -> int:
+    """End-to-end order compliance monitor: validates every order against the
+    approval/production/cancellation/refund policy + state machine. `monitor-
+    orders email` also alerts the owner on violations/review items."""
+    from quoteforge.automation.order_monitor import run_monitor, format_monitor_text
+    r = run_monitor(send="email" in args)
+    print(format_monitor_text(r))
+    return 0
+
+
+def _cmd_classify_claim(args: list[str]) -> int:
+    """Classify a return/refund claim against the policy: `classify-claim
+    <order_id> <issue_type>` (issue_type: damaged|printing_error|wrong_product|
+    lost|changed_mind|wrong_personalization|low_quality_photo|...)."""
+    if len(args) < 2:
+        print("Usage: classify-claim <order_id> <issue_type>")
+        return 1
+    from quoteforge.db.database import init_db, get_order
+    from quoteforge.automation.order_monitor import classify_claim
+    from quoteforge.etsy.resolution import format_resolution_text
+    init_db()
+    res = classify_claim(args[1], get_order(args[0]))
+    if not res.get("recognized"):
+        print(f"Unrecognized issue. Options: {', '.join(res.get('options', []))}")
+        return 1
+    print(format_resolution_text(res))
+    return 0
+
+
 def _cmd_dispute(args: list[str]) -> int:
     """Flag a delivered order as DISPUTED (Etsy case / refund / complaint) so it
     isn't a clean completion and no review is requested: `dispute <order_id>
@@ -2014,6 +2043,8 @@ COMMANDS = {
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
     "import-etsy-finance": _cmd_import_etsy_finance,
+    "monitor-orders": _cmd_monitor_orders,
+    "classify-claim": _cmd_classify_claim,
     "dispute": _cmd_dispute,
     "mark-delivered": _cmd_mark_delivered,
     "no-review": _cmd_no_review,

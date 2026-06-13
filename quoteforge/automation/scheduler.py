@@ -209,6 +209,14 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Daily staged lapsed-customer win-back: Day-60 'new designs' nudge, "
         "Day-90 10% coupon, Day-120 final 15% offer (each fires once; a new "
         "order resets the customer). Cheapest profit - acquisition is paid."),
+    ScheduledJob(
+        "QuoteForge Order Compliance", "monitor-orders email",
+        ["/SC", "DAILY", "/ST", "06:50"],
+        "Daily end-to-end order compliance monitor: validates every order "
+        "against the approval/production/cancellation/return-refund policy and "
+        "the fulfillment state machine; emails the owner on violations (e.g. "
+        "production before approval) or items needing individual review "
+        "(cancellation after production, disputes, refunds)."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

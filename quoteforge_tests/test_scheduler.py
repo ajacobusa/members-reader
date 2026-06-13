@@ -8,7 +8,7 @@ from quoteforge import admin
 
 
 def test_all_jobs_defined_with_unique_names():
-    assert len(SCHEDULED_JOBS) == 33   # + winback campaign
+    assert len(SCHEDULED_JOBS) == 34   # + order compliance monitor
     # All names are unique
     assert len(EXPECTED_TASK_NAMES) == len({j.name for j in SCHEDULED_JOBS})
     assert "QuoteForge Daily Maintenance" in EXPECTED_TASK_NAMES
