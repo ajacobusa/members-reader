@@ -725,8 +725,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     pass
         # Guarantee every design is orderable in every format: if the per-frame
         # previews didn't render (missing poster, transient failure), fall back
-        # to the global format list so the frame picker is NEVER hidden.
-        if not entry.get("formats") and GLOBAL_FORMATS:
+        # to the global format list so the frame picker is NEVER hidden. Only in
+        # frame_picker mode - the lighter no-picker build intentionally omits
+        # formats.
+        if frame_picker and not entry.get("formats") and GLOBAL_FORMATS:
             entry["formats"] = GLOBAL_FORMATS
         # Card "from" price = the real lowest variation price (not a flat default).
         prices = [f["price"] for f in entry.get("formats", []) if f.get("price")]
@@ -760,7 +762,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             "desc": _occasion_card_desc(disp),
             "imgs": [_emit(p, f"{syn_tag}_g{i:02d}.jpg") for i, p in enumerate(gal)],
         }
-        if GLOBAL_FORMATS:
+        if frame_picker and GLOBAL_FORMATS:
             entry["formats"] = GLOBAL_FORMATS
             entry["price"] = f"{min(f['price'] for f in GLOBAL_FORMATS):.2f}"
         listings.append(entry)

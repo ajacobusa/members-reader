@@ -169,7 +169,9 @@ def check_software() -> list[CheckResult]:
                      "sender_name": "Mom", "relationship": "To My Daughter"},
                     on_stage=lambda s, m: stages.append(s),
                     skip_proof=True, gelato_product_uid="x",
-                    recipient_address={"name": "Emma", "country": "US"},
+                    recipient_address={"name": "Emma", "address": "1 Main St",
+                                       "city": "Atlanta", "state": "GA",
+                                       "postCode": "30301", "country": "US"},
                 )
                 fired = {s for s in po.STAGES if s in stages}
                 assert len(fired) == 7, f"only {fired}"

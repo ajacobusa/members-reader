@@ -44,7 +44,9 @@ def _run(tmp_path):
         on_stage=lambda stage, msg: stages_fired.append(stage),
         skip_proof=True,
         gelato_product_uid="poster_18x24_uid",
-        recipient_address={"name": "Emma", "country": "US", "email": "e@x.com"},
+        recipient_address={"name": "Emma", "address": "1 Main St",
+                           "city": "Atlanta", "state": "GA", "postCode": "30301",
+                           "country": "US", "email": "e@x.com"},
     )
     return stages_fired, STAGES
 

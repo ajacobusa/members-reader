@@ -135,6 +135,30 @@ def _create_followup_records(order_id: str, order_data: dict) -> None:
     save_review(order_id, review_msg, scheduled_for=scheduled)
 
 
+def validate_for_fulfillment(order: dict, recipient_address,
+                             gelato_product_uid: str, artwork_url: str) -> dict:
+    """Final pre-vendor validation gate, shared by the auto-approve and the
+    manual-proof paths so NO order reaches the print vendor unverified.
+
+    Checks (via validate_order_for_gelato): complete shipping address,
+    product set, print file attached, AI quality not rejected, and the
+    proof->production parity hash. Digital products have no physical
+    fulfillment, so they skip the physical checks. Returns {ok, issues}.
+    """
+    if (order.get("product_type") or "print") == "digital" \
+            or (order.get("vendor") or "") == "digital":
+        return {"ok": True, "issues": []}
+    from quoteforge.automation.print_quality import validate_order_for_gelato
+    return validate_order_for_gelato({
+        "recipient_address": recipient_address,
+        "gelato_product_uid": gelato_product_uid,
+        "artwork_url": artwork_url,
+        "print_file": order.get("print_file"),
+        "print_quality": order.get("print_quality"),
+        "proof_file_hash": order.get("proof_file_hash"),
+    })
+
+
 def run_full_pipeline(
     order_data: dict,
     on_stage: Optional[Callable[[str, str], None]] = None,
@@ -380,6 +404,19 @@ def run_full_pipeline(
         # ── Stage 6: Fulfillment (vendor-routed) ─────────────────
         gelato_order_id = ""
         _notify("gelato_order", "Routing to vendor fulfillment...")
+        # FINAL VALIDATION GATE - the auto-approve path must verify the order
+        # before spending money at the vendor, exactly like the manual path.
+        _gate = validate_for_fulfillment(
+            get_order(order_id) or {}, recipient_address,
+            gelato_product_uid, artwork_url)
+        if not _gate["ok"]:
+            _issues = "; ".join(_gate["issues"])
+            # log_pipeline_stage (not _log) so the status stays hold_validation
+            # instead of being advanced to the stage name.
+            log_pipeline_stage(order_id, "order_validation", "hold", _issues)
+            update_order(order_id, status="hold_validation")
+            _notify("gelato_order", f"On hold (validation): {_issues}")
+            return get_order(order_id) or {}
         try:
             from quoteforge.fulfillment.router import route_order
             from quoteforge.automation.retry import retry_call
@@ -440,15 +477,11 @@ def resume_after_proof_approval(order_id: str,
     artwork_url = order.get("artwork_url", "")
 
     if gelato_product_uid and recipient_address and artwork_url:
-        # Final validation gate before we spend money at Gelato: address complete,
-        # product set, print file attached, and the AI quality check not rejected.
-        from quoteforge.automation.print_quality import validate_order_for_gelato
-        _val = validate_order_for_gelato({
-            "recipient_address": recipient_address,
-            "gelato_product_uid": gelato_product_uid,
-            "artwork_url": artwork_url,
-            "print_quality": order.get("print_quality"),
-        })
+        # Same shared gate as the auto path - now INCLUDING the proof->production
+        # parity hash + print file, so the "file changed since approval" check
+        # actually fires on the customer-proofed path.
+        _val = validate_for_fulfillment(
+            order, recipient_address, gelato_product_uid, artwork_url)
         if not _val["ok"]:
             update_order(order_id, status="hold_validation")
             log_pipeline_stage(order_id, "order_validation", "hold",

@@ -122,7 +122,10 @@ def test_pipeline_renders_locally_without_bannerbear(tmp_path):
         result = po.run_full_pipeline(
             {"order_id": "LOCAL-1", "recipient_name": "Emma", "occasion": "Graduation",
              "sender_name": "Mom", "relationship": "To My Daughter"},
-            skip_proof=True,
+            skip_proof=True, gelato_product_uid="poster_18x24_uid",
+            recipient_address={"name": "Emma", "address": "1 Main St",
+                               "city": "Atlanta", "state": "GA",
+                               "postCode": "30301", "country": "US"},
         )
     png = tmp_path / "pipeline" / "LOCAL-1" / "artwork.png"
     assert png.exists()  # real poster rendered with Pillow, no Bannerbear
