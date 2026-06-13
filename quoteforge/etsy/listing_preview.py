@@ -2237,12 +2237,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
  }}
  function rmLine(i){{CART.splice(i,1);renderCart();}}
- function _cartTotal(){{let t=0;CART.forEach(l=>{{t+=+( l.unit*(1-qdisc(l.qty))*l.qty);}});return +t.toFixed(2);}}
+ // Bundle discount applies to the TOTAL number of items in the basket (the
+ // advertised "buy more, save more" tiers), not per line - each line is qty 1,
+ // so the old per-line discount gave 0% and the shown savings never applied.
+ function _totalQty(){{ return CART.reduce((s,l)=>s+(l.qty||1),0); }}
+ function _cartTotal(){{const d=qdisc(_totalQty());let t=0;
+   CART.forEach(l=>{{t+=l.unit*(1-d)*l.qty;}});return +t.toFixed(2);}}
  function renderCart(){{const c=document.getElementById('mcart');
    renderBasket();
    if(!c)return;
    if(!CART.length){{c.innerHTML='<div class="note">No items yet - choose size + qty, then Add.</div>';return;}}
-   let tot=0; c.innerHTML=CART.map((l,i)=>{{const d=qdisc(l.qty);
+   const d=qdisc(_totalQty());
+   let tot=0; c.innerHTML=CART.map((l,i)=>{{
      const unit=+(l.unit*(1-d)).toFixed(2); const sub=+(unit*l.qty).toFixed(2); tot+=sub;
      const nm=l.title?`<b>${{l.title.slice(0,26)}}</b> - `:'';
      return `<div class="line"><span>${{nm}}${{l.qty}}x ${{l.fmt}} ${{l.size}}${{d?` (${{Math.round(d*100)}}% off)`:''}}</span>`+
@@ -2275,7 +2281,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        '<button type="button" class="esecnext" style="width:100%" '+
        'onclick="toggleBasket();location.hash=\\'#shop\\'">Browse designs →</button>';
      if(tt)tt.textContent=''; return; }}
-   ln.innerHTML=CART.map((l,i)=>{{const d=qdisc(l.qty);
+   const dAll=qdisc(_totalQty());
+   ln.innerHTML=CART.map((l,i)=>{{const d=dAll;
      const sub=+(l.unit*(1-d)*l.qty).toFixed(2);
      const nm=l.title?`<b>${{l.title.slice(0,30)}}</b><br>`:'';
      return `<div class="bpline"><span>${{nm}}${{l.qty}}x ${{l.fmt}} ${{l.size}}`+

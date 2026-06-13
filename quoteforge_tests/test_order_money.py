@@ -53,6 +53,38 @@ def test_recorded_sale_reaches_the_ledger_revenue(tmp_path, monkeypatch):
     assert any(abs(r["sale_price"] - 99.99) < 0.01 for r in o)
 
 
+def test_basket_discount_applies_on_total_quantity(tmp_path, monkeypatch):
+    """The advertised bundle discount must actually apply: it keys off TOTAL
+    basket quantity, not per-line qty (each line is qty 1 -> qdisc(1)=0, so the
+    8/12/15% was shown but never charged)."""
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    from PIL import Image
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"
+    g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    h = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                        out_path=tmp_path / "h.html",
+                        frame_picker=True).read_text(encoding="utf-8")
+    assert "function _totalQty" in h
+    assert "qdisc(l.qty)" not in h            # the per-line bug is gone
+    assert "qdisc(_totalQty())" in h
+
+
+def test_max_bundle_discount_stays_above_floor():
+    """Honoring the discount must not breach the floor: the largest discount on
+    any LIST price still clears ~60% net (safe because LIST=65%, max disc=15%,
+    fees 9.5% -> ~60.5%)."""
+    from quoteforge.etsy.variations import build_variations, QTY_DISCOUNT
+    from quoteforge.etsy.profit_calculator import calculate_order_profit
+    maxd = max(d for _, d in QTY_DISCOUNT)
+    for v in build_variations():
+        discounted = round(v.price * (1 - maxd), 2)
+        m = calculate_order_profit(discounted, v.gelato_cost)["margin_pct"]
+        assert m >= 59.5, f"{v.material} {v.frame_color}: {m}% at {int(maxd*100)}% off"
+
+
 def test_distinct_baskets_do_not_collapse(tmp_path, monkeypatch):
     """Two checkouts from the same email with distinct cart ids create TWO
     orders (was: same WEB- id from design_id='default' overwrote the first)."""
