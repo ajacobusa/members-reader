@@ -1,0 +1,79 @@
+"""Claim reporting-deadline (time-window) policy on top of the fault/outcome
+resolution engine. Customer window 7 days from the delivery anchor; 8-10 flags
+for manual review; >=11 needs management approval; past the 14-day production-
+partner filing window the partner won't reimburse (goodwill/at-cost).
+
+Anchors: carrier-confirmed delivery date when we have it; otherwise the
+estimated-delivery date (assumed-delivered orders with no carrier timestamp)."""
+from datetime import datetime, timedelta
+
+from quoteforge.etsy.resolution import claim_window, resolve_issue
+
+
+def _delivered(days_ago: int, confirmed: int = 1) -> dict:
+    d = (datetime.now() - timedelta(days=days_ago)).isoformat()
+    return {"order_id": "X", "delivery_confirmed": confirmed, "delivered_at": d}
+
+
+def test_within_7_days_is_eligible():
+    w = claim_window(_delivered(3))
+    assert w["eligibility"] == "eligible"
+    assert w["anchor_type"] == "carrier_confirmed"
+    assert w["within_supplier_window"] is True
+
+
+def test_reported_at_delivery_is_eligible():
+    assert claim_window(_delivered(0))["eligibility"] == "eligible"
+
+
+def test_8_to_10_days_is_manual_review():
+    assert claim_window(_delivered(9))["eligibility"] == "manual_review"
+
+
+def test_11_plus_is_management_approval_but_still_in_supplier_window():
+    w = claim_window(_delivered(12))
+    assert w["eligibility"] == "management_approval"
+    assert w["within_supplier_window"] is True          # 12 <= 14
+
+
+def test_past_supplier_window_is_flagged():
+    w = claim_window(_delivered(20))
+    assert w["eligibility"] == "management_approval"
+    assert w["within_supplier_window"] is False         # partner won't reimburse
+
+
+def test_assumed_delivery_anchors_to_estimated_delivery():
+    eta = (datetime.now() - timedelta(days=9)).date().isoformat()
+    w = claim_window({"order_id": "Y", "delivery_confirmed": 0,
+                      "estimated_delivery": eta})
+    assert w["anchor_type"] == "estimated_delivery"
+    assert w["eligibility"] == "manual_review"
+
+
+def test_carrier_confirmed_preferred_over_estimated():
+    o = _delivered(2)
+    o["estimated_delivery"] = (datetime.now() - timedelta(days=30)).date().isoformat()
+    assert claim_window(o)["anchor_type"] == "carrier_confirmed"
+
+
+def test_no_date_is_unknown_and_not_blocked():
+    w = claim_window({"order_id": "Z"})
+    assert w["eligibility"] == "unknown"
+    assert w["within_supplier_window"] is True           # can't tell -> don't block
+
+
+def test_explicit_report_date_is_used():
+    w = claim_window({"delivery_confirmed": 1,
+                      "delivered_at": "2026-06-01T10:00:00"},
+                     report_date="2026-06-05")
+    assert w["days_elapsed"] == 4 and w["eligibility"] == "eligible"
+
+
+def test_resolve_issue_attaches_claim_window():
+    res = resolve_issue("damaged", _delivered(2))
+    assert res["claim_window"]["eligibility"] == "eligible"
+
+
+def test_resolve_issue_without_order_has_no_window():
+    res = resolve_issue("damaged")
+    assert res["claim_window"] is None

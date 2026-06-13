@@ -82,6 +82,13 @@ LAPSED_CUSTOMER_DAYS: int = int(os.getenv("LAPSED_CUSTOMER_DAYS", "90"))
 # Window (days) around a repeat customer's PREDICTED next-purchase date in which
 # to reach out pre-emptively - before they drift off and lapse.
 CLV_DUE_SOON_DAYS: int = int(os.getenv("CLV_DUE_SOON_DAYS", "10"))
+# Claim reporting deadlines (calendar days from the delivery anchor). 0..REPORT
+# = auto-accept; REPORT+1..FLAG = manual review; > FLAG = management approval.
+# SUPPLIER is the production partner's filing window: past it the partner won't
+# reimburse a damage/defect claim, so any approval is goodwill/at-cost.
+CLAIM_REPORT_DAYS: int = int(os.getenv("CLAIM_REPORT_DAYS", "7"))
+CLAIM_FLAG_DAYS: int = int(os.getenv("CLAIM_FLAG_DAYS", "10"))
+SUPPLIER_CLAIM_DAYS: int = int(os.getenv("SUPPLIER_CLAIM_DAYS", "14"))
 PACKAGING_COST_USD: float = float(os.getenv("PACKAGING_COST_USD", "0.75"))
 REPRINT_RESERVE_PCT: float = float(os.getenv("REPRINT_RESERVE_PCT", "3"))
 CAC_CONTINGENCY_PCT: float = float(os.getenv("CAC_CONTINGENCY_PCT", "0"))

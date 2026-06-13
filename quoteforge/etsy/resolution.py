@@ -13,6 +13,7 @@ Fault → outcome:
   lost package     -> investigate tracking -> replacement
 """
 from dataclasses import dataclass, field
+from datetime import date, datetime
 
 
 @dataclass
@@ -143,6 +144,77 @@ _ALIASES = {
 }
 
 
+def _to_date(value) -> date | None:
+    """Parse an ISO date/datetime string (or pass through date/datetime) to a
+    date, tolerating trailing time and a 'Z' suffix; None when unparseable."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    s = str(value).strip().replace("Z", "")
+    try:
+        return datetime.fromisoformat(s).date()
+    except ValueError:
+        try:
+            return datetime.fromisoformat(s[:10]).date()
+        except ValueError:
+            return None
+
+
+def claim_window(order: dict | None, report_date=None) -> dict:
+    """Evaluate a claim's REPORTING DEADLINE against the delivery anchor.
+
+    The clock starts at the carrier-confirmed delivery date when we have one
+    (``delivery_confirmed`` truthy + ``delivered_at``); otherwise at the
+    estimated-delivery date (assumed-delivered orders with no carrier timestamp),
+    falling back to a bare ``delivered_at``. ``report_date`` defaults to today
+    and should be the customer's FIRST contact, not when evidence arrives.
+
+    Tiers (calendar days elapsed): 0..REPORT -> ``eligible``; REPORT+1..FLAG ->
+    ``manual_review``; > FLAG -> ``management_approval``. ``within_supplier_window``
+    is False once past the partner's filing window (no partner reimbursement).
+    With no usable date the result is ``unknown`` and is not blocked.
+    """
+    from quoteforge.config import (CLAIM_REPORT_DAYS, CLAIM_FLAG_DAYS,
+                                   SUPPLIER_CLAIM_DAYS)
+    if order and order.get("delivery_confirmed") and order.get("delivered_at"):
+        anchor, anchor_type = _to_date(order.get("delivered_at")), "carrier_confirmed"
+    elif order and order.get("estimated_delivery"):
+        anchor, anchor_type = _to_date(order.get("estimated_delivery")), "estimated_delivery"
+    elif order and order.get("delivered_at"):
+        anchor, anchor_type = _to_date(order.get("delivered_at")), "assumed_delivery"
+    else:
+        anchor, anchor_type = None, "none"
+
+    if anchor is None:
+        return {"anchor_type": "none", "anchor_date": "", "days_elapsed": None,
+                "eligibility": "unknown", "within_supplier_window": True,
+                "note": "No delivery date on record - route to manual review."}
+
+    today = _to_date(report_date) or datetime.now().date()
+    days = (today - anchor).days
+    if days <= CLAIM_REPORT_DAYS:
+        eligibility = "eligible"
+    elif days <= CLAIM_FLAG_DAYS:
+        eligibility = "manual_review"
+    else:
+        eligibility = "management_approval"
+    within_supplier = days <= SUPPLIER_CLAIM_DAYS
+    note = {
+        "eligible": f"Reported within {CLAIM_REPORT_DAYS} days - accept into review queue.",
+        "manual_review": "Past the standard window - allow but flag for manual review.",
+        "management_approval": "Well past the window - requires management approval.",
+    }[eligibility]
+    if not within_supplier:
+        note += (f" Past the {SUPPLIER_CLAIM_DAYS}-day partner filing window - "
+                 "the production partner will not reimburse (goodwill/at-cost).")
+    return {"anchor_type": anchor_type, "anchor_date": anchor.isoformat(),
+            "days_elapsed": days, "eligibility": eligibility,
+            "within_supplier_window": within_supplier, "note": note}
+
+
 def resolve_issue(category: str, order: dict | None = None) -> dict:
     """Return the automatic decision for an issue category.
 
@@ -171,6 +243,7 @@ def resolve_issue(category: str, order: dict | None = None) -> dict:
         "workflow": list(r.workflow),
         "message": r.message,
         "evidence": "",
+        "claim_window": claim_window(order) if order else None,
     }
     if order and r.fault == "customer" and order.get("proof_approved"):
         out["evidence"] = (
@@ -190,6 +263,14 @@ def format_resolution_text(res: dict) -> str:
              f"Decision      : {res['decision']}",
              f"Gelato covers : {'yes' if res['gelato_covered'] else 'no'}",
              f"Customer pays : {'yes' if res['customer_pays'] else 'no'}"]
+    cw = res.get("claim_window")
+    if cw and cw["eligibility"] != "unknown":
+        lines.append(f"Claim window  : {cw['eligibility']} "
+                     f"({cw['days_elapsed']}d since {cw['anchor_type']}"
+                     + ("" if cw["within_supplier_window"]
+                        else "; PAST partner filing window") + ")")
+    elif cw:
+        lines.append("Claim window  : unknown (no delivery date on record)")
     if res["evidence"]:
         lines.append(f"Evidence      : {res['evidence']}")
     lines.append("\nWorkflow:")
