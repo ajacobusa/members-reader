@@ -73,6 +73,9 @@ TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
 #                          Default 0: the 60% floor is a CONTRIBUTION margin and
 #                          marketing comes out of it (standard POD practice);
 #                          set >0 to model ad-attributed orders explicitly.
+# Alert when an order's ACTUAL shipping exceeds the modeled shipping for its
+# destination by more than this % - the silent margin-leak tripwire.
+SHIPPING_VARIANCE_ALERT_PCT: float = float(os.getenv("SHIPPING_VARIANCE_ALERT_PCT", "10"))
 PACKAGING_COST_USD: float = float(os.getenv("PACKAGING_COST_USD", "0.75"))
 REPRINT_RESERVE_PCT: float = float(os.getenv("REPRINT_RESERVE_PCT", "3"))
 CAC_CONTINGENCY_PCT: float = float(os.getenv("CAC_CONTINGENCY_PCT", "0"))

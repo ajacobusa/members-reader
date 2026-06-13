@@ -416,6 +416,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # failed push retries next run instead of being lost forever.
     if "buyer_notified" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN buyer_notified INTEGER DEFAULT 0")
+    # Destination + shipping economics for the shipping-variance / profit-by-
+    # destination audit (catch silent margin leakage on far/heavy shipments).
+    for _col in ("country", "state"):
+        if _col not in cols:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} TEXT")
+    for _col in ("shipping_cost", "shipping_collected"):
+        if _col not in cols:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} REAL")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -431,8 +439,9 @@ def create_order(data: dict) -> str:
              scenery, tone, memory, output_style, status,
              sale_price, gelato_cost, channel, vendor, product_type,
              material, size, listing, acquisition_source,
-             line_items, item_count)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             line_items, item_count, country, state,
+             shipping_cost, shipping_collected)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -458,6 +467,10 @@ def create_order(data: dict) -> str:
             data.get("acquisition_source"),
             data.get("line_items"),
             data.get("item_count"),
+            data.get("country"),
+            data.get("state"),
+            data.get("shipping_cost"),
+            data.get("shipping_collected"),
         ))
     return order_id
 

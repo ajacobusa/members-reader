@@ -197,6 +197,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "DAILY", "/ST", "01:50"],
         "Rebuilds the public shop-home page (docs/index.html) with the latest "
         "listings + analytics; the 02:00 backup-all then pushes it live."),
+    ScheduledJob(
+        "QuoteForge Shipping Audit", "shipping-audit email",
+        ["/SC", "WEEKLY", "/D", "THU", "/ST", "07:45"],
+        "Weekly shipping-variance + profit-by-destination audit: flags orders "
+        "leaking margin (actual shipping >> modeled/collected) and emails the "
+        "owner so far/heavy lanes don't quietly erode profit."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

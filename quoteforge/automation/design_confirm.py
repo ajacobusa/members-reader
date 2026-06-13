@@ -113,6 +113,9 @@ def _intake_order(email: str, design_id: str, contact: dict,
                           "customer_email": email,
                           "occasion": "Personalized order",
                           "channel": "direct",
+                          # Ship-to destination for the shipping-variance audit.
+                          "country": contact.get("country"),
+                          "state": contact.get("state"),
                           # The recorded basket - so the ledger/reconciliation
                           # see REAL revenue + item count (was sale_price=None).
                           **(money or {})})

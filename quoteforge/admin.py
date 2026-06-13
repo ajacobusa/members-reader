@@ -1585,6 +1585,25 @@ def _cmd_ask(args: list[str]) -> int:
     return 0
 
 
+def _cmd_shipping_audit(args: list[str]) -> int:
+    """Shipping-variance + profit-by-destination report. Emails the owner when
+    orders are leaking margin on shipping (actual >> modeled/collected)."""
+    from quoteforge.db.database import init_db, get_all_orders
+    from quoteforge.etsy.shipping_audit import (format_shipping_audit_text,
+                                                audit_shipping)
+    init_db()
+    orders = get_all_orders(1000)
+    text = format_shipping_audit_text(orders)
+    print(text)
+    if "email" in args and audit_shipping(orders)["leak_count"]:
+        try:
+            from quoteforge.automation.emailer import _send_email
+            _send_email("⚠️ Shipping margin leak detected", "<pre>" + text + "</pre>")
+        except Exception:  # noqa: BLE001
+            pass
+    return 0
+
+
 def _cmd_track_orders(args: list[str]) -> int:
     """Sync vendor tracking -> mark shipped/delivered + push tracking to buyers.
     Emails the owner when orders are stuck (no tracking past SLA) or polls errored."""
@@ -1899,6 +1918,7 @@ COMMANDS = {
     "collage": _cmd_collage,
     "order-by": _cmd_order_by,
     "track-orders": _cmd_track_orders,
+    "shipping-audit": _cmd_shipping_audit,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,
