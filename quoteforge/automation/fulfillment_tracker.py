@@ -32,6 +32,15 @@ ASSUME_DELIVERED_DAYS = 14
 # days is "stuck" (vendor error, lost, no key) and needs a human.
 STUCK_AFTER_DAYS = 10
 
+# Submitted to the vendor but no tracking yet after this many HOURS -> flag for
+# owner review (production should produce a tracking number within ~1-2 days).
+TRACKING_MISSING_HOURS = 36
+# In-transit longer than this without delivery -> stale, flag before the
+# customer complains (by destination: domestic vs international).
+STALE_DOMESTIC_DAYS = 10
+STALE_INTL_DAYS = 21
+_DOMESTIC = ("US", "USA")
+
 # Vendors whose order API stops giving new information once tracking exists.
 _NO_DELIVERY_SIGNAL = ("printify", "printful")
 
@@ -105,6 +114,15 @@ def _retry_buyer_push(order: dict, pushed: list, carrier: str = "") -> None:
     pushed.append(order["order_id"])
 
 
+def mark_delivery_disputed(order_id: str, reason: str = "") -> None:
+    """Flag a delivered order as DISPUTED (Etsy case / refund request / complaint
+    after delivery) so it is not treated as a clean completion and the review
+    request is suppressed."""
+    from quoteforge.db.database import update_order, log_pipeline_stage
+    update_order(order_id, delivery_disputed=1)
+    log_pipeline_stage(order_id, "delivery", "disputed", reason or "post-delivery dispute")
+
+
 def _carrier_confirm(order: dict, delivered_confirmed: list) -> str:
     """Poll the carrier (tracking API) for a tracked order of ANY vendor. On a
     real 'delivered' scan, mark the order carrier-confirmed (delivery_confirmed
@@ -141,6 +159,38 @@ def _confirm_or_assume_delivery(order: dict, delivered_confirmed: list,
     delivered_assumed.append(order["order_id"])
 
 
+def _hours_since(ts: str):
+    """Whole hours since an ISO timestamp, or None when unparseable."""
+    from datetime import datetime as _dt
+    try:
+        return (_dt.now() - _dt.fromisoformat(ts)).total_seconds() / 3600.0
+    except (ValueError, TypeError):
+        return None
+
+
+def _tracking_missing(order: dict) -> bool:
+    """Submitted to a vendor, in production/shipped, but still no tracking number
+    past TRACKING_MISSING_HOURS - flag for owner review."""
+    if order.get("tracking_number"):
+        return False
+    if not (order.get("vendor_order_id") or order.get("gelato_order_id")):
+        return False
+    if (order.get("status") or "") not in ("in_production", "shipped", "received"):
+        return False
+    h = _hours_since(order.get("shipped_at") or order.get("created_at") or "")
+    return h is not None and h >= TRACKING_MISSING_HOURS
+
+
+def _stale_in_transit(order: dict) -> bool:
+    """Has tracking, not yet delivered, but in transit past the destination SLA."""
+    if not order.get("tracking_number") or order.get("status") in _TERMINAL:
+        return False
+    domestic = (order.get("country") or "US").upper() in _DOMESTIC
+    limit = STALE_DOMESTIC_DAYS if domestic else STALE_INTL_DAYS
+    age = _age_days(order.get("shipped_at") or "")
+    return age is not None and age >= limit
+
+
 def _is_stuck(order: dict) -> bool:
     """True when an order submitted to a vendor still has no tracking long past
     the production+ship SLA (it needs a human, not another silent skip)."""
@@ -158,6 +208,7 @@ def sync_tracking(limit: int = 500) -> dict:
     init_db()
     newly_shipped, pushed, stuck = [], [], []
     delivered_confirmed, delivered_assumed = [], []
+    tracking_missing, stale_in_transit = [], []
     errors = 0
     for o in get_all_orders(limit):
         gid = o.get("vendor_order_id") or o.get("gelato_order_id")
@@ -165,6 +216,11 @@ def sync_tracking(limit: int = 500) -> dict:
             continue
         vendor = (o.get("vendor") or "gelato").lower()
         had_tracking = bool(o.get("tracking_number"))
+        # Operational alerts (independent of the poll result below).
+        if _tracking_missing(o):
+            tracking_missing.append(o["order_id"])
+        if _stale_in_transit(o):
+            stale_in_transit.append(o["order_id"])
 
         # Printify/Printful with known tracking: nothing new to poll - keep the
         # buyer notified (retry), backfill the ship date, age toward delivery.
@@ -224,6 +280,8 @@ def sync_tracking(limit: int = 500) -> dict:
         # Back-compat: combined delivered list (confirmed + assumed).
         "delivered": delivered_confirmed + delivered_assumed,
         "stuck": stuck,
+        "tracking_missing": tracking_missing,
+        "stale_in_transit": stale_in_transit,
         "errors": errors,
     }
 
@@ -237,6 +295,12 @@ def format_tracking_text(r: dict) -> str:
              f"  Delivered (assum): {len(r.get('delivered_assumed', []))}"]
     if r.get("stuck"):
         lines.append(f"  STUCK (no track) : {len(r['stuck'])} -> {', '.join(r['stuck'][:5])}")
+    if r.get("tracking_missing"):
+        lines.append(f"  No tracking 24-48h: {len(r['tracking_missing'])} -> "
+                     f"{', '.join(r['tracking_missing'][:5])}")
+    if r.get("stale_in_transit"):
+        lines.append(f"  Stale in transit : {len(r['stale_in_transit'])} -> "
+                     f"{', '.join(r['stale_in_transit'][:5])}")
     if r.get("errors"):
         lines.append(f"  Poll errors      : {r['errors']}")
     return "\n".join(lines)

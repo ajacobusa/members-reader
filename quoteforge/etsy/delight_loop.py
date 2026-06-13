@@ -96,13 +96,23 @@ def delight_due(orders: list[dict], now: datetime | None = None,
     assumed_cutoff = now - timedelta(days=lead_days + ASSUMED_DELIGHT_BUFFER_DAYS)
     due = []
     for o in orders:
-        if o.get("status") not in ("delivered", "shipped"):
+        # A 'delivered' order is NOT automatically review-worthy. Suppress the
+        # request when the order was refunded/cancelled, the delivery is
+        # disputed (Etsy case/refund/complaint), or the owner opted it out.
+        if o.get("status") in ("refunded", "cancelled"):
+            continue
+        if o.get("delivery_disputed") or o.get("do_not_request_review"):
+            continue
+        # Owner manual confirmation counts as a confirmed delivery.
+        manual = bool(o.get("manual_delivery_confirmed"))
+        if o.get("status") not in ("delivered", "shipped") and not manual:
             continue
         # Anchor on ACTUAL delivery time (5-7 days after the parcel arrived),
         # else the last update, else created_at.
         ref = _parse_dt(o.get("delivered_at") or o.get("updated_at")
                         or o.get("created_at", ""))
-        confirmed = bool(o.get("delivery_confirmed")) or o.get("status") == "shipped"
+        confirmed = (bool(o.get("delivery_confirmed")) or manual
+                     or o.get("status") == "shipped")
         if ref > (cutoff if confirmed else assumed_cutoff):
             continue                      # not enough time since delivery
         if _already_delighted(o.get("order_id", "")):

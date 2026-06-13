@@ -13,12 +13,15 @@ import urllib.error
 import urllib.request
 
 # Aggregator status -> our normalized state.
+# ONLY "Delivered" confirms receipt. A failed delivery / return-to-sender /
+# expired tracking is an EXCEPTION (needs owner attention) - never a silent
+# in-transit, and never a delivery.
 _AFTERSHIP_MAP = {
     "Delivered": "delivered",
     "InfoReceived": "in_transit", "InTransit": "in_transit",
     "OutForDelivery": "in_transit", "AvailableForPickup": "in_transit",
-    "AttemptFail": "in_transit", "Pending": "in_transit",
-    "Exception": "exception", "Expired": "exception",
+    "Pending": "in_transit",
+    "AttemptFail": "exception", "Exception": "exception", "Expired": "exception",
 }
 
 

@@ -1601,6 +1601,69 @@ def _cmd_import_etsy_finance(args: list[str]) -> int:
     return 0
 
 
+def _cmd_dispute(args: list[str]) -> int:
+    """Flag a delivered order as DISPUTED (Etsy case / refund / complaint) so it
+    isn't a clean completion and no review is requested: `dispute <order_id>
+    [reason...]`."""
+    if not args:
+        print("Usage: dispute <order_id> [reason]")
+        return 1
+    from quoteforge.automation.fulfillment_tracker import mark_delivery_disputed
+    mark_delivery_disputed(args[0], reason=" ".join(args[1:]))
+    print(f"Order {args[0]} marked delivery_disputed (review suppressed).")
+    return 0
+
+
+def _set_order_flag(oid: str, field: str, usage: str) -> int:
+    """Set one owner override flag (=1) on an order; shared by the flag commands."""
+    if not oid:
+        print(usage)
+        return 1
+    from quoteforge.db.database import init_db, update_order, get_order
+    init_db()
+    if not get_order(oid):
+        print(f"Order {oid} not found.")
+        return 1
+    update_order(oid, **{field: 1})
+    print(f"Order {oid}: {field}=1.")
+    return 0
+
+
+def _cmd_mark_delivered(args: list[str]) -> int:
+    """Owner override: confirm delivery manually (counts as a confirmed
+    delivery for the review flow): `mark-delivered <order_id>`."""
+    return _set_order_flag(args[0] if args else "", "manual_delivery_confirmed",
+                           "Usage: mark-delivered <order_id>")
+
+
+def _cmd_no_review(args: list[str]) -> int:
+    """Owner override: never request a review for this order:
+    `no-review <order_id>`."""
+    return _set_order_flag(args[0] if args else "", "do_not_request_review",
+                           "Usage: no-review <order_id>")
+
+
+def _cmd_verify_tracking(args: list[str]) -> int:
+    """LIVE smoke test of the carrier tracking API: `verify-tracking
+    <tracking_number> [carrier]`. Confirms the real AfterShip/17track JSON
+    matches the parser - run once after setting TRACKING_API_KEY."""
+    if not args:
+        print("Usage: verify-tracking <tracking_number> [carrier]")
+        return 1
+    from quoteforge.config import TRACKING_API_KEY, TRACKING_API_PROVIDER
+    if not TRACKING_API_KEY:
+        print("TRACKING_API_KEY not set - add it to .env to enable carrier "
+              "confirmation, then re-run this live smoke test.")
+        return 1
+    from quoteforge.fulfillment.tracking_api import carrier_status
+    st = carrier_status(args[0], args[1] if len(args) > 1 else "")
+    print(f"Provider: {TRACKING_API_PROVIDER}  Tracking: {args[0]}")
+    print(f"Normalized carrier state: {st or '(none / unknown)'}")
+    print("OK - the live response parsed." if st else
+          "No usable state - check the tracking number/carrier or the parser.")
+    return 0
+
+
 def _cmd_winback(args: list[str]) -> int:
     """Staged lapsed-customer win-back (60d nudge / 90d 10% / 120d 15%).
     Dry-run by default; `winback send` actually emails + advances each stage."""
@@ -1639,8 +1702,10 @@ def _cmd_track_orders(args: list[str]) -> int:
     r = sync_tracking()
     text = format_tracking_text(r)
     print(text)
-    # A stuck order or repeated poll errors is the owner's to chase - alert.
-    if r.get("stuck") or r.get("errors"):
+    # Anything needing a human - stuck, missing tracking, stale in transit, or
+    # poll errors - is the owner's to chase. Alert.
+    if (r.get("stuck") or r.get("errors") or r.get("tracking_missing")
+            or r.get("stale_in_transit")):
         try:
             from quoteforge.automation.emailer import _send_email
             _send_email("⚠️ Fulfillment needs attention",
@@ -1949,6 +2014,10 @@ COMMANDS = {
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
     "import-etsy-finance": _cmd_import_etsy_finance,
+    "dispute": _cmd_dispute,
+    "mark-delivered": _cmd_mark_delivered,
+    "no-review": _cmd_no_review,
+    "verify-tracking": _cmd_verify_tracking,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,

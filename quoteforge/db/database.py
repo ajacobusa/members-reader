@@ -438,6 +438,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN carrier TEXT")
     if "estimated_delivery" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN estimated_delivery TEXT")
+    # Delivery integrity: a 'delivered' order is NOT automatically problem-free.
+    #   delivery_disputed         : a case/refund/complaint arrived after delivery
+    #   do_not_request_review     : owner says never ask this buyer for a review
+    #   manual_delivery_confirmed : owner-confirmed delivery (counts as confirmed)
+    for _col in ("delivery_disputed", "do_not_request_review",
+                 "manual_delivery_confirmed"):
+        if _col not in cols:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} INTEGER DEFAULT 0")
     # ACTUAL Etsy financials (from the receipt / Orders CSV) - real tax, fees,
     # and net payout instead of estimates. Null until imported.
     if "tax_collected" not in cols:
