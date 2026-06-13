@@ -25,11 +25,24 @@ def _price(o: dict) -> float:
         return 0.0
 
 
+def _days(a: str, b: str) -> float | None:
+    """Whole days between two ISO timestamps (b - a), or None if unparseable."""
+    from datetime import datetime as _dt
+    try:
+        return (_dt.fromisoformat((b or "").replace("Z", ""))
+                - _dt.fromisoformat((a or "").replace("Z", ""))).days
+    except (ValueError, TypeError):
+        return None
+
+
 def build_clv(orders: list[dict] | None = None) -> dict:
-    """Per-customer rollup + headline CLV metrics from real orders.
+    """Per-customer rollup + headline CLV metrics from real orders, including
+    time between purchases and a lapsed-customer win-back list.
 
     Pass `orders` (a prefetched list) to avoid re-querying the orders table.
     """
+    from datetime import datetime as _dt
+    from quoteforge.config import LAPSED_CUSTOMER_DAYS
     orders = _orders() if orders is None else orders
     by_cust: dict[str, dict] = {}
     for o in orders:
@@ -49,6 +62,14 @@ def build_clv(orders: list[dict] | None = None) -> dict:
         if ca and ca > c["last"]:
             c["last"] = ca
 
+    now_iso = _dt.now().isoformat()
+    for c in by_cust.values():
+        # Avg days between this customer's purchases (span / gaps).
+        span = _days(c["first"], c["last"]) if c["orders"] >= 2 else None
+        c["avg_days_between"] = round(span / (c["orders"] - 1), 1) if span else 0.0
+        dsl = _days(c["last"], now_iso)
+        c["days_since_last"] = dsl if dsl is not None else 0
+
     customers = sorted(by_cust.values(), key=lambda c: c["revenue"], reverse=True)
     n_cust = len(customers)
     total_rev = round(sum(c["revenue"] for c in customers), 2)
@@ -58,11 +79,21 @@ def build_clv(orders: list[dict] | None = None) -> dict:
     avg_orders = round(total_orders / n_cust, 2) if n_cust else 0.0
     aov = round(total_rev / total_orders, 2) if total_orders else 0.0
     repeat_rate = round(len(repeat) / n_cust * 100, 1) if n_cust else 0.0
+    gaps = [c["avg_days_between"] for c in repeat if c["avg_days_between"]]
+    avg_between = round(sum(gaps) / len(gaps), 1) if gaps else 0.0
+    # Win-back: customers who bought before but have gone quiet past the lapse
+    # window (cheapest profit to recover), most-valuable first.
+    winback = sorted(
+        (c for c in customers if c["days_since_last"] >= LAPSED_CUSTOMER_DAYS),
+        key=lambda c: c["revenue"], reverse=True)
     return {
         "customers": n_cust, "total_revenue": total_rev,
         "total_orders": total_orders, "avg_clv": avg_clv,
         "avg_orders_per_customer": avg_orders, "aov": aov,
         "repeat_customers": len(repeat), "repeat_rate_pct": repeat_rate,
+        "avg_days_between_orders": avg_between,
+        "lapsed_customers": len(winback),
+        "winback": winback[:25],
         "top_customers": customers[:10],
     }
 
@@ -81,9 +112,16 @@ def format_clv_text(clv: dict | None = None, orders: list[dict] | None = None) -
         f"  Avg orders / customer:   {c['avg_orders_per_customer']}",
         f"  Average order value:     ${c['aov']:,.2f}",
         f"  Repeat customers:        {c['repeat_customers']} ({c['repeat_rate_pct']}%)",
+        f"  Avg days between orders:  {c.get('avg_days_between_orders', 0)}",
+        f"  Lapsed (win-back):        {c.get('lapsed_customers', 0)}",
         "", "  Top customers by revenue:",
     ]
     for i, t in enumerate(c["top_customers"], 1):
         lines.append(f"   {i:>2}. {t['customer'][:28]:<28} "
                      f"{t['orders']} order(s)  ${t['revenue']:,.2f}")
+    if c.get("winback"):
+        lines.append("\n  Win-back (lapsed - re-engage these first):")
+        for w in c["winback"][:8]:
+            lines.append(f"   - {w['customer'][:28]:<28} "
+                         f"${w['revenue']:,.2f}  ({w['days_since_last']}d quiet)")
     return "\n".join(lines)

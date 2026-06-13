@@ -76,6 +76,9 @@ TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
 # Alert when an order's ACTUAL shipping exceeds the modeled shipping for its
 # destination by more than this % - the silent margin-leak tripwire.
 SHIPPING_VARIANCE_ALERT_PCT: float = float(os.getenv("SHIPPING_VARIANCE_ALERT_PCT", "10"))
+# A past customer with no order in this many days is "lapsed" - a win-back
+# target (re-engaging a prior buyer is the cheapest profit there is).
+LAPSED_CUSTOMER_DAYS: int = int(os.getenv("LAPSED_CUSTOMER_DAYS", "90"))
 PACKAGING_COST_USD: float = float(os.getenv("PACKAGING_COST_USD", "0.75"))
 REPRINT_RESERVE_PCT: float = float(os.getenv("REPRINT_RESERVE_PCT", "3"))
 CAC_CONTINGENCY_PCT: float = float(os.getenv("CAC_CONTINGENCY_PCT", "0"))

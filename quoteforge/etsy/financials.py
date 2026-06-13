@@ -24,6 +24,11 @@ def order_financials(order: dict) -> dict:
     gelato_cost = float(gelato_cost) if gelato_cost is not None else DEFAULT_GELATO_COST
 
     p = calculate_order_profit(sale_price, gelato_cost)
+    # Fully-loaded view (contribution MINUS packaging/reprint reserve/marketing),
+    # consistent with the TCO + operating-cost reporting. Period overhead stays
+    # in the ledger (it's a time cost, not a per-order one).
+    from quoteforge.etsy.profit_calculator import operating_order_profit
+    op = operating_order_profit(sale_price, gelato_cost)
     # Sales tax Etsy collects & remits on your behalf — pass-through, not income
     sales_tax_collected = round(sale_price * ESTIMATED_SALES_TAX_RATE, 2)
 
@@ -37,8 +42,10 @@ def order_financials(order: dict) -> dict:
         "etsy_fees": p["total_fees"],
         "sales_tax_collected": sales_tax_collected,  # remitted by Etsy, $0 net to you
         "gelato_cost": gelato_cost,
-        "net_profit": p["net_profit"],
+        "net_profit": p["net_profit"],            # contribution (prices/floor)
         "margin_pct": p["margin_pct"],
+        "operating_net_profit": op["net_profit"],  # fully loaded (after op costs)
+        "operating_margin_pct": op["margin_pct"],
         "estimated": estimated,
     }
 
