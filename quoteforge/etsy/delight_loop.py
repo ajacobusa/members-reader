@@ -98,8 +98,10 @@ def delight_due(orders: list[dict], now: datetime | None = None,
     for o in orders:
         if o.get("status") not in ("delivered", "shipped"):
             continue
-        # Use delivery time if present, else fall back to created_at.
-        ref = _parse_dt(o.get("updated_at") or o.get("created_at", ""))
+        # Anchor on ACTUAL delivery time (5-7 days after the parcel arrived),
+        # else the last update, else created_at.
+        ref = _parse_dt(o.get("delivered_at") or o.get("updated_at")
+                        or o.get("created_at", ""))
         confirmed = bool(o.get("delivery_confirmed")) or o.get("status") == "shipped"
         if ref > (cutoff if confirmed else assumed_cutoff):
             continue                      # not enough time since delivery

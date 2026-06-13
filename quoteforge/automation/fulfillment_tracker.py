@@ -105,33 +105,37 @@ def _retry_buyer_push(order: dict, pushed: list, carrier: str = "") -> None:
     pushed.append(order["order_id"])
 
 
+def _carrier_confirm(order: dict, delivered_confirmed: list) -> str:
+    """Poll the carrier (tracking API) for a tracked order of ANY vendor. On a
+    real 'delivered' scan, mark the order carrier-confirmed (delivery_confirmed
+    =1) and append it. Returns the carrier state ('delivered'/'in_transit'/
+    'exception') or '' when no API/tracking/usable answer."""
+    from quoteforge.config import TRACKING_API_KEY
+    if not (TRACKING_API_KEY and order.get("tracking_number")):
+        return ""
+    from quoteforge.fulfillment.tracking_api import carrier_status
+    st = carrier_status(order["tracking_number"], order.get("carrier") or "")
+    if st == "delivered":
+        from quoteforge.db.database import update_order
+        update_order(order["order_id"], status="delivered",
+                     delivery_confirmed=1,
+                     delivered_at=order.get("delivered_at") or _now_iso())
+        delivered_confirmed.append(order["order_id"])
+    return st or ""
+
+
 def _confirm_or_assume_delivery(order: dict, delivered_confirmed: list,
                                 delivered_assumed: list) -> None:
-    """Advance a tracked Printify/Printful order to delivered.
-
-    When a carrier tracking API is configured, a REAL delivered scan confirms
-    it (delivery_confirmed=1) and an in-transit/exception scan keeps it shipped
-    (the carrier is authoritative - never falsely assume a delayed parcel
-    arrived). Only when the carrier API is absent or returns nothing usable do
-    we fall back to the timer ASSUMPTION (delivery_confirmed=0)."""
-    from quoteforge.config import TRACKING_API_KEY
-    from quoteforge.db.database import update_order
-    if TRACKING_API_KEY:
-        from quoteforge.fulfillment.tracking_api import carrier_status
-        st = carrier_status(order.get("tracking_number") or "",
-                            order.get("carrier") or "")
-        if st == "delivered":
-            update_order(order["order_id"], status="delivered",
-                         delivery_confirmed=1,
-                         delivered_at=order.get("delivered_at") or _now_iso())
-            delivered_confirmed.append(order["order_id"])
-            return
-        if st in ("in_transit", "exception"):
-            return                  # carrier says not yet - trust it over timer
-        # st is None: carrier told us nothing usable -> fall through to timer.
+    """Resolve delivery for a Printify/Printful order (which never report
+    delivery themselves): carrier-confirm first, else the timer ASSUMPTION."""
+    st = _carrier_confirm(order, delivered_confirmed)
+    if st in ("delivered", "in_transit", "exception"):
+        return                      # carrier is authoritative - trust it
+    # No carrier data -> timer assumption (these vendors have no signal at all).
     age = _age_days(order.get("shipped_at") or "")
     if age is None or age < ASSUME_DELIVERED_DAYS:
         return
+    from quoteforge.db.database import update_order
     update_order(order["order_id"], status="delivered", delivery_confirmed=0,
                  delivered_at=order.get("delivered_at") or _now_iso())
     delivered_assumed.append(order["order_id"])
@@ -185,10 +189,13 @@ def sync_tracking(limit: int = 500) -> dict:
         if tn and not had_tracking:
             newly_shipped.append(o["order_id"])
             carrier = status.get("carrier") or ""
+            eta = status.get("estimated_delivery") or ""
             fields = {} if o.get("shipped_at") else {"shipped_at": _now_iso()}
             if carrier and carrier != (o.get("carrier") or ""):
                 fields["carrier"] = carrier
                 o["carrier"] = carrier
+            if eta and eta != (o.get("estimated_delivery") or ""):
+                fields["estimated_delivery"] = eta
             if fields:
                 update_order(o["order_id"], **fields)
                 o.setdefault("shipped_at", fields.get("shipped_at"))
@@ -196,10 +203,15 @@ def sync_tracking(limit: int = 500) -> dict:
             o["tracking_number"] = tn
             _retry_buyer_push(o, pushed, carrier=status.get("carrier", ""))
 
-        if gstatus == "delivered":   # REAL, vendor-confirmed delivery
+        if gstatus == "delivered":   # vendor (Gelato) reported delivery directly
             update_order(o["order_id"], status="delivered", delivery_confirmed=1,
                          delivered_at=o.get("delivered_at") or _now_iso())
             delivered_confirmed.append(o["order_id"])
+        elif o.get("tracking_number"):
+            # Has tracking but the vendor hasn't confirmed delivery (Gelato often
+            # only reports 'shipped') -> ask the CARRIER. No timer for Gelato:
+            # it stays shipped until a real delivered scan, never falsely +.
+            _carrier_confirm(o, delivered_confirmed)
         elif not tn and _is_stuck(o):
             stuck.append(o["order_id"])
 

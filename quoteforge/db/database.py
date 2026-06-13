@@ -432,9 +432,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for _col in ("shipping_cost", "shipping_collected"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} REAL")
-    # Carrier name helps the tracking API confirm real delivery.
+    # Carrier name helps the tracking API confirm real delivery; the estimated
+    # delivery date (from Gelato/carrier) sets buyer expectations + SLA checks.
     if "carrier" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN carrier TEXT")
+    if "estimated_delivery" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN estimated_delivery TEXT")
     # ACTUAL Etsy financials (from the receipt / Orders CSV) - real tax, fees,
     # and net payout instead of estimates. Null until imported.
     if "tax_collected" not in cols:

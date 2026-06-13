@@ -88,6 +88,9 @@ def get_gelato_order_status(gelato_order_id: str) -> dict:
         "status": data.get("fulfillmentStatus", "unknown"),
         "tracking_number": _extract_tracking(data),
         "tracking_url": _extract_tracking_url(data),
+        "carrier": _extract_shipment_field(data, "shipmentMethodName", "carrier"),
+        "estimated_delivery": _extract_shipment_field(
+            data, "expectedDeliveryDate", "estimated_delivery_date"),
         "raw": data,
     }
 
@@ -100,6 +103,18 @@ def _extract_tracking(data: dict) -> str:
             tn = shipment.get("trackingNumber") or shipment.get("tracking_number", "")
             if tn:
                 return tn
+    return ""
+
+
+def _extract_shipment_field(data: dict, *keys: str) -> str:
+    """First non-empty value of any of `keys` across the order's shipments
+    (carrier name / expected delivery date), or ''."""
+    for item in data.get("items", []):
+        for shipment in item.get("fulfillments", []):
+            for k in keys:
+                v = shipment.get(k)
+                if v:
+                    return str(v)
     return ""
 
 
