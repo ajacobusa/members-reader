@@ -2634,8 +2634,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }};
    if(email && CONFIRM_API){{
      const dsn=_designState(); dsn.contact=CONTACT;
+     // Record the BASKET (total, item count, line items) so the order books
+     // real revenue + a correct count - not sale_price=None / one flat row.
+     dsn.cart={{ subtotal:+_cartTotal().toFixed(2),
+       items:CART.reduce((s,l)=>s+(l.qty||1),0),
+       lines:CART.map(l=>({{title:l.title||'',fmt:l.fmt,size:l.size,
+         unit:l.unit,qty:l.qty}})) }};
      fetch(CONFIRM_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
-       body:JSON.stringify({{email:email, summary:summary, design:dsn}})}})
+       body:JSON.stringify({{email:email, summary:summary, design:dsn,
+         design_id:'cart-'+Date.now()}})}})
        .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
    }} else {{ done(false); }}
  }}

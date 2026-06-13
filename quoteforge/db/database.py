@@ -400,6 +400,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # proving the approved proof IS the file sent to production.
     if "proof_file_hash" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN proof_file_hash TEXT")
+    # The basket as recorded at checkout: structured line items (JSON) + the
+    # total item count, so the order's COUNT and PRICE can be reconciled
+    # against fulfillment and the ledger (a multi-line basket is no longer
+    # flattened to one untyped row).
+    if "line_items" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN line_items TEXT")
+    if "item_count" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN item_count INTEGER")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -414,8 +422,9 @@ def create_order(data: dict) -> str:
              recipient_name, sender_name, relationship, occasion,
              scenery, tone, memory, output_style, status,
              sale_price, gelato_cost, channel, vendor, product_type,
-             material, size, listing, acquisition_source)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             material, size, listing, acquisition_source,
+             line_items, item_count)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -439,6 +448,8 @@ def create_order(data: dict) -> str:
             data.get("size"),
             data.get("listing"),
             data.get("acquisition_source"),
+            data.get("line_items"),
+            data.get("item_count"),
         ))
     return order_id
 
