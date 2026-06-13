@@ -1,17 +1,26 @@
-"""Fulfillment tracking sync - the missing order->delivery link.
+"""Fulfillment tracking sync - the order->delivery link, validated end to end.
 
 For every in-production/shipped order: poll its vendor (Gelato, Printify, or
-Printful — chosen by the order's `vendor` column) for tracking, update the order
-to 'shipped', and push the carrier + tracking number back to the Etsy buyer ONCE
-(createReceiptShipment). Gelato reports delivery, so its orders advance to
-'delivered' from the API; Printify/Printful order APIs never report delivery,
-so their shipped orders are assumed delivered ASSUME_DELIVERED_DAYS after
-shipping (and are not re-polled once tracking is known - the API has nothing
-new to say). This is what advances orders to delivery and lets the
-post-delivery review/delight loop fire. Scheduled; TEST_MODE-safe.
+Printful - chosen by the order's `vendor` column) for tracking, advance the
+order to 'shipped', and push the carrier + tracking number to the Etsy buyer.
 
-The vendor order id is read from `vendor_order_id` (honestly named, added by
-migration) with `gelato_order_id` as the legacy fallback for old rows.
+Delivery is validated, not assumed blindly:
+  - Gelato reports delivery -> status 'delivered', delivery_confirmed=1 (REAL).
+  - Printify/Printful order APIs never report delivery, so their shipped orders
+    are ASSUMED delivered ASSUME_DELIVERED_DAYS after shipping ->
+    delivery_confirmed=0 (clearly distinguishable from a real delivery).
+
+Robustness:
+  - The buyer shipped-notification is gated on `buyer_notified`, not on whether
+    tracking exists - so a FAILED push retries next run instead of being lost.
+  - Vendor poll errors are LOGGED to pipeline_log and counted (not swallowed).
+  - Orders that sit past STUCK_AFTER_DAYS with no tracking are returned in a
+    `stuck` list so they can be chased instead of quietly dying.
+  - A tracked order missing `shipped_at` gets it backfilled so the assumed-
+    delivery clock can actually start.
+
+The vendor order id is read from `vendor_order_id` with `gelato_order_id` as
+the legacy fallback for old rows. Scheduled; TEST_MODE-safe.
 """
 from __future__ import annotations
 
@@ -19,8 +28,30 @@ from __future__ import annotations
 # ship date (domestic parcels arrive in 2-8 days; 14 is a safe outer bound).
 ASSUME_DELIVERED_DAYS = 14
 
+# An order submitted to a vendor that still has no tracking after this many
+# days is "stuck" (vendor error, lost, no key) and needs a human.
+STUCK_AFTER_DAYS = 10
+
 # Vendors whose order API stops giving new information once tracking exists.
 _NO_DELIVERY_SIGNAL = ("printify", "printful")
+
+# Statuses that mean the order is done / not awaiting a delivery update.
+_TERMINAL = ("delivered", "cancelled", "refunded")
+
+
+def _now_iso() -> str:
+    """Current timestamp (ISO-8601)."""
+    from datetime import datetime as _dt
+    return _dt.now().isoformat()
+
+
+def _age_days(ts: str) -> float | None:
+    """Whole days since an ISO timestamp, or None when it can't be parsed."""
+    from datetime import datetime as _dt
+    try:
+        return (_dt.now() - _dt.fromisoformat(ts)).days
+    except (ValueError, TypeError):
+        return None
 
 
 def _poll_vendor(order: dict, vendor_order_id: str) -> dict:
@@ -42,81 +73,133 @@ def _poll_vendor(order: dict, vendor_order_id: str) -> dict:
     return status
 
 
-def _assume_delivered(order: dict, delivered: list) -> None:
-    """Advance a tracked Printify/Printful order to 'delivered' once it has
-    been shipped for ASSUME_DELIVERED_DAYS (their APIs never report delivery)."""
-    from datetime import datetime as _dt
-    shipped_at = order.get("shipped_at") or ""
+def _backfill_shipped_at(order: dict) -> None:
+    """Stamp shipped_at on a tracked order missing it, so the assumed-delivery
+    clock can start (legacy rows / writes by another path can leave it blank)."""
+    if order.get("shipped_at"):
+        return
+    from quoteforge.db.database import update_order
+    ts = order.get("updated_at") or _now_iso()
+    update_order(order["order_id"], shipped_at=ts)
+    order["shipped_at"] = ts
+
+
+def _retry_buyer_push(order: dict, pushed: list, carrier: str = "") -> None:
+    """Push tracking to the Etsy buyer if not yet done. Idempotent: gated on
+    `buyer_notified`, so a failed push retries next run instead of being lost."""
+    tn = order.get("tracking_number") or ""
+    if not (tn and order.get("etsy_order_id")) or order.get("buyer_notified"):
+        return
     try:
-        age_days = (_dt.now() - _dt.fromisoformat(shipped_at)).days
-    except ValueError:
-        return                      # no/invalid ship date: wait for next run
-    if age_days >= ASSUME_DELIVERED_DAYS:
-        from quoteforge.db.database import update_order
-        update_order(order["order_id"], status="delivered",
-                     delivered_at=_dt.now().isoformat())
-        delivered.append(order["order_id"])
+        from quoteforge.automation.etsy_api import create_receipt_shipment
+        # vendors may send carrier as '' (key present, empty) which Etsy rejects
+        create_receipt_shipment(order["etsy_order_id"], tn,
+                                 carrier_name=carrier or "other")
+    except Exception as exc:  # noqa: BLE001
+        from quoteforge.db.database import log_pipeline_stage
+        log_pipeline_stage(order["order_id"], "buyer_notify", "error", str(exc))
+        return                       # not marked notified -> retried next run
+    from quoteforge.db.database import update_order
+    update_order(order["order_id"], buyer_notified=1)
+    order["buyer_notified"] = 1
+    pushed.append(order["order_id"])
+
+
+def _assume_delivered(order: dict, delivered_assumed: list) -> None:
+    """Advance a tracked Printify/Printful order to 'delivered' (ASSUMED, not
+    carrier-confirmed) once shipped >= ASSUME_DELIVERED_DAYS."""
+    age = _age_days(order.get("shipped_at") or "")
+    if age is None or age < ASSUME_DELIVERED_DAYS:
+        return
+    from quoteforge.db.database import update_order
+    update_order(order["order_id"], status="delivered", delivery_confirmed=0,
+                 delivered_at=order.get("delivered_at") or _now_iso())
+    delivered_assumed.append(order["order_id"])
+
+
+def _is_stuck(order: dict) -> bool:
+    """True when an order submitted to a vendor still has no tracking long past
+    the production+ship SLA (it needs a human, not another silent skip)."""
+    if order.get("tracking_number"):
+        return False
+    age = _age_days(order.get("created_at") or order.get("updated_at") or "")
+    return age is not None and age >= STUCK_AFTER_DAYS
 
 
 def sync_tracking(limit: int = 500) -> dict:
-    """Poll vendors for all open orders, advance statuses, and push new
-    tracking numbers to the Etsy buyer once."""
-    from quoteforge.db.database import init_db, get_all_orders, update_order
+    """Poll vendors for all open orders, advance statuses, push tracking to the
+    buyer (idempotently), confirm or assume delivery, and surface stuck orders."""
+    from quoteforge.db.database import (init_db, get_all_orders, update_order,
+                                        log_pipeline_stage)
     init_db()
-    newly_shipped, delivered, pushed = [], [], []
+    newly_shipped, pushed, stuck = [], [], []
+    delivered_confirmed, delivered_assumed = [], []
+    errors = 0
     for o in get_all_orders(limit):
         gid = o.get("vendor_order_id") or o.get("gelato_order_id")
-        if not gid or o.get("status") in ("delivered", "cancelled", "refunded"):
+        if not gid or o.get("status") in _TERMINAL:
             continue
-        had_tracking = bool(o.get("tracking_number"))
         vendor = (o.get("vendor") or "gelato").lower()
+        had_tracking = bool(o.get("tracking_number"))
 
-        # Printify/Printful with known tracking: nothing new to poll - just
-        # age the order toward assumed delivery.
+        # Printify/Printful with known tracking: nothing new to poll - keep the
+        # buyer notified (retry), backfill the ship date, age toward delivery.
         if vendor in _NO_DELIVERY_SIGNAL and had_tracking:
-            _assume_delivered(o, delivered)
+            _backfill_shipped_at(o)
+            _retry_buyer_push(o, pushed)
+            _assume_delivered(o, delivered_assumed)
             continue
 
         try:
             status = _poll_vendor(o, gid)  # may set shipped
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            errors += 1
+            log_pipeline_stage(o["order_id"], "tracking_sync", "error", str(exc))
+            if _is_stuck(o):
+                stuck.append(o["order_id"])
             continue
+
         tn = status.get("tracking_number", "")
         gstatus = (status.get("status") or "").lower()
 
-        # First appearance of tracking: stamp the ship date for every channel,
-        # and push carrier + tracking to the Etsy buyer when there is one.
         if tn and not had_tracking:
             newly_shipped.append(o["order_id"])
             if not o.get("shipped_at"):
-                from datetime import datetime as _dt
-                update_order(o["order_id"], shipped_at=_dt.now().isoformat())
-            if o.get("etsy_order_id"):
-                try:
-                    from quoteforge.automation.etsy_api import create_receipt_shipment
-                    create_receipt_shipment(
-                        o["etsy_order_id"], tn,
-                        # `or "other"`: vendors may send carrier as '' (key
-                        # present but empty), which Etsy would reject.
-                        carrier_name=status.get("carrier") or "other")
-                    pushed.append(o["order_id"])
-                except Exception:  # noqa: BLE001
-                    pass
+                update_order(o["order_id"], shipped_at=_now_iso())
+                o["shipped_at"] = _now_iso()
+        if tn:
+            o["tracking_number"] = tn
+            _retry_buyer_push(o, pushed, carrier=status.get("carrier", ""))
 
-        if gstatus == "delivered":
-            from datetime import datetime as _dt
-            fields = {"status": "delivered"}
-            if not o.get("delivered_at"):
-                fields["delivered_at"] = _dt.now().isoformat()
-            update_order(o["order_id"], **fields)
-            delivered.append(o["order_id"])
-    return {"checked": True, "newly_shipped": newly_shipped,
-            "pushed_to_etsy": pushed, "delivered": delivered}
+        if gstatus == "delivered":   # REAL, vendor-confirmed delivery
+            update_order(o["order_id"], status="delivered", delivery_confirmed=1,
+                         delivered_at=o.get("delivered_at") or _now_iso())
+            delivered_confirmed.append(o["order_id"])
+        elif not tn and _is_stuck(o):
+            stuck.append(o["order_id"])
+
+    return {
+        "checked": True,
+        "newly_shipped": newly_shipped,
+        "pushed_to_etsy": pushed,
+        "delivered_confirmed": delivered_confirmed,
+        "delivered_assumed": delivered_assumed,
+        # Back-compat: combined delivered list (confirmed + assumed).
+        "delivered": delivered_confirmed + delivered_assumed,
+        "stuck": stuck,
+        "errors": errors,
+    }
 
 
 def format_tracking_text(r: dict) -> str:
     """Render the sync result counts as a short plain-text block."""
-    return ("Fulfillment tracking sync\n" + "-" * 34 + "\n"
-            f"  Newly shipped : {len(r['newly_shipped'])}\n"
-            f"  Pushed to Etsy: {len(r['pushed_to_etsy'])}\n"
-            f"  Delivered     : {len(r['delivered'])}")
+    lines = ["Fulfillment tracking sync", "-" * 34,
+             f"  Newly shipped    : {len(r['newly_shipped'])}",
+             f"  Pushed to Etsy   : {len(r['pushed_to_etsy'])}",
+             f"  Delivered (conf) : {len(r.get('delivered_confirmed', []))}",
+             f"  Delivered (assum): {len(r.get('delivered_assumed', []))}"]
+    if r.get("stuck"):
+        lines.append(f"  STUCK (no track) : {len(r['stuck'])} -> {', '.join(r['stuck'][:5])}")
+    if r.get("errors"):
+        lines.append(f"  Poll errors      : {r['errors']}")
+    return "\n".join(lines)

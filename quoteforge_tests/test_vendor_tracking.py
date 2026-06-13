@@ -239,13 +239,14 @@ def test_verify_auth_reports_auth_rejected_on_401(monkeypatch):
 
 
 def test_no_redundant_db_write_when_tracking_unchanged(tmp_path, monkeypatch):
-    """Re-polling a gelato order whose tracking is already stored must not
-    rewrite the row every 6 hours (the 'first appearance' contract)."""
+    """Re-polling a gelato order whose tracking is already stored AND whose
+    buyer is already notified must not rewrite the row every 6 hours (steady
+    state - the 'first appearance' contract)."""
     db = _seed(tmp_path, monkeypatch)
     oid = db.create_order({"order_id": "T8", "etsy_order_id": "E8",
                            "recipient_name": "Ben", "occasion": "Graduation"})
     db.update_order(oid, gelato_order_id="G8", status="shipped",
-                    tracking_number="1Z444")
+                    tracking_number="1Z444", buyer_notified=1)
     writes = []
     real_update = db.update_order
     with patch("quoteforge.automation.gelato_api.get_gelato_order_status",

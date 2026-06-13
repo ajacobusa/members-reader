@@ -408,6 +408,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN line_items TEXT")
     if "item_count" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN item_count INTEGER")
+    # Delivery validation: 1 = carrier/vendor CONFIRMED delivery, 0 = assumed
+    # by the post-ship timer (Printify/Printful never report delivery).
+    if "delivery_confirmed" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN delivery_confirmed INTEGER DEFAULT 0")
+    # 1 once the buyer has been sent the shipped/tracking notification - so a
+    # failed push retries next run instead of being lost forever.
+    if "buyer_notified" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN buyer_notified INTEGER DEFAULT 0")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────

@@ -1586,9 +1586,20 @@ def _cmd_ask(args: list[str]) -> int:
 
 
 def _cmd_track_orders(args: list[str]) -> int:
-    """Sync Gelato tracking -> mark shipped/delivered + push tracking to Etsy buyers."""
+    """Sync vendor tracking -> mark shipped/delivered + push tracking to buyers.
+    Emails the owner when orders are stuck (no tracking past SLA) or polls errored."""
     from quoteforge.automation.fulfillment_tracker import sync_tracking, format_tracking_text
-    print(format_tracking_text(sync_tracking()))
+    r = sync_tracking()
+    text = format_tracking_text(r)
+    print(text)
+    # A stuck order or repeated poll errors is the owner's to chase - alert.
+    if r.get("stuck") or r.get("errors"):
+        try:
+            from quoteforge.automation.emailer import _send_email
+            _send_email("⚠️ Fulfillment needs attention",
+                        "<pre>" + text + "</pre>")
+        except Exception:  # noqa: BLE001
+            pass
     return 0
 
 
