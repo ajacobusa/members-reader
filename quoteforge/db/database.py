@@ -424,6 +424,13 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for _col in ("shipping_cost", "shipping_collected"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} REAL")
+    # Recovery escalation stage (0=none,1=1h,2=24h,3=72h sent) for abandoned
+    # customizations - so the recovery email escalates instead of firing once.
+    accols = {r["name"] for r in conn.execute(
+        "PRAGMA table_info(abandoned_customizations)")}
+    if accols and "recovery_stage" not in accols:
+        conn.execute("ALTER TABLE abandoned_customizations "
+                     "ADD COLUMN recovery_stage INTEGER DEFAULT 0")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────
@@ -861,21 +868,25 @@ def save_customization(email: str, listing: str = "", material: str = "",
     email = (email or "").strip().lower()
     if "@" not in email:
         return 0
+    # Local-time stamp (matches update_order et al.) so the recovery age check
+    # isn't skewed by SQLite datetime('now') being UTC.
+    _ts = datetime.now().isoformat()
     with _conn() as conn:
         cur = conn.execute(
             """INSERT INTO abandoned_customizations
-               (email, listing, material, size, wording, has_photo, state_json, status)
-               VALUES (?,?,?,?,?,?,?, 'open')
+               (email, listing, material, size, wording, has_photo, state_json,
+                status, updated_at)
+               VALUES (?,?,?,?,?,?,?, 'open', ?)
                ON CONFLICT(email, listing) DO UPDATE SET
                  material=excluded.material, size=excluded.size,
                  wording=excluded.wording, has_photo=excluded.has_photo,
                  state_json=excluded.state_json,
                  status=CASE WHEN abandoned_customizations.status='converted'
                              THEN 'converted' ELSE 'open' END,
-                 updated_at=datetime('now')
+                 updated_at=excluded.updated_at
             """,
             (email, listing, material, size, wording, 1 if has_photo else 0,
-             state_json))
+             state_json, _ts))
         return cur.lastrowid or 0
 
 
@@ -899,6 +910,18 @@ def get_open_customizations(older_than_minutes: int = 0) -> list[dict]:
         if upd <= cutoff:
             out.append(it)
     return out
+
+
+def advance_recovery_stage(email: str, listing: str, stage: int) -> None:
+    """Record that recovery `stage` (1=1h,2=24h,3=72h) was sent for an
+    abandoned customization, stamping recovered_at."""
+    email = (email or "").strip().lower()
+    from datetime import datetime as _dt
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE abandoned_customizations SET recovery_stage=?, recovered_at=? "
+            "WHERE email=? AND listing=?",
+            (stage, _dt.now().isoformat(), email, listing))
 
 
 def mark_customization(email: str, listing: str, status: str,
