@@ -1585,6 +1585,18 @@ def _cmd_ask(args: list[str]) -> int:
     return 0
 
 
+def _cmd_winback(args: list[str]) -> int:
+    """Staged lapsed-customer win-back (60d nudge / 90d 10% / 120d 15%).
+    Dry-run by default; `winback send` actually emails + advances each stage."""
+    from quoteforge.marketing.winback import run_winback, format_winback_text
+    if "send" in args:
+        r = run_winback(send=True)
+        print(f"Win-back: {r['sent']} email(s) sent across stages.")
+    else:
+        print(format_winback_text())
+    return 0
+
+
 def _cmd_shipping_audit(args: list[str]) -> int:
     """Shipping-variance + profit-by-destination report. Emails the owner when
     orders are leaking margin on shipping (actual >> modeled/collected)."""
@@ -1919,6 +1931,7 @@ COMMANDS = {
     "order-by": _cmd_order_by,
     "track-orders": _cmd_track_orders,
     "shipping-audit": _cmd_shipping_audit,
+    "winback": _cmd_winback,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,

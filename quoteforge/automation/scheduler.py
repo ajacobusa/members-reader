@@ -203,6 +203,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Weekly shipping-variance + profit-by-destination audit: flags orders "
         "leaking margin (actual shipping >> modeled/collected) and emails the "
         "owner so far/heavy lanes don't quietly erode profit."),
+    ScheduledJob(
+        "QuoteForge Win-Back", "winback send",
+        ["/SC", "DAILY", "/ST", "08:50"],
+        "Daily staged lapsed-customer win-back: Day-60 'new designs' nudge, "
+        "Day-90 10% coupon, Day-120 final 15% offer (each fires once; a new "
+        "order resets the customer). Cheapest profit - acquisition is paid."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

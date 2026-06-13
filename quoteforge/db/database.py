@@ -306,6 +306,14 @@ def init_db() -> None:
         );
         """)
         conn.execute("""
+        CREATE TABLE IF NOT EXISTS winback_campaign (
+            email      TEXT PRIMARY KEY,    -- lapsed customer
+            stage      INTEGER DEFAULT 0,   -- last win-back stage sent (1/2/3)
+            last_order_at TEXT,             -- their last order at send time (reset gate)
+            sent_at    TEXT
+        );
+        """)
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS gift_profiles (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             owner_email   TEXT NOT NULL,            -- the buyer who saved this profile
@@ -910,6 +918,30 @@ def get_open_customizations(older_than_minutes: int = 0) -> list[dict]:
         if upd <= cutoff:
             out.append(it)
     return out
+
+
+def get_winback_state(email: str) -> dict:
+    """The customer's win-back campaign state ({stage, last_order_at}), or empty."""
+    email = (email or "").strip().lower()
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT stage, last_order_at FROM winback_campaign WHERE email=?",
+            (email,)).fetchone()
+    return dict(row) if row else {"stage": 0, "last_order_at": ""}
+
+
+def set_winback_stage(email: str, stage: int, last_order_at: str) -> None:
+    """Record that win-back `stage` was sent for a customer whose last order was
+    `last_order_at` (so a NEW order - a different last_order_at - resets them)."""
+    email = (email or "").strip().lower()
+    from datetime import datetime as _dt
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO winback_campaign (email, stage, last_order_at, sent_at) "
+            "VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET "
+            "stage=excluded.stage, last_order_at=excluded.last_order_at, "
+            "sent_at=excluded.sent_at",
+            (email, stage, last_order_at, _dt.now().isoformat()))
 
 
 def advance_recovery_stage(email: str, listing: str, stage: int) -> None:
