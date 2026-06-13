@@ -104,6 +104,51 @@ def test_editor_controls_have_aria_labels(tmp_path):
     assert 'aria-label="See final preview"' in h
 
 
+def test_synthesized_occasion_cards_offer_frame_choice(tmp_path):
+    """Synthesized one-per-occasion designs must offer the SAME frame &
+    material choices as real designs (UAT: second order had no frame
+    picker). They get the format list with real prices - only the heavy
+    per-frame preview thumbnails are skipped."""
+    import json as _json
+    import re
+    h = _page(tmp_path)
+    data = _json.loads(re.search(r"const DATA = (\[.*?\]);", h, re.S).group(1))
+    syn = [d for d in data if d.get("n") == 0]
+    assert syn, "expected synthesized occasion cards in the build"
+    for d in syn:
+        assert d.get("formats"), f"synthesized card {d.get('occ')} has no formats"
+        names = [f["name"] for f in d["formats"]]
+        assert any(n.startswith("Framed - ") for n in names)
+        assert all(f.get("price") for f in d["formats"])
+
+
+def test_frame_picker_always_available(tmp_path):
+    """Every design is orderable in every frame/material: the page emits a
+    global ALL_FORMATS list and the frame picker falls back to it when a card
+    has no per-card formats (so a render hiccup can never hide the picker or
+    show the stale default price)."""
+    h = _page(tmp_path)
+    assert "const ALL_FORMATS =" in h
+    assert "Poster (unframed)" in h.split("const ALL_FORMATS =", 1)[1].split(";", 1)[0]
+    assert "function fmtsFor" in h
+    # openM and pickFmt both consume the fallback, not DATA[i].formats raw.
+    assert "fmtsFor(i)" in h
+    assert "DATA[i].formats[j]" not in h          # raw access removed
+    # The picker is shown unconditionally now (fallback guarantees formats).
+    assert "fp.style.display='none'" not in h
+
+
+def test_every_built_card_has_formats(tmp_path):
+    """Build-time guarantee: no card ships without formats (the root cause of
+    the missing frame picker / $36.99 default)."""
+    import json
+    import re
+    h = _page(tmp_path)
+    data = json.loads(re.search(r"const DATA = (\[.*?\]);", h, re.S).group(1))
+    for d in data:
+        assert d.get("formats"), f"card {d.get('occ')} has no formats"
+
+
 def test_basket_offers_add_another_design(tmp_path):
     """A filled basket offers a way back to the shop to order MORE items -
     not just Empty/Checkout."""

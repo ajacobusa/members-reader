@@ -638,6 +638,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         fmt_price = {}
 
+    # The design-INDEPENDENT format/material list (poster -> framed ladder ->
+    # canvas/acrylic/metal), with real "from" prices. Every design is orderable
+    # in every format, so this is the guaranteed fallback the frame picker uses
+    # whenever a card has no per-frame preview thumbnails of its own - so a
+    # render hiccup can never hide the picker or leave the stale default price.
+    def _global_formats() -> list:
+        """Ordered global format list ({name, price, img:''}) from fmt_price."""
+        if not fmt_price:
+            return []
+        framed = sorted((k for k in fmt_price if k.startswith("Framed - ")),
+                        key=lambda k: fmt_price[k])
+        order = (["Poster (unframed)"] + framed
+                 + ["Canvas (gallery-wrapped)", "Acrylic", "Metal"])
+        return [{"name": k, "img": "", "price": fmt_price[k]}
+                for k in order if k in fmt_price]
+    GLOBAL_FORMATS = _global_formats()
+
     def _emit(src: Path, fname: str) -> str:
         """Return a data-URI (inline mode) or a lazy-loaded relative URL."""
         if external_assets:
@@ -706,6 +723,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                                                 for n, d in fmts]
                 except Exception:  # noqa: BLE001
                     pass
+        # Guarantee every design is orderable in every format: if the per-frame
+        # previews didn't render (missing poster, transient failure), fall back
+        # to the global format list so the frame picker is NEVER hidden.
+        if not entry.get("formats") and GLOBAL_FORMATS:
+            entry["formats"] = GLOBAL_FORMATS
         # Card "from" price = the real lowest variation price (not a flat default).
         prices = [f["price"] for f in entry.get("formats", []) if f.get("price")]
         if prices:
@@ -725,10 +747,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if not gal:
             continue
         syn_tag += 1
-        # Note: synthesized cards intentionally skip per-frame preview rendering
-        # (the heavy step). The card shows its own gallery art and the modal still
-        # offers every size/frame via the shared size map - just without a distinct
-        # rendered thumbnail per frame, which keeps rebuilds fast.
+        # Synthesized cards skip only the heavy per-frame preview THUMBNAILS;
+        # they still offer the full frame/material choice (same names + real
+        # prices from the variation model) so every design is orderable in
+        # every format - the chips just don't swap a rendered preview image.
         entry = {
             "n": 0, "occ": key, "quote": quote,
             "title": f"Personalized {disp} Gift",
@@ -738,6 +760,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             "desc": _occasion_card_desc(disp),
             "imgs": [_emit(p, f"{syn_tag}_g{i:02d}.jpg") for i, p in enumerate(gal)],
         }
+        if GLOBAL_FORMATS:
+            entry["formats"] = GLOBAL_FORMATS
+            entry["price"] = f"{min(f['price'] for f in GLOBAL_FORMATS):.2f}"
         listings.append(entry)
     # Re-order so synthesized cards slot into showcase position with the rest.
     _reorder_by_occasion(listings)
@@ -800,6 +825,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         sizemap = {}
     sizemap_json = json.dumps(sizemap)
+    all_formats_json = json.dumps(GLOBAL_FORMATS)
 
     # Product range + frame note for the detail modal.
     _hi = 0
@@ -2125,15 +2151,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
-   if(d.formats && d.formats.length){{
-     fc.innerHTML=d.formats.map((f,j)=>
+   // Frame picker is ALWAYS available: a card's own previews, else the global
+   // format list - so every design is orderable in every frame/material.
+   const fmts = fmtsFor(i);
+   if(fmts.length){{
+     fc.innerHTML=fmts.map((f,j)=>
        `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join('');
      fp.style.display='block';
-     if(d.formats[0].price) document.getElementById('mprice').textContent="from $"+d.formats[0].price;
-   }} else {{ fp.style.display='none'; }}
+   }}
    document.getElementById('mtitle').textContent = d.full_title;
-   if(!(d.formats && d.formats.length && d.formats[0].price))
-     document.getElementById('mprice').textContent = "from $" + d.price;
+   document.getElementById('mprice').textContent =
+     "from $" + ((fmts[0] && fmts[0].price) ? fmts[0].price : d.price);
    document.getElementById('mdesc').innerHTML = fmtDesc(d.desc);
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
@@ -2143,10 +2171,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var tl=document.getElementById('mtsizelbl'); if(tl)tl.textContent='Auto';
    var tr=document.getElementById('mtrot'); if(tr)tr.value=0;
    var trl=document.getElementById('mtrotlbl'); if(trl)trl.textContent='0°';
-   // Designs without per-frame previews (synthesized occasion cards) still sell
-   // every format: default to the first material in SIZEMAP so sizes populate.
-   CURFMT = (d.formats && d.formats.length) ? d.formats[0].name
-          : (Object.keys(SIZEMAP)[0] || "");
+   // Start on the first format (poster); the picker + SIZEMAP take it from here.
+   CURFMT = (fmts[0] && fmts[0].name) || (Object.keys(SIZEMAP)[0] || "");
    var mt=document.getElementById('mtext'); if(mt) mt.value="";
    var cc=document.getElementById('mcc'); if(cc) cc.textContent="0 / "+MAXCHARS;
    renderBg(); renderTxt(); renderWall(); renderFonts(); drawArt();
@@ -2170,6 +2196,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ["Oswald","'Oswald',sans-serif"]];
  const MAXCHARS = 250;
  const SIZEMAP = {sizemap_json};
+ // Design-independent frame/material list - the guaranteed fallback so the
+ // frame picker is available for EVERY design, even one whose previews failed.
+ const ALL_FORMATS = {all_formats_json};
+ // The format list for design i: its own per-frame previews, else the global
+ // list (every design is orderable in every format).
+ function fmtsFor(i){{ const f=DATA[i].formats; return (f&&f.length)?f:ALL_FORMATS; }}
  let CART = [];
  const QD = {qty_discount_json};
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
@@ -2943,7 +2975,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
  }})();
  function pickFmt(i,j){{
-   const f = DATA[i].formats[j];
+   const f = fmtsFor(i)[j];
    if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
