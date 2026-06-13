@@ -70,7 +70,11 @@ MARGIN_FLOOR_MID: float = float(os.getenv("MARGIN_FLOOR_MID", str(TARGET_MARGIN_
 MARGIN_FLOOR_TOP: float = float(os.getenv("MARGIN_FLOOR_TOP", str(TARGET_MARGIN_PCT)))
 # Single items LIST at this margin (the anchor); bundle/quantity discounts reduce
 # toward - but never below - TARGET_MARGIN_PCT (the hard floor).
-LIST_MARGIN_PCT: float = float(os.getenv("LIST_MARGIN_PCT", "68"))
+# LIST (anchor) margin. 65% on the full 9.5%+$0.20 fee stack reproduces the
+# SAME list prices the old 68%-on-6.5% target produced (denominator 0.255) -
+# so correcting the fee stack does not shock live prices; it only makes the
+# reported margin honest (~65% real) and raises the bare 60% floor to genuine.
+LIST_MARGIN_PCT: float = float(os.getenv("LIST_MARGIN_PCT", "65"))
 # Dynamic (seasonal-demand) pricing. UPLIFT-ONLY: during active high-demand
 # seasons we raise prices above list by up to DYNAMIC_MAX_UPLIFT_PCT. It can never
 # push a price DOWN, so the 60% net floor is structurally safe. Toggle off to

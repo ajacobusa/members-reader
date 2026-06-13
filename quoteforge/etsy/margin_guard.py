@@ -45,12 +45,21 @@ def margin_check(sale_price: float, gelato_cost: float,
 
 
 def audit_catalog(floor_pct: float = None) -> dict:
-    """Audit every single product AND gallery set against the margin floor."""
+    """Audit the REAL sellable catalog against the margin floor: every built
+    variation (poster/framed/canvas/acrylic/metal x size x frame, with any
+    live Gelato cost overrides), every product line, AND every gallery set."""
     floor = TARGET_MARGIN_PCT if floor_pct is None else floor_pct
     from quoteforge.etsy.product_lines import PRODUCT_LINES
     from quoteforge.etsy.gallery_sets import GALLERY_SETS
+    from quoteforge.etsy.variations import build_variations
 
     rows = []
+    # The actual sellable variations (was never audited - the floor was only
+    # checked against the static product/gallery lists below).
+    for v in build_variations():
+        label = f"{v.material} {v.size}" + (f" {v.frame_color}" if v.frame_color else "")
+        c = margin_check(v.price, v.gelato_cost, floor)
+        rows.append({"name": label, "kind": "variation", **c})
     for p in PRODUCT_LINES:
         c = margin_check(p.sell_price, p.gelato_cost, floor)
         rows.append({"name": p.name, "kind": "product", **c})

@@ -19,9 +19,16 @@ import math
 from dataclasses import dataclass
 
 from quoteforge.config import TARGET_MARGIN_PCT
+from quoteforge.etsy.profit_calculator import (
+    ETSY_TRANSACTION_FEE, ETSY_PAYMENT_FEE, ETSY_LISTING_FEE)
 
-ETSY_FEE_PCT = 0.065          # Etsy transaction + payment processing (approx)
-ETSY_LISTING_FEE = 0.20       # per-sale listing cost
+# ONE fee stack, shared with the profit ledger and margin guard: 6.5%
+# transaction + 3% payment processing + $0.20 listing. (Was 6.5%-only here,
+# which under-counted fees by 3% and made every "60% floor" actually clear
+# ~57%.) LIST_MARGIN_PCT was retuned in tandem so live LIST prices are
+# unchanged - only the bare floor (bundle caps / gallery sets) rises to a
+# genuine 60%.
+ETSY_FEE_PCT = ETSY_TRANSACTION_FEE + ETSY_PAYMENT_FEE   # 9.5% full stack
 
 # How each material is presented + whether a frame applies.
 MATERIAL_LABELS = {
