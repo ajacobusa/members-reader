@@ -1,7 +1,7 @@
 """Claim reporting-deadline (time-window) policy on top of the fault/outcome
 resolution engine. Customer window 7 days from the delivery anchor; 8-10 flags
-for manual review; >=11 needs management approval; past the 14-day production-
-partner filing window the partner won't reimburse (goodwill/at-cost).
+for manual review; >=11 needs management approval; past the production-partner
+filing window (Gelato Create = 30 days) the partner won't reimburse (goodwill).
 
 Anchors: carrier-confirmed delivery date when we have it; otherwise the
 estimated-delivery date (assumed-delivered orders with no carrier timestamp)."""
@@ -31,15 +31,15 @@ def test_8_to_10_days_is_manual_review():
 
 
 def test_11_plus_is_management_approval_but_still_in_supplier_window():
-    w = claim_window(_delivered(12))
+    w = claim_window(_delivered(20))
     assert w["eligibility"] == "management_approval"
-    assert w["within_supplier_window"] is True          # 12 <= 14
+    assert w["within_supplier_window"] is True          # 20 <= 30 (Gelato Create)
 
 
 def test_past_supplier_window_is_flagged():
-    w = claim_window(_delivered(20))
+    w = claim_window(_delivered(35))
     assert w["eligibility"] == "management_approval"
-    assert w["within_supplier_window"] is False         # partner won't reimburse
+    assert w["within_supplier_window"] is False         # past 30d -> no reimbursement
 
 
 def test_assumed_delivery_anchors_to_estimated_delivery():
