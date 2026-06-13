@@ -72,6 +72,23 @@ def test_basket_discount_applies_on_total_quantity(tmp_path, monkeypatch):
     assert "qdisc(_totalQty())" in h
 
 
+def test_basket_subtotal_equals_sum_of_lines(tmp_path, monkeypatch):
+    """One canonical line-subtotal rule everywhere: the Subtotal must equal the
+    sum of the visible rows (no round-then-sum vs sum-then-round mismatch)."""
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    from PIL import Image
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"
+    g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    h = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                        out_path=tmp_path / "h.html",
+                        frame_picker=True).read_text(encoding="utf-8")
+    assert "function _lineSub" in h
+    assert "_cartTotal" in h and "_lineSub(l" in h.split("function _cartTotal", 1)[1][:120]
+
+
 def test_max_bundle_discount_stays_above_floor():
     """Honoring the discount must not breach the floor: the largest discount on
     any LIST price still clears ~60% net (safe because LIST=65%, max disc=15%,
