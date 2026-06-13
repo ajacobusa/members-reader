@@ -62,6 +62,20 @@ GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
 # Set to 60%: every product and gallery set is priced to clear this, and the
 # margin guard flags anything that slips below it (e.g. after a fee increase).
 TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
+# Real per-order costs beyond the print blank, folded into the AUTHORITATIVE
+# profit calc so reported/audited margins are honest (NOT into the list-price
+# floor - the 65% list anchor already absorbs them, so customer prices don't
+# change; only bare-floor items like gallery sets are re-priced to stay >=60%).
+#   PACKAGING_COST_USD   : mailer/tube + materials per physical order
+#   REPRINT_RESERVE_PCT  : % of print cost reserved for defect/damage reprints
+#                          (POD reprint rates run ~2-4%; raise for fragile lines)
+#   CAC_CONTINGENCY_PCT  : optional per-order marketing/ad reserve (% of sale).
+#                          Default 0: the 60% floor is a CONTRIBUTION margin and
+#                          marketing comes out of it (standard POD practice);
+#                          set >0 to model ad-attributed orders explicitly.
+PACKAGING_COST_USD: float = float(os.getenv("PACKAGING_COST_USD", "0.75"))
+REPRINT_RESERVE_PCT: float = float(os.getenv("REPRINT_RESERVE_PCT", "3"))
+CAC_CONTINGENCY_PCT: float = float(os.getenv("CAC_CONTINGENCY_PCT", "0"))
 # Per-tier net-margin floors for the upsell ladder (entry=Poster, mid=Framed,
 # top=Canvas/Acrylic/Metal). Default each to the global target so we never sell
 # below 60%; raise a tier as sales data justifies more margin on it.

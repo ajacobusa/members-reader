@@ -16,6 +16,10 @@ import hashlib
 from datetime import datetime, timedelta
 
 DELIGHT_LEAD_DAYS = 6          # send this many days after delivery (satisfaction peak)
+# Extra days to wait before delighting an ASSUMED (not carrier-confirmed)
+# delivery - so a Printify/Printful timer-delivery never asks for a review
+# before the parcel has realistically arrived.
+ASSUMED_DELIGHT_BUFFER_DAYS = 7
 REVIEW_THANKYOU = "THANKYOU10"  # 10% off their own next order
 REFERRAL_GIVE = 15             # friend gets this %
 REFERRAL_GET = 15              # referrer gets this % on next order
@@ -86,13 +90,18 @@ def delight_due(orders: list[dict], now: datetime | None = None,
     """Orders delivered ~lead_days ago that haven't had the delight touch yet."""
     now = now or datetime.now()
     cutoff = now - timedelta(days=lead_days)
+    # Assumed deliveries (Printify/Printful timer, no carrier confirmation) wait
+    # an extra buffer before we ask for a review - never nudge a customer who
+    # may not actually have the item yet.
+    assumed_cutoff = now - timedelta(days=lead_days + ASSUMED_DELIGHT_BUFFER_DAYS)
     due = []
     for o in orders:
         if o.get("status") not in ("delivered", "shipped"):
             continue
         # Use delivery time if present, else fall back to created_at.
         ref = _parse_dt(o.get("updated_at") or o.get("created_at", ""))
-        if ref > cutoff:
+        confirmed = bool(o.get("delivery_confirmed")) or o.get("status") == "shipped"
+        if ref > (cutoff if confirmed else assumed_cutoff):
             continue                      # not enough time since delivery
         if _already_delighted(o.get("order_id", "")):
             continue

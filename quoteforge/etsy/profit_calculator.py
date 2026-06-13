@@ -52,12 +52,28 @@ def calculate_order_profit(
     gelato_cost: float,
     shipping_collected: float = 0.0,
     shipping_cost: float = 0.0,
+    packaging_cost: float = 0.0,
+    reprint_reserve_pct: float = 0.0,
+    cac_pct: float = 0.0,
 ) -> dict:
-    """Calculate net profit for a single Etsy order."""
+    """CONTRIBUTION profit for a single order: revenue - print cost - platform
+    fees. This is what the 60% floor and all list prices are built on.
+
+    Packaging, a defect/reprint reserve, and marketing (CAC) are OPERATING
+    costs that come out of contribution (standard POD accounting), so they
+    default to 0 here and are surfaced in the operating-net reporting layer
+    (tco / financials). Pass them explicitly to model a fully-loaded order.
+    Packaging is physical-only (skipped when gelato_cost <= 0).
+    """
+    pkg = 0.0 if gelato_cost <= 0 else round(packaging_cost, 2)
+    reprint_reserve = round(gelato_cost * reprint_reserve_pct / 100.0, 2)
+    cac = round(sale_price * cac_pct / 100.0, 2)
     etsy_transaction = round(sale_price * ETSY_TRANSACTION_FEE, 2)
     etsy_payment = round(sale_price * ETSY_PAYMENT_FEE, 2)
     total_fees = round(etsy_transaction + etsy_payment + ETSY_LISTING_FEE, 2)
-    net_profit = round(sale_price + shipping_collected - gelato_cost - shipping_cost - total_fees, 2)
+    net_profit = round(sale_price + shipping_collected - gelato_cost
+                       - shipping_cost - total_fees - pkg
+                       - reprint_reserve - cac, 2)
     margin_pct = round((net_profit / sale_price) * 100, 1) if sale_price > 0 else 0.0
     return {
         "sale_price": sale_price,
@@ -65,10 +81,27 @@ def calculate_order_profit(
         "etsy_transaction_fee": etsy_transaction,
         "etsy_payment_fee": etsy_payment,
         "etsy_listing_fee": ETSY_LISTING_FEE,
+        "packaging_cost": pkg,
+        "reprint_reserve": reprint_reserve,
+        "cac": cac,
         "total_fees": total_fees,
         "net_profit": net_profit,
         "margin_pct": margin_pct,
     }
+
+
+def operating_order_profit(sale_price: float, gelato_cost: float) -> dict:
+    """Fully-loaded order profit: contribution MINUS the real operating costs
+    (packaging, reprint reserve, marketing contingency) from config. This is
+    the honest 'what you actually keep' figure for reporting - the 60% floor
+    stays a contribution margin, and these costs come out of it."""
+    from quoteforge.config import (PACKAGING_COST_USD, REPRINT_RESERVE_PCT,
+                                    CAC_CONTINGENCY_PCT)
+    return calculate_order_profit(
+        sale_price, gelato_cost,
+        packaging_cost=PACKAGING_COST_USD,
+        reprint_reserve_pct=REPRINT_RESERVE_PCT,
+        cac_pct=CAC_CONTINGENCY_PCT)
 
 
 def monthly_revenue_forecast(

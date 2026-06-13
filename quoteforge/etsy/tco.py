@@ -35,14 +35,24 @@ def fixed_monthly_costs(listings: int, orders_per_month: int) -> dict:
 
 def variable_monthly_costs(orders_per_month: int,
                            avg_sale_price: float, avg_gelato_cost: float) -> dict:
-    """Per-sale costs (Gelato + Etsy fees) — paid out of revenue, not your pocket."""
+    """Per-sale costs paid out of revenue: Gelato print + Etsy fees + the real
+    operating costs (packaging, reprint reserve, marketing) so the TCO net is
+    fully loaded, not just contribution."""
+    from quoteforge.etsy.profit_calculator import operating_order_profit
     p = calculate_order_profit(avg_sale_price, avg_gelato_cost)
+    op = operating_order_profit(avg_sale_price, avg_gelato_cost)
     gelato = round(avg_gelato_cost * orders_per_month, 2)
     etsy = round(p["total_fees"] * orders_per_month, 2)
+    packaging = round(op["packaging_cost"] * orders_per_month, 2)
+    reserve = round(op["reprint_reserve"] * orders_per_month, 2)
+    cac = round(op["cac"] * orders_per_month, 2)
     return {
         "gelato_print": gelato,
         "etsy_fees": etsy,
-        "total": round(gelato + etsy, 2),
+        "packaging": packaging,
+        "reprint_reserve": reserve,
+        "marketing_cac": cac,
+        "total": round(gelato + etsy + packaging + reserve + cac, 2),
         "per_order_fees": p["total_fees"],
     }
 
@@ -123,6 +133,10 @@ def format_tco_text(tco: dict) -> str:
     v = tco["variable_monthly"]
     lines.append(f"  {'Gelato printing':38} ${v['gelato_print']:>8.2f}")
     lines.append(f"  {'Etsy fees':38} ${v['etsy_fees']:>8.2f}")
+    lines.append(f"  {'Packaging':38} ${v.get('packaging', 0):>8.2f}")
+    lines.append(f"  {'Reprint/breakage reserve':38} ${v.get('reprint_reserve', 0):>8.2f}")
+    if v.get("marketing_cac", 0):
+        lines.append(f"  {'Marketing (CAC)':38} ${v['marketing_cac']:>8.2f}")
     lines.append(f"  {'TOTAL VARIABLE / MONTH':38} ${v['total']:>8.2f}")
 
     lines.append("\nBOTTOM LINE (per month):")
