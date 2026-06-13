@@ -1585,6 +1585,22 @@ def _cmd_ask(args: list[str]) -> int:
     return 0
 
 
+def _cmd_import_etsy_finance(args: list[str]) -> int:
+    """Import REAL Etsy financials from an Etsy Orders/statement CSV:
+    `import-etsy-finance <path-to-csv>`. Writes actual order total, shipping,
+    sales tax, fees, and net payout onto matching orders."""
+    paths = [a for a in args if a.lower().endswith(".csv")]
+    if not paths:
+        print("Usage: import-etsy-finance <path-to-etsy-orders.csv>")
+        print("  Download from Etsy: Shop Manager -> Settings -> Options -> "
+              "Download Data -> Orders (CSV).")
+        return 1
+    from quoteforge.etsy.etsy_finance_import import (import_orders_csv,
+                                                     format_import_text)
+    print(format_import_text(import_orders_csv(paths[0])))
+    return 0
+
+
 def _cmd_winback(args: list[str]) -> int:
     """Staged lapsed-customer win-back (60d nudge / 90d 10% / 120d 15%).
     Dry-run by default; `winback send` actually emails + advances each stage."""
@@ -1932,6 +1948,7 @@ COMMANDS = {
     "track-orders": _cmd_track_orders,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
+    "import-etsy-finance": _cmd_import_etsy_finance,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,

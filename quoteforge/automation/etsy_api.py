@@ -61,8 +61,18 @@ def create_receipt_shipment(receipt_id: str, tracking_code: str,
     return {"status": "shipped", **resp.json()}
 
 
+def _money(m: dict) -> float:
+    """Convert an Etsy money object ({amount, divisor}) to a float, or 0.0."""
+    try:
+        return round(float(m.get("amount", 0)) / float(m.get("divisor", 100) or 100), 2)
+    except (AttributeError, TypeError, ValueError):
+        return 0.0
+
+
 def receipt_to_order_payload(receipt: dict) -> dict:
-    """Map an Etsy receipt to the QuoteForge webhook payload shape.
+    """Map an Etsy receipt to the QuoteForge webhook payload shape, including
+    the REAL order total, shipping collected, sales tax collected, and ship-to
+    destination (so reporting uses Etsy's actual figures, not estimates).
 
     Personalization arrives in transaction 'variations'/'personalization'; we
     pull the common fields and leave the raw receipt id as etsy_order_id.
@@ -88,6 +98,11 @@ def receipt_to_order_payload(receipt: dict) -> dict:
         "memory": personalization.get("story")
                   or personalization.get("personalization", ""),
         "scenery": personalization.get("scenery", "Mountains"),
-        "sale_price": (receipt.get("grandtotal", {}) or {}).get("amount"),
+        "sale_price": _money(receipt.get("grandtotal") or {}),
+        "shipping_collected": _money(receipt.get("total_shipping_cost") or {}),
+        "tax_collected": _money(receipt.get("total_tax_cost") or {})
+                         + _money(receipt.get("total_vat_cost") or {}),
+        "country": receipt.get("country_iso", ""),
+        "state": receipt.get("state", ""),
         "_raw_personalization": personalization,
     }

@@ -114,6 +114,12 @@ ETSY_SHOP_URL: str = os.getenv("ETSY_SHOP_URL", "").strip().rstrip("/")
 # entry for Etsy orders is not possible - this is the industry-standard
 # hosted-checkout handoff instead.)
 PAYMENT_LINK_URL: str = os.getenv("PAYMENT_LINK_URL", "").strip()
+# ── Carrier tracking API (optional - confirms REAL delivery) ──────
+# A tracking aggregator (AfterShip / 17track) key. When set, Printify/Printful
+# orders are confirmed delivered by an actual carrier scan instead of the
+# timer assumption. Empty = timer-assumption fallback (current behavior).
+TRACKING_API_KEY: str = os.getenv("TRACKING_API_KEY", "").strip()
+TRACKING_API_PROVIDER: str = os.getenv("TRACKING_API_PROVIDER", "aftership").strip()
 # Buyer tax is calculated & collected by Etsy (marketplace facilitator) at checkout
 # based on the buyer's location - we do NOT compute it. Optionally show an ESTIMATE
 # on-site for transparency; 0 hides it and we just say "tax calculated by Etsy".

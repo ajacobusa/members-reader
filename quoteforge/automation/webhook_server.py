@@ -111,6 +111,12 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
             item.get("sale_price") or item.get("price") or item.get("item_total")
             or item.get("total") or item.get("order_total") or item.get("grandtotal")),
         "gelato_cost": _parse_money(item.get("gelato_cost")),
+        # Real Etsy figures + ship-to destination (from receipt_to_order_payload)
+        # so reporting + the shipping-variance audit use actual data.
+        "shipping_collected": _parse_money(item.get("shipping_collected")),
+        "tax_collected": _parse_money(item.get("tax_collected")),
+        "country": item.get("country", ""),
+        "state": item.get("state", ""),
     }
 
 

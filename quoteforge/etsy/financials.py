@@ -29,8 +29,24 @@ def order_financials(order: dict) -> dict:
     # in the ledger (it's a time cost, not a per-order one).
     from quoteforge.etsy.profit_calculator import operating_order_profit
     op = operating_order_profit(sale_price, gelato_cost)
-    # Sales tax Etsy collects & remits on your behalf — pass-through, not income
-    sales_tax_collected = round(sale_price * ESTIMATED_SALES_TAX_RATE, 2)
+
+    # Prefer ACTUAL Etsy figures (imported from the Etsy receipt / Orders CSV)
+    # over estimates. Etsy is the marketplace facilitator: sales tax is its
+    # pass-through (collected + remitted; $0 net to you), shown for visibility.
+    actual_tax = order.get("tax_collected")
+    actual_fees = order.get("etsy_fees_actual")
+    actual_payout = order.get("net_payout")
+    shipping_collected = round(float(order.get("shipping_collected") or 0), 2)
+    has_actual = actual_fees is not None or actual_tax is not None
+    sales_tax_collected = (round(float(actual_tax), 2) if actual_tax is not None
+                           else round(sale_price * ESTIMATED_SALES_TAX_RATE, 2))
+    etsy_fees = round(float(actual_fees), 2) if actual_fees is not None else p["total_fees"]
+    if actual_payout is not None:
+        net_payout = round(float(actual_payout), 2)
+    else:
+        # What lands in your account: order total + shipping - Etsy fees (tax is
+        # collected & remitted by Etsy, so it is NOT part of your payout).
+        net_payout = round(sale_price + shipping_collected - etsy_fees, 2)
 
     return {
         "order_id": order.get("order_id", ""),
@@ -38,15 +54,18 @@ def order_financials(order: dict) -> dict:
         "occasion": order.get("occasion", ""),
         "status": order.get("status", ""),
         "created_at": (order.get("created_at", "") or "")[:10],
-        "sale_price": sale_price,
-        "etsy_fees": p["total_fees"],
+        "sale_price": sale_price,                 # order total
+        "shipping_collected": shipping_collected,
+        "etsy_fees": etsy_fees,
         "sales_tax_collected": sales_tax_collected,  # remitted by Etsy, $0 net to you
         "gelato_cost": gelato_cost,
+        "net_payout": net_payout,                 # what actually lands in your account
         "net_profit": p["net_profit"],            # contribution (prices/floor)
         "margin_pct": p["margin_pct"],
         "operating_net_profit": op["net_profit"],  # fully loaded (after op costs)
         "operating_margin_pct": op["margin_pct"],
         "estimated": estimated,
+        "source": "etsy_actual" if has_actual else "estimated",
     }
 
 

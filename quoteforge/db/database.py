@@ -432,6 +432,17 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for _col in ("shipping_cost", "shipping_collected"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} REAL")
+    # Carrier name helps the tracking API confirm real delivery.
+    if "carrier" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN carrier TEXT")
+    # ACTUAL Etsy financials (from the receipt / Orders CSV) - real tax, fees,
+    # and net payout instead of estimates. Null until imported.
+    if "tax_collected" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN tax_collected REAL")
+    if "etsy_fees_actual" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN etsy_fees_actual REAL")
+    if "net_payout" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN net_payout REAL")
     # Recovery escalation stage (0=none,1=1h,2=24h,3=72h sent) for abandoned
     # customizations - so the recovery email escalates instead of firing once.
     accols = {r["name"] for r in conn.execute(
