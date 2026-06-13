@@ -46,8 +46,8 @@ def test_gelato_e2e_route_to_carrier_confirmed_delivery(tmp_path, monkeypatch):
                return_value=gel), \
          patch("quoteforge.automation.etsy_api.create_receipt_shipment",
                return_value={"status": "ok"}), \
-         patch("quoteforge.fulfillment.tracking_api.carrier_status",
-               return_value="in_transit"):
+         patch("quoteforge.fulfillment.tracking_api.carrier_detail",
+               return_value={"status": "in_transit", "delivered_country": "", "delivered_state": ""}):
         r1 = sync_tracking()
     o = db.get_order("QF-1")
     assert o["tracking_number"] == "9400111" and o["carrier"] == "USPS"
@@ -65,8 +65,8 @@ def test_gelato_e2e_route_to_carrier_confirmed_delivery(tmp_path, monkeypatch):
     # 6-7. Carrier later reports DELIVERED -> carrier-confirmed.
     with patch("quoteforge.automation.gelato_api.get_gelato_order_status",
                return_value=gel), \
-         patch("quoteforge.fulfillment.tracking_api.carrier_status",
-               return_value="delivered"):
+         patch("quoteforge.fulfillment.tracking_api.carrier_detail",
+               return_value={"status": "delivered", "delivered_country": "US", "delivered_state": "GA"}):
         r2 = sync_tracking()
     o = db.get_order("QF-1")
     assert o["status"] == "delivered" and o["delivery_confirmed"] == 1

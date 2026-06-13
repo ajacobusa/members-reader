@@ -89,6 +89,55 @@ def import_orders_csv(path) -> dict:
     return {"updated": updated, "rows": rows, "unmatched": unmatched}
 
 
+# Etsy statement 'Type'/'Title' -> our fee bucket. The Title disambiguates the
+# fee type within Type=Fee; Marketing rows are Offsite Ads.
+def _fee_bucket(typ: str, title: str) -> str:
+    """Classify a statement row into a fee bucket, or '' if it's not a fee."""
+    t = (typ or "").strip().lower()
+    ti = (title or "").strip().lower()
+    if t == "marketing" or "offsite" in ti or "ads" in ti:
+        return "offsite_ads"
+    if t == "refund":
+        return "refunds"
+    if t == "fee":
+        if "listing" in ti:
+            return "listing"
+        if "transaction" in ti:
+            return "transaction"
+        if "processing" in ti or "payment" in ti:
+            return "processing"
+        return "other_fees"
+    return ""
+
+
+def import_statement_csv(path) -> dict:
+    """Sum an Etsy Finances STATEMENT CSV by fee type (listing / transaction /
+    processing / offsite_ads / refunds / other_fees) so you can see which fees
+    actually reduce profit. Amounts are returned as positive magnitudes."""
+    import csv
+    p = Path(path)
+    out = {"listing": 0.0, "transaction": 0.0, "processing": 0.0,
+           "offsite_ads": 0.0, "refunds": 0.0, "other_fees": 0.0}
+    if not p.exists():
+        return out
+    with p.open(encoding="utf-8-sig", newline="") as fh:
+        reader = csv.DictReader(fh)
+        norm = {h.strip().lower(): h for h in (reader.fieldnames or [])}
+        c_type = norm.get("type")
+        c_title = norm.get("title")
+        c_ft = norm.get("fees & taxes") or norm.get("fees and taxes")
+        c_amt = norm.get("amount")
+        for row in reader:
+            bucket = _fee_bucket(row.get(c_type, ""), row.get(c_title, ""))
+            if not bucket:
+                continue
+            raw = row.get(c_ft) or row.get(c_amt) or ""
+            val = _money(raw)
+            if val is not None:
+                out[bucket] = round(out[bucket] + abs(val), 2)
+    return out
+
+
 def format_import_text(r: dict) -> str:
     """One-line summary of an Etsy finance import."""
     if r.get("error"):

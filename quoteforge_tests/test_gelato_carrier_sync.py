@@ -27,8 +27,8 @@ def test_gelato_carrier_confirms_delivery(tmp_path, monkeypatch):
                              "carrier": "usps"}), \
          patch("quoteforge.automation.etsy_api.create_receipt_shipment",
                return_value={"status": "ok"}), \
-         patch("quoteforge.fulfillment.tracking_api.carrier_status",
-               return_value="delivered"):       # ...carrier says DELIVERED
+         patch("quoteforge.fulfillment.tracking_api.carrier_detail",
+               return_value={"status": "delivered", "delivered_country": "", "delivered_state": ""}):       # ...carrier says DELIVERED
         from quoteforge.automation.fulfillment_tracker import sync_tracking
         r = sync_tracking()
     o = db.get_order("G1")

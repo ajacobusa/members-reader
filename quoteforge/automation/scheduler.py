@@ -217,6 +217,13 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "the fulfillment state machine; emails the owner on violations (e.g. "
         "production before approval) or items needing individual review "
         "(cancellation after production, disputes, refunds)."),
+    ScheduledJob(
+        "QuoteForge Dispute Scan", "scan-disputes",
+        ["/SC", "HOURLY", "/MO", "6"],
+        "Every 6h: scans the Etsy receipts feed for refunds/cases on delivered "
+        "orders and flags them delivery_disputed so they're not treated as clean "
+        "completions and the review request is suppressed. Disabled without "
+        "Etsy credentials."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

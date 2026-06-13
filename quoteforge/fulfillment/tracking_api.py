@@ -34,32 +34,54 @@ def _configured() -> tuple[str, str]:
     return TRACKING_API_KEY, (TRACKING_API_PROVIDER or "aftership").lower()
 
 
-def carrier_status(tracking_number: str, carrier: str = "") -> str | None:
-    """Normalized carrier state for a tracking number: 'delivered',
-    'in_transit', 'exception', or None (unknown / not configured / no scan).
+def _iso2(country: str) -> str:
+    """Best-effort 2-letter country code (handles 'USA'/'United States')."""
+    c = (country or "").strip().upper()
+    return {"USA": "US", "UNITED STATES": "US", "CAN": "CA", "CANADA": "CA",
+            "GBR": "GB", "UNITED KINGDOM": "GB", "AUS": "AU",
+            "AUSTRALIA": "AU"}.get(c, c[:2])
 
-    None means "the carrier told us nothing usable" - the caller should fall
-    back to its timer assumption rather than treat None as not-delivered.
-    """
+
+def carrier_status(tracking_number: str, carrier: str = "") -> str | None:
+    """Normalized carrier state: 'delivered'/'in_transit'/'exception'/None.
+    Thin wrapper over carrier_detail (kept for callers that only need status)."""
+    return carrier_detail(tracking_number, carrier).get("status")
+
+
+def carrier_detail(tracking_number: str, carrier: str = "") -> dict:
+    """Full carrier detail: {status, delivered_country, delivered_state,
+    estimated_delivery}. status is None when not configured / no usable scan."""
+    blank = {"status": None, "delivered_country": "", "delivered_state": "",
+             "estimated_delivery": ""}
     key, provider = _configured()
     if not (key and tracking_number):
-        return None
+        return blank
     try:
         if provider == "aftership":
-            return _aftership_status(tracking_number, carrier, key)
-        return _seventeentrack_status(tracking_number, key)
+            return _aftership_detail(tracking_number, carrier, key)
+        return {**blank, "status": _seventeentrack_status(tracking_number, key)}
     except Exception:  # noqa: BLE001
-        return None        # carrier API hiccup -> let the caller fall back
+        return blank       # carrier API hiccup -> let the caller fall back
 
 
-def _aftership_status(tn: str, carrier: str, key: str) -> str | None:
-    """Query AfterShip for a tracking number's latest tag."""
+def _aftership_detail(tn: str, carrier: str, key: str) -> dict:
+    """Query AfterShip; return status + the delivered checkpoint's location."""
     url = f"https://api.aftership.com/v4/trackings/{carrier or 'auto'}/{tn}"
     req = urllib.request.Request(url, headers={"aftership-api-key": key})
     with urllib.request.urlopen(req, timeout=15) as r:
         data = json.loads(r.read().decode("utf-8"))
-    tag = (((data.get("data") or {}).get("tracking") or {}).get("tag")) or ""
-    return _AFTERSHIP_MAP.get(tag)
+    trk = ((data.get("data") or {}).get("tracking") or {})
+    status = _AFTERSHIP_MAP.get(trk.get("tag") or "")
+    dc = ds = ""
+    if status == "delivered":
+        # Prefer the Delivered checkpoint's location, else the last checkpoint.
+        cps = trk.get("checkpoints") or []
+        deliv = [c for c in cps if (c.get("tag") or "") == "Delivered"]
+        cp = (deliv or cps[-1:] or [{}])[-1]
+        dc = _iso2(cp.get("country_iso3") or cp.get("country_name") or "")
+        ds = cp.get("state") or ""
+    return {"status": status, "delivered_country": dc, "delivered_state": ds,
+            "estimated_delivery": trk.get("expected_delivery") or ""}
 
 
 def _seventeentrack_status(tn: str, key: str) -> str | None:

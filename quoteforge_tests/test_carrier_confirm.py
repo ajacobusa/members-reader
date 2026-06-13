@@ -25,8 +25,8 @@ def test_carrier_delivered_scan_confirms(tmp_path, monkeypatch):
     db = _seed(tmp_path, monkeypatch)
     _shipped(db, "C1", 3)                         # only 3 days - timer wouldn't fire
     monkeypatch.setattr("quoteforge.config.TRACKING_API_KEY", "k")
-    with patch("quoteforge.fulfillment.tracking_api.carrier_status",
-               return_value="delivered"):
+    with patch("quoteforge.fulfillment.tracking_api.carrier_detail",
+               return_value={"status": "delivered", "delivered_country": "", "delivered_state": ""}):
         from quoteforge.automation.fulfillment_tracker import sync_tracking
         r = sync_tracking()
     o = db.get_order("C1")
@@ -38,8 +38,8 @@ def test_carrier_in_transit_keeps_shipped_even_past_timer(tmp_path, monkeypatch)
     db = _seed(tmp_path, monkeypatch)
     _shipped(db, "C2", 30)                        # past 14d timer
     monkeypatch.setattr("quoteforge.config.TRACKING_API_KEY", "k")
-    with patch("quoteforge.fulfillment.tracking_api.carrier_status",
-               return_value="in_transit"):
+    with patch("quoteforge.fulfillment.tracking_api.carrier_detail",
+               return_value={"status": "in_transit", "delivered_country": "", "delivered_state": ""}):
         from quoteforge.automation.fulfillment_tracker import sync_tracking
         sync_tracking()
     o = db.get_order("C2")

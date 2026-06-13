@@ -1585,6 +1585,22 @@ def _cmd_ask(args: list[str]) -> int:
     return 0
 
 
+def _cmd_financial_report(args: list[str]) -> int:
+    """Expanded financial report: fee-type breakdown (incl. Offsite Ads),
+    refund/cancellation rates, and traffic source. Pass an Etsy STATEMENT csv
+    for the fee breakdown: `financial-report [etsy_statement.csv]`."""
+    from quoteforge.db.database import init_db, get_all_orders
+    from quoteforge.analytics.financial_reports import format_financial_report
+    init_db()
+    fee_summary = None
+    csvs = [a for a in args if a.lower().endswith(".csv")]
+    if csvs:
+        from quoteforge.etsy.etsy_finance_import import import_statement_csv
+        fee_summary = import_statement_csv(csvs[0])
+    print(format_financial_report(get_all_orders(5000), fee_summary))
+    return 0
+
+
 def _cmd_import_etsy_finance(args: list[str]) -> int:
     """Import REAL Etsy financials from an Etsy Orders/statement CSV:
     `import-etsy-finance <path-to-csv>`. Writes actual order total, shipping,
@@ -1693,6 +1709,32 @@ def _cmd_verify_tracking(args: list[str]) -> int:
     return 0
 
 
+def _cmd_scan_disputes(args: list[str]) -> int:
+    """Auto-detect Etsy refunds/cases on delivered orders and flag them
+    `delivery_disputed` (suppresses the review request). Pulls the recent Etsy
+    receipts feed; disabled (no-op) without Etsy credentials."""
+    from quoteforge.db.database import init_db
+    from quoteforge.automation.dispute_scanner import scan_etsy_disputes
+    init_db()
+    r = scan_etsy_disputes()
+    if r["status"] == "disabled":
+        print("Dispute scan disabled — set Etsy API credentials in .env to enable.")
+        return 0
+    if r["disputed"]:
+        print(f"Flagged {len(r['disputed'])} disputed order(s): "
+              f"{', '.join(r['disputed'])}")
+        try:
+            from quoteforge.automation.emailer import _send_email
+            _send_email("⚠️ Etsy dispute detected on delivered order(s)",
+                        "<pre>Flagged delivery_disputed: "
+                        + ", ".join(r["disputed"]) + "</pre>")
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        print("No new Etsy disputes detected.")
+    return 0
+
+
 def _cmd_winback(args: list[str]) -> int:
     """Staged lapsed-customer win-back (60d nudge / 90d 10% / 120d 15%).
     Dry-run by default; `winback send` actually emails + advances each stage."""
@@ -1731,10 +1773,10 @@ def _cmd_track_orders(args: list[str]) -> int:
     r = sync_tracking()
     text = format_tracking_text(r)
     print(text)
-    # Anything needing a human - stuck, missing tracking, stale in transit, or
-    # poll errors - is the owner's to chase. Alert.
+    # Anything needing a human - stuck, missing tracking, stale in transit,
+    # wrong-destination delivery, or poll errors - is the owner's to chase.
     if (r.get("stuck") or r.get("errors") or r.get("tracking_missing")
-            or r.get("stale_in_transit")):
+            or r.get("stale_in_transit") or r.get("address_mismatch")):
         try:
             from quoteforge.automation.emailer import _send_email
             _send_email("⚠️ Fulfillment needs attention",
@@ -2043,12 +2085,14 @@ COMMANDS = {
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
     "import-etsy-finance": _cmd_import_etsy_finance,
+    "financial-report": _cmd_financial_report,
     "monitor-orders": _cmd_monitor_orders,
     "classify-claim": _cmd_classify_claim,
     "dispute": _cmd_dispute,
     "mark-delivered": _cmd_mark_delivered,
     "no-review": _cmd_no_review,
     "verify-tracking": _cmd_verify_tracking,
+    "scan-disputes": _cmd_scan_disputes,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,

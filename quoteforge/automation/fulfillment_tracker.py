@@ -123,30 +123,50 @@ def mark_delivery_disputed(order_id: str, reason: str = "") -> None:
     log_pipeline_stage(order_id, "delivery", "disputed", reason or "post-delivery dispute")
 
 
-def _carrier_confirm(order: dict, delivered_confirmed: list) -> str:
+def _carrier_confirm(order: dict, delivered_confirmed: list,
+                     address_mismatch: list = None) -> str:
     """Poll the carrier (tracking API) for a tracked order of ANY vendor. On a
     real 'delivered' scan, mark the order carrier-confirmed (delivery_confirmed
-    =1) and append it. Returns the carrier state ('delivered'/'in_transit'/
-    'exception') or '' when no API/tracking/usable answer."""
+    =1) and append it - AND sanity-check the delivered country against the
+    order's ship-to (a mismatch is flagged for review, catching wrong-
+    destination delivery). Returns the carrier state or '' when no usable answer."""
     from quoteforge.config import TRACKING_API_KEY
     if not (TRACKING_API_KEY and order.get("tracking_number")):
         return ""
-    from quoteforge.fulfillment.tracking_api import carrier_status
-    st = carrier_status(order["tracking_number"], order.get("carrier") or "")
+    from quoteforge.fulfillment.tracking_api import carrier_detail
+    d = carrier_detail(order["tracking_number"], order.get("carrier") or "")
+    st = d.get("status")
     if st == "delivered":
         from quoteforge.db.database import update_order
         update_order(order["order_id"], status="delivered",
                      delivery_confirmed=1,
                      delivered_at=order.get("delivered_at") or _now_iso())
         delivered_confirmed.append(order["order_id"])
+        # Delivered-address sanity check: country delivered vs ordered.
+        if address_mismatch is not None:
+            want = _iso2_country(order.get("country") or "")
+            got = _iso2_country(d.get("delivered_country") or "")
+            if want and got and want != got:
+                address_mismatch.append(order["order_id"])
+                from quoteforge.db.database import log_pipeline_stage
+                log_pipeline_stage(order["order_id"], "delivery",
+                                   "address_mismatch",
+                                   f"delivered to {got}, ordered to {want}")
     return st or ""
 
 
+def _iso2_country(country: str) -> str:
+    """2-letter country code (delegates to the tracking-api normalizer)."""
+    from quoteforge.fulfillment.tracking_api import _iso2
+    return _iso2(country)
+
+
 def _confirm_or_assume_delivery(order: dict, delivered_confirmed: list,
-                                delivered_assumed: list) -> None:
+                                delivered_assumed: list,
+                                address_mismatch: list = None) -> None:
     """Resolve delivery for a Printify/Printful order (which never report
     delivery themselves): carrier-confirm first, else the timer ASSUMPTION."""
-    st = _carrier_confirm(order, delivered_confirmed)
+    st = _carrier_confirm(order, delivered_confirmed, address_mismatch)
     if st in ("delivered", "in_transit", "exception"):
         return                      # carrier is authoritative - trust it
     # No carrier data -> timer assumption (these vendors have no signal at all).
@@ -208,7 +228,7 @@ def sync_tracking(limit: int = 500) -> dict:
     init_db()
     newly_shipped, pushed, stuck = [], [], []
     delivered_confirmed, delivered_assumed = [], []
-    tracking_missing, stale_in_transit = [], []
+    tracking_missing, stale_in_transit, address_mismatch = [], [], []
     errors = 0
     for o in get_all_orders(limit):
         gid = o.get("vendor_order_id") or o.get("gelato_order_id")
@@ -227,7 +247,8 @@ def sync_tracking(limit: int = 500) -> dict:
         if vendor in _NO_DELIVERY_SIGNAL and had_tracking:
             _backfill_shipped_at(o)
             _retry_buyer_push(o, pushed)
-            _confirm_or_assume_delivery(o, delivered_confirmed, delivered_assumed)
+            _confirm_or_assume_delivery(o, delivered_confirmed,
+                                        delivered_assumed, address_mismatch)
             continue
 
         try:
@@ -267,7 +288,7 @@ def sync_tracking(limit: int = 500) -> dict:
             # Has tracking but the vendor hasn't confirmed delivery (Gelato often
             # only reports 'shipped') -> ask the CARRIER. No timer for Gelato:
             # it stays shipped until a real delivered scan, never falsely +.
-            _carrier_confirm(o, delivered_confirmed)
+            _carrier_confirm(o, delivered_confirmed, address_mismatch)
         elif not tn and _is_stuck(o):
             stuck.append(o["order_id"])
 
@@ -282,6 +303,7 @@ def sync_tracking(limit: int = 500) -> dict:
         "stuck": stuck,
         "tracking_missing": tracking_missing,
         "stale_in_transit": stale_in_transit,
+        "address_mismatch": address_mismatch,
         "errors": errors,
     }
 
@@ -301,6 +323,9 @@ def format_tracking_text(r: dict) -> str:
     if r.get("stale_in_transit"):
         lines.append(f"  Stale in transit : {len(r['stale_in_transit'])} -> "
                      f"{', '.join(r['stale_in_transit'][:5])}")
+    if r.get("address_mismatch"):
+        lines.append(f"  WRONG DESTINATION: {len(r['address_mismatch'])} -> "
+                     f"{', '.join(r['address_mismatch'][:5])}")
     if r.get("errors"):
         lines.append(f"  Poll errors      : {r['errors']}")
     return "\n".join(lines)
