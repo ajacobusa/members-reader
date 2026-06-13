@@ -84,13 +84,14 @@ LAPSED_CUSTOMER_DAYS: int = int(os.getenv("LAPSED_CUSTOMER_DAYS", "90"))
 CLV_DUE_SOON_DAYS: int = int(os.getenv("CLV_DUE_SOON_DAYS", "10"))
 # Claim reporting deadlines (calendar days from the delivery anchor). 0..REPORT
 # = auto-accept; REPORT+1..FLAG = manual review; > FLAG = management approval.
-# SUPPLIER is the production partner's filing window: past it the partner won't
-# reimburse a damage/defect claim, so any approval is goodwill/at-cost.
-# SUPPLIER_CLAIM_DAYS=30 matches Gelato Create's published quality guarantee
-# ("get in touch within 30 days of receiving the item"); our 7-day customer
-# window nests well inside it. Override if a partner contract differs.
-CLAIM_REPORT_DAYS: int = int(os.getenv("CLAIM_REPORT_DAYS", "7"))
-CLAIM_FLAG_DAYS: int = int(os.getenv("CLAIM_FLAG_DAYS", "10"))
+# Gelato Create's quality guarantee accepts claims within 30 days of receipt
+# (SUPPLIER_CLAIM_DAYS). We set the customer auto-accept window to 20 days to
+# KEEP A 10-DAY BUFFER inside that 30 for customer back-and-forth, photo
+# collection, and filing with Gelato before its cutoff. Days 21-30 are still
+# file-able but flagged (buffer zone); past 30 the partner won't reimburse, so
+# any approval is goodwill/at-cost. Override via env if a contract differs.
+CLAIM_REPORT_DAYS: int = int(os.getenv("CLAIM_REPORT_DAYS", "20"))
+CLAIM_FLAG_DAYS: int = int(os.getenv("CLAIM_FLAG_DAYS", "30"))
 SUPPLIER_CLAIM_DAYS: int = int(os.getenv("SUPPLIER_CLAIM_DAYS", "30"))
 PACKAGING_COST_USD: float = float(os.getenv("PACKAGING_COST_USD", "0.75"))
 REPRINT_RESERVE_PCT: float = float(os.getenv("REPRINT_RESERVE_PCT", "3"))

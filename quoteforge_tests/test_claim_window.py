@@ -1,7 +1,8 @@
 """Claim reporting-deadline (time-window) policy on top of the fault/outcome
-resolution engine. Customer window 7 days from the delivery anchor; 8-10 flags
-for manual review; >=11 needs management approval; past the production-partner
-filing window (Gelato Create = 30 days) the partner won't reimburse (goodwill).
+resolution engine. Customer auto-accept window 20 days from the delivery anchor
+(a 10-day buffer inside Gelato Create's 30-day guarantee); 21-30 is the buffer
+zone -> manual review (Gelato may still pay); past 30 needs management approval
+and the partner won't reimburse (goodwill/at-cost).
 
 Anchors: carrier-confirmed delivery date when we have it; otherwise the
 estimated-delivery date (assumed-delivered orders with no carrier timestamp)."""
@@ -15,39 +16,38 @@ def _delivered(days_ago: int, confirmed: int = 1) -> dict:
     return {"order_id": "X", "delivery_confirmed": confirmed, "delivered_at": d}
 
 
-def test_within_7_days_is_eligible():
-    w = claim_window(_delivered(3))
+def test_within_customer_window_is_eligible():
+    # 0..20 days -> auto-accept (keeps the >=10-day buffer before Gelato's 30d).
+    w = claim_window(_delivered(5))
     assert w["eligibility"] == "eligible"
     assert w["anchor_type"] == "carrier_confirmed"
     assert w["within_supplier_window"] is True
+    assert claim_window(_delivered(20))["eligibility"] == "eligible"   # boundary
 
 
 def test_reported_at_delivery_is_eligible():
     assert claim_window(_delivered(0))["eligibility"] == "eligible"
 
 
-def test_8_to_10_days_is_manual_review():
-    assert claim_window(_delivered(9))["eligibility"] == "manual_review"
+def test_buffer_zone_21_to_30_is_manual_review():
+    assert claim_window(_delivered(25))["eligibility"] == "manual_review"
+    w = claim_window(_delivered(30))                    # boundary, Gelato still pays
+    assert w["eligibility"] == "manual_review"
+    assert w["within_supplier_window"] is True          # 30 <= 30
 
 
-def test_11_plus_is_management_approval_but_still_in_supplier_window():
-    w = claim_window(_delivered(20))
-    assert w["eligibility"] == "management_approval"
-    assert w["within_supplier_window"] is True          # 20 <= 30 (Gelato Create)
-
-
-def test_past_supplier_window_is_flagged():
+def test_past_gelato_window_is_management_approval_and_unfunded():
     w = claim_window(_delivered(35))
     assert w["eligibility"] == "management_approval"
     assert w["within_supplier_window"] is False         # past 30d -> no reimbursement
 
 
 def test_assumed_delivery_anchors_to_estimated_delivery():
-    eta = (datetime.now() - timedelta(days=9)).date().isoformat()
+    eta = (datetime.now() - timedelta(days=25)).date().isoformat()
     w = claim_window({"order_id": "Y", "delivery_confirmed": 0,
                       "estimated_delivery": eta})
     assert w["anchor_type"] == "estimated_delivery"
-    assert w["eligibility"] == "manual_review"
+    assert w["eligibility"] == "manual_review"           # 25 -> buffer zone
 
 
 def test_carrier_confirmed_preferred_over_estimated():
