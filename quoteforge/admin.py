@@ -1709,6 +1709,20 @@ def _cmd_verify_tracking(args: list[str]) -> int:
     return 0
 
 
+def _cmd_export_bi(args: list[str]) -> int:
+    """Build the BI deliverables from live data: the Excel workbooks (with
+    charts) in Excel/, and the Power BI package (star-schema CSVs + DAX +
+    model/report spec + exec presentation PDF) in 'Power BI/'."""
+    from quoteforge.analytics.bi_exports import export_all
+    r = export_all()
+    print("Excel workbooks:")
+    for p in r["excel"]:
+        print(f"  {p}")
+    print(f"Power BI data files : {len(r['powerbi']['data'])} CSVs + DAX + model + README")
+    print(f"Presentation        : {r['presentation']}")
+    return 0
+
+
 def _cmd_scan_disputes(args: list[str]) -> int:
     """Auto-detect Etsy refunds/cases on delivered orders and flag them
     `delivery_disputed` (suppresses the review request). Pulls the recent Etsy
@@ -2093,6 +2107,7 @@ COMMANDS = {
     "no-review": _cmd_no_review,
     "verify-tracking": _cmd_verify_tracking,
     "scan-disputes": _cmd_scan_disputes,
+    "export-bi": _cmd_export_bi,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,

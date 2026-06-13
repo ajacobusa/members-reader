@@ -1,0 +1,24 @@
+// QuoteForge - Power BI measures (paste into a 'Measures' table)
+// Create: Home > Enter Data > name it "_Measures" > then add these via New Measure.
+
+Revenue = SUM ( fact_orders[sale_price] )
+COGS = SUM ( fact_orders[gelato_cost] )
+Etsy Fees = SUM ( fact_orders[etsy_fees_actual] )
+Gross Profit = [Revenue] - [COGS]
+Net Profit = [Revenue] - [COGS] - [Etsy Fees]
+Net Margin % = DIVIDE ( [Net Profit], [Revenue] )
+Orders = DISTINCTCOUNT ( fact_orders[order_id] )
+AOV = DIVIDE ( [Revenue], [Orders] )
+
+Refunded Orders = CALCULATE ( [Orders], fact_orders[status] = "refunded" )
+Cancelled Orders = CALCULATE ( [Orders], fact_orders[status] = "cancelled" )
+Refund Rate % = DIVIDE ( [Refunded Orders], [Orders] )
+Cancellation Rate % = DIVIDE ( [Cancelled Orders], [Orders] )
+
+Total Fees = SUM ( fact_fees[amount] )
+Offsite Ads Fee = CALCULATE ( [Total Fees], fact_fees[fee] = "offsite_ads" )
+Offsite Ads % of Revenue = DIVIDE ( [Offsite Ads Fee], [Revenue] )
+
+Tax Collected = SUM ( fact_orders[tax_collected] )
+Net Payout = SUM ( fact_orders[net_payout] )
+Delivered Orders = CALCULATE ( [Orders], fact_orders[delivery_confirmed] = 1 )

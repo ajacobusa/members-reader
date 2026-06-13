@@ -1,0 +1,10 @@
+order_id,order_date,status,vendor,channel,product_type,material,size,country,acquisition_source,sale_price,gelato_cost,shipping_collected,tax_collected,etsy_fees_actual,net_payout,item_count,delivery_confirmed,delivered_at
+A1,2026-06-08,received,gelato,etsy,print,,,,,50.0,0.0,0.0,0.0,0.0,0.0,1,0,
+A2,2026-06-08,received,gelato,etsy,print,,,,,30.0,0.0,0.0,0.0,0.0,0.0,1,0,
+B1,2026-06-08,received,gelato,etsy,print,,,,,20.0,0.0,0.0,0.0,0.0,0.0,1,0,
+W0,2026-06-08,received,gelato,etsy,print,,,,,40.0,0.0,0.0,0.0,0.0,0.0,1,0,
+W1,2026-06-08,received,gelato,etsy,print,,,,,40.0,0.0,0.0,0.0,0.0,0.0,1,0,
+W2,2026-06-08,received,gelato,etsy,print,,,,,40.0,0.0,0.0,0.0,0.0,0.0,1,0,
+QF-202606032304373050,2026-06-04,proof_sent,gelato,etsy,print,,,,,0.0,0.0,0.0,0.0,0.0,0.0,1,0,
+QF-202606032304374075,2026-06-04,proof_sent,gelato,etsy,print,,,,,0.0,0.0,0.0,0.0,0.0,0.0,1,0,
+QF-202606032221439910,2026-06-04,received,gelato,etsy,print,,,,,0.0,0.0,0.0,0.0,0.0,0.0,1,0,
