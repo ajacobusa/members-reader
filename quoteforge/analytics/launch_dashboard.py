@@ -79,7 +79,62 @@ def launch_metrics() -> dict:
             "margin_pct": round(profit / revenue * 100) if revenue else 0,
             "keywords": _keywords([o.get("product_title") or "" for o in orders]),
             "occasions": occ.most_common(8),
+            "listings": listing_conversion(),
             "listings_tracked": len(stats)}
+
+
+# Per-listing diagnostic thresholds (tunable). Etsy conversion averages ~1-3%.
+_LOW_CONV_PCT = 1.0       # below this with real traffic = a listing problem
+_GOOD_CONV_PCT = 2.5      # at/above this = the listing converts well
+_MIN_VIEWS = 100          # "real traffic" - enough views to judge conversion
+_LOW_TRAFFIC = 100        # below this with good conversion = an SEO problem
+
+
+def listing_conversion() -> list[dict]:
+    """Per-listing views/favorites/orders/conversion/revenue/profit + a
+    diagnostic flag that says WHERE money is being left on the table:
+      - 'listing_problem': real traffic but conversion is poor (fix the
+        listing - photos, price, copy).
+      - 'seo_problem': converts well but barely any traffic (fix discovery -
+        SEO, tags, ads).
+      - 'ok' / 'low_data': converting fine, or not enough data yet.
+    """
+    from quoteforge.db.database import init_db, get_all_orders
+    from quoteforge.etsy.profit_calculator import operating_order_profit
+    init_db()
+    p = _stats_path()
+    stats = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    orders = [o for o in get_all_orders()
+              if (o.get("status") or "") not in ("cancelled", "error")]
+
+    def _key(o: dict) -> str:
+        """Normalized listing key for matching an order to a tracked listing."""
+        return (o.get("listing") or o.get("product_title") or "").strip().lower()
+
+    rows = []
+    for listing, s in stats.items():
+        lk = listing.strip().lower()
+        mine = [o for o in orders if _key(o) == lk]
+        n = len(mine)
+        views = int(s.get("views", 0))
+        revenue = round(sum(float(o.get("sale_price") or 0) for o in mine), 2)
+        profit = round(sum(operating_order_profit(
+            float(o.get("sale_price") or 0),
+            float(o.get("gelato_cost") or 0))["net_profit"] for o in mine), 2)
+        conv = round(n / views * 100, 2) if views else None
+        if conv is None or (views < _MIN_VIEWS and n < 3):
+            flag = "low_data"
+        elif views >= _MIN_VIEWS and conv < _LOW_CONV_PCT:
+            flag = "listing_problem"
+        elif conv >= _GOOD_CONV_PCT and views < _LOW_TRAFFIC:
+            flag = "seo_problem"
+        else:
+            flag = "ok"
+        rows.append({"listing": listing, "views": views,
+                     "favorites": int(s.get("favorites", 0)), "orders": n,
+                     "conversion_pct": conv, "revenue": revenue,
+                     "profit": profit, "flag": flag})
+    return sorted(rows, key=lambda r: r["revenue"], reverse=True)
 
 
 def format_dashboard(m: dict) -> str:
@@ -97,5 +152,15 @@ def format_dashboard(m: dict) -> str:
     lines += [f"    {w:<16} x{n}" for w, n in m["keywords"]] or ["    (no sales yet)"]
     lines.append("  Top occasions:")
     lines += [f"    {o:<16} x{n}" for o, n in m["occasions"]] or ["    (no sales yet)"]
+    rows = m.get("listings") or listing_conversion()
+    if rows:
+        lines.append("  Per-listing (views / orders / conv / profit / flag):")
+        _label = {"listing_problem": "FIX LISTING", "seo_problem": "FIX SEO",
+                  "ok": "ok", "low_data": "low data"}
+        for r in rows[:15]:
+            cv = f"{r['conversion_pct']}%" if r["conversion_pct"] is not None else "n/a"
+            lines.append(f"    {r['listing'][:24]:<24} {r['views']:>5}v "
+                         f"{r['orders']:>3}o  {cv:>6}  ${r['profit']:>7.2f}  "
+                         f"{_label.get(r['flag'], r['flag'])}")
     lines.append("=" * 58)
     return "\n".join(lines)
