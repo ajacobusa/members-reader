@@ -36,8 +36,28 @@ def test_lapsed_customer_surfaces_in_winback():
     assert "active@b.com" not in emails
 
 
+def test_clv_median_and_predicted_next():
+    """Median days between orders + a predicted next-purchase date per repeat
+    customer, plus a 'due soon' list for pre-emptive outreach."""
+    from quoteforge.analytics.clv import build_clv
+    # 3 orders ~30 days apart; last ~28 days ago -> next due in ~2 days
+    orders = [
+        {"customer_email": "r@b.com", "sale_price": 20, "created_at": _ago(88)},
+        {"customer_email": "r@b.com", "sale_price": 20, "created_at": _ago(58)},
+        {"customer_email": "r@b.com", "sale_price": 20, "created_at": _ago(28)},
+    ]
+    clv = build_clv(orders)
+    assert "median_days_between_orders" in clv
+    c = clv["top_customers"][0]
+    assert 25 <= c["median_days_between"] <= 35
+    assert c["predicted_next"]                      # a date string
+    # within the default due-soon window -> surfaced for pre-emptive outreach
+    assert any(d["email"] == "r@b.com" for d in clv["due_soon"])
+
+
 def test_no_orders_safe():
     from quoteforge.analytics.clv import build_clv
     clv = build_clv([])
     assert clv["customers"] == 0 and clv["winback"] == []
     assert clv["avg_days_between_orders"] == 0
+    assert clv["due_soon"] == []
