@@ -607,18 +607,27 @@
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px;
    transition:box-shadow .25s,border-color .25s,background .25s}
- .orderbox .lbl{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}
+ /* The order header is a full-width step banner, not a quiet text line. */
+ .orderbox .lbl{font-size:14.5px;color:#fff;font-weight:800;letter-spacing:.01em;
+   margin:-12px -12px 12px;padding:12px 14px;border-radius:11px 11px 0 0;
+   background:linear-gradient(135deg,#103d2e,#1d6048);display:flex;
+   align-items:center;justify-content:space-between;gap:10px;
+   transition:background .25s}
  /* When frame selection is done, the whole order card becomes the active next
-    step: a gold ring (via box-shadow, so no layout shift), lift, tint + badge. */
+    step: a gold ring (via box-shadow, so no layout shift), lift, tint, a GOLD
+    banner + a pulsing 'Next step' badge - impossible to miss. */
  .orderbox.stepnow{border-color:var(--gold);
-   box-shadow:0 0 0 2px var(--gold),0 10px 30px rgba(201,168,76,.32);
+   box-shadow:0 0 0 2px var(--gold),0 12px 32px rgba(201,168,76,.34);
    background:linear-gradient(180deg,#fffdf6,#fff)}
+ .orderbox.stepnow .lbl{color:#3a2c05;
+   background:linear-gradient(135deg,var(--gold-d),var(--gold))}
  .orderbox .stepbadge{display:none}
- .orderbox.stepnow .stepbadge{display:inline-block;margin-left:8px;font-size:11px;
-   font-weight:800;letter-spacing:.02em;color:#7a5c12;background:#fbf1d4;
-   border:1px solid var(--gold);border-radius:999px;padding:2px 10px;
-   vertical-align:middle;animation:badgepulse 1.3s ease-in-out infinite}
- @keyframes badgepulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+ .orderbox.stepnow .stepbadge{display:inline-flex;align-items:center;
+   font-size:11.5px;font-weight:800;letter-spacing:.02em;color:#7a5c12;
+   background:#fff;border-radius:999px;padding:3px 11px;white-space:nowrap;
+   box-shadow:0 1px 4px rgba(0,0,0,.18);
+   animation:badgepulse 1.2s ease-in-out infinite}
+ @keyframes badgepulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
  .orow{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:8px}
  .orow label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
  .orow select{padding:8px;border:1px solid #cdbf98;border-radius:8px;font-size:13px}
