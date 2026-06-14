@@ -1646,6 +1646,31 @@ def _cmd_classify_claim(args: list[str]) -> int:
     return 0
 
 
+def _cmd_file_claim(args: list[str]) -> int:
+    """Stage a Gelato reprint claim for an order: `file-claim <order_id>
+    <issue_type> [photo ...]`. Builds the Report-Problem checklist (mandatory
+    photos, 30-day window, dashboard deep link) + the keep-the-item customer
+    reply, and records claim_status. Gelato takes NO returns - covered issues
+    are reprinted, so the customer never ships anything back."""
+    if len(args) < 2:
+        print("Usage: file-claim <order_id> <issue_type> [photo ...]")
+        return 1
+    from quoteforge.db.database import init_db, get_order
+    from quoteforge.fulfillment.gelato_returns import (build_claim_package,
+                                                      format_claim_text, record_claim)
+    init_db()
+    order = get_order(args[0])
+    if not order:
+        print(f"Order {args[0]} not found.")
+        return 1
+    pkg = build_claim_package(order, args[1], photos=args[2:] or None)
+    print(format_claim_text(pkg))
+    if pkg["gelato_covered"]:
+        record_claim(args[0], pkg["category"],
+                     "ready" if pkg["ready_to_file"] else "staged")
+    return 0
+
+
 def _cmd_dispute(args: list[str]) -> int:
     """Flag a delivered order as DISPUTED (Etsy case / refund / complaint) so it
     isn't a clean completion and no review is requested: `dispute <order_id>
@@ -2104,6 +2129,7 @@ COMMANDS = {
     "financial-report": _cmd_financial_report,
     "monitor-orders": _cmd_monitor_orders,
     "classify-claim": _cmd_classify_claim,
+    "file-claim": _cmd_file_claim,
     "dispute": _cmd_dispute,
     "mark-delivered": _cmd_mark_delivered,
     "no-review": _cmd_no_review,

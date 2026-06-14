@@ -446,6 +446,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
                  "manual_delivery_confirmed"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} INTEGER DEFAULT 0")
+    # Gelato claim tracking (defect/damage/loss -> reprint via Report Problem).
+    #   claim_status     : staged | filed | approved | rejected
+    #   claim_category   : the resolution-engine issue category claimed
+    #   claim_filed_at   : ISO timestamp the claim was staged/filed
+    #   claim_resolution : Gelato's verdict text once it replies
+    for _col in ("claim_status", "claim_category", "claim_filed_at",
+                 "claim_resolution"):
+        if _col not in cols:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} TEXT")
     # ACTUAL Etsy financials (from the receipt / Orders CSV) - real tax, fees,
     # and net payout instead of estimates. Null until imported.
     if "tax_collected" not in cols:
