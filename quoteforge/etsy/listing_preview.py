@@ -1781,6 +1781,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .pulseanim{{animation:ctapulse 1.1s ease-out 3;border-radius:12px}}
  /* Task-bound pulse: blinks until the customer actually finishes the step. */
  .pulseon{{animation:ctapulse 1.2s ease-out infinite;border-radius:12px}}
+ /* Size/Qty dropdowns glow-pulse to draw the eye until a size is chosen. */
+ @keyframes selattn{{0%,100%{{box-shadow:0 0 0 0 rgba(201,168,76,0);
+     border-color:#cdbf98}}
+   50%{{box-shadow:0 0 0 5px rgba(201,168,76,.42);border-color:var(--green)}}}}
+ .orow select.attn{{animation:selattn .95s ease-in-out infinite}}
+ @media (prefers-reduced-motion:reduce){{
+   .orow select.attn{{animation:none;border-color:var(--green);
+     box-shadow:0 0 0 4px rgba(201,168,76,.32)}}}}
  /* The active section tab breathes softly - a quiet 'you are here' while
     the strong pulse marks the one action that completes the task. */
  @keyframes tabglowk{{0%,100%{{box-shadow:0 6px 16px rgba(16,61,46,.28)}}
@@ -2503,6 +2511,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function guide(){{
    document.querySelectorAll('.pulseon').forEach(function(e){{
      e.classList.remove('pulseon'); }});
+   document.querySelectorAll('.orow select.attn').forEach(function(e){{
+     e.classList.remove('attn'); }});
    // The active section tab breathes softly (the strong pulse stays on the
    // ONE action that finishes the current task).
    document.querySelectorAll('#esectabs button').forEach(function(b){{
@@ -2518,7 +2528,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(ESEC===2){{ on('esec2next'); return; }}
    const sv=((document.getElementById('msize')||{{}}).value)||'';
    if(!sv){{ const row=document.querySelector('#morderbox .orow');
-     if(row) row.classList.add('pulseon'); return; }}
+     if(row) row.classList.add('pulseon');
+     ['msize','mqty'].forEach(function(id){{
+       const s=document.getElementById(id); if(s) s.classList.add('attn'); }});
+     return; }}
    if(!REVIEWED){{ on('mreviewbtn'); on('seefinalbtn'); return; }}
    on('maddbtn');
  }}

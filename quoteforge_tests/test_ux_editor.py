@@ -18,6 +18,19 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_size_qty_dropdowns_pulse_until_selected(tmp_path):
+    """The Size/Qty dropdowns glow-pulse to grab attention until the buyer
+    picks a size, then the pulse clears (no forever-blink). Reduced-motion
+    users get a static highlight instead of animation."""
+    h = _page(tmp_path)
+    assert "@keyframes selattn" in h
+    assert ".orow select.attn" in h
+    assert "prefers-reduced-motion" in h
+    # Wired into the guidance lifecycle: added when no size, cleared otherwise.
+    assert "s.classList.add('attn')" in h
+    assert "select.attn" in h and "classList.remove('attn')" in h
+
+
 def test_editor_has_progress_stepper(tmp_path):
     """Customers always know where they are: Customize -> Review -> Approve
     -> Checkout, with the current step marked for assistive tech."""
