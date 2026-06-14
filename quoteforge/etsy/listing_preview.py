@@ -202,18 +202,33 @@ def _service_request_form() -> str:
         "_srMsg('Please confirm the information is accurate.');return;}"
         "var g=function(id){var e=document.getElementById(id);"
         "return e?e.value.trim():'';};"
-        "var lines=['Customer service request','',"
+        "var done=function(){document.getElementById('sr_form').style.display='none';"
+        "document.getElementById('sr_done').style.display='block';};"
+        "var mailto=function(){var lines=['Customer service request','',"
         "'Name: '+g('sr_name'),'Order number: '+g('sr_order'),"
         "'Email: '+g('sr_email'),'Phone: '+g('sr_phone'),"
         "'Issue type: '+g('sr_issue'),'Delivery date: '+g('sr_delivery'),"
         "'','Description:',g('sr_desc'),'',"
         "'(Please attach the product/packaging photos you selected to this email.)'];"
-        "var href='mailto:'+OWNER+'?subject='+"
+        "window.location.href='mailto:'+OWNER+'?subject='+"
         "encodeURIComponent('Service request - '+g('sr_order'))+"
-        "'&body='+encodeURIComponent(lines.join('\\n'));"
-        "document.getElementById('sr_form').style.display='none';"
-        "document.getElementById('sr_done').style.display='block';"
-        "window.location.href=href;};})();</script>")
+        "'&body='+encodeURIComponent(lines.join('\\n'));};"
+        # When a backend is configured, POST the request + photo files so it is
+        # validated + documented automatically; otherwise fall back to email.
+        "if(typeof SERVICE_API!=='undefined' && SERVICE_API){"
+        "var fd=new FormData();"
+        "var map={sr_name:'name',sr_order:'order_number',sr_email:'email',"
+        "sr_phone:'phone',sr_issue:'issue_type',sr_desc:'description',"
+        "sr_delivery:'delivery_date'};"
+        "for(var k in map){fd.append(map[k],g(k));}fd.append('consent','1');"
+        "var pp=document.getElementById('sr_ph_product');"
+        "if(pp&&pp.files){for(var i=0;i<pp.files.length;i++)fd.append('product_photo',pp.files[i]);}"
+        "var pk=document.getElementById('sr_ph_pkg');"
+        "if(pk&&pk.files){for(var j=0;j<pk.files.length;j++)fd.append('packaging_photo',pk.files[j]);}"
+        "_srMsg('Submitting...');"
+        "fetch(SERVICE_API,{method:'POST',body:fd}).then(function(r){return r.json();})"
+        ".then(function(){done();}).catch(function(){mailto();done();});return;}"
+        "mailto();done();};})();</script>")
     return form + script
 
 
@@ -252,10 +267,10 @@ def _competitive_sections() -> str:
     # Plain-English returns/promise policy - matches what our print partner
     # actually covers (free reprint, no physical return) without naming any
     # marketplace. Keeps the customer promise nested inside the 30-day partner
-    # window via a 10-day reporting ask.
+    # window via a 7-day reporting ask.
     policy_points = [
         ("Arrived damaged or a print defect?",
-         "That\'s on us. Message a photo within 10 days of delivery and we\'ll "
+         "That\'s on us. Message a photo within 7 days of delivery and we\'ll "
          "send a free replacement - there\'s no need to return the original, "
          "just keep or recycle it."),
         ("Made-to-order means please check carefully",
@@ -268,7 +283,7 @@ def _competitive_sections() -> str:
          "happily reship to a corrected address for a small shipping fee - just "
          "send us the right address."),
         ("Lost in the mail?",
-         "If tracking stalls and it doesn\'t arrive, contact us within 10 days "
+         "If tracking stalls and it doesn\'t arrive, contact us within 7 days "
          "of the expected date and we\'ll arrange a free replacement."),
     ]
     policy_html = "".join(
@@ -2674,7 +2689,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        'I understand this is made to order and prints exactly as shown above</label>'+
      '<div style="margin-top:.55rem;font-size:.85rem;color:#5b3fa0">'+
        'Arrives damaged in transit? That is on us - we send a free replacement, '+
-       'just message a photo within 10 days.</div></div>';
+       'just message a photo within 7 days.</div></div>';
  }}
  function _syncConfirmGate(){{
    var a=document.getElementById('proofAcceptBtn');
@@ -3313,6 +3328,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const SIGNUP_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/signup') : "";
  const CUSTOMIZE_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/customization') : "";
  const UPLOAD_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/upload') : "";
+ const SERVICE_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/service-request') : "";
  const DESIGN_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/design') : "";
  const CONFIRM_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/confirm') : "";
  function knownEmail(){{ try{{return localStorage.getItem('jf_email')||"";}}catch(e){{return "";}} }}

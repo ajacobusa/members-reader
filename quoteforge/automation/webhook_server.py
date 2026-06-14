@@ -476,6 +476,65 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
 
+    @app.route("/service-request", methods=["POST", "OPTIONS"])
+    def service_request():
+        """Customer service/return request intake. Multipart fields: name,
+        order_number, email, phone, issue_type, description, delivery_date,
+        consent, product_photo(s), packaging_photo(s). Saves any photos,
+        validates against the order record, documents the request, and returns
+        the individual-review acknowledgement (never reveals the supplier)."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        form = request.form
+        email = (form.get("email") or "").strip()
+        photos: list = []
+
+        def _save(field: str, label: str) -> None:
+            """Persist any uploaded photos for a field and record its label."""
+            from werkzeug.utils import secure_filename
+            from quoteforge.automation.print_quality import SUPPORTED
+            for fobj in request.files.getlist(field):
+                if not fobj or not fobj.filename:
+                    continue
+                nm = secure_filename(fobj.filename or "")
+                if not nm.lower().endswith(SUPPORTED):
+                    continue
+                try:
+                    import tempfile, os as _os
+                    from quoteforge.customers import save_upload
+                    tmp = _os.path.join(tempfile.gettempdir(), nm)
+                    fobj.save(tmp)
+                    save_upload(email, tmp, name=form.get("name", ""))
+                except Exception:  # noqa: BLE001 - a save hiccup must not drop the claim
+                    pass
+                if label not in photos:
+                    photos.append(label)
+
+        _save("product_photo", "product")
+        _save("packaging_photo", "packaging")
+        req = {"order_number": (form.get("order_number") or "").strip(),
+               "name": (form.get("name") or "").strip(), "email": email,
+               "phone": (form.get("phone") or "").strip(),
+               "issue_type": (form.get("issue_type") or "").strip(),
+               "description": (form.get("description") or "").strip(),
+               "delivery_date": (form.get("delivery_date") or "").strip(),
+               "photos": photos}
+        from quoteforge.fulfillment.claim_service import intake_claim, CUSTOMER_ACK
+        try:
+            result = intake_claim(req)
+            out = {"status": "ok", "message": CUSTOMER_ACK,
+                   "recommended_status": result["recommended_status"],
+                   "order_matched": bool(result["order_id"])}
+        except Exception as exc:  # noqa: BLE001 - always acknowledge the customer
+            logger.warning(f"service_request failed: {exc}")
+            out = {"status": "received", "message": CUSTOMER_ACK}
+        resp = jsonify(out)
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+
     @app.route("/design", methods=["POST", "OPTIONS"])
     def save_design_route():
         """Save a customer's design layout (preferences). POST {email, design_id,

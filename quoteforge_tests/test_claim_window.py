@@ -1,6 +1,6 @@
 """Claim reporting-deadline (time-window) policy on top of the fault/outcome
-resolution engine. Customer auto-accept window 10 days from the delivery anchor
-(a 20-day buffer inside Gelato Create's 30-day guarantee); 11-30 is the buffer
+resolution engine. Customer auto-accept window 7 days from the delivery anchor
+(a 23-day buffer inside Gelato Create's 30-day guarantee); 8-30 is the buffer
 zone -> manual review (Gelato may still pay); past 30 needs management approval
 and the partner won't reimburse (goodwill/at-cost).
 
@@ -17,20 +17,20 @@ def _delivered(days_ago: int, confirmed: int = 1) -> dict:
 
 
 def test_within_customer_window_is_eligible():
-    # 0..10 days -> auto-accept (keeps the >=20-day buffer before Gelato's 30d).
+    # 0..7 days -> auto-accept (keeps the >=23-day buffer before Gelato's 30d).
     w = claim_window(_delivered(5))
     assert w["eligibility"] == "eligible"
     assert w["anchor_type"] == "carrier_confirmed"
     assert w["within_supplier_window"] is True
-    assert claim_window(_delivered(10))["eligibility"] == "eligible"   # boundary
+    assert claim_window(_delivered(7))["eligibility"] == "eligible"    # boundary
 
 
 def test_reported_at_delivery_is_eligible():
     assert claim_window(_delivered(0))["eligibility"] == "eligible"
 
 
-def test_buffer_zone_11_to_30_is_manual_review():
-    assert claim_window(_delivered(11))["eligibility"] == "manual_review"   # boundary
+def test_buffer_zone_8_to_30_is_manual_review():
+    assert claim_window(_delivered(8))["eligibility"] == "manual_review"   # boundary
     assert claim_window(_delivered(25))["eligibility"] == "manual_review"
     w = claim_window(_delivered(30))                    # boundary, Gelato still pays
     assert w["eligibility"] == "manual_review"

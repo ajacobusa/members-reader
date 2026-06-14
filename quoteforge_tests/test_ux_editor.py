@@ -228,13 +228,13 @@ def test_service_request_form_collects_required_fields(tmp_path):
 
 def test_storefront_return_policy_is_gelato_accurate(tmp_path):
     """The customer-facing returns/promise section reflects the real policy:
-    10-day reporting window, NO need to return (keep it - we replace), free
+    7-day reporting window, NO need to return (keep it - we replace), free
     replacement for transit damage/defects, reship for wrong-address returns,
     and made-to-order = final sale for approved content. Never names the
     marketplace."""
     h = _page(tmp_path)
     low = h.lower()
-    assert "10 days" in low
+    assert "7 days" in low
     assert "no need to return" in low or ("keep" in low and "replace" in low)
     assert "free replacement" in low
     assert "made to order" in low
