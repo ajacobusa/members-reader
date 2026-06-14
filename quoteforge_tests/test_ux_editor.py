@@ -224,6 +224,8 @@ def test_service_request_form_collects_required_fields(tmp_path):
     assert "Order number" in h and "Etsy order" not in h
     assert "reviewed individually" in h          # ack message
     assert "function _srSubmit" in h or "window._srSubmit" in h
+    # File pickers + form are styled (bigger, branded), not bare native controls.
+    assert "::file-selector-button" in h and ".srform" in h
 
 
 def test_storefront_return_policy_is_gelato_accurate(tmp_path):

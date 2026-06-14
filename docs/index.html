@@ -626,8 +626,45 @@
  .cart .rm{color:#b3261e;cursor:pointer;margin-left:8px}
  .cart .tot{font-weight:700;color:var(--green);padding-top:6px}
  .uploadbox{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
- .uploadbox input[type=file]{font-size:12px}
  .upok{color:#0f7a3d} .upbad{color:#b3261e}
+ /* Nice, bigger file uploads (service form + editor) -------------------- */
+ .srfile input[type=file], .uploadbox input[type=file]{
+   width:100%;box-sizing:border-box;padding:16px;font-size:14px;cursor:pointer;
+   color:#5b6b60;background:#f6fbf7;border:2px dashed var(--green);
+   border-radius:12px;transition:background .15s,border-color .15s}
+ .srfile input[type=file]:hover, .uploadbox input[type=file]:hover{
+   background:#eef7f0;border-color:var(--green-d)}
+ .srfile input[type=file]::file-selector-button,
+ .uploadbox input[type=file]::file-selector-button{
+   margin-right:14px;padding:11px 20px;border:0;border-radius:9px;
+   background:var(--green);color:#fff;font-weight:700;font-size:14px;
+   cursor:pointer;transition:background .15s}
+ .srfile input[type=file]::file-selector-button:hover,
+ .uploadbox input[type=file]::file-selector-button:hover{background:var(--green-d)}
+ .srfile input[type=file]::-webkit-file-upload-button,
+ .uploadbox input[type=file]::-webkit-file-upload-button{
+   margin-right:14px;padding:11px 20px;border:0;border-radius:9px;
+   background:var(--green);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+ /* Service-request form layout ------------------------------------------ */
+ .srform{display:grid;gap:13px;max-width:540px}
+ .srform label{display:flex;flex-direction:column;gap:6px;font-size:13.5px;
+   font-weight:600;color:#3a443d}
+ .srform input,.srform select,.srform textarea{font:inherit;font-size:14px;
+   font-weight:400;padding:12px 13px;border:1px solid var(--line);
+   border-radius:10px;background:#fff;width:100%;box-sizing:border-box}
+ .srform textarea{resize:vertical;min-height:96px}
+ .srform input:focus,.srform select:focus,.srform textarea:focus{outline:none;
+   border-color:var(--green);box-shadow:0 0 0 3px rgba(43,122,75,.14)}
+ .srform .srfile span{font-weight:400;color:#8a958c;font-size:12px}
+ .srform .srconsent{flex-direction:row;align-items:center;gap:9px;
+   font-weight:500;font-size:13.5px}
+ .srform .srconsent input{width:auto;margin:0;transform:scale(1.25)}
+ .srform>button{padding:14px 24px;border:0;border-radius:11px;background:var(--green);
+   color:#fff;font-weight:700;font-size:15.5px;cursor:pointer;transition:background .15s}
+ .srform>button:hover{background:var(--green-d)}
+ .srstatus{color:#b3261e;font-size:13px;min-height:1px}
+ .srdone{padding:18px;border:1px solid var(--green);border-radius:12px;
+   background:#f6fbf7;color:#2b5d3f;font-size:15px;line-height:1.55}
  #mstepper{display:flex;gap:6px;list-style:none;margin:0 0 4px;padding:10px 16px 0;
    font-size:12.5px;color:#7c867f;flex-wrap:wrap}
  #mstepper li{display:flex;align-items:center}
