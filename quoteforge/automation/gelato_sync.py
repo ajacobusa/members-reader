@@ -75,10 +75,19 @@ def sync_catalog() -> dict:
     from quoteforge.automation.gelato_api import GELATO_API_KEY
     from quoteforge.etsy.catalog_state import load_state, save_state
 
+    # Go-live guard: every product must carry a REAL Gelato UID. A leftover
+    # placeholder means orders silently fail to route, so surface it on every
+    # sync (the admin command escalates this to a loud alert when live).
+    from quoteforge.etsy.gelato_catalog import verify_catalog_mappings
+    m = verify_catalog_mappings()
+    ph = {"placeholder_uids": m["placeholder_count"],
+          "placeholders": m["placeholders"]}
+
     skus = _all_skus()
     if TEST_MODE or not GELATO_API_KEY:
         return {"mock": True, "checked": len(skus), "updated": 0,
-                "discontinued": 0, "message": "TEST_MODE/no key - no live sync"}
+                "discontinued": 0, "message": "TEST_MODE/no key - no live sync",
+                **ph}
 
     uid_map = _uid_map()
     state = load_state().get("skus", {})
@@ -101,13 +110,28 @@ def sync_catalog() -> dict:
     return {"mock": False, "checked": len(skus), "updated": updated,
             "discontinued": discontinued, "unmapped": unmapped,
             "message": f"{updated} changed, {discontinued} discontinued, "
-                       f"{unmapped} unmapped (add to GELATO_UID_MAP)"}
+                       f"{unmapped} unmapped (add to GELATO_UID_MAP)", **ph}
 
 
 def format_sync_text(r: dict) -> str:
-    """Render the catalog sync summary as a short plain-text block."""
-    return ("Gelato catalog sync\n" + "-" * 32 + "\n"
-            f"  Checked     : {r.get('checked', 0)} SKUs\n"
-            f"  Updated     : {r.get('updated', 0)}\n"
-            f"  Discontinued: {r.get('discontinued', 0)}\n"
-            f"  {r.get('message', '')}")
+    """Render the catalog sync summary as a short plain-text block (with a loud
+    banner when any product is still on a placeholder Gelato UID)."""
+    lines = []
+    if r.get("placeholder_uids"):
+        n = r["placeholder_uids"]
+        lines += ["!" * 56,
+                  f"  CRITICAL: {n} product(s) still on PLACEHOLDER Gelato UIDs -",
+                  "  orders for these WILL FAIL TO ROUTE. Replace with real UIDs",
+                  "  from your Gelato account in quoteforge/etsy/gelato_catalog.py.",
+                  "!" * 56]
+        for p in r.get("placeholders", [])[:8]:
+            lines.append(f"    - {p['product_id']} ({p['size']}): {p['current_sku']}")
+        if n > 8:
+            lines.append(f"    ... and {n - 8} more")
+        lines.append("")
+    lines += ["Gelato catalog sync", "-" * 32,
+              f"  Checked     : {r.get('checked', 0)} SKUs",
+              f"  Updated     : {r.get('updated', 0)}",
+              f"  Discontinued: {r.get('discontinued', 0)}",
+              f"  {r.get('message', '')}"]
+    return "\n".join(lines)

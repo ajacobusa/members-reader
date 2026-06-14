@@ -2126,6 +2126,18 @@ def _cmd_gelato_sync(args: list[str]) -> int:
     from quoteforge.automation.gelato_sync import sync_catalog, format_sync_text
     r = sync_catalog()
     print(format_sync_text(r))
+    # Loud failure: a leftover placeholder UID means orders silently won't route.
+    # When live, email the owner and exit non-zero so the daily job flags red.
+    if r.get("placeholder_uids"):
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE:
+            try:
+                from quoteforge.automation.emailer import _send_email
+                _send_email("🚨 Gelato sync BLOCKED — placeholder product UIDs",
+                            "<pre>" + format_sync_text(r) + "</pre>")
+            except Exception:  # noqa: BLE001
+                pass
+            return 1
     return 0
 
 
