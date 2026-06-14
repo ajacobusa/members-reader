@@ -1,0 +1,4 @@
+# Generated POC artifacts (regenerate with `python POC/run_poc.py`)
+poc_data/
+poc_dashboard.html
+poc_site/

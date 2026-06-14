@@ -18,6 +18,19 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
     order_id = order.get("order_id") or order.get("etsy_order_id") or ""
     recipient = recipient or order.get("recipient_address") or {}
 
+    # Idempotency: never double-submit. If this order is already routed (a vendor
+    # order id is on record), return that instead of creating a duplicate.
+    if order_id:
+        try:
+            from quoteforge.db.database import get_order
+            existing = get_order(order_id)
+            if existing and existing.get("vendor_order_id"):
+                return {"status": "duplicate", "vendor": vendor,
+                        "id": existing["vendor_order_id"],
+                        "detail": "order already routed - duplicate submission blocked"}
+        except Exception:  # noqa: BLE001 - never let the guard block a real route
+            pass
+
     if vendor == "gelato":
         from quoteforge.config import TEST_MODE
         product_uid = order.get("gelato_product_uid") or order.get("product_uid")
@@ -47,8 +60,17 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
             from quoteforge.automation.gelato_api import create_gelato_order
             resp = create_gelato_order(order_id=order_id, recipient=recipient,
                                        artwork_url=artwork_url, product_uid=product_uid)
+            vid = resp.get("id", "")
+            # Store the supplier order id on success so the idempotency guard and
+            # tracking sync are self-contained (caller no longer has to).
+            try:
+                from quoteforge.db.database import update_order, get_order
+                if vid and get_order(order_id):
+                    update_order(order_id, vendor_order_id=vid)
+            except Exception:  # noqa: BLE001
+                pass
             return {"status": "submitted", "vendor": "gelato",
-                    "id": resp.get("id", ""), "raw": resp}
+                    "id": vid, "raw": resp}
         except Exception as exc:  # noqa: BLE001
             return {"status": "error", "vendor": "gelato", "detail": str(exc), "id": ""}
 
