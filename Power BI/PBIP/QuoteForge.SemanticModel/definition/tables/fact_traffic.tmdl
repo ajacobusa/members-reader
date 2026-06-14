@@ -1,0 +1,31 @@
+table fact_traffic
+	lineageTag: 695c8859-a7fe-5950-ac36-2dee828609cc
+
+	column source
+		dataType: string
+		lineageTag: ae8db30d-9282-5619-935e-78cb40327ed3
+		summarizeBy: none
+		sourceColumn: source
+
+	column orders
+		dataType: int64
+		lineageTag: a01c8fbf-d299-5c17-8e97-e8bd64c36b7d
+		summarizeBy: sum
+		sourceColumn: orders
+
+	column revenue
+		dataType: double
+		lineageTag: b2cd2b4f-dd41-50ba-b70c-dc3721de8cfb
+		summarizeBy: sum
+		sourceColumn: revenue
+
+	partition fact_traffic = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/fact_traffic.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"source", type text}, {"orders", Int64.Type}, {"revenue", type number}})
+			in
+			    Typed
+			```

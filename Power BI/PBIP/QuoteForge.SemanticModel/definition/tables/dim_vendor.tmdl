@@ -1,0 +1,19 @@
+table dim_vendor
+	lineageTag: 00100dd7-db94-5f1b-9765-d8ac2a0e022f
+
+	column vendor
+		dataType: string
+		lineageTag: 86f08e2f-1548-50a5-a611-91410962735f
+		summarizeBy: none
+		sourceColumn: vendor
+
+	partition dim_vendor = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/dim_vendor.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"vendor", type text}})
+			in
+			    Typed
+			```

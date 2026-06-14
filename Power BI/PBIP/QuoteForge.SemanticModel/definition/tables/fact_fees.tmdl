@@ -1,0 +1,37 @@
+table fact_fees
+	lineageTag: 3675ea7d-2e0a-566c-9617-096d41c4f0ba
+
+	column fee
+		dataType: string
+		lineageTag: c63d8e24-5041-568b-b034-078453b4e0f9
+		summarizeBy: none
+		sourceColumn: fee
+
+	column label
+		dataType: string
+		lineageTag: 3685a97a-4c2d-59e5-a16b-51d203fbb471
+		summarizeBy: none
+		sourceColumn: label
+
+	column amount
+		dataType: double
+		lineageTag: f2e132fa-9c26-5bfb-9e1f-ce09883fcaa1
+		summarizeBy: sum
+		sourceColumn: amount
+
+	column pct_of_revenue
+		dataType: double
+		lineageTag: cb6f3fac-e4fa-5919-9b64-03186480c349
+		summarizeBy: none
+		sourceColumn: pct_of_revenue
+
+	partition fact_fees = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/fact_fees.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"fee", type text}, {"label", type text}, {"amount", type number}, {"pct_of_revenue", type number}})
+			in
+			    Typed
+			```

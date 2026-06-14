@@ -1,0 +1,19 @@
+table dim_product
+	lineageTag: 6d051165-c2b6-535e-a28b-a1d2c482dd5b
+
+	column product_type
+		dataType: string
+		lineageTag: 7f5edd38-c9c6-5eca-bfc6-5210685e5bbf
+		summarizeBy: none
+		sourceColumn: product_type
+
+	partition dim_product = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/dim_product.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"product_type", type text}})
+			in
+			    Typed
+			```

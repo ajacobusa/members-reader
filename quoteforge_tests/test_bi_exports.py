@@ -59,10 +59,41 @@ def test_presentation_pdf_is_built(tmp_path, monkeypatch):
     assert p.stat().st_size > 1500
 
 
+def test_pptx_presentation_is_built(tmp_path, monkeypatch):
+    _seed(tmp_path, monkeypatch)
+    from quoteforge.analytics.bi_exports import build_pptx_presentation
+    from pptx import Presentation
+    p = build_pptx_presentation(tmp_path / "deck.pptx")
+    assert p.exists() and p.stat().st_size > 10000
+    prs = Presentation(str(p))
+    assert len(prs.slides._sldIdLst) == 4          # title + 3 content slides
+
+
+def test_pbip_scaffold_is_valid(tmp_path, monkeypatch):
+    import json
+    _seed(tmp_path, monkeypatch)
+    from quoteforge.analytics.bi_exports import build_pbip_project
+    r = build_pbip_project(tmp_path / "PBIP", tmp_path / "data")
+    assert r["pbip"].exists()
+    # Every JSON-family file parses.
+    for f in r["files"]:
+        if f.suffix in (".pbip", ".pbism", ".pbir", ".json", ".platform"):
+            json.loads(f.read_text(encoding="utf-8"))
+    sm = tmp_path / "PBIP" / "QuoteForge.SemanticModel" / "definition"
+    fact = (sm / "tables" / "fact_orders.tmdl").read_text(encoding="utf-8")
+    assert "partition fact_orders = m" in fact and "DataFolder" in fact
+    rel = (sm / "relationships.tmdl").read_text(encoding="utf-8")
+    assert "fromColumn: fact_orders.order_date" in rel
+    meas = (sm / "tables" / "_Measures.tmdl").read_text(encoding="utf-8")
+    assert "measure 'Net Margin %'" in meas
+
+
 def test_export_all_writes_everything(tmp_path, monkeypatch):
     _seed(tmp_path, monkeypatch)
     from quoteforge.analytics.bi_exports import export_all
     r = export_all(tmp_path / "Excel", tmp_path / "Power BI")
     assert len(r["excel"]) == 3
-    assert r["presentation"].exists()
+    assert r["presentation_pdf"].exists() and r["presentation_pptx"].exists()
+    assert r["pbip"]["pbip"].exists()
     assert (tmp_path / "Power BI" / "data" / "fact_orders.csv").exists()
+    assert (tmp_path / "Power BI" / "PBIP" / "QuoteForge.pbip").exists()

@@ -1,0 +1,19 @@
+relationship acda6cfa-1ffb-5e2b-97a5-ab94827614c7
+	fromColumn: fact_orders.order_date
+	toColumn: dim_date.date
+
+relationship c89d41b4-e369-51b7-8ce5-79dfa3e0ca26
+	fromColumn: fact_ledger_daily.date
+	toColumn: dim_date.date
+
+relationship 1f11379e-fc8d-501c-9b3f-43c3bb83581e
+	fromColumn: fact_orders.vendor
+	toColumn: dim_vendor.vendor
+
+relationship c343d91a-795a-5c4f-bce5-8ff2ac77defa
+	fromColumn: fact_orders.channel
+	toColumn: dim_channel.channel
+
+relationship 6dc1a774-73bc-5674-ad20-4d8d7b61e7a9
+	fromColumn: fact_orders.product_type
+	toColumn: dim_product.product_type

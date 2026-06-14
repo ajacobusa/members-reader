@@ -471,7 +471,15 @@ can't be authored safely outside Power BI Desktop, so instead you get the clean
 data model, the DAX, and the exact report spec - about 10 minutes to a live
 dashboard, and it refreshes from the CSVs forever after.
 
-## Build it once (Power BI Desktop)
+## Fastest path: open the PBIP scaffold
+- Open **`PBIP/QuoteForge.pbip`** in Power BI Desktop (enable Preview features >
+  *Power BI Project (.pbip) save option* + *TMDL* + *PBIR* if prompted). The
+  star-schema tables, relationships and DAX measures are already wired to the
+  CSVs. If the data moved, set the **DataFolder** parameter, then **Refresh**
+  and add visuals per `model/DataModel.md`. It's a scaffold - on first open
+  Power BI Desktop may ask to finalize the report layout.
+
+## Or build from scratch (always works)
 1. **Get Data > Folder** -> select this `Power BI/data` folder -> *Combine &
    Load* each CSV (or Get Data > Text/CSV per file for full control).
 2. **Model view**: create the relationships listed in `model/DataModel.md`.
@@ -485,10 +493,11 @@ dashboard, and it refreshes from the CSVs forever after.
   latest orders, then hit **Refresh** in Power BI Desktop. No re-modelling.
 
 ## What's inside
+- `PBIP/` - Power BI Project scaffold (TMDL model + relationships + measures)
 - `data/` - star-schema CSV sources (facts + dims)
 - `measures/Measures.dax` - ready-to-paste DAX
 - `model/DataModel.md` - relationships + the 4-page report spec
-- `QuoteForge_Executive_Presentation.pdf` - the standalone exec deck
+- `QuoteForge_Executive_Presentation.pdf` / `.pptx` - the standalone exec deck
 """
 
 
@@ -597,13 +606,273 @@ def build_presentation(out_path: Path = None) -> Path:
 
 
 # --------------------------------------------------------------------------- #
+# PowerPoint presentation (python-pptx)
+# --------------------------------------------------------------------------- #
+def build_pptx_presentation(out_path: Path = None) -> Path:
+    """Build a native PowerPoint (.pptx) executive deck - title, P&L scorecard,
+    fees & quality, and traffic mix - from the live ledger + financial reports.
+    Mirrors the PDF deck but as an editable .pptx."""
+    out_path = Path(out_path or (POWERBI_DIR / "QuoteForge_Executive_Presentation.pptx"))
+    from pptx import Presentation
+    from pptx.util import Inches, Pt
+    from pptx.dml.color import RGBColor
+    from quoteforge.etsy.ledger import build_ledger
+    from quoteforge.analytics.financial_reports import (
+        fee_breakdown, refund_cancellation_rates, traffic_source_report)
+
+    orders = _orders()
+    t = build_ledger("all")["totals"]
+    fb = fee_breakdown(_fee_summary(orders), t["revenue"])
+    rc = refund_cancellation_rates(orders)
+    ts = traffic_source_report(orders)
+    purple = RGBColor(0x5B, 0x3F, 0xA0)
+
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+    blank = prs.slide_layouts[6]
+
+    def _title_slide(title: str, subtitle: str) -> None:
+        """Add a centered title slide."""
+        s = prs.slides.add_slide(blank)
+        tb = s.shapes.add_textbox(Inches(1), Inches(2.6), Inches(11.3), Inches(2))
+        p = tb.text_frame.paragraphs[0]
+        r = p.add_run(); r.text = title
+        r.font.size = Pt(54); r.font.bold = True; r.font.color.rgb = purple
+        p2 = tb.text_frame.add_paragraph()
+        r2 = p2.add_run(); r2.text = subtitle
+        r2.font.size = Pt(24); r2.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+
+    def _table_slide(title: str, header: list, rows: list) -> None:
+        """Add a slide with a heading and a styled data table."""
+        s = prs.slides.add_slide(blank)
+        ht = s.shapes.add_textbox(Inches(0.6), Inches(0.4), Inches(12), Inches(0.9))
+        hr = ht.text_frame.paragraphs[0].add_run(); hr.text = title
+        hr.font.size = Pt(32); hr.font.bold = True; hr.font.color.rgb = purple
+        nrows, ncols = len(rows) + 1, len(header)
+        gt = s.shapes.add_table(nrows, ncols, Inches(0.6), Inches(1.5),
+                                Inches(12), Inches(0.4 * nrows)).table
+        for c, txt in enumerate(header):
+            cell = gt.cell(0, c); cell.text = str(txt)
+            cell.fill.solid(); cell.fill.fore_color.rgb = purple
+            cell.text_frame.paragraphs[0].runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            cell.text_frame.paragraphs[0].runs[0].font.bold = True
+        for ri, row in enumerate(rows, start=1):
+            for c, txt in enumerate(row):
+                gt.cell(ri, c).text = str(txt)
+
+    _title_slide("QuoteForge", "Executive Business Review")
+    _table_slide("Profit & Loss Scorecard", ["Metric", "Value"],
+                 [["Revenue", f"${t['revenue']:,.2f}"],
+                  ["COGS (Gelato)", f"${t['cogs']:,.2f}"],
+                  ["Etsy fees", f"${t['etsy_fees']:,.2f}"],
+                  ["Net profit", f"${t['net_profit']:,.2f}"],
+                  ["Net margin", f"{t['margin_pct']}%"],
+                  ["Orders", f"{t['orders']}"]])
+    _table_slide("Fees & Quality", ["Fee type", "Amount", "% of revenue"],
+                 [[r["label"], f"${r['amount']:,.2f}", f"{r['pct_of_revenue']}%"]
+                  for r in fb["rows"]]
+                 + [["TOTAL FEES", f"${fb['total_fees']:,.2f}",
+                     f"{fb['total_pct_of_revenue']}%"],
+                    [f"Refund rate {rc['refund_rate_pct']}%",
+                     f"Cancellation {rc['cancellation_rate_pct']}%",
+                     f"of {rc['orders']} orders"]])
+    _table_slide("Where Sales Come From", ["Traffic source", "Orders", "Revenue"],
+                 [[r["source"], r["orders"], f"${r['revenue']:,.2f}"] for r in ts]
+                 or [["(no data yet)", "0", "$0.00"]])
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(out_path))
+    return out_path
+
+
+# --------------------------------------------------------------------------- #
+# Power BI Project (PBIP) scaffold - TMDL semantic model + report shell
+# --------------------------------------------------------------------------- #
+# (table -> [(column, dataType, summarizeBy)]). dataType drives both the TMDL
+# column type and the M type-transform; summarizeBy "none" leaves dims un-summed.
+_PBIP_TABLES: dict = {
+    "fact_orders": [
+        ("order_id", "string", "none"), ("order_date", "dateTime", "none"),
+        ("status", "string", "none"), ("vendor", "string", "none"),
+        ("channel", "string", "none"), ("product_type", "string", "none"),
+        ("material", "string", "none"), ("size", "string", "none"),
+        ("country", "string", "none"), ("acquisition_source", "string", "none"),
+        ("sale_price", "double", "sum"), ("gelato_cost", "double", "sum"),
+        ("shipping_collected", "double", "sum"), ("tax_collected", "double", "sum"),
+        ("etsy_fees_actual", "double", "sum"), ("net_payout", "double", "sum"),
+        ("item_count", "int64", "sum"), ("delivery_confirmed", "int64", "none"),
+        ("delivered_at", "string", "none")],
+    "fact_ledger_daily": [
+        ("date", "dateTime", "none"), ("revenue", "double", "sum"),
+        ("cogs", "double", "sum"), ("etsy_fees", "double", "sum"),
+        ("api_cost", "double", "sum"), ("opex", "double", "sum"),
+        ("net_profit", "double", "sum"), ("orders", "int64", "sum")],
+    "fact_fees": [
+        ("fee", "string", "none"), ("label", "string", "none"),
+        ("amount", "double", "sum"), ("pct_of_revenue", "double", "none")],
+    "fact_traffic": [
+        ("source", "string", "none"), ("orders", "int64", "sum"),
+        ("revenue", "double", "sum")],
+    "dim_date": [
+        ("date", "dateTime", "none"), ("year", "int64", "none"),
+        ("month", "int64", "none"), ("month_name", "string", "none"),
+        ("day", "int64", "none"), ("weekday", "string", "none"),
+        ("week_of", "dateTime", "none")],
+    "dim_vendor": [("vendor", "string", "none")],
+    "dim_channel": [("channel", "string", "none")],
+    "dim_product": [("product_type", "string", "none")],
+}
+
+# (fromTable.fromColumn -> toTable.toColumn), all single-direction 1->*.
+_PBIP_RELATIONSHIPS = [
+    ("fact_orders", "order_date", "dim_date", "date"),
+    ("fact_ledger_daily", "date", "dim_date", "date"),
+    ("fact_orders", "vendor", "dim_vendor", "vendor"),
+    ("fact_orders", "channel", "dim_channel", "channel"),
+    ("fact_orders", "product_type", "dim_product", "product_type"),
+]
+
+# DAX measures hosted on the _Measures table (name -> expression).
+_PBIP_MEASURES = [
+    ("Revenue", "SUM ( fact_orders[sale_price] )"),
+    ("COGS", "SUM ( fact_orders[gelato_cost] )"),
+    ("Etsy Fees", "SUM ( fact_orders[etsy_fees_actual] )"),
+    ("Net Profit", "[Revenue] - [COGS] - [Etsy Fees]"),
+    ("Net Margin %", "DIVIDE ( [Net Profit], [Revenue] )"),
+    ("Orders", "DISTINCTCOUNT ( fact_orders[order_id] )"),
+    ("AOV", "DIVIDE ( [Revenue], [Orders] )"),
+    ("Refund Rate %", 'DIVIDE ( CALCULATE ( [Orders], fact_orders[status] = "refunded" ), [Orders] )'),
+    ("Cancellation Rate %", 'DIVIDE ( CALCULATE ( [Orders], fact_orders[status] = "cancelled" ), [Orders] )'),
+    ("Total Fees", "SUM ( fact_fees[amount] )"),
+    ("Offsite Ads % of Revenue", 'DIVIDE ( CALCULATE ( [Total Fees], fact_fees[fee] = "offsite_ads" ), [Revenue] )'),
+]
+
+_M_TYPE = {"string": "type text", "double": "type number",
+           "int64": "Int64.Type", "dateTime": "type date"}
+
+
+def _guid(seed: str) -> str:
+    """Deterministic GUID from a seed (stable across regenerations)."""
+    import uuid
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, "quoteforge.pbip." + seed))
+
+
+def _tmdl_table(name: str, cols: list) -> str:
+    """Render one TMDL table file (columns + an M partition reading its CSV)."""
+    lines = [f"table {name}", f"\tlineageTag: {_guid('t.' + name)}", ""]
+    for col, dtype, summ in cols:
+        lines += [f"\tcolumn {col}", f"\t\tdataType: {dtype}",
+                  f"\t\tlineageTag: {_guid(f'c.{name}.{col}')}",
+                  f"\t\tsummarizeBy: {summ}", f"\t\tsourceColumn: {col}", ""]
+    transforms = ", ".join(f'{{"{c}", {_M_TYPE[d]}}}' for c, d, _ in cols)
+    m = ("let\n"
+         f'    Source = Csv.Document(File.Contents(DataFolder & "/{name}.csv"),'
+         "[Delimiter=\",\", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),\n"
+         "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),\n"
+         f"    Typed = Table.TransformColumnTypes(Promoted, {{{transforms}}})\n"
+         "in\n    Typed")
+    m_indented = "\n".join("\t\t\t" + ln for ln in m.splitlines())
+    lines += [f"\tpartition {name} = m", "\t\tmode: import",
+              "\t\tsource = ```", m_indented, "\t\t\t```", ""]
+    return "\n".join(lines)
+
+
+def _tmdl_measures() -> str:
+    """Render the _Measures table (a 1-row helper table hosting the DAX)."""
+    lines = ["table _Measures", f"\tlineageTag: {_guid('t._Measures')}", ""]
+    for nm, expr in _PBIP_MEASURES:
+        lines += [f"\tmeasure '{nm}' = {expr}",
+                  f"\t\tlineageTag: {_guid('m.' + nm)}", ""]
+    lines += ["\tcolumn _dummy", "\t\tdataType: int64", "\t\tisHidden",
+              f"\t\tlineageTag: {_guid('c._Measures._dummy')}",
+              "\t\tsummarizeBy: none", "\t\tsourceColumn: _dummy", "",
+              "\tpartition _Measures = m", "\t\tmode: import",
+              "\t\tsource = ```", "\t\t\tlet Source = #table({\"_dummy\"}, {{1}}) in Source",
+              "\t\t\t```", ""]
+    return "\n".join(lines)
+
+
+def _tmdl_relationships() -> str:
+    """Render relationships.tmdl (all single-direction many-to-one)."""
+    out = []
+    for ft, fc, tt, tc in _PBIP_RELATIONSHIPS:
+        out += [f"relationship {_guid(f'r.{ft}.{fc}.{tt}.{tc}')}",
+                f"\tfromColumn: {ft}.{fc}", f"\ttoColumn: {tt}.{tc}", ""]
+    return "\n".join(out)
+
+
+def build_pbip_project(outdir: Path = None, data_dir: Path = None) -> dict:
+    """Write a Power BI Project (PBIP) scaffold: a TMDL semantic model with the
+    star-schema tables, relationships and DAX measures pre-wired to the CSV
+    folder, plus a report shell. Open ``QuoteForge.pbip`` in Power BI Desktop;
+    set the ``DataFolder`` parameter if the data moved, then refresh and add
+    visuals per model/DataModel.md. Returns the written paths."""
+    import json
+    base = Path(outdir or (POWERBI_DIR / "PBIP"))
+    data_dir = Path(data_dir or (POWERBI_DIR / "data")).resolve()
+    sm = base / "QuoteForge.SemanticModel"
+    rp = base / "QuoteForge.Report"
+    (sm / "definition" / "tables").mkdir(parents=True, exist_ok=True)
+    (rp / "definition").mkdir(parents=True, exist_ok=True)
+    written = []
+
+    def _w(path: Path, text: str) -> None:
+        """Write one scaffold file (UTF-8) and record it."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        written.append(path)
+
+    # .pbip entry point.
+    _w(base / "QuoteForge.pbip", json.dumps({
+        "version": "1.0",
+        "artifacts": [{"report": {"path": "QuoteForge.Report"}}],
+        "settings": {"enableAutoRecovery": True}}, indent=2))
+
+    # Semantic model.
+    _w(sm / ".platform", json.dumps({
+        "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+        "metadata": {"type": "SemanticModel", "displayName": "QuoteForge"},
+        "config": {"version": "2.0", "logicalId": _guid("sm.logical")}}, indent=2))
+    _w(sm / "definition.pbism", json.dumps({"version": "4.2", "settings": {}}, indent=2))
+    _w(sm / "definition" / "model.tmdl",
+       "model Model\n\tculture: en-US\n\tdefaultPowerBIDataSourceVersion: powerBI_V3\n")
+    _w(sm / "definition" / "expressions.tmdl",
+       f'expression DataFolder = "{data_dir.as_posix()}" meta '
+       '[IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]\n')
+    _w(sm / "definition" / "relationships.tmdl", _tmdl_relationships())
+    for name, cols in _PBIP_TABLES.items():
+        _w(sm / "definition" / "tables" / f"{name}.tmdl", _tmdl_table(name, cols))
+    _w(sm / "definition" / "tables" / "_Measures.tmdl", _tmdl_measures())
+
+    # Report shell (single starter page; build the rest per the model spec).
+    _w(rp / ".platform", json.dumps({
+        "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+        "metadata": {"type": "Report", "displayName": "QuoteForge"},
+        "config": {"version": "2.0", "logicalId": _guid("rp.logical")}}, indent=2))
+    _w(rp / "definition.pbir", json.dumps({
+        "version": "1.0",
+        "datasetReference": {"byPath": {"path": "../QuoteForge.SemanticModel"}}}, indent=2))
+    _w(rp / "definition" / "report.json", json.dumps({
+        "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/1.0.0/schema.json",
+        "themeCollection": {"baseTheme": {"name": "CY24SU10"}},
+        "layoutOptimization": "None"}, indent=2))
+
+    return {"pbip": base / "QuoteForge.pbip", "files": written}
+
+
+# --------------------------------------------------------------------------- #
 # Orchestrator
 # --------------------------------------------------------------------------- #
 def export_all(excel_dir: Path = None, powerbi_dir: Path = None) -> dict:
-    """Build everything: the Excel workbooks, the Power BI package, and the
-    executive presentation PDF. Returns a dict of all created paths."""
+    """Build everything: the Excel workbooks, the Power BI package (CSVs + DAX +
+    docs), the PBIP project scaffold, and the executive presentation in both PDF
+    and PowerPoint. Returns a dict of all created paths."""
+    pbase = Path(powerbi_dir) if powerbi_dir else POWERBI_DIR
     xl = build_excel_workbooks(excel_dir)
     pbi = build_powerbi_package(powerbi_dir)
-    pres = build_presentation((Path(powerbi_dir) / "QuoteForge_Executive_Presentation.pdf")
-                              if powerbi_dir else None)
-    return {"excel": xl, "powerbi": pbi, "presentation": pres}
+    pbip = build_pbip_project(pbase / "PBIP", pbase / "data")
+    pdf = build_presentation(pbase / "QuoteForge_Executive_Presentation.pdf")
+    pptx = build_pptx_presentation(pbase / "QuoteForge_Executive_Presentation.pptx")
+    return {"excel": xl, "powerbi": pbi, "pbip": pbip,
+            "presentation_pdf": pdf, "presentation_pptx": pptx}

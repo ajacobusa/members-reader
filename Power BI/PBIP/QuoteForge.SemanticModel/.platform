@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "QuoteForge"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "d2b9381e-6e85-51f0-b5b4-f3c8cf1bc434"
+  }
+}

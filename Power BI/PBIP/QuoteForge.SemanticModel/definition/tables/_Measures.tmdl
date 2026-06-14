@@ -1,0 +1,48 @@
+table _Measures
+	lineageTag: b677533c-5e90-54b4-b604-8ba8933b52ce
+
+	measure 'Revenue' = SUM ( fact_orders[sale_price] )
+		lineageTag: cc94c0af-665e-5d83-8dff-16d2e0faf7ae
+
+	measure 'COGS' = SUM ( fact_orders[gelato_cost] )
+		lineageTag: 3688f009-bfc8-5e9a-b9b7-eb7d82019543
+
+	measure 'Etsy Fees' = SUM ( fact_orders[etsy_fees_actual] )
+		lineageTag: aeb825dc-f788-507c-999f-50b704163192
+
+	measure 'Net Profit' = [Revenue] - [COGS] - [Etsy Fees]
+		lineageTag: d2e22a49-4cff-5de2-8323-4846b1661cfa
+
+	measure 'Net Margin %' = DIVIDE ( [Net Profit], [Revenue] )
+		lineageTag: c91cd966-a261-5a2a-a5bb-534089c8bc2d
+
+	measure 'Orders' = DISTINCTCOUNT ( fact_orders[order_id] )
+		lineageTag: 32a3de77-8273-554d-b568-b94aefbb5ab2
+
+	measure 'AOV' = DIVIDE ( [Revenue], [Orders] )
+		lineageTag: 052df466-95d4-5a45-84e2-d42e07cfcf88
+
+	measure 'Refund Rate %' = DIVIDE ( CALCULATE ( [Orders], fact_orders[status] = "refunded" ), [Orders] )
+		lineageTag: e30295ad-de7d-56e1-9291-5a2249372f62
+
+	measure 'Cancellation Rate %' = DIVIDE ( CALCULATE ( [Orders], fact_orders[status] = "cancelled" ), [Orders] )
+		lineageTag: 950582b5-48fd-56f7-aa5d-fc522bd8abee
+
+	measure 'Total Fees' = SUM ( fact_fees[amount] )
+		lineageTag: b2f8caf1-d54a-5699-8dc7-50ca4fbbe91f
+
+	measure 'Offsite Ads % of Revenue' = DIVIDE ( CALCULATE ( [Total Fees], fact_fees[fee] = "offsite_ads" ), [Revenue] )
+		lineageTag: f33d95d4-2f50-5a71-8878-8cf3efdc8af8
+
+	column _dummy
+		dataType: int64
+		isHidden
+		lineageTag: dda43bce-1aeb-562b-8fa6-5ead58380caf
+		summarizeBy: none
+		sourceColumn: _dummy
+
+	partition _Measures = m
+		mode: import
+		source = ```
+			let Source = #table({"_dummy"}, {{1}}) in Source
+			```

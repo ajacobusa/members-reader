@@ -1,0 +1,127 @@
+table fact_orders
+	lineageTag: 229c2c4c-4446-53c9-bef4-9d85079c4500
+
+	column order_id
+		dataType: string
+		lineageTag: 8cbad45c-195c-571f-926b-200731593927
+		summarizeBy: none
+		sourceColumn: order_id
+
+	column order_date
+		dataType: dateTime
+		lineageTag: 28fca337-a0ba-51bc-b2ac-6eb2de8f18d3
+		summarizeBy: none
+		sourceColumn: order_date
+
+	column status
+		dataType: string
+		lineageTag: b5122fdb-e6a7-5785-b444-e17fef850c50
+		summarizeBy: none
+		sourceColumn: status
+
+	column vendor
+		dataType: string
+		lineageTag: c97cdbb3-b87d-5314-8f60-d1e486c15ff2
+		summarizeBy: none
+		sourceColumn: vendor
+
+	column channel
+		dataType: string
+		lineageTag: 3ca038bf-b77e-559e-86e6-9f4a4a7fe8f7
+		summarizeBy: none
+		sourceColumn: channel
+
+	column product_type
+		dataType: string
+		lineageTag: 2f2d4346-bff1-5111-b98b-0f95be103158
+		summarizeBy: none
+		sourceColumn: product_type
+
+	column material
+		dataType: string
+		lineageTag: 9a32b806-4e1f-5a95-9767-286be7a5f47f
+		summarizeBy: none
+		sourceColumn: material
+
+	column size
+		dataType: string
+		lineageTag: 33376f5f-926c-5898-a8a2-ce53d6cd076c
+		summarizeBy: none
+		sourceColumn: size
+
+	column country
+		dataType: string
+		lineageTag: d1ea2718-23df-5aee-ab0c-08aebe275c74
+		summarizeBy: none
+		sourceColumn: country
+
+	column acquisition_source
+		dataType: string
+		lineageTag: 9914829d-31e4-5864-b29a-202454f9c583
+		summarizeBy: none
+		sourceColumn: acquisition_source
+
+	column sale_price
+		dataType: double
+		lineageTag: 11c3b2e0-eb75-5ca3-8912-9822ef98478e
+		summarizeBy: sum
+		sourceColumn: sale_price
+
+	column gelato_cost
+		dataType: double
+		lineageTag: db51b996-de0a-5c60-a68a-caa31812d85e
+		summarizeBy: sum
+		sourceColumn: gelato_cost
+
+	column shipping_collected
+		dataType: double
+		lineageTag: 1eaece89-f44c-5f79-a4d5-57f9d6b09a94
+		summarizeBy: sum
+		sourceColumn: shipping_collected
+
+	column tax_collected
+		dataType: double
+		lineageTag: c2f90c05-7214-5617-833b-c2bd9c9b8281
+		summarizeBy: sum
+		sourceColumn: tax_collected
+
+	column etsy_fees_actual
+		dataType: double
+		lineageTag: 9e0e92ce-b898-5b2b-85c2-8706ccb82220
+		summarizeBy: sum
+		sourceColumn: etsy_fees_actual
+
+	column net_payout
+		dataType: double
+		lineageTag: 4f5be725-073c-5320-ab42-1c4e537ffd3e
+		summarizeBy: sum
+		sourceColumn: net_payout
+
+	column item_count
+		dataType: int64
+		lineageTag: cd130d8f-3f96-5bda-b389-86e77793daa0
+		summarizeBy: sum
+		sourceColumn: item_count
+
+	column delivery_confirmed
+		dataType: int64
+		lineageTag: e4e5021d-a902-5b03-8e0d-499efcdcf5d6
+		summarizeBy: none
+		sourceColumn: delivery_confirmed
+
+	column delivered_at
+		dataType: string
+		lineageTag: 1ce9970b-725a-5a88-8a08-693c5ccda1f3
+		summarizeBy: none
+		sourceColumn: delivered_at
+
+	partition fact_orders = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/fact_orders.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"order_id", type text}, {"order_date", type date}, {"status", type text}, {"vendor", type text}, {"channel", type text}, {"product_type", type text}, {"material", type text}, {"size", type text}, {"country", type text}, {"acquisition_source", type text}, {"sale_price", type number}, {"gelato_cost", type number}, {"shipping_collected", type number}, {"tax_collected", type number}, {"etsy_fees_actual", type number}, {"net_payout", type number}, {"item_count", Int64.Type}, {"delivery_confirmed", Int64.Type}, {"delivered_at", type text}})
+			in
+			    Typed
+			```

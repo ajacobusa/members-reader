@@ -1,0 +1,55 @@
+table dim_date
+	lineageTag: 04fed6bb-d0de-5675-9473-fcb6ff858ac9
+
+	column date
+		dataType: dateTime
+		lineageTag: 7728496c-9912-5554-96e4-51ce0e221704
+		summarizeBy: none
+		sourceColumn: date
+
+	column year
+		dataType: int64
+		lineageTag: f18d9fa0-e775-54ab-a109-ecabe05436a8
+		summarizeBy: none
+		sourceColumn: year
+
+	column month
+		dataType: int64
+		lineageTag: eee3beb7-c256-53be-b324-81836fdc32d9
+		summarizeBy: none
+		sourceColumn: month
+
+	column month_name
+		dataType: string
+		lineageTag: fef8129c-ae85-57f8-a9ab-890366f9aa7f
+		summarizeBy: none
+		sourceColumn: month_name
+
+	column day
+		dataType: int64
+		lineageTag: 5d6c8296-a75e-58ab-a44d-dc239b25d83a
+		summarizeBy: none
+		sourceColumn: day
+
+	column weekday
+		dataType: string
+		lineageTag: 0738b655-fffa-5df3-a527-1cae3685869e
+		summarizeBy: none
+		sourceColumn: weekday
+
+	column week_of
+		dataType: dateTime
+		lineageTag: e42887c1-ad48-55b0-8a97-572e9c9ad0ca
+		summarizeBy: none
+		sourceColumn: week_of
+
+	partition dim_date = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/dim_date.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"date", type date}, {"year", Int64.Type}, {"month", Int64.Type}, {"month_name", type text}, {"day", Int64.Type}, {"weekday", type text}, {"week_of", type date}})
+			in
+			    Typed
+			```

@@ -1,0 +1,61 @@
+table fact_ledger_daily
+	lineageTag: 1acf3c6e-fa12-5cce-8dbc-95b7e2f973b9
+
+	column date
+		dataType: dateTime
+		lineageTag: 16fa448c-e96e-580f-a46d-0c3b3ea23584
+		summarizeBy: none
+		sourceColumn: date
+
+	column revenue
+		dataType: double
+		lineageTag: ca00674d-37ce-5e34-aa8a-534cc7d4bf1f
+		summarizeBy: sum
+		sourceColumn: revenue
+
+	column cogs
+		dataType: double
+		lineageTag: 09854b5d-9f4b-56bf-bd73-935cca9ad2e8
+		summarizeBy: sum
+		sourceColumn: cogs
+
+	column etsy_fees
+		dataType: double
+		lineageTag: c2ef77d7-4a4d-50a8-b425-cefcf73d4ef0
+		summarizeBy: sum
+		sourceColumn: etsy_fees
+
+	column api_cost
+		dataType: double
+		lineageTag: 427f2fe4-f1ac-5983-ba04-2cd5993280dc
+		summarizeBy: sum
+		sourceColumn: api_cost
+
+	column opex
+		dataType: double
+		lineageTag: 5952afcf-b13e-55ac-94b1-758d8f61b7c7
+		summarizeBy: sum
+		sourceColumn: opex
+
+	column net_profit
+		dataType: double
+		lineageTag: e579a1b2-7281-53ce-b0e4-34f285aa7ea8
+		summarizeBy: sum
+		sourceColumn: net_profit
+
+	column orders
+		dataType: int64
+		lineageTag: 0ddece8b-cd5d-52ff-b8f9-5ded21b213df
+		summarizeBy: sum
+		sourceColumn: orders
+
+	partition fact_ledger_daily = m
+		mode: import
+		source = ```
+			let
+			    Source = Csv.Document(File.Contents(DataFolder & "/fact_ledger_daily.csv"),[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+			    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+			    Typed = Table.TransformColumnTypes(Promoted, {{"date", type date}, {"revenue", type number}, {"cogs", type number}, {"etsy_fees", type number}, {"api_cost", type number}, {"opex", type number}, {"net_profit", type number}, {"orders", Int64.Type}})
+			in
+			    Typed
+			```

@@ -224,6 +224,13 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "orders and flags them delivery_disputed so they're not treated as clean "
         "completions and the review request is suppressed. Disabled without "
         "Etsy credentials."),
+    ScheduledJob(
+        "QuoteForge BI Export", "export-bi",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "06:10"],
+        "Weekly: regenerates the Excel workbooks (with charts), the Power BI "
+        "package (star-schema CSVs + DAX + PBIP scaffold), and the executive "
+        "presentation (PDF + PPTX) from the latest order data, so the owner's "
+        "dashboards refresh on demand."),
 ]
 
 # Derived — the monitor reads this so it can never list a job we don't install.

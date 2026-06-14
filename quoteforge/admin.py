@@ -1719,7 +1719,9 @@ def _cmd_export_bi(args: list[str]) -> int:
     for p in r["excel"]:
         print(f"  {p}")
     print(f"Power BI data files : {len(r['powerbi']['data'])} CSVs + DAX + model + README")
-    print(f"Presentation        : {r['presentation']}")
+    print(f"Power BI PBIP project: {r['pbip']['pbip']} ({len(r['pbip']['files'])} files)")
+    print(f"Presentation (PDF)  : {r['presentation_pdf']}")
+    print(f"Presentation (PPTX) : {r['presentation_pptx']}")
     return 0
 
 
