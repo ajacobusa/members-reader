@@ -1810,19 +1810,6 @@ def _cmd_verify_tracking(args: list[str]) -> int:
     return 0
 
 
-def _cmd_poc(args: list[str]) -> int:
-    """Run the POC end-to-end validation (TEST ONLY) against the real code on an
-    isolated seeded DB; writes POC/poc_dashboard.html + the labelled POC site and
-    prints the go/no-go verdict. Exits non-zero on NO-GO."""
-    from quoteforge.poc.runner import run_poc, format_summary
-    out = run_poc()
-    print(format_summary(out["results"]))
-    print(f"Dashboard : {out['dashboard']}")
-    if out["site"]:
-        print(f"POC site  : {out['site']}")
-    return 0 if out["results"]["go"] else 1
-
-
 def _cmd_export_bi(args: list[str]) -> int:
     """Build the BI deliverables from live data: the Excel workbooks (with
     charts) in Excel/, and the Power BI package (star-schema CSVs + DAX +
@@ -2229,7 +2216,6 @@ COMMANDS = {
     "verify-tracking": _cmd_verify_tracking,
     "scan-disputes": _cmd_scan_disputes,
     "export-bi": _cmd_export_bi,
-    "poc": _cmd_poc,
     "ai-review": _cmd_ai_review,
     "weekly-review": _cmd_weekly_review,
     "monthly-review": _cmd_monthly_review,
