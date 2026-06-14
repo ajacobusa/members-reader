@@ -183,6 +183,31 @@ def _competitive_sections() -> str:
     faq_html = "".join(
         f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
         for q, a in faqs)
+    # Plain-English returns/promise policy - matches what our print partner
+    # actually covers (free reprint, no physical return) without naming any
+    # marketplace. Keeps the customer promise nested inside the 30-day partner
+    # window via a 10-day reporting ask.
+    policy_points = [
+        ("Arrived damaged or a print defect?",
+         "That\'s on us. Message a photo within 10 days of delivery and we\'ll "
+         "send a free replacement - there\'s no need to return the original, "
+         "just keep or recycle it."),
+        ("Made-to-order means please check carefully",
+         "Because each piece is made to order from the design you approve at "
+         "checkout, we can\'t accept returns or refunds for a change of mind, a "
+         "typo, or a low-res photo you confirmed. Your final confirmation is "
+         "your go-ahead to print."),
+        ("Package returned to us?",
+         "If the carrier couldn\'t deliver to the address provided, we\'ll "
+         "happily reship to a corrected address for a small shipping fee - just "
+         "send us the right address."),
+        ("Lost in the mail?",
+         "If tracking stalls and it doesn\'t arrive, contact us within 10 days "
+         "of the expected date and we\'ll arrange a free replacement."),
+    ]
+    policy_html = "".join(
+        f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
+        for q, a in policy_points)
     # (The rich occasion showcase lives above the grid now - see _occasion_showcase.)
     return (
         f'<div class="why" id="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
@@ -192,7 +217,11 @@ def _competitive_sections() -> str:
         f'made to order from the design you approved, with a free emailed proof '
         f'so you see exactly what prints. If something isn\'t right, we\'ll '
         f'make it right.</div>'
-        f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>')
+        f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>'
+        f'<div class="faqs policy" id="returns"><h2>Our happiness &amp; returns '
+        f'promise</h2><p class="policyintro">Damaged or defective is on us - '
+        f'made-to-order content you approved is final. Here\'s the plain '
+        f'version:</p>{policy_html}</div>')
 
 
 def _gift_section(owner: str) -> str:

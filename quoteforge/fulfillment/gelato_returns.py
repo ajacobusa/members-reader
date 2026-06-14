@@ -83,10 +83,18 @@ def build_claim_package(order: dict, category: str, photos: list = None) -> dict
 
     covered = bool(pol.get("gelato_covered"))
     required = _PHOTO_REQUIREMENTS.get(cat, ["product"])
-    have = {p.strip().lower() for p in (photos or [])}
+    # Auto-attach claim photos already on file (customer-supplied damage photos
+    # recorded against the order) so the owner doesn't re-gather them; merge with
+    # any explicitly passed in.
+    auto = _stored_claim_photos(order)
+    have = {p.strip().lower() for p in (photos or [])} | {p.strip().lower() for p in auto}
     missing = [p for p in required if p not in have]
     in_window = cw["within_supplier_window"]
     ready = covered and in_window and not missing
+    # The approved proof/artwork is the "vs. the approved design" reference Gelato
+    # wants for print-defect claims - always available, attach it automatically.
+    approved_ref = (order.get("artwork_url") or order.get("print_file")
+                    or order.get("mockup_url") or "")
 
     return {
         "order_id": order.get("order_id"),
@@ -96,6 +104,8 @@ def build_claim_package(order: dict, category: str, photos: list = None) -> dict
         "description": pol.get("recommended", res.get("title", cat)),
         "required_photos": required,
         "missing_photos": missing,
+        "auto_attached": auto,
+        "approved_design_ref": approved_ref,
         "gelato_covered": covered,
         "within_gelato_window": in_window,
         "days_since_delivery": cw["days_elapsed"],
@@ -107,6 +117,47 @@ def build_claim_package(order: dict, category: str, photos: list = None) -> dict
         "ready_to_file": ready,
         "customer_message": _no_return_message(order) if covered else res.get("message", ""),
     }
+
+
+# Gelato shipping-address fields that must be present for a deliverable parcel.
+_REQUIRED_ADDRESS = ("firstName", "addressLine1", "city", "postCode", "country")
+
+
+def validate_address(address: dict) -> dict:
+    """Validate + normalise a Gelato shipping address (to prevent return-to-
+    sender). Normalises country/state to ISO-2 upper-case and trims whitespace;
+    flags any missing required field. Returns {valid, issues, normalized}."""
+    from quoteforge.fulfillment.tracking_api import _iso2
+    addr = {k: (str(v).strip() if v is not None else "") for k, v in (address or {}).items()}
+    if addr.get("country"):
+        addr["country"] = _iso2(addr["country"]) or addr["country"].upper()
+    if addr.get("state"):
+        addr["state"] = addr["state"].upper()
+    issues = [f"missing {f}" for f in _REQUIRED_ADDRESS if not addr.get(f)]
+    return {"valid": not issues, "issues": issues, "normalized": addr}
+
+
+def prevent_rts(order: dict, address: dict) -> dict:
+    """Prevent return-to-sender by pushing a normalised, validated address to
+    Gelato BEFORE the order ships. No-ops once shipped/delivered (Gelato won't
+    accept changes then) and when the address is incomplete (flags it for a
+    human/customer fix instead of pushing a bad address)."""
+    status = (order.get("status") or "").lower()
+    if status in ("shipped", "delivered", "cancelled", "refunded"):
+        return {"updated": False, "issues": [],
+                "reason": f"order already {status} - Gelato won't change the address"}
+    gelato_ref = order.get("gelato_order_id") or order.get("vendor_order_id") or ""
+    if not gelato_ref:
+        return {"updated": False, "issues": [], "reason": "no Gelato order id on file"}
+    v = validate_address(address)
+    if not v["valid"]:
+        return {"updated": False, "issues": v["issues"],
+                "reason": "address incomplete - needs correction before it can be pushed"}
+    from quoteforge.automation.gelato_api import update_gelato_shipping_address
+    resp = update_gelato_shipping_address(gelato_ref, v["normalized"])
+    return {"updated": True, "issues": [], "address": v["normalized"],
+            "gelato_response": resp,
+            "reason": "normalised address pushed to Gelato pre-shipment"}
 
 
 def returned_to_sender_plan(order: dict) -> dict:
@@ -144,6 +195,30 @@ def returned_to_sender_plan(order: dict) -> dict:
             "delivery address? A small reshipping fee applies, and I'll take care "
             "of the rest."),
     }
+
+
+def _stored_claim_photos(order: dict) -> list:
+    """The customer-supplied claim photo labels recorded against an order
+    (parsed from the claim_photos JSON column); empty list if none."""
+    import json
+    raw = order.get("claim_photos")
+    if not raw:
+        return []
+    try:
+        val = json.loads(raw) if isinstance(raw, str) else raw
+        return [str(p).strip().lower() for p in val] if isinstance(val, list) else []
+    except (ValueError, TypeError):
+        return []
+
+
+def record_claim_photos(order_id: str, photos: list) -> None:
+    """Persist customer-supplied claim photo labels (e.g. product / packaging /
+    shipping_label) on the order so future claim packages auto-attach them and
+    ready_to_file flips without re-gathering evidence."""
+    import json
+    from quoteforge.db.database import update_order
+    update_order(order_id, claim_photos=json.dumps(
+        [str(p).strip().lower() for p in (photos or [])]))
 
 
 def record_claim(order_id: str, category: str, status: str = "staged",

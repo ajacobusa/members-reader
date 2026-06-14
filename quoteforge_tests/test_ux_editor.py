@@ -209,6 +209,23 @@ def test_final_review_is_a_three_step_wizard(tmp_path):
     assert "Step 1 of 3" in h and "Step 3 of 3" in h
 
 
+def test_storefront_return_policy_is_gelato_accurate(tmp_path):
+    """The customer-facing returns/promise section reflects the real policy:
+    10-day reporting window, NO need to return (keep it - we replace), free
+    replacement for transit damage/defects, reship for wrong-address returns,
+    and made-to-order = final sale for approved content. Never names the
+    marketplace."""
+    h = _page(tmp_path)
+    low = h.lower()
+    assert "10 days" in low
+    assert "no need to return" in low or ("keep" in low and "replace" in low)
+    assert "free replacement" in low
+    assert "made to order" in low
+    # Customer copy must never mention the marketplace by name.
+    import re
+    assert not re.search(r"\betsy\b", low)
+
+
 def test_final_confirm_requires_image_quality_text_verification(tmp_path):
     """Step 3 makes the buyer ACTIVELY confirm the photo/quality, the spelling
     & wording, and made-to-order before Complete order enables - the final

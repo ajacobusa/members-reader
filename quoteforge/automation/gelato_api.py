@@ -74,6 +74,28 @@ def create_gelato_order(
     return resp.json()
 
 
+def update_gelato_shipping_address(gelato_order_id: str, address: dict) -> dict:
+    """Update an order's shipping address BEFORE fulfilment (prevents return-to-
+    sender on a bad address). Mirrors Gelato's
+    `PUT /v3/orders/{id}/shipping-address`. Country change is not allowed by
+    Gelato. TEST_MODE/no-key returns a mock acknowledgement.
+
+    `address` uses Gelato field names: firstName, lastName, addressLine1,
+    addressLine2, city, state, postCode, country, email, phone, companyName.
+    """
+    if not gelato_order_id or not address:
+        return {"status": "skipped", "reason": "missing order id/address"}
+    if TEST_MODE or not GELATO_API_KEY:
+        return {"status": "mock_updated", "gelato_order_id": gelato_order_id,
+                "shippingAddress": address}
+    resp = requests.put(
+        f"{GELATO_BASE_URL}/v3/orders/{gelato_order_id}/shipping-address",
+        headers=_gelato_headers(), json=address, timeout=30)
+    resp.raise_for_status()
+    return {"status": "updated", "gelato_order_id": gelato_order_id,
+            **(resp.json() if resp.content else {})}
+
+
 def get_gelato_order_status(gelato_order_id: str) -> dict:
     """Poll Gelato for order status and tracking number."""
     resp = requests.get(

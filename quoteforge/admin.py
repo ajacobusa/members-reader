@@ -1671,6 +1671,24 @@ def _cmd_file_claim(args: list[str]) -> int:
     return 0
 
 
+def _cmd_claim_photos(args: list[str]) -> int:
+    """Record customer-supplied claim photos on an order so claims auto-attach
+    them: `claim-photos <order_id> <product|packaging|shipping_label> ...`."""
+    if len(args) < 2:
+        print("Usage: claim-photos <order_id> <product|packaging|shipping_label> ...")
+        return 1
+    from quoteforge.db.database import init_db, get_order
+    from quoteforge.fulfillment.gelato_returns import record_claim_photos
+    init_db()
+    if not get_order(args[0]):
+        print(f"Order {args[0]} not found.")
+        return 1
+    record_claim_photos(args[0], args[1:])
+    print(f"Recorded {len(args[1:])} claim photo(s) on {args[0]}: "
+          f"{', '.join(args[1:])}")
+    return 0
+
+
 def _cmd_dispute(args: list[str]) -> int:
     """Flag a delivered order as DISPUTED (Etsy case / refund / complaint) so it
     isn't a clean completion and no review is requested: `dispute <order_id>
@@ -2130,6 +2148,7 @@ COMMANDS = {
     "monitor-orders": _cmd_monitor_orders,
     "classify-claim": _cmd_classify_claim,
     "file-claim": _cmd_file_claim,
+    "claim-photos": _cmd_claim_photos,
     "dispute": _cmd_dispute,
     "mark-delivered": _cmd_mark_delivered,
     "no-review": _cmd_no_review,

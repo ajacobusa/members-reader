@@ -94,6 +94,76 @@ def test_returned_to_sender_plan_no_refund_new_order_mitigation(tmp_path, monkey
     assert any("shipping" in s.lower() for s in plan["mitigation"])
 
 
+def test_validate_address_flags_missing_and_normalizes():
+    from quoteforge.fulfillment.gelato_returns import validate_address
+    ok = validate_address({"firstName": "A", "addressLine1": "1 Main St",
+                           "city": "Atlanta", "state": "ga", "postCode": "30301",
+                           "country": "usa"})
+    assert ok["valid"] is True
+    assert ok["normalized"]["country"] == "US"      # ISO-2 normalised
+    assert ok["normalized"]["state"] == "GA"
+    bad = validate_address({"firstName": "A", "city": "Atlanta", "country": "US"})
+    assert bad["valid"] is False
+    joined = " ".join(bad["issues"]).lower()
+    assert "addressline1" in joined and "postcode" in joined
+
+
+def test_prevent_rts_pushes_normalized_address_before_ship(tmp_path, monkeypatch):
+    db = _seed(tmp_path, monkeypatch)
+    o = _order(db, status="in_production", gelato_order_id="G1")
+    seen = {}
+    monkeypatch.setattr(
+        "quoteforge.automation.gelato_api.update_gelato_shipping_address",
+        lambda gid, addr: seen.update(gid=gid, addr=addr) or {"status": "mock_updated"})
+    from quoteforge.fulfillment.gelato_returns import prevent_rts
+    res = prevent_rts(o, {"firstName": "A", "addressLine1": "1 Main St",
+                          "city": "Atlanta", "state": "ga", "postCode": "30301",
+                          "country": "usa"})
+    assert res["updated"] is True
+    assert seen["gid"] == "G1" and seen["addr"]["country"] == "US"
+
+
+def test_prevent_rts_skips_after_ship(tmp_path, monkeypatch):
+    db = _seed(tmp_path, monkeypatch)
+    o = _order(db, status="shipped", gelato_order_id="G1")
+    from quoteforge.fulfillment.gelato_returns import prevent_rts
+    res = prevent_rts(o, {"firstName": "A", "addressLine1": "1 Main St",
+                          "city": "Atlanta", "state": "GA", "postCode": "30301",
+                          "country": "US"})
+    assert res["updated"] is False and "ship" in res["reason"].lower()
+
+
+def test_prevent_rts_flags_incomplete_address_no_push(tmp_path, monkeypatch):
+    db = _seed(tmp_path, monkeypatch)
+    o = _order(db, status="in_production", gelato_order_id="G1")
+    from quoteforge.fulfillment.gelato_returns import prevent_rts
+    res = prevent_rts(o, {"firstName": "A", "country": "US"})   # missing line/city/zip
+    assert res["updated"] is False and res["issues"]
+
+
+def test_claim_auto_attaches_stored_customer_photos(tmp_path, monkeypatch):
+    db = _seed(tmp_path, monkeypatch)
+    from datetime import datetime, timedelta
+    o = _order(db, status="delivered", delivery_confirmed=1, gelato_order_id="G1",
+               delivered_at=(datetime.now() - timedelta(days=2)).isoformat())
+    from quoteforge.fulfillment.gelato_returns import (record_claim_photos,
+                                                      build_claim_package)
+    record_claim_photos("QF-1", ["product", "packaging", "shipping_label"])
+    o = db.get_order("QF-1")
+    pkg = build_claim_package(o, "damaged")            # no photos passed in
+    assert pkg["missing_photos"] == [] and pkg["ready_to_file"] is True
+    assert "product" in pkg["auto_attached"]
+
+
+def test_claim_attaches_approved_design_reference(tmp_path, monkeypatch):
+    db = _seed(tmp_path, monkeypatch)
+    o = _order(db, status="delivered", delivery_confirmed=1, gelato_order_id="G1",
+               artwork_url="https://x/art.png")
+    from quoteforge.fulfillment.gelato_returns import build_claim_package
+    pkg = build_claim_package(o, "printing_error", photos=["product", "shipping_label"])
+    assert pkg["approved_design_ref"] == "https://x/art.png"
+
+
 def test_record_claim_persists_status(tmp_path, monkeypatch):
     db = _seed(tmp_path, monkeypatch)
     o = _order(db, status="delivered", delivery_confirmed=1, gelato_order_id="G1")
