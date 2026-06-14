@@ -25,10 +25,11 @@ def test_size_qty_dropdowns_pulse_until_selected(tmp_path):
     h = _page(tmp_path)
     assert "@keyframes selattn" in h
     assert ".orow select.attn" in h
+    assert ".sizeprompt.attn" in h           # the prompt box pulses too
     assert "prefers-reduced-motion" in h
     # Wired into the guidance lifecycle: added when no size, cleared otherwise.
     assert "s.classList.add('attn')" in h
-    assert "select.attn" in h and "classList.remove('attn')" in h
+    assert "'sizeprompt'" in h and "classList.remove('attn')" in h
 
 
 def test_editor_has_progress_stepper(tmp_path):
