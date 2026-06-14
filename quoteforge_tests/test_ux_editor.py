@@ -209,6 +209,27 @@ def test_final_review_is_a_three_step_wizard(tmp_path):
     assert "Step 1 of 3" in h and "Step 3 of 3" in h
 
 
+def test_final_confirm_requires_image_quality_text_verification(tmp_path):
+    """Step 3 makes the buyer ACTIVELY confirm the photo/quality, the spelling
+    & wording, and made-to-order before Complete order enables - the final
+    confirmation that protects against 'wrong text/photo' disputes."""
+    h = _page(tmp_path)
+    assert 'id="vchk_img"' in h          # photo correct + good quality
+    assert 'id="vchk_text"' in h         # spelling & wording correct
+    assert 'id="vchk_made"' in h         # made to order, prints as shown
+    assert "function _confirmChecklistHTML" in h
+    assert "function _syncConfirmGate" in h
+
+
+def test_transit_damage_reassurance_at_confirm(tmp_path):
+    """The confirm step reassures the buyer that transit damage is on us (free
+    replacement) - the correct, Gelato-backed promise that pairs with the
+    customer's own content confirmation."""
+    h = _page(tmp_path).lower()
+    assert "damaged in transit" in h
+    assert "free replacement" in h
+
+
 def test_contact_and_shipping_collected_before_completion(tmp_path):
     """Name, email, phone, and shipping address are collected on their own
     step BEFORE final approval (previously only email was captured)."""
