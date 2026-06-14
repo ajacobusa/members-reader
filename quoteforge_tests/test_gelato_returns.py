@@ -94,6 +94,25 @@ def test_returned_to_sender_plan_no_refund_new_order_mitigation(tmp_path, monkey
     assert any("shipping" in s.lower() for s in plan["mitigation"])
 
 
+def test_normalize_recipient_iso_and_validity():
+    from quoteforge.fulfillment.gelato_returns import normalize_recipient
+    n = normalize_recipient({"name": "A", "address": "1 Main St", "city": "Atlanta",
+                             "state": "ga", "postCode": "30301", "country": "usa"})
+    assert n["valid"] is True
+    assert n["recipient"]["country"] == "US" and n["recipient"]["state"] == "GA"
+    bad = normalize_recipient({"name": "A", "country": "US"})
+    assert bad["valid"] is False and "missing street address" in bad["issues"]
+
+
+def test_route_order_blocks_incomplete_address(monkeypatch):
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", True)
+    from quoteforge.fulfillment.router import route_order
+    r = route_order({"order_id": "X", "vendor": "gelato", "gelato_product_uid": "u"},
+                    recipient={"name": "A", "country": "US"},
+                    artwork_url="https://x/art.png")
+    assert r["status"] == "manual" and "address" in r["detail"].lower()
+
+
 def test_validate_address_flags_missing_and_normalizes():
     from quoteforge.fulfillment.gelato_returns import validate_address
     ok = validate_address({"firstName": "A", "addressLine1": "1 Main St",

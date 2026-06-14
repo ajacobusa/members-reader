@@ -209,6 +209,23 @@ def test_final_review_is_a_three_step_wizard(tmp_path):
     assert "Step 1 of 3" in h and "Step 3 of 3" in h
 
 
+def test_service_request_form_collects_required_fields(tmp_path):
+    """The customer service form collects name, order number, email, optional
+    phone, issue type, description, photos, delivery date, and an accuracy
+    consent - and shows the individual-review acknowledgement. Order field is
+    labelled generically (never names the marketplace)."""
+    h = _page(tmp_path)
+    for fid in ("sr_name", "sr_order", "sr_email", "sr_phone", "sr_issue",
+                "sr_desc", "sr_delivery", "sr_consent"):
+        assert f'id="{fid}"' in h, f"missing service-request field {fid}"
+    for t in ("Damaged item", "Printing defect", "Wrong item received",
+              "Missing item", "Lost package", "Other"):
+        assert f"<option>{t}</option>" in h
+    assert "Order number" in h and "Etsy order" not in h
+    assert "reviewed individually" in h          # ack message
+    assert "function _srSubmit" in h or "window._srSubmit" in h
+
+
 def test_storefront_return_policy_is_gelato_accurate(tmp_path):
     """The customer-facing returns/promise section reflects the real policy:
     10-day reporting window, NO need to return (keep it - we replace), free

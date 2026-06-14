@@ -151,6 +151,72 @@ def _occasion_showcase(kit_dir, external_assets: bool = False, assets=None) -> s
             'onclick="shopByOccasion(\'\',this)">Show all designs</button></div></div>')
 
 
+def _service_request_form() -> str:
+    """Customer-facing service-request form (damage/defect/wrong/missing/lost).
+    Collects name, order number, email, optional phone, issue type, description,
+    photos, delivery date, and an accuracy consent. Submits as a structured
+    email (static-site fallback) and shows the individual-review acknowledgement.
+    Never names the marketplace or the production partner on the customer page."""
+    from quoteforge.fulfillment.claim_service import ISSUE_TYPES, CUSTOMER_ACK
+    opts = "".join("<option>" + t + "</option>" for t in ISSUE_TYPES)
+    ack = CUSTOMER_ACK.replace('"', "&quot;")
+    # Plain (non-f) string so JS braces need no escaping; OWNER is a JS global
+    # defined later in the page (resolved at submit time).
+    form = (
+        '<div class="faqs srf" id="service"><h2>Need help with an order?</h2>'
+        '<p class="policyintro">Tell us what went wrong and we will review it - '
+        'because every item is custom-made, each request is reviewed '
+        'individually.</p>'
+        '<div id="sr_form" class="srform">'
+        '<label>Your name*<input id="sr_name" type="text" autocomplete="name"></label>'
+        '<label>Order number*<input id="sr_order" type="text" '
+        'placeholder="from your order confirmation"></label>'
+        '<label>Email on the order*<input id="sr_email" type="email" '
+        'autocomplete="email"></label>'
+        '<label>Phone (optional)<input id="sr_phone" type="tel"></label>'
+        '<label>Issue type*<select id="sr_issue">' + opts + '</select></label>'
+        '<label>What happened?*<textarea id="sr_desc" rows="4"></textarea></label>'
+        '<label>Delivery date (helpful)<input id="sr_delivery" type="date"></label>'
+        '<label class="srfile">Product photo(s) <span>- required for '
+        'damage/defect/wrong item</span><input id="sr_ph_product" type="file" '
+        'accept="image/*" multiple></label>'
+        '<label class="srfile">Packaging photo(s) <span>- required for '
+        'damage</span><input id="sr_ph_pkg" type="file" accept="image/*" multiple></label>'
+        '<label class="srconsent"><input id="sr_consent" type="checkbox"> '
+        'I confirm the information above is accurate.</label>'
+        '<div id="sr_status" class="srstatus" role="alert"></div>'
+        '<button type="button" class="esecnext" onclick="_srSubmit()">'
+        'Submit request</button></div>'
+        '<div id="sr_done" class="srdone" style="display:none">' + ack + '</div>'
+        '</div>')
+    script = (
+        "<script>(function(){"
+        "function _srMsg(m){var s=document.getElementById('sr_status');"
+        "if(s)s.textContent=m;}"
+        "window._srSubmit=function(){"
+        "var req=['sr_name','sr_order','sr_email','sr_issue','sr_desc'];"
+        "for(var i=0;i<req.length;i++){var e=document.getElementById(req[i]);"
+        "if(!e||!e.value.trim()){if(e)e.focus();"
+        "_srMsg('Please complete all required fields (*).');return;}}"
+        "if(!document.getElementById('sr_consent').checked){"
+        "_srMsg('Please confirm the information is accurate.');return;}"
+        "var g=function(id){var e=document.getElementById(id);"
+        "return e?e.value.trim():'';};"
+        "var lines=['Customer service request','',"
+        "'Name: '+g('sr_name'),'Order number: '+g('sr_order'),"
+        "'Email: '+g('sr_email'),'Phone: '+g('sr_phone'),"
+        "'Issue type: '+g('sr_issue'),'Delivery date: '+g('sr_delivery'),"
+        "'','Description:',g('sr_desc'),'',"
+        "'(Please attach the product/packaging photos you selected to this email.)'];"
+        "var href='mailto:'+OWNER+'?subject='+"
+        "encodeURIComponent('Service request - '+g('sr_order'))+"
+        "'&body='+encodeURIComponent(lines.join('\\n'));"
+        "document.getElementById('sr_form').style.display='none';"
+        "document.getElementById('sr_done').style.display='block';"
+        "window.location.href=href;};})();</script>")
+    return form + script
+
+
 def _competitive_sections() -> str:
     """Conversion sections that beat mass printers: why-us comparison, a real
     happiness guarantee, and an FAQ. (Honest: no fabricated reviews pre-launch.)"""
@@ -1792,6 +1858,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
+ {_service_request_form()}
  {packages_html}
  {_gift_section(owner)}
  <div class="foot">

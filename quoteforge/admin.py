@@ -1671,6 +1671,24 @@ def _cmd_file_claim(args: list[str]) -> int:
     return 0
 
 
+def _cmd_claim_intake(args: list[str]) -> int:
+    """Validate a customer service request against the order record and document
+    it: `claim-intake <order_number> <email> <issue_type> [photo ...]`. Runs the
+    order/email/supplier/window/evidence checks, prints the result, and records
+    the recommended review status. (issue_type e.g. \"Damaged item\".)"""
+    if len(args) < 3:
+        print('Usage: claim-intake <order_number> <email> "<issue_type>" [photo ...]')
+        return 1
+    from quoteforge.db.database import init_db
+    from quoteforge.fulfillment.claim_service import intake_claim, format_request_text
+    init_db()
+    result = intake_claim({"order_number": args[0], "email": args[1],
+                           "issue_type": args[2], "photos": args[3:],
+                           "description": "(via CLI)"})
+    print(format_request_text(result))
+    return 0
+
+
 def _cmd_claim_photos(args: list[str]) -> int:
     """Record customer-supplied claim photos on an order so claims auto-attach
     them: `claim-photos <order_id> <product|packaging|shipping_label> ...`."""
@@ -2149,6 +2167,7 @@ COMMANDS = {
     "classify-claim": _cmd_classify_claim,
     "file-claim": _cmd_file_claim,
     "claim-photos": _cmd_claim_photos,
+    "claim-intake": _cmd_claim_intake,
     "dispute": _cmd_dispute,
     "mark-delivered": _cmd_mark_delivered,
     "no-review": _cmd_no_review,

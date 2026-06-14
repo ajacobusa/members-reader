@@ -25,6 +25,15 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",
                     "id": ""}
+        # Normalise + validate the ship-to BEFORE creating the order, so a bad
+        # address is fixed/flagged here instead of returning-to-sender later.
+        from quoteforge.fulfillment.gelato_returns import normalize_recipient
+        norm = normalize_recipient(recipient)
+        if not norm["valid"]:
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "address incomplete (" + ", ".join(norm["issues"])
+                    + ") - verify to prevent return-to-sender"}
+        recipient = norm["recipient"]
         try:
             from quoteforge.automation.gelato_api import create_gelato_order
             resp = create_gelato_order(order_id=order_id, recipient=recipient,

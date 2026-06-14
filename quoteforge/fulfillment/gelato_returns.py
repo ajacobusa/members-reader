@@ -137,6 +137,32 @@ def validate_address(address: dict) -> dict:
     return {"valid": not issues, "issues": issues, "normalized": addr}
 
 
+def normalize_recipient(recipient: dict) -> dict:
+    """Normalise a fulfilment recipient pre-ship (country->ISO-2, state upper,
+    trim) and report whether the essential delivery fields are present, to avoid
+    return-to-sender at the source. Schema-tolerant: accepts name/firstName and
+    address/addressLine1. Returns {recipient, issues, valid}."""
+    from quoteforge.fulfillment.tracking_api import _iso2
+    r = {k: (str(v).strip() if v is not None else "") for k, v in (recipient or {}).items()}
+    if r.get("country"):
+        r["country"] = _iso2(r["country"]) or r["country"].upper()
+    if r.get("state"):
+        r["state"] = r["state"].upper()
+    has = lambda *ks: any(r.get(k) for k in ks)
+    issues = []
+    if not has("name", "firstName"):
+        issues.append("missing name")
+    if not has("address", "addressLine1"):
+        issues.append("missing street address")
+    if not has("city"):
+        issues.append("missing city")
+    if not has("postCode", "zip", "postcode"):
+        issues.append("missing postcode")
+    if not has("country"):
+        issues.append("missing country")
+    return {"recipient": r, "issues": issues, "valid": not issues}
+
+
 def prevent_rts(order: dict, address: dict) -> dict:
     """Prevent return-to-sender by pushing a normalised, validated address to
     Gelato BEFORE the order ships. No-ops once shipped/delivered (Gelato won't
