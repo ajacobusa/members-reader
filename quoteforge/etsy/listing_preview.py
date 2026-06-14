@@ -177,6 +177,9 @@ def _service_request_form() -> str:
         '<label>Issue type*<select id="sr_issue">' + opts + '</select></label>'
         '<label>What happened?*<textarea id="sr_desc" rows="4"></textarea></label>'
         '<label>Delivery date (helpful)<input id="sr_delivery" type="date"></label>'
+        '<label>Preferred resolution (optional)<select id="sr_resolution">'
+        '<option value="">No preference</option><option>Replacement</option>'
+        '<option>Refund</option></select></label>'
         '<label class="srfile">Product photo(s) <span>- required for '
         'damage/defect/wrong item</span><input id="sr_ph_product" type="file" '
         'accept="image/*" multiple></label>'
@@ -208,6 +211,7 @@ def _service_request_form() -> str:
         "'Name: '+g('sr_name'),'Order number: '+g('sr_order'),"
         "'Email: '+g('sr_email'),'Phone: '+g('sr_phone'),"
         "'Issue type: '+g('sr_issue'),'Delivery date: '+g('sr_delivery'),"
+        "'Preferred resolution: '+g('sr_resolution'),"
         "'','Description:',g('sr_desc'),'',"
         "'(Please attach the product/packaging photos you selected to this email.)'];"
         "window.location.href='mailto:'+OWNER+'?subject='+"
@@ -219,7 +223,7 @@ def _service_request_form() -> str:
         "var fd=new FormData();"
         "var map={sr_name:'name',sr_order:'order_number',sr_email:'email',"
         "sr_phone:'phone',sr_issue:'issue_type',sr_desc:'description',"
-        "sr_delivery:'delivery_date'};"
+        "sr_delivery:'delivery_date',sr_resolution:'preferred_resolution'};"
         "for(var k in map){fd.append(map[k],g(k));}fd.append('consent','1');"
         "var pp=document.getElementById('sr_ph_product');"
         "if(pp&&pp.files){for(var i=0;i<pp.files.length;i++)fd.append('product_photo',pp.files[i]);}"

@@ -1671,6 +1671,46 @@ def _cmd_file_claim(args: list[str]) -> int:
     return 0
 
 
+def _cmd_claims(args: list[str]) -> int:
+    """Show the open-claims review queue: `claims [state]` (e.g.
+    supplier_review, needs_more_info, new). No arg = all open claims."""
+    from quoteforge.db.database import init_db
+    from quoteforge.fulfillment.claim_workflow import (format_claims_queue,
+                                                      run_claims_digest)
+    init_db()
+    if "email" in args:
+        r = run_claims_digest(send=True)
+        print(r["text"])
+        print(f"({r['actionable']} actionable; owner emailed if any)")
+        return 0
+    print(format_claims_queue(states=args or None))
+    return 0
+
+
+def _cmd_claim_decide(args: list[str]) -> int:
+    """Record + act on a claim decision: `claim-decide <order_id> <decision>
+    [note...]`. decision = approved_reprint|approved_refund|denied|
+    needs_more_info (or an intermediate review state). approved_reprint
+    auto-creates the Gelato replacement; the customer is emailed the outcome."""
+    if len(args) < 2:
+        print("Usage: claim-decide <order_id> <decision> [note...]")
+        return 1
+    from quoteforge.db.database import init_db
+    from quoteforge.fulfillment.claim_workflow import decide_claim
+    init_db()
+    r = decide_claim(args[0], args[1], note=" ".join(args[2:]), send=True)
+    if not r["ok"]:
+        print(f"Blocked: {r['reason']}")
+        return 1
+    print(f"Order {args[0]} -> {r['status']}")
+    if r.get("replacement"):
+        rep = r["replacement"]
+        print(f"  Replacement: {rep.get('status')} {rep.get('id', '') or rep.get('detail', '')}")
+    if r.get("email"):
+        print(f"  Customer email: {r['email'].get('status')}")
+    return 0
+
+
 def _cmd_claim_intake(args: list[str]) -> int:
     """Validate a customer service request against the order record and document
     it: `claim-intake <order_number> <email> <issue_type> [photo ...]`. Runs the
@@ -2168,6 +2208,8 @@ COMMANDS = {
     "file-claim": _cmd_file_claim,
     "claim-photos": _cmd_claim_photos,
     "claim-intake": _cmd_claim_intake,
+    "claims": _cmd_claims,
+    "claim-decide": _cmd_claim_decide,
     "dispute": _cmd_dispute,
     "mark-delivered": _cmd_mark_delivered,
     "no-review": _cmd_no_review,

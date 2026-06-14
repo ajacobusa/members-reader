@@ -34,6 +34,15 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
                     "detail": "address incomplete (" + ", ".join(norm["issues"])
                     + ") - verify to prevent return-to-sender"}
         recipient = norm["recipient"]
+        # Persist the validated ship-to so a later replacement reprint can reuse
+        # it without re-collecting the address.
+        try:
+            import json
+            from quoteforge.db.database import update_order, get_order
+            if get_order(order_id):
+                update_order(order_id, ship_to=json.dumps(recipient))
+        except Exception:  # noqa: BLE001 - persistence is best-effort, never block routing
+            pass
         try:
             from quoteforge.automation.gelato_api import create_gelato_order
             resp = create_gelato_order(order_id=order_id, recipient=recipient,

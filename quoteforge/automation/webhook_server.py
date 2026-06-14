@@ -521,6 +521,7 @@ if FLASK_AVAILABLE and app:
                "issue_type": (form.get("issue_type") or "").strip(),
                "description": (form.get("description") or "").strip(),
                "delivery_date": (form.get("delivery_date") or "").strip(),
+               "preferred_resolution": (form.get("preferred_resolution") or "").strip(),
                "photos": photos}
         from quoteforge.fulfillment.claim_service import intake_claim, CUSTOMER_ACK
         try:

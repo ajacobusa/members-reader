@@ -225,6 +225,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "completions and the review request is suppressed. Disabled without "
         "Etsy credentials."),
     ScheduledJob(
+        "QuoteForge Claims Digest", "claims email",
+        ["/SC", "DAILY", "/ST", "07:05"],
+        "Daily: emails the owner any return/service claims still needing action "
+        "(new / validating / evidence / supplier-review / needs-more-info) so a "
+        "pending claim never slips through. Silent when the queue is clear."),
+    ScheduledJob(
         "QuoteForge BI Export", "export-bi",
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "06:10"],
         "Weekly: regenerates the Excel workbooks (with charts), the Power BI "

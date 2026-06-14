@@ -216,7 +216,7 @@ def test_service_request_form_collects_required_fields(tmp_path):
     labelled generically (never names the marketplace)."""
     h = _page(tmp_path)
     for fid in ("sr_name", "sr_order", "sr_email", "sr_phone", "sr_issue",
-                "sr_desc", "sr_delivery", "sr_consent"):
+                "sr_desc", "sr_delivery", "sr_resolution", "sr_consent"):
         assert f'id="{fid}"' in h, f"missing service-request field {fid}"
     for t in ("Damaged item", "Printing defect", "Wrong item received",
               "Missing item", "Lost package", "Other"):
