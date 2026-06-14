@@ -26,6 +26,8 @@ def test_size_qty_dropdowns_pulse_until_selected(tmp_path):
     assert "@keyframes selattn" in h
     assert ".orow select.attn" in h
     assert ".sizeprompt.attn" in h           # the prompt box pulses too
+    # The prompt reuses the .pulseon ctapulse ring + an animated border-glow.
+    assert "ctapulse" in h and "@keyframes promptborder" in h
     assert "prefers-reduced-motion" in h
     # Wired into the guidance lifecycle: added when no size, cleared otherwise.
     assert "s.classList.add('attn')" in h

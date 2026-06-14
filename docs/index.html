@@ -743,14 +743,17 @@
      border-color:#cdbf98}
    50%{box-shadow:0 0 0 5px rgba(201,168,76,.42);border-color:var(--green)}}
  .orow select.attn{animation:selattn .95s ease-in-out infinite}
- /* The 'Pick your size & quantity' prompt pulses while it's waiting too. */
- @keyframes promptpulse{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0)}
-   50%{box-shadow:0 0 0 6px rgba(201,168,76,.32)}}
- .sizeprompt.attn{animation:promptpulse 1s ease-in-out infinite}
+ /* The 'Pick your size & quantity' prompt blinks until the step is finished:
+    the same .pulseon ctapulse ring PLUS an animated gold<->green border-glow. */
+ @keyframes promptborder{0%,100%{border-color:var(--gold)}
+   50%{border-color:var(--green)}}
+ .sizeprompt.attn{animation:ctapulse 1.2s ease-out infinite,
+     promptborder 1.2s ease-in-out infinite;border-radius:10px}
  @media (prefers-reduced-motion:reduce){
    .orow select.attn{animation:none;border-color:var(--green);
      box-shadow:0 0 0 4px rgba(201,168,76,.32)}
-   .sizeprompt.attn{animation:none;box-shadow:0 0 0 4px rgba(201,168,76,.30)}}
+   .sizeprompt.attn{animation:none;border-color:var(--green);
+     box-shadow:0 0 0 4px rgba(201,168,76,.30)}}
  /* The active section tab breathes softly - a quiet 'you are here' while
     the strong pulse marks the one action that completes the task. */
  @keyframes tabglowk{0%,100%{box-shadow:0 6px 16px rgba(16,61,46,.28)}
