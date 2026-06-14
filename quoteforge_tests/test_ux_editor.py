@@ -18,6 +18,17 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_order_card_becomes_active_next_step(tmp_path):
+    """After frame/design selection, the whole 'Build your order' card lights up
+    as the active next step (gold ring + lift + 'Next step' badge) and is
+    scrolled into view, so the buyer can't miss what to do next."""
+    h = _page(tmp_path)
+    assert ".orderbox.stepnow" in h          # active-step card styling
+    assert "stepbadge" in h and "Next step" in h
+    assert "classList.add('stepnow')" in h   # wired into the guide() lifecycle
+    assert "scrollIntoView" in h             # brought into view on activation
+
+
 def test_size_qty_dropdowns_pulse_until_selected(tmp_path):
     """The Size/Qty dropdowns glow-pulse to grab attention until the buyer
     picks a size, then the pulse clears (no forever-blink). Reduced-motion
