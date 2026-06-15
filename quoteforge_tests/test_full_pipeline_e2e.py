@@ -81,6 +81,24 @@ def test_gelato_mock_order_created(isolated_pipeline):
     assert order["gelato_order_id"] == "TEST-GELATO-E2E-TEST-001"
 
 
+def test_routing_failure_marks_order_error_not_shipped(isolated_pipeline):
+    """REGRESSION: when vendor routing fails, the order must end 'error' (so the
+    scheduled healthcheck/order-monitor alert the owner), NOT silently proceed
+    through follow-up to a 'shipped' status as if it had been fulfilled."""
+    from quoteforge.automation.pipeline_orchestrator import run_full_pipeline
+    from quoteforge.db.database import get_order, get_customer_messages
+    with patch("quoteforge.fulfillment.router.route_order",
+               return_value={"status": "error", "vendor": "gelato", "id": "",
+                             "detail": "vendor down"}):
+        run_full_pipeline(
+            FAKE_ORDER, skip_proof=True, gelato_product_uid="poster_18x24_uid",
+            recipient_address={"name": "Emma", "address": "1 Main St",
+                               "city": "Atlanta", "state": "GA",
+                               "postCode": "30301", "country": "US"})
+    order = get_order("E2E-TEST-001")
+    assert order["status"] == "error"          # surfaced, not "shipped"
+
+
 def test_customer_messages_created(isolated_pipeline):
     _run(isolated_pipeline)
     from quoteforge.db.database import get_customer_messages

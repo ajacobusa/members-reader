@@ -431,6 +431,7 @@ def run_full_pipeline(
                 recipient=recipient_address, artwork_url=artwork_url,
             )
             status = resp.get("status")
+            routing_failed = False
             if status in ("submitted", "fulfilled"):
                 gelato_order_id = resp.get("id", "")
                 if gelato_order_id:
@@ -441,18 +442,34 @@ def run_full_pipeline(
                 _log(order_id, "gelato_order", "success",
                      f"{resp.get('vendor')}: {status} {gelato_order_id}")
                 _notify("gelato_order", f"{resp.get('vendor')} {status}")
-            else:   # manual / error -> flag for the operator
+            elif status == "error":
+                # A real routing failure (vendor down / network) must NOT pass
+                # silently into follow-up as if shipped. Log WITHOUT _log (which
+                # would advance status via STATUS_MAP), mark the order errored,
+                # and skip follow-up so the scheduled healthcheck + order monitor
+                # alert the owner on an errored order.
+                routing_failed = True
+                detail = resp.get("detail", "fulfillment error")
+                log_pipeline_stage(order_id, "gelato_order", "error", detail)
+                update_order(order_id, status="error")
+                _notify("gelato_order", f"Fulfillment error: {detail}")
+            else:   # manual -> flag for the operator (legitimately not auto-sent)
                 _log(order_id, "gelato_order", "skipped", resp.get("detail", status))
                 _notify("gelato_order", resp.get("detail", "manual fulfillment"))
         except Exception as exc:
-            _log(order_id, "gelato_order", "error", str(exc))
+            routing_failed = True
+            log_pipeline_stage(order_id, "gelato_order", "error", str(exc))
+            update_order(order_id, status="error")
             _notify("gelato_order", f"Fulfillment error: {exc}")
 
         # ── Stage 7: Follow-up (persist messages, upsell, review) ──
-        _notify("followup", "Creating follow-up messages...")
-        _create_followup_records(order_id, order_data)
-        _log(order_id, "followup", "success",
-             "Customer messages, upsell, and review records created")
+        # Skip when routing failed - an errored order is not "shipped" and must
+        # not get follow-up/review records or a shipped status.
+        if not routing_failed:
+            _notify("followup", "Creating follow-up messages...")
+            _create_followup_records(order_id, order_data)
+            _log(order_id, "followup", "success",
+                 "Customer messages, upsell, and review records created")
 
         return get_order(order_id) or {}
 
@@ -487,16 +504,39 @@ def resume_after_proof_approval(order_id: str,
             log_pipeline_stage(order_id, "order_validation", "hold",
                                "; ".join(_val["issues"]))
             return get_order(order_id) or {}
-        from quoteforge.automation.gelato_api import create_gelato_order
-        gelato_resp = create_gelato_order(
-            order_id=order_id,
-            recipient=recipient_address,
-            artwork_url=artwork_url,
-            product_uid=gelato_product_uid,
+        # Route through the vendor-agnostic router (same as the auto path) so the
+        # customer-proofed flow gets the SAME idempotency guard (no duplicate
+        # supplier charge on a re-run), vendor_order_id persistence, and
+        # multi-vendor support - not a gelato-only direct call.
+        from quoteforge.fulfillment.router import route_order
+        from quoteforge.automation.retry import retry_call
+        resp = retry_call(
+            route_order,
+            {"order_id": order_id, "vendor": order.get("vendor", "gelato"),
+             "gelato_product_uid": gelato_product_uid},
+            recipient=recipient_address, artwork_url=artwork_url,
         )
-        gelato_order_id = gelato_resp.get("id", "")
-        update_order(order_id, gelato_order_id=gelato_order_id, status="in_production")
-        log_pipeline_stage(order_id, "gelato_order", "success", gelato_order_id)
+        status = resp.get("status")
+        if status in ("submitted", "fulfilled", "duplicate"):
+            gelato_order_id = resp.get("id", "")
+            if gelato_order_id:
+                update_order(order_id, gelato_order_id=gelato_order_id,
+                             vendor_order_id=gelato_order_id, status="in_production")
+            else:
+                update_order(order_id, status="in_production")
+            log_pipeline_stage(order_id, "gelato_order",
+                               "duplicate" if status == "duplicate" else "success",
+                               f"{resp.get('vendor')}: {status} {gelato_order_id}")
+        elif status == "error":
+            # Real fulfillment failure - flag it so it surfaces (healthcheck /
+            # order monitor alert on errored orders); never proceed silently.
+            update_order(order_id, status="error")
+            log_pipeline_stage(order_id, "gelato_order", "error",
+                               resp.get("detail", "fulfillment error"))
+        else:   # manual - approved but needs a hand-upload
+            update_order(order_id, status="approved_ready_to_print")
+            log_pipeline_stage(order_id, "gelato_order", "manual",
+                               resp.get("detail", "manual fulfillment"))
     else:
         # Manual-Gelato flow: approval recorded but no automated order placed.
         # Move the order off "awaiting_customer_approval" so it's clearly past

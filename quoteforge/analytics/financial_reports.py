@@ -73,8 +73,13 @@ def traffic_source_report(orders: list[dict]) -> list[dict]:
 def format_financial_report(orders: list[dict], fee_summary: dict = None) -> str:
     """Combined financial report: fee breakdown (if a statement was imported),
     refund/cancellation rates, and traffic source."""
+    # Exclude refunded too (not just cancelled/error) so gross revenue here
+    # matches summarize() - a refunded order is reversed revenue, and it already
+    # shows up in the refund rate / fee lines below; counting it as revenue as
+    # well would double-count it and understate fee-as-%-of-revenue.
     revenue = round(sum(float(o.get("sale_price") or 0) for o in orders
-                        if (o.get("status") or "") not in ("cancelled", "error")), 2)
+                        if (o.get("status") or "") not in
+                        ("cancelled", "error", "refunded")), 2)
     lines = ["=" * 60, "FINANCIAL REPORT", "=" * 60,
              f"  Gross revenue: ${revenue:,.2f}"]
     if fee_summary:
