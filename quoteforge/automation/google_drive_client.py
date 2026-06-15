@@ -86,6 +86,53 @@ def upload_file_to_drive(file_path: Path, filename: str,
         return None
 
 
+def upload_single_copy(file_path: Path, filename: str,
+                       mimetype: str = "application/octet-stream") -> Optional[str]:
+    """Upload keeping ONLY ONE copy in Drive. If a file with this exact name
+    already exists in the folder, its contents are REPLACED in place (and any
+    duplicate copies are deleted), so the backup folder never accumulates old
+    snapshots - there is always exactly one current copy. Returns the file URL,
+    or None if Drive isn't configured / the upload fails. Never raises."""
+    if not is_configured():
+        return None
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+
+        creds = service_account.Credentials.from_service_account_file(
+            GOOGLE_SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/drive.file"])
+        service = build("drive", "v3", credentials=creds)
+
+        # Find existing copies with this name in the target folder.
+        safe = filename.replace("'", "\\'")
+        query = (f"name = '{safe}' and '{GOOGLE_DRIVE_FOLDER_ID}' in parents "
+                 f"and trashed = false")
+        existing = service.files().list(
+            q=query, fields="files(id)", spaces="drive").execute().get("files", [])
+        media = MediaFileUpload(str(file_path), mimetype=mimetype, resumable=True)
+
+        if existing:
+            # Overwrite the first; delete any extras so exactly one remains.
+            keep_id = existing[0]["id"]
+            uploaded = service.files().update(
+                fileId=keep_id, media_body=media, fields="id,webViewLink").execute()
+            for dup in existing[1:]:
+                try:
+                    service.files().delete(fileId=dup["id"]).execute()
+                except Exception:  # noqa: BLE001 - dedupe is best-effort
+                    pass
+            return uploaded.get("webViewLink", "")
+
+        uploaded = service.files().create(
+            body={"name": filename, "parents": [GOOGLE_DRIVE_FOLDER_ID]},
+            media_body=media, fields="id,webViewLink").execute()
+        return uploaded.get("webViewLink", "")
+    except Exception:  # noqa: BLE001 - off-site must never break local backup
+        return None
+
+
 def upload_public_image(file_path: Path, filename: str,
                         mimetype: str = "image/jpeg") -> Optional[str]:
     """Upload an image, make it public, and return a DIRECT download URL that a
