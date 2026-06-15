@@ -250,7 +250,10 @@ def _process_in_background(payload: dict) -> None:
 
 # Gelato fulfillment status → our internal order status
 _GELATO_STATUS_MAP = {
-    "passed": "fulfillment_accepted",
+    # "passed" = Gelato accepted the order into fulfilment. Map straight to
+    # in_production (a status every consumer handles) rather than an orphaned
+    # "fulfillment_accepted" that order_monitor/financials never recognized.
+    "passed": "in_production",
     "in_production": "in_production",
     "printed": "in_production",
     "shipped": "shipped",
