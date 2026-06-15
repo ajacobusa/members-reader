@@ -323,6 +323,19 @@ def test_single_approval_model_everywhere(tmp_path):
     assert "still send a" not in h          # "we'll still send a free proof"
 
 
+def test_final_approval_authorizes_production(tmp_path):
+    """The final approval step must be an AFFIRMATIVE authorization: the buyer
+    approves the print exactly as shown AND authorizes it to proceed to
+    production (the record the made-to-order, all-sales-final policy rests on),
+    gated behind the three confirmation checkboxes."""
+    h = _page(tmp_path)
+    assert "Final approval" in h
+    assert "approve this print exactly as shown" in h
+    assert "authorize it to proceed to production" in h
+    for cid in ("vchk_img", "vchk_text", "vchk_made"):
+        assert f'id="{cid}"' in h          # all three gates still required
+
+
 def test_placeholder_wording_blocked_from_ordering(tmp_path):
     """Default quotes contain literal [Name] tokens - adding to basket with
     one still present asks the buyer to confirm or fix it."""

@@ -2788,13 +2788,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var bx='display:block;margin:.45rem 0;font-size:.93rem;line-height:1.45;cursor:pointer;';
    return '<div style="margin:.8rem 0;padding:.85rem 1rem;border:1px solid #d9cdf2;'+
      'border-radius:12px;background:#faf8ff">'+
-     '<div style="font-weight:700;margin-bottom:.5rem">Final confirmation - please check each box</div>'+
+     '<div style="font-weight:700;margin-bottom:.5rem">Final approval - please check each box</div>'+
      '<label style="'+bx+'"><input type="checkbox" id="vchk_img" onchange="_syncConfirmGate()"> '+
-       'My uploaded photo is correct and good quality</label>'+
+       'My uploaded photo and frame choice are correct and good quality</label>'+
      '<label style="'+bx+'"><input type="checkbox" id="vchk_text" onchange="_syncConfirmGate()"> '+
        'The spelling &amp; wording are exactly how I want them</label>'+
      '<label style="'+bx+'"><input type="checkbox" id="vchk_made" onchange="_syncConfirmGate()"> '+
-       'I understand this is made to order and prints exactly as shown above</label>'+
+       'I approve this print exactly as shown and authorize it to proceed to production. '+
+       'I understand it is made to order and final.</label>'+
      '<div style="margin-top:.55rem;font-size:.85rem;color:#5b3fa0">'+
        'Arrives damaged in transit? That is on us - we send a free replacement, '+
        'just message a photo within 7 days.</div></div>';
