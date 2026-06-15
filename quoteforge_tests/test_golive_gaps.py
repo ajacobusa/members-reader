@@ -66,6 +66,20 @@ def test_gelato_canceled_normalizes_to_cancelled_spelling(tmp_path):
     assert order["status"] == "cancelled"
 
 
+def test_gelato_passed_maps_to_in_production(tmp_path):
+    # REGRESSION: Gelato "passed" must map to a status consumers recognize
+    # (in_production), not an orphaned "fulfillment_accepted" that order_monitor
+    # and financial reports never read.
+    import quoteforge.db.database as db
+    with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path):
+        db.init_db()
+        db.create_order({"order_id": "G3", "recipient_name": "E", "occasion": "G"})
+        process_gelato_callback({"orderReferenceId": "G3", "status": "passed"})
+        order = db.get_order("G3")
+    assert order["status"] == "in_production"
+
+
 def test_gelato_callback_ignores_unknown_reference(tmp_path):
     import quoteforge.db.database as db
     with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
