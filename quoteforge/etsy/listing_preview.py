@@ -2463,7 +2463,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        `<span>$${{sub.toFixed(2)}} <span class="rm" onclick="rmLine(${{i}})">remove</span></span></div>`;}}).join('')+
      `<div class="line tot"><span>Order total</span><span>$${{tot.toFixed(2)}}</span></div>`;}}
  // ── Persistent basket (across designs) ──
- const ETSY_SHOP_URL = "{etsy_shop_url}";
+ const CHECKOUT_URL = "{etsy_shop_url}";
  const PAY_LINK = "{payment_link_url}";
  const EST_TAX_PCT = {est_tax_pct};   // 0 = tax calculated at checkout
  function toggleBasket(){{const p=document.getElementById('basketPanel');
@@ -2866,8 +2866,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          '<div class="nextsteps"><b>What happens next</b><ol>'+
          '<li>Pay securely (the checkout opens when you tap below).</li>'+
          '<li>We print &amp; ship with tracking.</li></ol></div>';
-     }} else if(ETSY_SHOP_URL){{ label='Continue to secure checkout →';
-       action=function(){{ window.open(ETSY_SHOP_URL,'_blank'); }};
+     }} else if(CHECKOUT_URL){{ label='Continue to secure checkout →';
+       action=function(){{ window.open(CHECKOUT_URL,'_blank'); }};
        msg+=' Tap below to pay via our secure checkout - card, PayPal, '+
          'Apple Pay or Google Pay. You never enter card details on this site.';
      }} else {{

@@ -172,7 +172,11 @@ def intake_claim(request: dict) -> dict:
     oid = result["order_id"]
     if oid:
         from quoteforge.fulfillment.gelato_returns import record_claim, record_claim_photos
+        from quoteforge.db.database import update_order
         record_claim(oid, result["category"] or "other", result["recommended_status"])
+        # Distinguish a held-for-admin claim (past 7d, supplier still covers) from
+        # a missing-evidence hold - both recommend "needs_more_info".
+        update_order(oid, claim_needs_admin="1" if result.get("requires_admin_review") else "")
         if request.get("photos"):
             record_claim_photos(oid, request["photos"])
     return result

@@ -69,6 +69,16 @@ POLICIES: dict[str, Policy] = {
         "cancellation", True, False, False, 0, "production status",
         "Refund ONLY if production hasn't started; once in production it's "
         "personalized and final. Human decision."),
+    "wrong_product": Policy(
+        "wrong_product", False, True, True, POLICY_DEFECT_WINDOW_DAYS,
+        "photo of the item received + shipping label",
+        "Free replacement (fulfillment error). Print partner covers the reprint; "
+        "Etsy 'not as described' Protection applies - resolve fast."),
+    "incomplete_order": Policy(
+        "incomplete_order", False, True, True, POLICY_DEFECT_WINDOW_DAYS,
+        "photo of what arrived + packaging + shipping label",
+        "Free replacement of the missing item (fulfillment error). Print partner "
+        "covers the reprint; Etsy Protection applies - resolve fast."),
 }
 
 

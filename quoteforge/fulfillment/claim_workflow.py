@@ -166,8 +166,9 @@ def format_claims_queue(states: list = None) -> str:
         return "No open claims." + (f" (states={states})" if states else "")
     lines = ["=" * 60, f"CLAIM QUEUE ({len(claims)})", "=" * 60]
     for o in sorted(claims, key=lambda x: x.get("claim_status") or ""):
+        admin_flag = " [ADMIN REVIEW: past 7d, still covered]" if o.get("claim_needs_admin") else ""
         lines.append(f"  {o['order_id']:<12} {o.get('claim_status',''):<18} "
                      f"{o.get('claim_category','') or '-':<18} "
-                     f"{o.get('customer_email','') or ''}")
+                     f"{o.get('customer_email','') or ''}{admin_flag}")
     lines.append("=" * 60)
     return "\n".join(lines)

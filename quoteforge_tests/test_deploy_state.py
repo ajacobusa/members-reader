@@ -2,6 +2,21 @@
 import pytest
 
 
+def test_render_cron_commands_exist_in_admin():
+    """Drift guard: every `python -m quoteforge.admin <cmd>` wired into the
+    Render cron must be a real admin command, so a rename can't silently break a
+    scheduled job (incl. the healthcheck + gelato-sync gates on daily-ops)."""
+    import re
+    from pathlib import Path
+    from quoteforge import admin
+    text = (Path(__file__).resolve().parent.parent / "render.yaml").read_text(
+        encoding="utf-8")
+    cmds = set(re.findall(r"python -m quoteforge\.admin ([a-z][a-z-]+)", text))
+    assert cmds, "no admin commands found in render.yaml"
+    for c in sorted(cmds):
+        assert c in admin.COMMANDS, f"render.yaml uses unknown admin command '{c}'"
+
+
 def test_readiness_flags_local_hosting(monkeypatch):
     import quoteforge.config as cfg
     monkeypatch.setattr(cfg, "PUBLIC_FILE_BASE_URL", "")

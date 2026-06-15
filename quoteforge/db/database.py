@@ -451,9 +451,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     #   claim_category   : the resolution-engine issue category claimed
     #   claim_filed_at   : ISO timestamp the claim was staged/filed
     #   claim_resolution : Gelato's verdict text once it replies
+    #   claim_needs_admin: "1" when a covered claim is past the 7-day customer
+    #                      window but still inside the supplier window (held for
+    #                      an admin decision, NOT a missing-evidence hold)
     for _col in ("claim_status", "claim_category", "claim_filed_at",
                  "claim_resolution", "claim_photos", "ship_to",
-                 "replacement_order_id"):
+                 "replacement_order_id", "claim_needs_admin"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} TEXT")
     # ACTUAL Etsy financials (from the receipt / Orders CSV) - real tax, fees,

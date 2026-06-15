@@ -30,6 +30,9 @@ def test_only_delivered_tag_confirms_failed_states_are_exceptions():
     for state in ("InTransit", "OutForDelivery", "AvailableForPickup",
                   "InfoReceived"):
         assert _AFTERSHIP_MAP.get(state) != "delivered"
+    # Out-for-delivery is the last pre-arrival state - it normalizes to in_transit
+    # (the "did it arrive?" decision only flips on a literal Delivered scan).
+    assert _AFTERSHIP_MAP.get("OutForDelivery") == "in_transit"
 
 
 def test_review_suppressed_when_disputed(tmp_path, monkeypatch):
