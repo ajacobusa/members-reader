@@ -21,15 +21,22 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
     # Idempotency: never double-submit. If this order already carries a supplier
     # order id, it is already routed - return that instead of creating a duplicate.
     if order_id:
+        from quoteforge.db.database import get_order
         try:
-            from quoteforge.db.database import get_order
             existing = get_order(order_id)
-            if existing and existing.get("vendor_order_id"):
-                return {"status": "duplicate", "vendor": vendor,
-                        "id": existing["vendor_order_id"],
-                        "detail": "order already routed - duplicate submission blocked"}
-        except Exception:  # noqa: BLE001 - never let the guard block a real route
-            pass
+        except Exception as exc:  # noqa: BLE001
+            # If the dedup lookup fails we must NOT proceed - routing anyway could
+            # double-submit (double supplier charge). Fail safe and surface it.
+            import logging
+            logging.getLogger(__name__).warning(
+                "route_order dedup lookup failed for %s: %s", order_id, exc)
+            return {"status": "error", "vendor": vendor, "id": "",
+                    "detail": f"dedup lookup failed; not routing to avoid a "
+                              f"duplicate submission: {exc}"}
+        if existing and existing.get("vendor_order_id"):
+            return {"status": "duplicate", "vendor": vendor,
+                    "id": existing["vendor_order_id"],
+                    "detail": "order already routed - duplicate submission blocked"}
 
     if vendor == "gelato":
         from quoteforge.config import TEST_MODE

@@ -107,6 +107,83 @@ def test_format_text(tmp_path):
     assert "FULL BACKUP" in text and "Push" in text
 
 
+class VerifyGit:
+    """Fake git for verify_backup: bundle verifies and contains HEAD."""
+    def __init__(self, verify_ok=True, head="abc123", head_in_bundle=True):
+        self.verify_ok, self.head, self.head_in_bundle = verify_ok, head, head_in_bundle
+
+    def __call__(self, args, **kwargs):
+        sub = args[1] if len(args) > 1 else ""
+        third = args[2] if len(args) > 2 else ""
+
+        class P:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        p = P()
+        if sub == "bundle" and third == "verify":
+            p.returncode = 0 if self.verify_ok else 1
+        elif sub == "rev-parse":
+            p.stdout = self.head + "\n"
+        elif sub == "bundle" and third == "list-heads":
+            p.stdout = (f"{self.head} refs/heads/main\n"
+                        if self.head_in_bundle else "deadbeef refs/heads/main\n")
+        return p
+
+
+def test_verify_backup_healthy(tmp_path):
+    import quoteforge.db.database as db
+    from quoteforge.automation import full_backup as fb
+    bundle = tmp_path / "b.bundle"
+    bundle.write_bytes(b"x" * 2048)
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2, patch.object(fb, "BUNDLE_PATH", bundle):
+        db.init_db()
+        db.backup_database()                       # fresh DB snapshot
+        r = fb.verify_backup(runner=VerifyGit())
+    assert r["ok"] is True
+    assert r["checks"]["db_snapshot"]["ok"] and r["checks"]["bundle"]["ok"]
+    assert "HEALTHY" in fb.format_verify_text(r)
+
+
+def test_verify_backup_missing_bundle_is_not_ok(tmp_path):
+    import quoteforge.db.database as db
+    from quoteforge.automation import full_backup as fb
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2, patch.object(fb, "BUNDLE_PATH", tmp_path / "nope.bundle"):
+        db.init_db()
+        db.backup_database()
+        r = fb.verify_backup(runner=VerifyGit())
+    assert r["ok"] is False
+    assert r["checks"]["bundle"]["ok"] is False
+
+
+def test_verify_backup_bundle_without_head_is_not_ok(tmp_path):
+    import quoteforge.db.database as db
+    from quoteforge.automation import full_backup as fb
+    bundle = tmp_path / "b.bundle"
+    bundle.write_bytes(b"x" * 2048)
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2, patch.object(fb, "BUNDLE_PATH", bundle):
+        db.init_db()
+        db.backup_database()
+        r = fb.verify_backup(runner=VerifyGit(head_in_bundle=False))
+    assert r["ok"] is False  # bundle exists but doesn't contain current HEAD
+
+
+def test_verify_backup_no_snapshot_is_not_ok(tmp_path):
+    import quoteforge.db.database as db
+    from quoteforge.automation import full_backup as fb
+    bundle = tmp_path / "b.bundle"
+    bundle.write_bytes(b"x" * 2048)
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2, patch.object(fb, "BUNDLE_PATH", bundle):
+        db.init_db()                               # no backup_database() -> no snapshot
+        r = fb.verify_backup(runner=VerifyGit())
+    assert r["ok"] is False
+    assert r["checks"]["db_snapshot"]["ok"] is False
+
+
 def test_restore_all_reports_db_and_code(tmp_path):
     """restore-all restores the DB and, without --into, reports the clone command
     (never overwrites a working tree in place)."""

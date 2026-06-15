@@ -3,6 +3,7 @@
 Usage:
   python -m quoteforge.admin gen-secret       # generate a webhook signing secret
   python -m quoteforge.admin backup           # snapshot the database (+ prune)
+  python -m quoteforge.admin verify-backup    # check backups exist + are fresh (no write)
   python -m quoteforge.admin restore [PATH]   # restore newest (or given) backup
   python -m quoteforge.admin list-backups     # show available backups
   python -m quoteforge.admin daily-report     # daily order-review summary
@@ -38,9 +39,25 @@ Usage:
   python -m quoteforge.admin autopilot "<issue>" [ID]  # bot decides: auto-act or escalate to you
   python -m quoteforge.admin approvals [approve|reject ID]  # your decision queue (only when needed)
 """
+import logging
 import sys
 
 from quoteforge.secrets_util import generate_webhook_secret
+
+logger = logging.getLogger(__name__)
+
+
+def _alert(subject: str, body: str, what: str) -> None:
+    """Send an owner alert that can NEVER fail silently. A skipped send (creds
+    unset) or a raised SMTP error is logged at WARNING - the alerter going down
+    must be observable, not swallowed. Always non-blocking (never raises)."""
+    try:
+        from quoteforge.automation.emailer import _send_email
+        out = _send_email(subject, body)
+        if isinstance(out, dict) and out.get("status") not in ("sent", "ok"):
+            logger.warning("%s alert not delivered: %s", what, out)
+    except Exception as exc:  # noqa: BLE001 - alerting must not break the command
+        logger.warning("%s alert failed to send: %s", what, exc)
 
 
 def _cmd_gen_secret() -> int:
@@ -61,6 +78,16 @@ def _cmd_backup_all(args: list[str]) -> int:
     r = run_full_backup(push="--no-push" not in args)
     print(format_backup_text(r))
     return 0 if "fail" not in str(r.get("push", "")) else 1
+
+
+def _cmd_verify_backup(args: list[str]) -> int:
+    """Verify backups are present + fresh WITHOUT creating one: recent DB
+    snapshot, a valid bundle containing HEAD, and off-site status. Exits non-zero
+    when a required copy is missing/stale (usable as a scheduled health gate)."""
+    from quoteforge.automation.full_backup import verify_backup, format_verify_text
+    r = verify_backup()
+    print(format_verify_text(r))
+    return 0 if r["ok"] else 1
 
 
 def _cmd_backup() -> int:
@@ -1840,13 +1867,10 @@ def _cmd_scan_disputes(args: list[str]) -> int:
     if r["disputed"]:
         print(f"Flagged {len(r['disputed'])} disputed order(s): "
               f"{', '.join(r['disputed'])}")
-        try:
-            from quoteforge.automation.emailer import _send_email
-            _send_email("⚠️ Etsy dispute detected on delivered order(s)",
-                        "<pre>Flagged delivery_disputed: "
-                        + ", ".join(r["disputed"]) + "</pre>")
-        except Exception:  # noqa: BLE001
-            pass
+        _alert("⚠️ Etsy dispute detected on delivered order(s)",
+               "<pre>Flagged delivery_disputed: "
+               + ", ".join(r["disputed"]) + "</pre>",
+               what="dispute (" + ", ".join(r["disputed"]) + ")")
     else:
         print("No new Etsy disputes detected.")
     return 0
@@ -1875,11 +1899,8 @@ def _cmd_shipping_audit(args: list[str]) -> int:
     text = format_shipping_audit_text(orders)
     print(text)
     if "email" in args and audit_shipping(orders)["leak_count"]:
-        try:
-            from quoteforge.automation.emailer import _send_email
-            _send_email("⚠️ Shipping margin leak detected", "<pre>" + text + "</pre>")
-        except Exception:  # noqa: BLE001
-            pass
+        _alert("⚠️ Shipping margin leak detected", "<pre>" + text + "</pre>",
+               what="shipping-leak")
     return 0
 
 
@@ -1894,12 +1915,8 @@ def _cmd_track_orders(args: list[str]) -> int:
     # wrong-destination delivery, or poll errors - is the owner's to chase.
     if (r.get("stuck") or r.get("errors") or r.get("tracking_missing")
             or r.get("stale_in_transit") or r.get("address_mismatch")):
-        try:
-            from quoteforge.automation.emailer import _send_email
-            _send_email("⚠️ Fulfillment needs attention",
-                        "<pre>" + text + "</pre>")
-        except Exception:  # noqa: BLE001
-            pass
+        _alert("⚠️ Fulfillment needs attention", "<pre>" + text + "</pre>",
+               what="fulfillment")
     return 0
 
 
@@ -2131,12 +2148,8 @@ def _cmd_gelato_sync(args: list[str]) -> int:
     if r.get("placeholder_uids"):
         from quoteforge.config import TEST_MODE
         if not TEST_MODE:
-            try:
-                from quoteforge.automation.emailer import _send_email
-                _send_email("🚨 Gelato sync BLOCKED — placeholder product UIDs",
-                            "<pre>" + format_sync_text(r) + "</pre>")
-            except Exception:  # noqa: BLE001
-                pass
+            _alert("🚨 Gelato sync BLOCKED — placeholder product UIDs",
+                   "<pre>" + format_sync_text(r) + "</pre>", what="placeholder-uid")
             return 1
     return 0
 
@@ -2249,6 +2262,7 @@ COMMANDS = {
     "gen-secret": lambda args: _cmd_gen_secret(),
     "backup": lambda args: _cmd_backup(),
     "backup-all": _cmd_backup_all,
+    "verify-backup": _cmd_verify_backup,
     "restore": _cmd_restore,
     "restore-all": _cmd_restore_all,
     "site-doctor": _cmd_site_doctor,

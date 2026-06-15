@@ -29,6 +29,22 @@ def _seed(tmp_path, monkeypatch, **extra):
     return db
 
 
+def test_claims_digest_alert_failure_is_logged(tmp_path, monkeypatch, caplog):
+    """REGRESSION: the claims-digest owner alert must not fail silently - a raised
+    send is logged at WARNING, not swallowed by a bare except."""
+    import logging
+    db = _seed(tmp_path, monkeypatch, claim_status="supplier_review",
+               claim_category="damaged_package")
+    from quoteforge.fulfillment import claim_workflow
+    from quoteforge.automation import emailer
+    monkeypatch.setattr(emailer, "_send_email",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("SMTP down")))
+    with caplog.at_level(logging.WARNING, logger="quoteforge.fulfillment.claim_workflow"):
+        out = claim_workflow.run_claims_digest(send=True)
+    assert out["actionable"] >= 1                     # there was a claim to alert on
+    assert any("claims-digest alert" in r.message.lower() for r in caplog.records)
+
+
 def test_open_claims_lists_by_state(tmp_path, monkeypatch):
     db = _seed(tmp_path, monkeypatch, claim_status="supplier_review",
                claim_category="damaged_package")

@@ -13,8 +13,11 @@ State transitions are enforced by the claim_service state machine. Customer
 emails BCC the owner and skip gracefully when email isn't configured.
 """
 import json
+import logging
 
 from quoteforge.fulfillment.claim_service import advance_claim
+
+_logger = logging.getLogger(__name__)
 
 
 def open_claims(states: list = None) -> list:
@@ -147,10 +150,12 @@ def run_claims_digest(send: bool = False) -> dict:
     if send and claims:
         try:
             from quoteforge.automation.emailer import _send_email
-            _send_email(f"⚠️ {len(claims)} claim(s) need attention",
-                        "<pre>" + text + "</pre>")
-        except Exception:  # noqa: BLE001
-            pass
+            out = _send_email(f"⚠️ {len(claims)} claim(s) need attention",
+                              "<pre>" + text + "</pre>")
+            if isinstance(out, dict) and out.get("status") not in ("sent", "ok"):
+                _logger.warning("claims-digest alert not delivered: %s", out)
+        except Exception as exc:  # noqa: BLE001 - alert must not block, but log it
+            _logger.warning("claims-digest alert failed to send: %s", exc)
     return {"actionable": len(claims), "text": text}
 
 
@@ -161,8 +166,9 @@ def format_claims_queue(states: list = None) -> str:
         return "No open claims." + (f" (states={states})" if states else "")
     lines = ["=" * 60, f"CLAIM QUEUE ({len(claims)})", "=" * 60]
     for o in sorted(claims, key=lambda x: x.get("claim_status") or ""):
+        admin_flag = " [ADMIN REVIEW: past 7d, still covered]" if o.get("claim_needs_admin") else ""
         lines.append(f"  {o['order_id']:<12} {o.get('claim_status',''):<18} "
                      f"{o.get('claim_category','') or '-':<18} "
-                     f"{o.get('customer_email','') or ''}")
+                     f"{o.get('customer_email','') or ''}{admin_flag}")
     lines.append("=" * 60)
     return "\n".join(lines)

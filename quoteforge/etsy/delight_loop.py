@@ -105,14 +105,17 @@ def delight_due(orders: list[dict], now: datetime | None = None,
             continue
         # Owner manual confirmation counts as a confirmed delivery.
         manual = bool(o.get("manual_delivery_confirmed"))
-        if o.get("status") not in ("delivered", "shipped") and not manual:
+        # A review is NEVER asked before delivery is confirmed. A bare "shipped"
+        # status (tracking exists but the carrier has not reported delivery) is
+        # in-transit and must not trigger the ask - only a "delivered" status or
+        # an owner manual confirmation qualifies.
+        if o.get("status") != "delivered" and not manual:
             continue
         # Anchor on ACTUAL delivery time (5-7 days after the parcel arrived),
         # else the last update, else created_at.
         ref = _parse_dt(o.get("delivered_at") or o.get("updated_at")
                         or o.get("created_at", ""))
-        confirmed = (bool(o.get("delivery_confirmed")) or manual
-                     or o.get("status") == "shipped")
+        confirmed = (bool(o.get("delivery_confirmed")) or manual)
         if ref > (cutoff if confirmed else assumed_cutoff):
             continue                      # not enough time since delivery
         if _already_delighted(o.get("order_id", "")):

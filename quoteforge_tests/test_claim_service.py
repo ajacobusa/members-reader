@@ -82,6 +82,74 @@ def test_past_window_is_denied(tmp_path, monkeypatch):
     assert r["recommended_status"] == "denied"
 
 
+def test_day8_claim_held_for_admin_not_auto_approved(tmp_path, monkeypatch):
+    # REGRESSION: past the 7-day customer window but still inside the supplier
+    # window, a claim is NOT auto-approved (within_window False, not
+    # supplier_review) and NOT auto-denied - it is held for an admin decision,
+    # because the supplier still covers a free reprint.
+    db = _seed(tmp_path, monkeypatch)
+    db.update_order("QF-1", delivered_at=(datetime.now() - timedelta(days=8)).isoformat())
+    from quoteforge.fulfillment.claim_service import validate_claim_request
+    r = validate_claim_request(_req())
+    assert r["checks"]["within_window"] is False
+    assert r["checks"]["requires_admin_review"] is True
+    assert r["recommended_status"] == "needs_more_info"
+    assert r["recommended_status"] != "supplier_review"   # never auto-accepted
+
+
+def test_intake_persists_admin_review_flag_for_held_claim(tmp_path, monkeypatch):
+    # A day-8 (past 7d, still supplier-covered) claim is HELD for admin; intake
+    # must persist a flag so it's distinguishable from a missing-evidence hold.
+    db = _seed(tmp_path, monkeypatch)
+    db.update_order("QF-1", delivered_at=(datetime.now() - timedelta(days=8)).isoformat())
+    from quoteforge.fulfillment.claim_service import intake_claim
+    r = intake_claim(_req())
+    assert r["requires_admin_review"] is True
+    assert db.get_order("QF-1")["claim_needs_admin"] == "1"
+
+
+def test_past_supplier_window_is_denied(tmp_path, monkeypatch):
+    # Past the supplier window (>30d) there is no coverage -> denied.
+    db = _seed(tmp_path, monkeypatch)
+    db.update_order("QF-1", delivered_at=(datetime.now() - timedelta(days=45)).isoformat())
+    from quoteforge.fulfillment.claim_service import validate_claim_request
+    r = validate_claim_request(_req())
+    assert r["recommended_status"] == "denied"
+
+
+def test_admin_override_allows_out_of_window_claim(tmp_path, monkeypatch):
+    # REGRESSION: an admin override is the ONLY way to advance a past-window claim.
+    db = _seed(tmp_path, monkeypatch)
+    db.update_order("QF-1", delivered_at=(datetime.now() - timedelta(days=20)).isoformat())
+    from quoteforge.fulfillment.claim_service import validate_claim_request
+    r = validate_claim_request(_req(admin_override=True))
+    assert r["checks"]["within_window"] is True
+    assert r["checks"]["admin_override"] is True
+    assert r["recommended_status"] == "supplier_review"
+
+
+def test_no_delivery_date_is_treated_as_in_window(tmp_path, monkeypatch):
+    # No delivery date on record -> window is "unknown"; we must NOT deny (can't
+    # tell it's late). A covered, evidenced claim proceeds to supplier_review.
+    db = _seed(tmp_path, monkeypatch)
+    db.update_order("QF-1", delivered_at="", delivery_confirmed=0,
+                    estimated_delivery="")
+    from quoteforge.fulfillment.claim_service import validate_claim_request
+    r = validate_claim_request(_req())
+    assert r["checks"]["within_window"] is True
+    assert r["recommended_status"] == "supplier_review"
+
+
+def test_day7_claim_still_in_window(tmp_path, monkeypatch):
+    # Boundary: day 7 is the last eligible day (no override needed).
+    db = _seed(tmp_path, monkeypatch)
+    db.update_order("QF-1", delivered_at=(datetime.now() - timedelta(days=7)).isoformat())
+    from quoteforge.fulfillment.claim_service import validate_claim_request
+    r = validate_claim_request(_req())
+    assert r["checks"]["within_window"] is True
+    assert r["recommended_status"] == "supplier_review"
+
+
 def test_lost_package_needs_no_photos(tmp_path, monkeypatch):
     _seed(tmp_path, monkeypatch)
     from quoteforge.fulfillment.claim_service import validate_claim_request

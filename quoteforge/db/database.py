@@ -451,9 +451,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     #   claim_category   : the resolution-engine issue category claimed
     #   claim_filed_at   : ISO timestamp the claim was staged/filed
     #   claim_resolution : Gelato's verdict text once it replies
+    #   claim_needs_admin: "1" when a covered claim is past the 7-day customer
+    #                      window but still inside the supplier window (held for
+    #                      an admin decision, NOT a missing-evidence hold)
     for _col in ("claim_status", "claim_category", "claim_filed_at",
                  "claim_resolution", "claim_photos", "ship_to",
-                 "replacement_order_id"):
+                 "replacement_order_id", "claim_needs_admin"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} TEXT")
     # ACTUAL Etsy financials (from the receipt / Orders CSV) - real tax, fees,
@@ -522,8 +525,45 @@ def create_order(data: dict) -> str:
     return order_id
 
 
-def update_order(order_id: str, **fields) -> None:
-    """Update specific fields on an order."""
+# Customer-approved design fields that LOCK once the customer approves the proof.
+# After approval these print exactly as shown and must not change silently - an
+# edit would ship a defective/mis-personalized item. Status, tracking, claim,
+# shipping-address, vendor-id and proof fields stay writable (the lifecycle and
+# fulfilment must keep advancing).
+LOCKED_FIELDS = frozenset({
+    "recipient_name", "sender_name", "relationship", "occasion", "scenery",
+    "tone", "memory", "output_style", "generated_quote", "size", "material",
+})
+
+
+class OrderLockedError(Exception):
+    """Raised when an attempt is made to edit a locked field on an approved order."""
+
+
+def update_order(order_id: str, *, allow_locked: bool = False, **fields) -> None:
+    """Update specific fields on an order.
+
+    Once the customer has approved the proof (``proof_approved`` set), the
+    locked design fields (see ``LOCKED_FIELDS``) are immutable: a write that
+    would CHANGE one to a new value raises ``OrderLockedError``. Re-writing the
+    same value is a no-op and allowed. An audited admin edit can pass
+    ``allow_locked=True`` to override the lock.
+    """
+    if not allow_locked:
+        touched = LOCKED_FIELDS & set(fields)
+        if touched:
+            current = get_order(order_id)
+            if current and current.get("proof_approved"):
+                # None and "" are equivalent "empty"; compare as strings so a
+                # re-write of the same value is a no-op rather than a false lock hit.
+                _norm = lambda v: "" if v is None else str(v)
+                changed = [k for k in sorted(touched)
+                           if _norm(fields[k]) != _norm(current.get(k))]
+                if changed:
+                    raise OrderLockedError(
+                        f"order {order_id} is locked after customer approval; "
+                        f"cannot edit {', '.join(changed)} "
+                        f"(pass allow_locked=True for an audited admin override)")
     fields["updated_at"] = datetime.now().isoformat()
     set_clause = ", ".join(f"{k}=?" for k in fields)
     values = list(fields.values()) + [order_id]

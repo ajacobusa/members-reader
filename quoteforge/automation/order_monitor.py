@@ -20,6 +20,10 @@ individual review. Read-only - it flags, it does not mutate orders.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Stages at or past production (design is locked, manufacturing under way).
 PRODUCTION_PLUS = ("in_production", "shipped", "delivered")
 
@@ -69,6 +73,27 @@ def audit_order(order: dict) -> dict:
     if status == "refunded":
         review.append("refunded - confirm it went through the individual claim "
                       "review (custom items have no automatic refund)")
+
+    # Margin floor: a real order priced/costed below the floor (custom or
+    # discounted price, live cost spike, heavy upcharge) leaks margin silently.
+    # The catalog audit only covers the static price book; this catches the
+    # economics of the ACTUAL order. Flag for review, don't block fulfilment.
+    sale_price, gelato_cost = order.get("sale_price"), order.get("gelato_cost")
+    # Check whenever there is a real product cost - including a $0 sale price
+    # (giveaway / 100%-off coupon), which is the WORST margin case and must not
+    # be skipped by a truthiness test. A 0/None cost is a pre-pricing placeholder
+    # with no economics to audit.
+    if sale_price is not None and gelato_cost:
+        try:
+            from quoteforge.etsy.margin_guard import margin_check
+            m = margin_check(float(sale_price), float(gelato_cost))
+            if not m["ok"]:
+                review.append(
+                    f"margin {m['margin_pct']:.1f}% is below the "
+                    f"{m['floor_pct']:.0f}% floor (sale ${float(sale_price):.2f} / "
+                    f"cost ${float(gelato_cost):.2f}) - review pricing")
+        except (TypeError, ValueError):
+            pass
 
     return {"order_id": order.get("order_id", ""), "status": status,
             "issues": issues, "review": review, "compliant": not issues}
@@ -130,8 +155,12 @@ def run_monitor(send: bool = False) -> dict:
     if send and (report["violations"] or report["needs_review"]):
         try:
             from quoteforge.automation.emailer import _send_email
-            _send_email("⚠️ Order compliance: attention needed",
-                        "<pre>" + format_monitor_text(report) + "</pre>")
-        except Exception:  # noqa: BLE001
-            pass
+            out = _send_email("⚠️ Order compliance: attention needed",
+                              "<pre>" + format_monitor_text(report) + "</pre>")
+            # A silently-dropped alert is worse than the original problem - if the
+            # mailer skipped (creds unset) or errored, surface it in the logs.
+            if isinstance(out, dict) and out.get("status") not in ("sent", "ok"):
+                logger.warning("order-compliance alert not delivered: %s", out)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("order-compliance alert failed to send: %s", exc)
     return report

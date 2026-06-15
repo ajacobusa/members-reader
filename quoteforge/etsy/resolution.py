@@ -116,6 +116,24 @@ ISSUE_CASES: dict[str, Resolution] = {
         "(usually within a few hours of ordering) I can cancel it for a full "
         "refund. If it's already being made, it's personalized and can't be "
         "cancelled - let me check and I'll let you know right away."),
+    "wrong_product": Resolution(
+        "wrong_product", "Wrong item received", "fulfillment",
+        "Free replacement", True, False,
+        ["Ask for a photo of the item received + the shipping label",
+         "Confirm it differs from what was ordered",
+         "Submit a fulfillment claim and reprint the correct item at no charge"],
+        "I'm so sorry the wrong item arrived! Could you send a quick photo of "
+        "what you received and the shipping label? I'll get the correct piece "
+        "made and shipped to you free of charge right away."),
+    "incomplete_order": Resolution(
+        "incomplete_order", "Missing item / incomplete order", "fulfillment",
+        "Free replacement of the missing item", True, False,
+        ["Confirm which item(s) are missing against the order",
+         "Submit a fulfillment claim for the missing item",
+         "Ship the missing item at no charge"],
+        "I'm sorry part of your order is missing! Let me check the order and "
+        "I'll get the missing item made and shipped to you free of charge - "
+        "I'll follow up shortly with the details."),
 }
 
 # Friendly aliases so callers can pass natural language.
@@ -141,6 +159,10 @@ _ALIASES = {
     "missing package": "lost_package",
     "wrong address": "wrong_address", "address": "wrong_address",
     "cancel": "cancellation", "cancellation": "cancellation",
+    "wrong item": "wrong_product", "wrong product": "wrong_product",
+    "received the wrong": "wrong_product", "not what i ordered": "wrong_product",
+    "missing item": "incomplete_order", "incomplete order": "incomplete_order",
+    "item missing": "incomplete_order", "part of my order": "incomplete_order",
 }
 
 

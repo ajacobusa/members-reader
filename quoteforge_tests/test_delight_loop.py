@@ -63,6 +63,24 @@ def test_idempotent_does_not_redeliver(tmp_path):
     assert second["due"] == 0
 
 
+def test_shipped_but_not_delivered_is_never_due(tmp_path):
+    # REGRESSION: a review must NEVER be asked before delivery is confirmed. An
+    # order that is "shipped" (tracking exists, carrier has NOT reported
+    # delivery, no manual confirmation) is in-transit and must be excluded even
+    # long after the ship date.
+    import quoteforge.db.database as db
+    with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path):
+        db.init_db()
+        db.create_order({"order_id": "S1", "customer_name": "Jen",
+                         "recipient_name": "Emma", "occasion": "Graduation"})
+        db.update_order("S1", status="shipped")   # shipped, NOT delivered
+        orders = db.get_all_orders()
+        future = datetime.now().replace(year=datetime.now().year + 1)
+        due = delight_due(orders, future)
+    assert all(d["order_id"] != "S1" for d in due)
+
+
 def test_format_text():
     text = format_delight_text({"due": 0, "touches": []})
     assert "DELIGHT LOOP" in text

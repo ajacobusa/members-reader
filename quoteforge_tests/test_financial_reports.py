@@ -32,6 +32,24 @@ def test_statement_csv_breaks_out_fee_types(tmp_path):
     assert abs(s["refunds"] - 18.99) < 0.01
 
 
+def test_report_revenue_matches_summarize_excludes_refunded():
+    """REGRESSION: a refunded order is reversed revenue. summarize() and
+    format_financial_report() must agree on revenue (both exclude refunded), so
+    the report can't count a refund as revenue AND in the refund rate."""
+    import re
+    from quoteforge.etsy.financials import summarize
+    from quoteforge.analytics.financial_reports import format_financial_report
+    orders = [
+        {"order_id": "D1", "status": "delivered", "sale_price": 50.0, "gelato_cost": 9.0},
+        {"order_id": "R1", "status": "refunded", "sale_price": 50.0, "gelato_cost": 9.0},
+    ]
+    summ_rev = summarize(orders)["revenue"]
+    m = re.search(r"Gross revenue:\s*\$([\d,]+\.\d{2})", format_financial_report(orders))
+    report_rev = float(m.group(1).replace(",", ""))
+    assert summ_rev == 50.0                 # only the delivered order counts
+    assert report_rev == summ_rev           # report agrees (refunded excluded)
+
+
 def test_fee_breakdown_shows_offsite_ads_pct():
     from quoteforge.analytics.financial_reports import fee_breakdown
     summary = {"listing": 0.20, "transaction": 3.39, "processing": 1.81,

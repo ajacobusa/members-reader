@@ -9,7 +9,9 @@ A Windows scheduled task — **"QuoteForge Daily Backup"** — runs every night 
 2. **Auto-commits** any tracked code changes locally
 3. **Local git bundle** (full history) → `backups/joffiels_full_backup.bundle`
 4. **Pushes** to GitHub (`ajacobusa/members-reader`)
-5. **(Optional) off-site** copy to Google Drive (if `BACKUP_TO_DRIVE=1`)
+5. **(Optional) off-site** copy to Google Drive (if `BACKUP_TO_DRIVE=1`) — keeps
+   exactly **one** copy of each: `joffiels_latest_db.sqlite3` and
+   `joffiels_full_backup.bundle`, replaced in place every run (no accumulation)
 
 Run it on demand anytime:
 ```
@@ -47,8 +49,8 @@ python -m quoteforge.admin restore "C:\...\db_backups\quoteforge_<timestamp>.db"
 You have three independent copies — recover from whichever is available:
 1. **GitHub** (preferred): `git clone https://github.com/ajacobusa/members-reader.git`
 2. **Local bundle** (on a backup drive): `git clone joffiels_full_backup.bundle restored`
-3. **Google Drive** (if enabled): download `backup_<date>.bundle`, then
-   `git clone backup_<date>.bundle restored`
+3. **Google Drive** (if enabled): download `joffiels_full_backup.bundle` (the
+   single current copy), then `git clone joffiels_full_backup.bundle restored`
 
 Then restore the database from the newest `db_*.sqlite3` / snapshot via
 `restore-all` (point `OUTPUT_DIR` at where you placed the db_backups).

@@ -182,3 +182,44 @@ def test_cli_backup_and_list(tmp_path, capsys):
     assert rc_list == 0
     out = capsys.readouterr().out
     assert "Backup created" in out
+
+
+# ── Owner-alert delivery is observable (the alerter can't fail silently) ──
+
+def test_dispute_alert_skipped_send_is_logged(tmp_path, caplog):
+    """If the mailer skips (creds unset) the alert must be logged, not discarded."""
+    import logging
+    import quoteforge.db.database as db
+    from quoteforge.automation import dispute_scanner, emailer
+    with patch.object(db, "DB_PATH", tmp_path / "live.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path), \
+         patch.object(dispute_scanner, "scan_etsy_disputes",
+                      return_value={"status": "ok", "disputed": ["D-9"]}), \
+         patch.object(emailer, "_send_email",
+                      return_value={"status": "skipped", "message": "creds unset"}), \
+         caplog.at_level(logging.WARNING, logger="quoteforge.admin"):
+        rc = admin.main(["scan-disputes"])
+    assert rc == 0
+    assert any("D-9" in r.message or "skipped" in r.message.lower()
+               or "not delivered" in r.message.lower()
+               for r in caplog.records), "skipped send should be logged"
+    assert caplog.records, "a warning should be emitted for a non-sent alert"
+
+
+def test_dispute_alert_send_exception_is_logged(tmp_path, caplog):
+    """If the mailer raises (bad/expired SMTP creds) the failure must be logged."""
+    import logging
+    import quoteforge.db.database as db
+    from quoteforge.automation import dispute_scanner, emailer
+    with patch.object(db, "DB_PATH", tmp_path / "live.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path), \
+         patch.object(dispute_scanner, "scan_etsy_disputes",
+                      return_value={"status": "ok", "disputed": ["D-9"]}), \
+         patch.object(emailer, "_send_email",
+                      side_effect=RuntimeError("SMTP auth failed")), \
+         caplog.at_level(logging.WARNING, logger="quoteforge.admin"):
+        rc = admin.main(["scan-disputes"])
+    # Alert stays non-blocking (no raise), but the failure is now visible.
+    assert rc == 0
+    assert any("SMTP auth failed" in r.message or "failed" in r.message.lower()
+               for r in caplog.records), "raised send should be logged, not swallowed"

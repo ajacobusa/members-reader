@@ -134,6 +134,30 @@ def involves_money_back(issue_text: str, category: str) -> bool:
     return any(k in low for k in REFUND_KEYWORDS)
 
 
+def auto_replacement_block_reason(res: dict, order: dict | None) -> str | None:
+    """Why a Gelato-covered replacement must NOT auto-file (None if it may).
+
+    A free reprint is only auto-filed when it is actually file-ready with the
+    supplier: covered, inside the supplier window, and with every mandatory
+    photo on file. We defer to ``build_claim_package`` - the SAME logic that
+    actually files the claim - so the auto-file gate and the filing path can
+    never drift (one evidence table, one window definition). Anything not
+    ready_to_file goes to a human (manual review). With no order in context
+    nothing is filed, so there is nothing to gate."""
+    if not order:
+        return None
+    from quoteforge.fulfillment.gelato_returns import build_claim_package
+    pkg = build_claim_package(order, res.get("category", ""))
+    if pkg["ready_to_file"]:
+        return None
+    if pkg["missing_photos"]:
+        return ("claim needs photo evidence "
+                f"({', '.join(pkg['missing_photos'])}) - manual review")
+    if not pkg["within_gelato_window"]:
+        return "claim reported past the supplier window - manual review"
+    return "claim not ready to auto-file with the supplier - manual review"
+
+
 def decide(issue_text: str, order: dict | None = None) -> AutoDecision:
     """Full decision: classify, resolve, and apply the auto/escalate policy."""
     category, confidence = classify_issue(issue_text)
@@ -182,6 +206,12 @@ def decide(issue_text: str, order: dict | None = None) -> AutoDecision:
         reasons.append("high-risk decision")
     if high_value:
         reasons.append(f"high-value order > ${AUTOPILOT_HIGH_VALUE_ORDER:.0f}")
+    # A Gelato-covered free replacement only auto-files with evidence on file and
+    # inside the window; otherwise it must go to a human (manual review).
+    if res["gelato_covered"]:
+        block = auto_replacement_block_reason(res, order)
+        if block:
+            reasons.append(block)
 
     auto = not reasons
     action = ("auto_replacement" if res["gelato_covered"]
