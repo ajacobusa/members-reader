@@ -1,5 +1,90 @@
 # Render.com blueprint - 24/7 webhook + Ask Ange server, with scheduled jobs.
 # Deploy: push to GitHub -> Render -> New + Blueprint -> pick this repo.
+#
+# Secrets live in ONE env-var group (joffiels-env) shared by every service, so
+# you fill each key ONCE in the Render dashboard (Environment Groups ->
+# joffiels-env) instead of per service. Keys with `sync: false` show up as empty
+# slots to fill; keys with `value:` are safe non-secret defaults.
+#
+# ⚠️ DISK CAVEAT: Render disks are PER-SERVICE and not shared. The web service
+# owns the persistent /data disk (SQLite + assets). The cron services below do
+# NOT mount it, so on Render they would operate on a separate, empty DB. For a
+# real Render deploy either (a) move shared state to a managed Postgres/Neon DB,
+# or (b) drop the separate cron services and run the in-process scheduler
+# (quoteforge/automation/scheduler.py) inside the web service. The self-hosted
+# (NSSM + Windows Task Scheduler) path in GO_LIVE_GUIDE.md shares one machine +
+# one .env + one DB and has none of this caveat. See verify steps in
+# .env.production.example.
+
+envVarGroups:
+  - name: joffiels-env
+    envVars:
+      # ── Shared non-secret config (safe defaults) ──
+      - key: TEST_MODE
+        value: "true"          # flip to "false" at go-live (one place, all services)
+      - key: OUTPUT_DIR
+        value: /data
+      - key: ETSY_API_BASE
+        value: https://openapi.etsy.com/v3
+      - key: TRACKING_API_PROVIDER
+        value: aftership
+      - key: CLAUDE_MODEL
+        value: claude-haiku-4-5
+      - key: RENDERER
+        value: local
+
+      # ── [1] REQUIRED FOR GO-LIVE (secrets - fill in the dashboard) ──
+      # Hard-gated by preflight (deploy fails without these in live mode):
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GELATO_API_KEY
+        sync: false
+      - key: ETSY_API_KEY
+        sync: false
+      - key: ETSY_WEBHOOK_SECRET
+        sync: false
+      # Functionally required for the full order flow:
+      - key: GELATO_WEBHOOK_SECRET
+        sync: false
+      - key: ETSY_OAUTH_TOKEN
+        sync: false
+      - key: ETSY_REFRESH_TOKEN
+        sync: false
+      - key: ETSY_SHOP_ID
+        sync: false
+      # Print-file hosting - Gelato must FETCH the customer JPG. Use EITHER the
+      # Google Drive pair OR the public-dir pair. For Drive on Render, store the
+      # service-account JSON as a Render Secret File and point the path at it.
+      - key: GOOGLE_DRIVE_FOLDER_ID
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_FILE
+        sync: false
+      - key: PUBLIC_FILE_DIR
+        sync: false
+      - key: PUBLIC_FILE_BASE_URL
+        sync: false
+      # Hosted backend URL (storefront widgets + /service-request claim form):
+      - key: ASK_ANGE_API_URL
+        sync: false
+      # Carrier tracking (carrier-confirmed delivery only runs when set):
+      - key: TRACKING_API_KEY
+        sync: false
+      # Owner email + alerts (Gmail SMTP app password):
+      - key: GMAIL_ADDRESS
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: REPORT_RECIPIENT
+        sync: false
+
+      # ── [2] RECOMMENDED ──
+      - key: SHOP_NAME
+        sync: false
+      - key: ETSY_SHOP_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
 services:
   - type: web
     name: joffiels-server
@@ -10,39 +95,30 @@ services:
     healthCheckPath: /health
     disk:
       name: data
-      mountPath: /data       # persistent SQLite + assets
+      mountPath: /data       # persistent SQLite + assets (web service only - see DISK CAVEAT)
       sizeGB: 1
     envVars:
-      - key: OUTPUT_DIR
-        value: /data
-      - key: TEST_MODE
-        value: "true"        # flip to "false" after the sample is approved
-      - key: ANTHROPIC_API_KEY
-        sync: false          # set in the Render dashboard (secret)
-      - key: GELATO_API_KEY
-        sync: false
-      - key: ETSY_API_KEY
-        sync: false
-      - key: ETSY_OAUTH_TOKEN
-        sync: false
-      - key: ETSY_WEBHOOK_SECRET
-        sync: false
+      - fromGroup: joffiels-env
 
   # ── Scheduled jobs (mirror the Windows Task Scheduler set) ──
+  # NOTE: see the DISK CAVEAT above - these need shared state with the web
+  # service to be meaningful on Render.
   - type: cron
     name: poll-etsy
     runtime: python
     schedule: "*/10 * * * *"      # every 10 min
     buildCommand: pip install -r requirements.txt -r requirements-server.txt
     startCommand: python -m quoteforge.admin poll-etsy
-    envVars: [{key: OUTPUT_DIR, value: /data}]
+    envVars:
+      - fromGroup: joffiels-env
   - type: cron
     name: track-orders
     runtime: python
     schedule: "0 */6 * * *"       # every 6h
     buildCommand: pip install -r requirements.txt -r requirements-server.txt
     startCommand: python -m quoteforge.admin track-orders
-    envVars: [{key: OUTPUT_DIR, value: /data}]
+    envVars:
+      - fromGroup: joffiels-env
   - type: cron
     name: daily-ops
     runtime: python
@@ -52,4 +128,5 @@ services:
     # healthcheck emails on DB/storage/job problems; gelato-sync is the loud
     # placeholder-UID guard (orders for placeholder UIDs would fail to route).
     startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync"
-    envVars: [{key: OUTPUT_DIR, value: /data}]
+    envVars:
+      - fromGroup: joffiels-env
