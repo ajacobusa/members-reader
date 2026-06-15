@@ -551,9 +551,11 @@ def update_order(order_id: str, *, allow_locked: bool = False, **fields) -> None
         if touched:
             current = get_order(order_id)
             if current and current.get("proof_approved"):
+                # None and "" are equivalent "empty"; compare as strings so a
+                # re-write of the same value is a no-op rather than a false lock hit.
+                _norm = lambda v: "" if v is None else str(v)
                 changed = [k for k in sorted(touched)
-                           if str(fields[k] if fields[k] is not None else "")
-                           != str(current.get(k) if current.get(k) is not None else "")]
+                           if _norm(fields[k]) != _norm(current.get(k))]
                 if changed:
                     raise OrderLockedError(
                         f"order {order_id} is locked after customer approval; "

@@ -137,27 +137,25 @@ def involves_money_back(issue_text: str, category: str) -> bool:
 def auto_replacement_block_reason(res: dict, order: dict | None) -> str | None:
     """Why a Gelato-covered replacement must NOT auto-file (None if it may).
 
-    A free reprint is only auto-filed when the order has the photo evidence the
-    supplier requires on file AND the claim is inside the customer window. A
-    damage/defect claim with no evidence, or reported past the window, goes to a
-    human (manual review) instead of being auto-approved. With no order in
-    context nothing is actually filed, so there is nothing to gate."""
+    A free reprint is only auto-filed when it is actually file-ready with the
+    supplier: covered, inside the supplier window, and with every mandatory
+    photo on file. We defer to ``build_claim_package`` - the SAME logic that
+    actually files the claim - so the auto-file gate and the filing path can
+    never drift (one evidence table, one window definition). Anything not
+    ready_to_file goes to a human (manual review). With no order in context
+    nothing is filed, so there is nothing to gate."""
     if not order:
         return None
-    from quoteforge.fulfillment.claim_service import _EVIDENCE_RULES
-    from quoteforge.fulfillment.gelato_returns import _stored_claim_photos
-    from quoteforge.etsy.resolution import claim_window
-    cat = res.get("category", "")
-    required = _EVIDENCE_RULES.get(cat, ["product"])
-    have = set(_stored_claim_photos(order))
-    missing = [p for p in required if p not in have]
-    if missing:
-        return ("damage/defect claim needs photo evidence "
-                f"({', '.join(missing)}) - manual review")
-    elig = claim_window(order).get("eligibility")
-    if elig in ("manual_review", "management_approval"):
-        return "claim reported past the customer window - manual review"
-    return None
+    from quoteforge.fulfillment.gelato_returns import build_claim_package
+    pkg = build_claim_package(order, res.get("category", ""))
+    if pkg["ready_to_file"]:
+        return None
+    if pkg["missing_photos"]:
+        return ("claim needs photo evidence "
+                f"({', '.join(pkg['missing_photos'])}) - manual review")
+    if not pkg["within_gelato_window"]:
+        return "claim reported past the supplier window - manual review"
+    return "claim not ready to auto-file with the supplier - manual review"
 
 
 def decide(issue_text: str, order: dict | None = None) -> AutoDecision:

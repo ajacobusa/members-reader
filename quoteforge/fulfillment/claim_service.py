@@ -100,12 +100,18 @@ def validate_claim_request(request: dict) -> dict:
                                             "days_elapsed": None,
                                             "eligibility": "unknown"}
     # The customer-facing claim window is 7 days from delivery (the storefront
-    # promise). A claim reported AFTER 7 days is denied UNLESS an admin
-    # explicitly overrides - the override is the only way past the window.
+    # promise). Past 7 days a claim is NOT auto-accepted; what happens next
+    # depends on supplier coverage:
+    #   * <= 7 days (or admin override)   -> normal review flow
+    #   * 8 days .. supplier window (30d) -> held for ADMIN review (the supplier
+    #     still reprints for free, so never auto-deny a covered claim)
+    #   * past the supplier window        -> denied (no coverage; admin can override)
     admin_override = bool(request.get("admin_override"))
     eligibility = cw.get("eligibility", "unknown")
+    within_supplier = bool(order) and cw.get("within_supplier_window", True)
     past_window = eligibility in ("manual_review", "management_approval")
     within_window = bool(order) and (admin_override or not past_window)
+    requires_admin_review = bool(order) and past_window and within_supplier and not admin_override
     required = _EVIDENCE_RULES.get(category, ["product"])
     missing_evidence = [p for p in required if p not in photos]
     evidence_complete = not missing_evidence
@@ -116,6 +122,7 @@ def validate_claim_request(request: dict) -> dict:
         "supplier_order_id": bool(supplier_ref),
         "within_window": within_window,
         "admin_override": admin_override,
+        "requires_admin_review": requires_admin_review,
         "evidence_complete": evidence_complete,
         "tracking_status": (order.get("status") if order else ""),
         "delivery_date": (order.get("delivered_at") if order else "") or request.get("delivery_date", ""),
@@ -124,14 +131,21 @@ def validate_claim_request(request: dict) -> dict:
     # Recommended next state from the checks (final approve/deny stays human).
     if not order_found or not email_matches or not category:
         status = "needs_more_info"
-    elif not within_window:
-        status = "denied"
-    elif not evidence_complete:
+    elif within_window:
+        # In the 7-day window (or admin-overridden): normal review flow.
+        if not evidence_complete:
+            status = "needs_more_info"
+        elif category in _COVERED:
+            status = "supplier_review"
+        else:
+            status = "needs_more_info"
+    elif within_supplier:
+        # Past 7 days but the supplier still covers a free reprint: hold for an
+        # admin decision rather than auto-denying a legitimate covered claim.
         status = "needs_more_info"
-    elif category in _COVERED:
-        status = "supplier_review"
     else:
-        status = "needs_more_info"
+        # Past the supplier window - no coverage. Denied unless an admin overrode.
+        status = "denied"
 
     return {
         "order_id": order.get("order_id") if order else "",
@@ -144,6 +158,7 @@ def validate_claim_request(request: dict) -> dict:
         "days_since_delivery": cw.get("days_elapsed"),
         "window_eligibility": eligibility,
         "admin_override": admin_override,
+        "requires_admin_review": requires_admin_review,
         "recommended_status": status,
         "customer_ack": CUSTOMER_ACK,
     }

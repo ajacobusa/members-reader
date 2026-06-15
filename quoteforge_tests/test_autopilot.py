@@ -103,9 +103,10 @@ def test_autopilot_disabled_escalates_everything():
 def test_handle_damage_auto_executes(db):
     db.create_order({"order_id": "A1", "recipient_name": "Emma",
                      "occasion": "Graduation"})
-    # A free replacement only auto-files with the required photo evidence on file.
+    # A free replacement only auto-files with the supplier's mandatory photos on
+    # file (damage -> product, packaging, shipping_label).
     from quoteforge.fulfillment.gelato_returns import record_claim_photos
-    record_claim_photos("A1", ["product", "packaging"])
+    record_claim_photos("A1", ["product", "packaging", "shipping_label"])
     res = handle_issue("the canvas arrived torn", "A1")
     assert res["outcome"] == "auto-executed"
     order = db.get_order("A1")
@@ -128,14 +129,14 @@ def test_damage_without_evidence_escalates_to_manual_review(db):
 
 
 def test_damage_past_window_escalates_to_manual_review(db):
-    # REGRESSION: even WITH evidence, a damage claim reported past the 7-day
-    # customer window is not auto-filed - it requires a human.
+    # REGRESSION: even WITH full evidence, a claim reported past the supplier
+    # window is not auto-filed (the supplier won't reprint) - it requires a human.
     from datetime import datetime, timedelta
     from quoteforge.fulfillment.gelato_returns import record_claim_photos
     db.create_order({"order_id": "PW1", "recipient_name": "Z", "occasion": "Y"})
     db.update_order("PW1", status="delivered", delivery_confirmed=1,
-                    delivered_at=(datetime.now() - timedelta(days=20)).isoformat())
-    record_claim_photos("PW1", ["product", "packaging"])
+                    delivered_at=(datetime.now() - timedelta(days=40)).isoformat())
+    record_claim_photos("PW1", ["product", "packaging", "shipping_label"])
     res = handle_issue("the print arrived damaged", "PW1")
     assert res["outcome"] == "queued_for_human"
 
@@ -167,7 +168,7 @@ def test_owner_approves_queued_decision_executes(db):
 def test_status_counts(db):
     db.create_order({"order_id": "A4", "recipient_name": "X", "occasion": "Y"})
     from quoteforge.fulfillment.gelato_returns import record_claim_photos
-    record_claim_photos("A4", ["product", "packaging"])   # evidence -> auto
+    record_claim_photos("A4", ["product", "packaging", "shipping_label"])  # -> auto
     handle_issue("damaged in shipping", "A4")          # auto
     handle_issue("cancel my order", "A4")               # pending
     st = autopilot_status()

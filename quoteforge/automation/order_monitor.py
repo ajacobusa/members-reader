@@ -79,7 +79,11 @@ def audit_order(order: dict) -> dict:
     # The catalog audit only covers the static price book; this catches the
     # economics of the ACTUAL order. Flag for review, don't block fulfilment.
     sale_price, gelato_cost = order.get("sale_price"), order.get("gelato_cost")
-    if sale_price and gelato_cost is not None:
+    # Check whenever there is a real product cost - including a $0 sale price
+    # (giveaway / 100%-off coupon), which is the WORST margin case and must not
+    # be skipped by a truthiness test. A 0/None cost is a pre-pricing placeholder
+    # with no economics to audit.
+    if sale_price is not None and gelato_cost:
         try:
             from quoteforge.etsy.margin_guard import margin_check
             m = margin_check(float(sale_price), float(gelato_cost))
