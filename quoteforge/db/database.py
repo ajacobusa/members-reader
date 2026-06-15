@@ -522,8 +522,43 @@ def create_order(data: dict) -> str:
     return order_id
 
 
-def update_order(order_id: str, **fields) -> None:
-    """Update specific fields on an order."""
+# Customer-approved design fields that LOCK once the customer approves the proof.
+# After approval these print exactly as shown and must not change silently - an
+# edit would ship a defective/mis-personalized item. Status, tracking, claim,
+# shipping-address, vendor-id and proof fields stay writable (the lifecycle and
+# fulfilment must keep advancing).
+LOCKED_FIELDS = frozenset({
+    "recipient_name", "sender_name", "relationship", "occasion", "scenery",
+    "tone", "memory", "output_style", "generated_quote", "size", "material",
+})
+
+
+class OrderLockedError(Exception):
+    """Raised when an attempt is made to edit a locked field on an approved order."""
+
+
+def update_order(order_id: str, *, allow_locked: bool = False, **fields) -> None:
+    """Update specific fields on an order.
+
+    Once the customer has approved the proof (``proof_approved`` set), the
+    locked design fields (see ``LOCKED_FIELDS``) are immutable: a write that
+    would CHANGE one to a new value raises ``OrderLockedError``. Re-writing the
+    same value is a no-op and allowed. An audited admin edit can pass
+    ``allow_locked=True`` to override the lock.
+    """
+    if not allow_locked:
+        touched = LOCKED_FIELDS & set(fields)
+        if touched:
+            current = get_order(order_id)
+            if current and current.get("proof_approved"):
+                changed = [k for k in sorted(touched)
+                           if str(fields[k] if fields[k] is not None else "")
+                           != str(current.get(k) if current.get(k) is not None else "")]
+                if changed:
+                    raise OrderLockedError(
+                        f"order {order_id} is locked after customer approval; "
+                        f"cannot edit {', '.join(changed)} "
+                        f"(pass allow_locked=True for an audited admin override)")
     fields["updated_at"] = datetime.now().isoformat()
     set_clause = ", ".join(f"{k}=?" for k in fields)
     values = list(fields.values()) + [order_id]

@@ -196,7 +196,31 @@ def check_software() -> list[CheckResult]:
     results.append(CheckResult("Production WSGI server (waitress)",
                                "PASS" if ok else "CONFIG", detail))
 
+    # ── Live readiness (hard gate when TEST_MODE is off) ─────────
+    def _live_keys():
+        """When live (TEST_MODE off), every required credential MUST be set -
+        a missing one is a hard FAIL, not a soft CONFIG note, so go-live can't
+        proceed with orders that would silently fail to route."""
+        from quoteforge import config
+        if config.TEST_MODE:
+            return "TEST_MODE on - live credentials not required yet"
+        missing = [k for k in REQUIRED_LIVE_KEYS if not getattr(config, k, "")]
+        if missing:
+            raise RuntimeError("live mode but missing required keys: "
+                               + ", ".join(missing))
+        return "all required live credentials set"
+    ok, detail = _safe(_live_keys)
+    results.append(CheckResult("Live readiness (required keys)",
+                               "PASS" if ok else "FAIL", detail))
+
     return results
+
+
+# Credentials that MUST be present before going live (TEST_MODE off). Optional
+# providers (Bannerbear/Unsplash/Printify/Printful/Airtable) are not gated.
+REQUIRED_LIVE_KEYS = (
+    "ANTHROPIC_API_KEY", "GELATO_API_KEY", "ETSY_API_KEY", "ETSY_WEBHOOK_SECRET",
+)
 
 
 def check_config() -> list[CheckResult]:

@@ -125,6 +125,33 @@ Pro needed.
 3. You keep the storefront process running (NSSM service) and push updates with
    `git push`, then `python -m quoteforge.admin rebuild-site` to refresh the page.
 
+## Rolling back a bad deploy
+A deploy can pass the `/health` check yet still behave wrong (e.g. broken routing
+or pricing logic). Health-blocking only catches a hard crash — for a "green but
+wrong" deploy, roll back immediately:
+
+- **Render (cloud):** Render keeps every prior deploy. Dashboard → the
+  `joffiels-server` service → **Deploys** tab → pick the last known-good deploy →
+  **Rollback**. The cron services redeploy from the same commit, so revert the
+  commit too (below) to keep them aligned.
+- **Git (source of truth):** identify the bad commit and revert it, which
+  triggers a fresh, correct deploy:
+  ```
+  git revert <bad-sha>        # or: git revert <oldest-bad>..<newest-bad>
+  git push
+  ```
+  Prefer `git revert` over `reset --hard` so history (and the audit trail) is
+  preserved.
+- **Self-service (home/NSSM host):** `git checkout <last-good-tag>` (or the
+  previous commit), restart the NSSM service, then re-run
+  `python -m quoteforge.admin rebuild-site`.
+- **Data, not code:** if the issue is data corruption rather than a code bug, use
+  the backup/restore runbook in `RESTORE.md` (`restore-all`), which snapshots the
+  current DB before restoring so the rollback is itself reversible.
+
+After any rollback, confirm recovery with a smoke check:
+`python -m quoteforge.admin healthcheck` and hit `/health` (expect HTTP 200).
+
 ## Security recap
 - `.env` (keys) is git-ignored and never committed.
 - Going private hides all Python business logic (pricing, margins, Gelato costs).

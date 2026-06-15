@@ -27,7 +27,7 @@ BASE_TEMPLATES: dict[str, str] = {
     ),
     "Order Shipped": (
         "Great news! Your order has shipped and is on its way. "
-        "You will receive a tracking number shortly from Gelato. "
+        "You will receive a tracking number shortly so you can follow it to your door. "
         "Thank you for choosing my shop — I hope this print brings joy every time you see it!"
     ),
     "Review Request": (

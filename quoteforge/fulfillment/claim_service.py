@@ -97,8 +97,15 @@ def validate_claim_request(request: dict) -> dict:
     email_matches = bool(order) and req_email == (order.get("customer_email") or "").strip().lower()
     supplier_ref = (order.get("gelato_order_id") or order.get("vendor_order_id") or "") if order else ""
     cw = claim_window(order) if order else {"within_supplier_window": False,
-                                            "days_elapsed": None}
-    within_window = bool(order) and cw["within_supplier_window"]
+                                            "days_elapsed": None,
+                                            "eligibility": "unknown"}
+    # The customer-facing claim window is 7 days from delivery (the storefront
+    # promise). A claim reported AFTER 7 days is denied UNLESS an admin
+    # explicitly overrides - the override is the only way past the window.
+    admin_override = bool(request.get("admin_override"))
+    eligibility = cw.get("eligibility", "unknown")
+    past_window = eligibility in ("manual_review", "management_approval")
+    within_window = bool(order) and (admin_override or not past_window)
     required = _EVIDENCE_RULES.get(category, ["product"])
     missing_evidence = [p for p in required if p not in photos]
     evidence_complete = not missing_evidence
@@ -108,6 +115,7 @@ def validate_claim_request(request: dict) -> dict:
         "email_matches": email_matches,
         "supplier_order_id": bool(supplier_ref),
         "within_window": within_window,
+        "admin_override": admin_override,
         "evidence_complete": evidence_complete,
         "tracking_status": (order.get("status") if order else ""),
         "delivery_date": (order.get("delivered_at") if order else "") or request.get("delivery_date", ""),
@@ -134,6 +142,8 @@ def validate_claim_request(request: dict) -> dict:
         "checks": checks,
         "missing_evidence": missing_evidence,
         "days_since_delivery": cw.get("days_elapsed"),
+        "window_eligibility": eligibility,
+        "admin_override": admin_override,
         "recommended_status": status,
         "customer_ack": CUSTOMER_ACK,
     }

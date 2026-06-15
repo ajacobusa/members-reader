@@ -103,6 +103,9 @@ def test_autopilot_disabled_escalates_everything():
 def test_handle_damage_auto_executes(db):
     db.create_order({"order_id": "A1", "recipient_name": "Emma",
                      "occasion": "Graduation"})
+    # A free replacement only auto-files with the required photo evidence on file.
+    from quoteforge.fulfillment.gelato_returns import record_claim_photos
+    record_claim_photos("A1", ["product", "packaging"])
     res = handle_issue("the canvas arrived torn", "A1")
     assert res["outcome"] == "auto-executed"
     order = db.get_order("A1")
@@ -112,6 +115,29 @@ def test_handle_damage_auto_executes(db):
                for m in db.get_customer_messages("A1"))
     # An 'auto' audit row exists; nothing pending for the human.
     assert db.get_pending_approvals() == []
+
+
+def test_damage_without_evidence_escalates_to_manual_review(db):
+    # REGRESSION: a Gelato-covered damage claim with NO photo evidence on file
+    # must NOT auto-file a free replacement - it goes to a human (manual review).
+    db.create_order({"order_id": "NE1", "recipient_name": "Z", "occasion": "Y"})
+    res = handle_issue("the print arrived damaged", "NE1")
+    assert res["outcome"] == "queued_for_human"
+    assert db.get_order("NE1")["status"] != "replacement_filed"
+    assert len(db.get_pending_approvals()) == 1
+
+
+def test_damage_past_window_escalates_to_manual_review(db):
+    # REGRESSION: even WITH evidence, a damage claim reported past the 7-day
+    # customer window is not auto-filed - it requires a human.
+    from datetime import datetime, timedelta
+    from quoteforge.fulfillment.gelato_returns import record_claim_photos
+    db.create_order({"order_id": "PW1", "recipient_name": "Z", "occasion": "Y"})
+    db.update_order("PW1", status="delivered", delivery_confirmed=1,
+                    delivered_at=(datetime.now() - timedelta(days=20)).isoformat())
+    record_claim_photos("PW1", ["product", "packaging"])
+    res = handle_issue("the print arrived damaged", "PW1")
+    assert res["outcome"] == "queued_for_human"
 
 
 def test_handle_cancellation_queues_for_human(db):
@@ -140,6 +166,8 @@ def test_owner_approves_queued_decision_executes(db):
 
 def test_status_counts(db):
     db.create_order({"order_id": "A4", "recipient_name": "X", "occasion": "Y"})
+    from quoteforge.fulfillment.gelato_returns import record_claim_photos
+    record_claim_photos("A4", ["product", "packaging"])   # evidence -> auto
     handle_issue("damaged in shipping", "A4")          # auto
     handle_issue("cancel my order", "A4")               # pending
     st = autopilot_status()

@@ -2406,7 +2406,7 @@
  const CONFIRM_API = ANGE_API ? ANGE_API.replace(/\/ask$/,'/confirm') : "";
  function knownEmail(){ try{return localStorage.getItem('jf_email')||"";}catch(e){return "";} }
  // Send the photo to the server for an AI quality check + attach to the order.
- // (Server also forwards the approved JPG to Gelato by URL.) No-ops if not hosted.
+ // (Server also forwards the approved JPG to the print partner by URL.) No-ops if not hosted.
  function aiCheckPhoto(file){
    const email=knownEmail(); if(!UPLOAD_API || !email || !file) return;
    const size=((document.getElementById('msize')||{}).value||'18x24|0').split('|')[0];
