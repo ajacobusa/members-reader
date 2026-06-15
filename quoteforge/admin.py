@@ -3,6 +3,7 @@
 Usage:
   python -m quoteforge.admin gen-secret       # generate a webhook signing secret
   python -m quoteforge.admin backup           # snapshot the database (+ prune)
+  python -m quoteforge.admin verify-backup    # check backups exist + are fresh (no write)
   python -m quoteforge.admin restore [PATH]   # restore newest (or given) backup
   python -m quoteforge.admin list-backups     # show available backups
   python -m quoteforge.admin daily-report     # daily order-review summary
@@ -77,6 +78,16 @@ def _cmd_backup_all(args: list[str]) -> int:
     r = run_full_backup(push="--no-push" not in args)
     print(format_backup_text(r))
     return 0 if "fail" not in str(r.get("push", "")) else 1
+
+
+def _cmd_verify_backup(args: list[str]) -> int:
+    """Verify backups are present + fresh WITHOUT creating one: recent DB
+    snapshot, a valid bundle containing HEAD, and off-site status. Exits non-zero
+    when a required copy is missing/stale (usable as a scheduled health gate)."""
+    from quoteforge.automation.full_backup import verify_backup, format_verify_text
+    r = verify_backup()
+    print(format_verify_text(r))
+    return 0 if r["ok"] else 1
 
 
 def _cmd_backup() -> int:
@@ -2251,6 +2262,7 @@ COMMANDS = {
     "gen-secret": lambda args: _cmd_gen_secret(),
     "backup": lambda args: _cmd_backup(),
     "backup-all": _cmd_backup_all,
+    "verify-backup": _cmd_verify_backup,
     "restore": _cmd_restore,
     "restore-all": _cmd_restore_all,
     "site-doctor": _cmd_site_doctor,

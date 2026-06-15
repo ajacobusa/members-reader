@@ -152,6 +152,84 @@ def format_restore_text(r: dict) -> str:
     ])
 
 
+# A daily backup runs at 02:00, so the newest DB snapshot should be < ~26h old.
+DB_SNAPSHOT_STALE_HOURS = 26
+
+
+def verify_backup(now: datetime | None = None, runner=subprocess.run) -> dict:
+    """Health-check the backups WITHOUT creating one: is there a recent DB
+    snapshot, a valid git bundle that contains HEAD, and is off-site configured?
+    Returns {timestamp, checks, ok}; ``ok`` is False if either REQUIRED local
+    copy (DB snapshot, code bundle) is missing or stale. Off-site is reported but
+    not required. Safe to run as a scheduled gate (exit non-zero on not-ok)."""
+    now = now or datetime.now()
+    checks: dict = {}
+
+    # 1. DB snapshot present + fresh.
+    try:
+        from quoteforge.db.database import list_backups
+        snaps = list_backups()
+        if not snaps:
+            checks["db_snapshot"] = {"ok": False, "detail": "no DB snapshot found"}
+        else:
+            newest = snaps[0]
+            age_h = (now - datetime.fromtimestamp(
+                newest.stat().st_mtime)).total_seconds() / 3600.0
+            fresh = age_h <= DB_SNAPSHOT_STALE_HOURS
+            checks["db_snapshot"] = {
+                "ok": fresh,
+                "detail": f"{newest.name} ({age_h:.1f}h old)"
+                + ("" if fresh else f" - STALE (> {DB_SNAPSHOT_STALE_HOURS}h)")}
+    except Exception as exc:  # noqa: BLE001
+        checks["db_snapshot"] = {"ok": False, "detail": f"error: {exc}"}
+
+    # 2. Code bundle present + verifies + contains HEAD.
+    if not BUNDLE_PATH.exists():
+        checks["bundle"] = {"ok": False,
+                            "detail": f"missing ({BUNDLE_PATH}) - run backup-all"}
+    else:
+        vc, _ = _git(["bundle", "verify", str(BUNDLE_PATH)], runner)
+        hc, head = _git(["rev-parse", "HEAD"], runner)
+        _, heads = _git(["bundle", "list-heads", str(BUNDLE_PATH)], runner)
+        has_head = hc == 0 and bool(head.strip()) and head.strip() in heads
+        size_mb = BUNDLE_PATH.stat().st_size / 1_000_000.0
+        checks["bundle"] = {
+            "ok": vc == 0 and has_head,
+            "detail": f"{size_mb:.1f} MB, verify={'ok' if vc == 0 else 'FAIL'}, "
+                      f"HEAD {'present' if has_head else 'MISSING'}"}
+
+    # 3. Off-site status (informational - not required for ok).
+    try:
+        from quoteforge.config import BACKUP_TO_DRIVE
+        from quoteforge.automation.google_drive_client import is_configured
+        if not BACKUP_TO_DRIVE:
+            detail = "disabled"
+        elif is_configured():
+            detail = "enabled + configured"
+        else:
+            detail = "enabled but not configured (fill GOOGLE_* in .env)"
+        checks["offsite"] = {"ok": True, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        checks["offsite"] = {"ok": True, "detail": f"error: {exc}"}
+
+    ok = checks["db_snapshot"]["ok"] and checks["bundle"]["ok"]
+    return {"timestamp": now.isoformat(timespec="seconds"),
+            "checks": checks, "ok": ok}
+
+
+def format_verify_text(r: dict) -> str:
+    """Human-readable summary of a verify_backup() result (printed by the CLI)."""
+    mark = lambda b: "[OK]" if b else "[!!]"
+    lines = ["=" * 56, f"BACKUP VERIFY - {r['timestamp']}", "=" * 56]
+    for name in ("db_snapshot", "bundle", "offsite"):
+        c = r["checks"].get(name, {})
+        lines.append(f"  {mark(c.get('ok'))} {name:11} : {c.get('detail', '-')}")
+    lines.append("-" * 56)
+    lines.append(f"  RESULT: {'HEALTHY' if r['ok'] else 'ACTION NEEDED'}")
+    lines.append("=" * 56)
+    return "\n".join(lines)
+
+
 def format_backup_text(r: dict) -> str:
     """Human-readable summary of a run_full_backup() result (printed/emailed)."""
     return "\n".join([
