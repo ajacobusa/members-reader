@@ -45,6 +45,19 @@ def test_make_com_scales_with_orders():
 
 # ── Report HTML ──────────────────────────────────────────────────
 
+def test_hold_validation_surfaced_in_needs_attention(tmp_path):
+    # REGRESSION: hold_validation is a money-gate failure that previously had no
+    # owner-facing surfacing. It must appear in the daily report's attention list.
+    import quoteforge.db.database as db
+    with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path):
+        db.init_db()
+        db.create_order({"order_id": "HV-1", "recipient_name": "E", "occasion": "G"})
+        db.update_order("HV-1", status="hold_validation")
+        report = db.daily_order_report()
+    assert any(o["order_id"] == "HV-1" for o in report["needs_attention"])
+
+
 def test_build_report_html_structure(tmp_path):
     import quoteforge.db.database as db
     with patch.object(db, "DB_PATH", tmp_path / "t.db"), \

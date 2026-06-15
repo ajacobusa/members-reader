@@ -51,6 +51,21 @@ def test_gelato_callback_updates_status_and_tracking(tmp_path):
     assert order["tracking_number"] == "1Z999"
 
 
+def test_gelato_canceled_normalizes_to_cancelled_spelling(tmp_path):
+    # REGRESSION: Gelato sends "canceled" (one L); every downstream consumer
+    # checks "cancelled" (two Ls). The webhook must normalize so a cancelled
+    # order is recognized (terminal for the tracker, counted in metrics, no
+    # review request fired).
+    import quoteforge.db.database as db
+    with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path):
+        db.init_db()
+        db.create_order({"order_id": "G2", "recipient_name": "E", "occasion": "G"})
+        process_gelato_callback({"orderReferenceId": "G2", "status": "canceled"})
+        order = db.get_order("G2")
+    assert order["status"] == "cancelled"
+
+
 def test_gelato_callback_ignores_unknown_reference(tmp_path):
     import quoteforge.db.database as db
     with patch.object(db, "DB_PATH", tmp_path / "t.db"), \

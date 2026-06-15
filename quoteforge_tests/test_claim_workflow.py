@@ -29,6 +29,18 @@ def _seed(tmp_path, monkeypatch, **extra):
     return db
 
 
+def test_decide_claim_advances_filed_claim(tmp_path, monkeypatch):
+    # REGRESSION: the Gelato-claim tracker writes claim_status="filed"/"staged"
+    # into the same column; decide_claim must still be able to resolve it (those
+    # are normalized to supplier_review), not reject it as an unknown state.
+    db = _seed(tmp_path, monkeypatch, claim_status="filed",
+               claim_category="damaged_package")
+    from quoteforge.fulfillment.claim_workflow import decide_claim
+    r = decide_claim("QF-1", "approved_reprint", send=False)
+    assert r["ok"] is True
+    assert db.get_order("QF-1")["claim_status"] == "approved_reprint"
+
+
 def test_claims_digest_alert_failure_is_logged(tmp_path, monkeypatch, caplog):
     """REGRESSION: the claims-digest owner alert must not fail silently - a raised
     send is logged at WARNING, not swallowed by a bare except."""
