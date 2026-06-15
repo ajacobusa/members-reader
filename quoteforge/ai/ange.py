@@ -43,12 +43,15 @@ KB = [
      "We email your proof within about a day and double-check every file, then "
      "it's printed and shipped with tracking - typically 3-6 business days. "
      "Watch for the \"order by\" date near big holidays."),
-    (["return", "refund", "guarantee", "not happy", "wrong"],
+    (["return", "refund", "guarantee", "not happy", "wrong", "cancel"],
      "What if I'm not happy?",
-     "We stand behind every piece with our happiness guarantee - if something "
-     "isn't right, message us and we'll make it right. (Each item is "
-     "personalized and made to order from the design you approved.) For "
-     "a specific order issue, a team member will help you personally."),
+     "Your free proof shows exactly what will print - reply right away if "
+     "anything is off and we'll fix it fast. Because each piece is personalized "
+     "and made to order, your order is final once you confirm it at checkout "
+     "(we can't refund, remake, or cancel for a change of mind or for the design "
+     "you submitted). If your order arrives damaged or defective, is the wrong "
+     "item, or doesn't arrive, message us within 7 days of delivery and a team "
+     "member will make it right with a free replacement."),
     (["material", "materials", "canvas", "acrylic", "metal", "paper", "quality"],
      "What materials are available?",
      "Premium poster prints, gallery-wrapped canvas, framed prints, acrylic and "

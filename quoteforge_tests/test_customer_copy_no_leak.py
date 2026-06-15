@@ -23,3 +23,32 @@ def test_storefront_page_has_no_supplier_name():
     text = page.read_text(encoding="utf-8").lower()
     for banned in SUPPLIER_NAMES:
         assert banned not in text, f"supplier name '{banned}' leaked into storefront"
+
+
+# Purely customer-facing modules: a supplier name in the SOURCE would regenerate
+# into the page on the next rebuild, so guard the generators directly too.
+_CUSTOMER_FACING_SOURCES = [
+    "quoteforge/etsy/listing_preview.py",   # generates docs/index.html
+    "quoteforge/ai/ange.py",                # the storefront assistant
+    "quoteforge/etsy/customer_messages.py",  # messages sent to buyers
+]
+
+
+def test_customer_facing_source_has_no_supplier_name():
+    root = Path(__file__).resolve().parent.parent
+    for rel in _CUSTOMER_FACING_SOURCES:
+        text = (root / rel).read_text(encoding="utf-8").lower()
+        for banned in SUPPLIER_NAMES:
+            assert banned not in text, f"supplier name '{banned}' in {rel}"
+
+
+def test_returns_policy_is_legally_protective_not_overpromising():
+    """The storefront returns/FAQ copy must scope coverage (our-fault only),
+    state made-to-order finality, and the 7-day window - never a blanket remake."""
+    from quoteforge.etsy.listing_preview import _competitive_sections
+    html = _competitive_sections().lower()
+    assert "fix or remake it" not in html          # old blanket overpromise gone
+    assert "all sales are final" in html           # finality stated
+    assert "made to order" in html
+    assert "7 days" in html                        # claim window stated
+    assert "damaged or defective" in html          # coverage scoped to our fault

@@ -246,7 +246,7 @@ def _competitive_sections() -> str:
         ("Made to order, museum-quality materials", "Bulk factory runs"),
         ("Custom wording, colors &amp; frame - you preview it live", "Limited presets"),
         ("Personal note + gift e-card included free", "Add-on fees"),
-        ("Happiness guarantee - we make it right", "Rigid return windows"),
+        ("Damaged, defective or wrong? Free remake on us", "Rigid return windows"),
     ]
     cmp_rows = "".join(
         f'<tr><td class="us">✓ {u}</td><td class="them">{t}</td></tr>' for u, t in rows)
@@ -262,8 +262,16 @@ def _competitive_sections() -> str:
          "print and ship with tracking, typically within 3-5 business days. "
          "Spot something on the proof? Reply right away and we fix it first."),
         ("What if I don't love it?",
-         "Message us - our happiness guarantee means we'll fix or remake it. "
-         "Personalized items are made to order from the design you approved."),
+         "Every order includes a free proof that shows exactly what will print - "
+         "check the wording, names, and design, and reply right away if anything "
+         "is off so we can fix it fast. Because each piece is personalized and "
+         "made to order, your order is final once you confirm it at checkout: we "
+         "can't offer returns, refunds, or remakes for a change of mind or for "
+         "the wording, spelling, design, sizing, or photo you submitted. You're "
+         "still fully covered if your order arrives damaged or defective, is the "
+         "wrong item, or doesn't arrive - message us within 7 days of delivery "
+         "(with a photo for damage or defects) and we'll remake and reship it "
+         "free."),
     ]
     faq_html = "".join(
         f'<details class="faq"><summary>{q}</summary><p>{a}</p></details>'
@@ -277,11 +285,12 @@ def _competitive_sections() -> str:
          "That\'s on us. Message a photo within 7 days of delivery and we\'ll "
          "send a free replacement - there\'s no need to return the original, "
          "just keep or recycle it."),
-        ("Made-to-order means please check carefully",
-         "Because each piece is made to order from the design you approve at "
-         "checkout, we can\'t accept returns or refunds for a change of mind, a "
-         "typo, or a low-res photo you confirmed. Your final confirmation is "
-         "your go-ahead to print."),
+        ("Made to order means your order is final",
+         "Because each piece is personalized and made to order from the design "
+         "you submit at checkout, all sales are final - we can\'t accept returns, "
+         "refunds, or cancellations for a change of mind, or for the wording, "
+         "spelling, design, sizing, or photo quality you confirmed. Your final "
+         "confirmation at checkout is your go-ahead to print."),
         ("Package returned to us?",
          "If the carrier couldn\'t deliver to the address provided, we\'ll "
          "happily reship to a corrected address for a small shipping fee - just "
@@ -299,9 +308,10 @@ def _competitive_sections() -> str:
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
         f'{cmp_rows}</table></div>'
         f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is '
-        f'made to order from the design you approved, with a free emailed proof '
-        f'so you see exactly what prints. If something isn\'t right, we\'ll '
-        f'make it right.</div>'
+        f'made to order from the design you submit, with a free emailed proof '
+        f'so you see exactly what prints. If it arrives damaged or defective, is '
+        f'the wrong item, or doesn\'t arrive, we\'ll make it right with a free '
+        f'replacement.</div>'
         f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>'
         f'<div class="faqs policy" id="returns"><h2>Our happiness &amp; returns '
         f'promise</h2><p class="policyintro">Damaged or defective is on us - '
@@ -3431,7 +3441,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const CONFIRM_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/confirm') : "";
  function knownEmail(){{ try{{return localStorage.getItem('jf_email')||"";}}catch(e){{return "";}} }}
  // Send the photo to the server for an AI quality check + attach to the order.
- // (Server also forwards the approved JPG to Gelato by URL.) No-ops if not hosted.
+ // (Server also forwards the approved JPG to the print partner by URL.) No-ops if not hosted.
  function aiCheckPhoto(file){{
    const email=knownEmail(); if(!UPLOAD_API || !email || !file) return;
    const size=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0];
