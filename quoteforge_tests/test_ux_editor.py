@@ -323,17 +323,6 @@ def test_single_approval_model_everywhere(tmp_path):
     assert "still send a" not in h          # "we'll still send a free proof"
 
 
-def test_frame_picker_renders_visual_tiles(tmp_path):
-    """The frame/material picker is visual tiles (swatch/preview + name + price),
-    not plain text pills - scoped to #mfchips so the font picker is untouched."""
-    h = _page(tmp_path)
-    assert "#mfchips" in h                 # tile-grid styling scoped to the picker
-    assert 'class="fsw"' in h              # preview/swatch slot in each tile
-    assert "swatchFor(" in h               # styled-swatch fallback (no preview img)
-    assert "fname" in h and "fprice" in h  # name + price inside the tile
-    assert "f.img?" in h                   # uses the real frame preview image when present
-
-
 def test_final_approval_authorizes_production(tmp_path):
     """The final approval step must be an AFFIRMATIVE authorization: the buyer
     approves the print exactly as shown AND authorizes it to proceed to

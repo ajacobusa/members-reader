@@ -507,25 +507,6 @@
  .fchip:hover{border-color:var(--gold);background:#fffaf0}
  .fchip.sel{background:var(--green);color:#fff;border-color:var(--green);
    box-shadow:0 2px 8px rgba(16,61,46,.25)}
- /* Frame / material picker as VISUAL TILES (scoped to #mfchips so the font
-    picker's .fchip pills are untouched): a real frame preview (or a styled
-    swatch) above the name + price, with a clear selected state. */
- #mfchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));
-   gap:9px}
- #mfchips .fchip{display:flex;flex-direction:column;align-items:center;gap:5px;
-   border:1px solid #d8cdb6;background:#fff;border-radius:12px;padding:8px 6px;
-   color:#2a3a31;text-align:center;white-space:normal;line-height:1.25;
-   transition:border-color .15s,box-shadow .15s,transform .15s}
- #mfchips .fchip:hover{border-color:var(--gold);background:#fffdf8;
-   transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,61,46,.10)}
- #mfchips .fchip.sel{background:#f3f8f4;color:#103d2e;border-color:var(--green);
-   box-shadow:inset 0 0 0 2px var(--green)}
- #mfchips .fsw{width:100%;height:72px;border-radius:8px;display:flex;
-   align-items:center;justify-content:center;overflow:hidden;background:#f6f3ec}
- #mfchips .fsw img{width:100%;height:100%;object-fit:cover;display:block}
- #mfchips .fname{font-size:12px}
- #mfchips .fprice{font-size:11px;color:#7a6f57}
- #mfchips .fchip.sel .fprice{color:var(--green)}
  .perso{margin-top:14px;background:#f3efe6;border:1px solid var(--line);
    border-radius:12px;padding:12px}
  .perso .lbl{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}
@@ -1346,11 +1327,7 @@
    const fmts = fmtsFor(i);
    if(fmts.length){
      fc.innerHTML=fmts.map((f,j)=>
-       `<span class="fchip${j===0?' sel':''}" id="fc${j}" onclick="pickFmt(${i},${j})">`
-       +`<span class="fsw">${f.img?`<img src="${f.img}" alt="${f.name} preview" loading="lazy">`:swatchFor(f.name)}</span>`
-       +`<span class="fname">${f.name}</span>`
-       +(f.price?`<span class="fprice">from $${f.price}</span>`:'')
-       +`</span>`).join('');
+       `<span class="fchip${j===0?' sel':''}" id="fc${j}" onclick="pickFmt(${i},${j})">${f.name}${f.price?` - $${f.price}`:''}</span>`).join('');
      fp.style.display='block';
    }
    document.getElementById('mtitle').textContent = d.full_title;
@@ -2234,22 +2211,6 @@
        const b=document.getElementById('resumeBar'); if(b)b.style.display='flex';});
    }
  })();
- function swatchFor(name){
-   // Styled fallback swatch when a design has no rendered frame preview: a mini
-   // print in the frame/material's real colour, so the tile still reads visually.
-   const n=(name||'').toLowerCase();
-   let b='2px solid #efe9dc', x='';
-   if(n.indexOf('gold')>=0) b='6px solid #c9a14a';
-   else if(n.indexOf('walnut')>=0) b='6px solid #6b4a2e';
-   else if(n.indexOf('oak')>=0) b='6px solid #b08d57';
-   else if(n.indexOf('white')>=0){ b='6px solid #f2efe8'; x='box-shadow:0 0 0 1px #cfc7b5'; }
-   else if(n.indexOf('slim black')>=0) b='3px solid #2b2b2b';
-   else if(n.indexOf('black')>=0) b='6px solid #2b2b2b';
-   else if(n.indexOf('canvas')>=0){ b='1px solid #d8d2c4'; x='box-shadow:3px 3px 0 #d8d2c4'; }
-   else if(n.indexOf('acrylic')>=0) b='3px solid #bfe0ea';
-   else if(n.indexOf('metal')>=0) b='3px solid #9aa3a8';
-   return `<span style="display:block;width:44px;height:56px;background:#2f5d4a;border:${b};${x}"></span>`;
- }
  function pickFmt(i,j){
    const f = fmtsFor(i)[j];
    if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
