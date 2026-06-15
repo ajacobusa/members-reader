@@ -115,6 +115,12 @@ def decide_claim(order_id: str, decision: str, note: str = "",
         return {"ok": False, "reason": "order not found", "replacement": None,
                 "email": None}
     current = order.get("claim_status") or "new"
+    # The Gelato-claim tracker (file-claim / autopilot) writes staged|ready|filed
+    # into the same claim_status column. Normalize those to the review machine's
+    # "supplier_review" so a filed claim can still be decided here - otherwise
+    # advance_claim rejects the unknown state and the claim is unresolvable.
+    current = {"staged": "supplier_review", "ready": "supplier_review",
+               "filed": "supplier_review"}.get(current, current)
     move = advance_claim(current, decision)
     if not move["ok"]:
         return {"ok": False, "reason": move["reason"], "replacement": None,

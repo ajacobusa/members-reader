@@ -255,8 +255,11 @@ _GELATO_STATUS_MAP = {
     "printed": "in_production",
     "shipped": "shipped",
     "delivered": "delivered",
-    "canceled": "canceled",
-    "cancelled": "canceled",
+    # Normalize BOTH spellings to "cancelled" (two Ls) - the spelling every
+    # downstream consumer checks (tracker _TERMINAL, order_monitor, financial
+    # reports, delight loop). "canceled" silently stranded the order otherwise.
+    "canceled": "cancelled",
+    "cancelled": "cancelled",
     "failed": "error",
 }
 

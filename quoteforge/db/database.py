@@ -329,6 +329,18 @@ def init_db() -> None:
         );
         """)
         _migrate(conn)
+        # Indexes for the frequent lookups (additive; etsy_order_id is already
+        # covered by its UNIQUE constraint). Keeps status filters + child-table
+        # joins off full scans as the tables grow.
+        for _idx, _tbl, _col in (
+            ("idx_orders_status", "orders", "status"),
+            ("idx_pipeline_log_order", "pipeline_log", "order_id"),
+            ("idx_customer_messages_order", "customer_messages", "order_id"),
+        ):
+            try:
+                conn.execute(f"CREATE INDEX IF NOT EXISTS {_idx} ON {_tbl}({_col})")
+            except sqlite3.OperationalError:
+                pass  # table not present in an older snapshot - safe to skip
 
 
 def upsert_ledger_snapshot(day: str, row: dict) -> None:
@@ -1469,7 +1481,10 @@ def daily_order_report() -> dict:
         needs_attention = [
             dict(r) for r in conn.execute(
                 "SELECT order_id, recipient_name, occasion, status FROM orders "
-                "WHERE status IN ('proof_sent','error') ORDER BY created_at"
+                # hold_validation is a money-gate failure that previously had no
+                # owner-facing surfacing; hold_photo waits on a re-upload.
+                "WHERE status IN ('proof_sent','error','hold_validation','hold_photo') "
+                "ORDER BY created_at"
             ).fetchall()
         ]
         pending_reviews = conn.execute(

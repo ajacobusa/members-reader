@@ -4,7 +4,8 @@ After purchase: offer canvas/framed upgrade within 2 hours.
 After delivery: request review after 14 days.
 """
 import anthropic
-from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL, PIPELINE_REVIEW_DELAY_DAYS
+from quoteforge.config import (ANTHROPIC_API_KEY, CLAUDE_MODEL,
+                               PIPELINE_REVIEW_DELAY_DAYS, TEST_MODE)
 
 
 def generate_upsell_message(
@@ -17,7 +18,9 @@ def generate_upsell_message(
 
     Returns dict: {canvas_message, framed_message, bundle_message}
     """
-    if not ANTHROPIC_API_KEY:
+    # In TEST_MODE (or with no key) use the deterministic templates - never spend
+    # a live API call / incur latency on the test + staging path.
+    if TEST_MODE or not ANTHROPIC_API_KEY:
         return {
             "canvas_message": _base_canvas_upsell(customer_name, shop_name),
             "framed_message": _base_framed_upsell(customer_name, shop_name),
@@ -89,7 +92,7 @@ def generate_review_request(
     days_since_delivery: int = 14,
 ) -> str:
     """Generate a personalized review request message."""
-    if not ANTHROPIC_API_KEY:
+    if TEST_MODE or not ANTHROPIC_API_KEY:
         return _base_review_request(customer_name, recipient_name, shop_name)
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)

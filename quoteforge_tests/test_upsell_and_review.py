@@ -61,7 +61,8 @@ def test_generate_upsell_message_no_api_key():
 
 def test_generate_upsell_message_with_api():
     raw = "CANVAS: Upgrade to canvas for a stunning finish.\nFRAMED: Get it framed and ready to hang.\nBUNDLE: Save 15% on a set of 3 prints."
-    with patch("quoteforge.automation.upsell.ANTHROPIC_API_KEY", "test-key"), \
+    with patch("quoteforge.automation.upsell.TEST_MODE", False), \
+         patch("quoteforge.automation.upsell.ANTHROPIC_API_KEY", "test-key"), \
          patch("quoteforge.automation.upsell.anthropic.Anthropic", return_value=_mock_claude(raw)):
         result = generate_upsell_message("Jennifer", "Graduation")
     assert "canvas_message" in result
@@ -79,7 +80,8 @@ def test_generate_review_request_no_api_key():
 
 def test_generate_review_request_with_api():
     raw = "Hi Jennifer! I hope Emma loved her graduation print. A review would mean the world!"
-    with patch("quoteforge.automation.upsell.ANTHROPIC_API_KEY", "test-key"), \
+    with patch("quoteforge.automation.upsell.TEST_MODE", False), \
+         patch("quoteforge.automation.upsell.ANTHROPIC_API_KEY", "test-key"), \
          patch("quoteforge.automation.upsell.anthropic.Anthropic", return_value=_mock_claude(raw)):
         msg = generate_review_request("Jennifer", "Graduation", "Emma")
     assert "Jennifer" in msg or len(msg) > 10
