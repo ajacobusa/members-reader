@@ -78,6 +78,12 @@ def _reviews_section() -> str:
 # Rich "Shop by occasion" showcase: warm subtitle + emoji + soft gradient, with a
 # real lifestyle photo when one is provided in the occasions image folder.
 # (name, subtitle, emoji, gradient)
+# Owner-curated "Editor's pick" designs - HONEST editorial recommendations (not
+# fabricated sales). A design is badged when any keyword here appears in its
+# title or occasion. Edit this list to feature different designs; empty = none.
+# (Once live, real bestsellers can drive this from order data.)
+EDITOR_PICKS = ["graduation", "anniversary"]
+
 OCCASION_SHOWCASE = [
     ("Birthday", "Celebrate their special day", "🎂", "linear-gradient(135deg,#f6e6c4,#fff7e6)"),
     ("Anniversary", "Celebrate your love story", "💍", "linear-gradient(135deg,#f3dcdc,#fbeeee)"),
@@ -952,6 +958,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         sizemap = {}
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
+    editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
 
     # Product range + frame note for the detail modal.
     _hi = 0
@@ -1312,9 +1319,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:26px;padding:0 20px}}
  .card{{background:#fff;border:1px solid var(--line);border-radius:14px;
    overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;
-   display:flex;flex-direction:column}}
+   display:flex;flex-direction:column;position:relative}}
  .card:hover{{transform:translateY(-5px);box-shadow:0 14px 34px rgba(16,61,46,.14)}}
  .card .hero{{width:100%;display:block;aspect-ratio:1/1;object-fit:cover}}
+ /* Honest editorial "Editor's pick" ribbon (owner-curated, not fabricated sales). */
+ .epick{{position:absolute;top:10px;left:10px;z-index:2;background:var(--green);
+   color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+   box-shadow:0 2px 6px rgba(0,0,0,.18)}}
  .cap{{padding:14px 16px 18px}}
  .ttl{{font-size:15px;line-height:1.5;height:66px;overflow:hidden;color:#2b3a33}}
  .pr{{margin-top:10px;font-weight:600;color:var(--green);font-size:17px}}
@@ -1560,6 +1571,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .fchip:hover{{border-color:var(--gold);background:#fffaf0}}
  .fchip.sel{{background:var(--green);color:#fff;border-color:var(--green);
    box-shadow:0 2px 8px rgba(16,61,46,.25)}}
+ /* Colour-cue dot on each frame/material pill (visual without the heavy tiles). */
+ #mfchips .fdot{{display:inline-block;width:13px;height:13px;border-radius:3px;
+   margin-right:6px;vertical-align:-2px;border:1px solid rgba(0,0,0,.18)}}
  .perso{{margin-top:14px;background:#f3efe6;border:1px solid var(--line);
    border-radius:12px;padding:12px}}
  .perso .lbl{{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}}
@@ -2274,6 +2288,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="card" role="button" tabindex="0" aria-label="Personalize ${{d.title}}"
        data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" data-occ="${{d.occ||''}}" onclick="openM(${{i}})"
        onkeydown="if(event.key==='Enter'||event.key===' '){{event.preventDefault();openM(${{i}});}}">
+       ${{EDITOR_PICKS.some(k=>((d.title||'')+' '+(d.occ||'')).toLowerCase().indexOf(k)>=0)?'<span class="epick">&#10022; Editor&#39;s pick</span>':''}}
        <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="${{d.title}} - personalized wall art preview">
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">Starting at $${{d.price}}</div>
@@ -2373,7 +2388,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const fmts = fmtsFor(i);
    if(fmts.length){{
      fc.innerHTML=fmts.map((f,j)=>
-       `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join('');
+       `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join('');
      fp.style.display='block';
    }}
    document.getElementById('mtitle').textContent = d.full_title;
@@ -2413,6 +2428,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ["Oswald","'Oswald',sans-serif"]];
  const MAXCHARS = 250;
  const SIZEMAP = {sizemap_json};
+ const EDITOR_PICKS = {editor_picks_json};
  // Design-independent frame/material list - the guaranteed fallback so the
  // frame picker is available for EVERY design, even one whose previews failed.
  const ALL_FORMATS = {all_formats_json};
@@ -3126,6 +3142,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const FRAMECOLOR = {{"Premium Solid Oak":"#b28e60","Premium Walnut":"#5c4030",
    "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
    "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"}};
+ function swatchDot(name){{
+   // Small colour cue on each frame/material pill - keeps the familiar pill
+   // layout while making the picker visual. Framed swatches get a thin white mat
+   // ring (inset) so a dark frame still reads as "frame around a print".
+   const n=name||''; let c='#efe9dc', ring='';
+   if(n.indexOf('Framed - ')===0){{ c=FRAMECOLOR[n.slice(9)]||'#1c1c1e';
+     ring='box-shadow:inset 0 0 0 2px #fff'; }}
+   else if(n.indexOf('Canvas')===0) c='#f0ece1';
+   else if(n.indexOf('Acrylic')===0) c='#bfe0ea';
+   else if(n.indexOf('Metal')===0) c='#9aa3a8';
+   return `<span class="fdot" style="background:${{c}};${{ring}}"></span>`;
+ }}
  let CURFMT="";
  function frameSpec(){{
    if(CURFMT.indexOf('Framed - ')===0){{

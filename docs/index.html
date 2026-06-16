@@ -259,9 +259,13 @@
    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:26px;padding:0 20px}
  .card{background:#fff;border:1px solid var(--line);border-radius:14px;
    overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;
-   display:flex;flex-direction:column}
+   display:flex;flex-direction:column;position:relative}
  .card:hover{transform:translateY(-5px);box-shadow:0 14px 34px rgba(16,61,46,.14)}
  .card .hero{width:100%;display:block;aspect-ratio:1/1;object-fit:cover}
+ /* Honest editorial "Editor's pick" ribbon (owner-curated, not fabricated sales). */
+ .epick{position:absolute;top:10px;left:10px;z-index:2;background:var(--green);
+   color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+   box-shadow:0 2px 6px rgba(0,0,0,.18)}
  .cap{padding:14px 16px 18px}
  .ttl{font-size:15px;line-height:1.5;height:66px;overflow:hidden;color:#2b3a33}
  .pr{margin-top:10px;font-weight:600;color:var(--green);font-size:17px}
@@ -507,6 +511,9 @@
  .fchip:hover{border-color:var(--gold);background:#fffaf0}
  .fchip.sel{background:var(--green);color:#fff;border-color:var(--green);
    box-shadow:0 2px 8px rgba(16,61,46,.25)}
+ /* Colour-cue dot on each frame/material pill (visual without the heavy tiles). */
+ #mfchips .fdot{display:inline-block;width:13px;height:13px;border-radius:3px;
+   margin-right:6px;vertical-align:-2px;border:1px solid rgba(0,0,0,.18)}
  .perso{margin-top:14px;background:#f3efe6;border:1px solid var(--line);
    border-radius:12px;padding:12px}
  .perso .lbl{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}
@@ -1239,6 +1246,7 @@
      <div class="card" role="button" tabindex="0" aria-label="Personalize ${d.title}"
        data-title="${((d.full_title||d.title)||'').toLowerCase()}" data-occ="${d.occ||''}" onclick="openM(${i})"
        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openM(${i});}">
+       ${EDITOR_PICKS.some(k=>((d.title||'')+' '+(d.occ||'')).toLowerCase().indexOf(k)>=0)?'<span class="epick">&#10022; Editor&#39;s pick</span>':''}
        <img class="hero" loading="lazy" src="${d.imgs[0]}" alt="${d.title} - personalized wall art preview">
        <div class="cap"><div class="ttl">${d.title}</div>
          <div class="pr">Starting at $${d.price}</div>
@@ -1338,7 +1346,7 @@
    const fmts = fmtsFor(i);
    if(fmts.length){
      fc.innerHTML=fmts.map((f,j)=>
-       `<span class="fchip${j===0?' sel':''}" id="fc${j}" onclick="pickFmt(${i},${j})">${f.name}${f.price?` - $${f.price}`:''}</span>`).join('');
+       `<span class="fchip${j===0?' sel':''}" id="fc${j}" onclick="pickFmt(${i},${j})">${swatchDot(f.name)}${f.name}${f.price?` - $${f.price}`:''}</span>`).join('');
      fp.style.display='block';
    }
    document.getElementById('mtitle').textContent = d.full_title;
@@ -1378,6 +1386,7 @@
    ["Oswald","'Oswald',sans-serif"]];
  const MAXCHARS = 250;
  const SIZEMAP = {"Poster (unframed)": [{"size": "8x10", "price": 18.99}, {"size": "11x14", "price": 24.99}, {"size": "12x16", "price": 30.99}, {"size": "18x24", "price": 43.99}, {"size": "24x36", "price": 63.99}], "Canvas (gallery-wrapped)": [{"size": "8x10", "price": 71.99}, {"size": "11x14", "price": 94.99}, {"size": "16x20", "price": 126.99}, {"size": "18x24", "price": 157.99}, {"size": "24x36", "price": 228.99}], "Acrylic": [{"size": "8x10", "price": 138.99}, {"size": "12x16", "price": 189.99}, {"size": "16x20", "price": 255.99}], "Metal": [{"size": "8x10", "price": 126.99}, {"size": "12x16", "price": 177.99}, {"size": "16x20", "price": 243.99}], "Framed - Gallery Gold": [{"size": "8x10", "price": 120.99}, {"size": "11x14", "price": 126.99}, {"size": "12x16", "price": 132.99}, {"size": "18x24", "price": 145.99}, {"size": "24x36", "price": 165.99}], "Framed - Premium Walnut": [{"size": "8x10", "price": 112.99}, {"size": "11x14", "price": 118.99}, {"size": "12x16", "price": 124.99}, {"size": "18x24", "price": 138.99}, {"size": "24x36", "price": 157.99}], "Framed - Premium Solid Oak": [{"size": "8x10", "price": 104.99}, {"size": "11x14", "price": 110.99}, {"size": "12x16", "price": 116.99}, {"size": "18x24", "price": 130.99}, {"size": "24x36", "price": 149.99}], "Framed - Classic Black Wood": [{"size": "8x10", "price": 65.99}, {"size": "11x14", "price": 71.99}, {"size": "12x16", "price": 77.99}, {"size": "18x24", "price": 90.99}, {"size": "24x36", "price": 110.99}], "Framed - Classic White Wood": [{"size": "8x10", "price": 65.99}, {"size": "11x14", "price": 71.99}, {"size": "12x16", "price": 77.99}, {"size": "18x24", "price": 90.99}, {"size": "24x36", "price": 110.99}], "Framed - Slim Black": [{"size": "8x10", "price": 45.99}, {"size": "11x14", "price": 51.99}, {"size": "12x16", "price": 57.99}, {"size": "18x24", "price": 71.99}, {"size": "24x36", "price": 90.99}]};
+ const EDITOR_PICKS = ["graduation", "anniversary"];
  // Design-independent frame/material list - the guaranteed fallback so the
  // frame picker is available for EVERY design, even one whose previews failed.
  const ALL_FORMATS = [{"name": "Poster (unframed)", "img": "", "price": 18.99}, {"name": "Framed - Slim Black", "img": "", "price": 45.99}, {"name": "Framed - Classic Black Wood", "img": "", "price": 65.99}, {"name": "Framed - Classic White Wood", "img": "", "price": 65.99}, {"name": "Framed - Premium Solid Oak", "img": "", "price": 104.99}, {"name": "Framed - Premium Walnut", "img": "", "price": 112.99}, {"name": "Framed - Gallery Gold", "img": "", "price": 120.99}, {"name": "Canvas (gallery-wrapped)", "img": "", "price": 71.99}, {"name": "Acrylic", "img": "", "price": 138.99}, {"name": "Metal", "img": "", "price": 126.99}];
@@ -2091,6 +2100,18 @@
  const FRAMECOLOR = {"Premium Solid Oak":"#b28e60","Premium Walnut":"#5c4030",
    "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
    "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"};
+ function swatchDot(name){
+   // Small colour cue on each frame/material pill - keeps the familiar pill
+   // layout while making the picker visual. Framed swatches get a thin white mat
+   // ring (inset) so a dark frame still reads as "frame around a print".
+   const n=name||''; let c='#efe9dc', ring='';
+   if(n.indexOf('Framed - ')===0){ c=FRAMECOLOR[n.slice(9)]||'#1c1c1e';
+     ring='box-shadow:inset 0 0 0 2px #fff'; }
+   else if(n.indexOf('Canvas')===0) c='#f0ece1';
+   else if(n.indexOf('Acrylic')===0) c='#bfe0ea';
+   else if(n.indexOf('Metal')===0) c='#9aa3a8';
+   return `<span class="fdot" style="background:${c};${ring}"></span>`;
+ }
  let CURFMT="";
  function frameSpec(){
    if(CURFMT.indexOf('Framed - ')===0){
