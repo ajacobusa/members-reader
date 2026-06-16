@@ -323,6 +323,25 @@ def test_single_approval_model_everywhere(tmp_path):
     assert "still send a" not in h          # "we'll still send a free proof"
 
 
+def test_checkout_has_trust_strip(tmp_path):
+    """The address + confirm checkout steps carry a trust strip (security +
+    free-proof + payment methods) - the highest-anxiety part of the funnel."""
+    h = _page(tmp_path)
+    assert "trustband" in h                                  # CSS + element
+    assert "_trustStripHTML" in h                            # helper defined
+    assert "_trustStripHTML()+_contactFormHTML()" in h       # wired into step 2
+    assert "card details never touch this site" in h
+    assert "Free proof before we print" in h
+    assert "Apple" in h and "Google" in h                    # payment methods
+
+
+def test_mobile_tap_targets_are_comfortable(tmp_path):
+    """Dense controls meet ~44px touch targets on phones."""
+    h = _page(tmp_path)
+    assert "#mfchips .fchip{min-height:44px}" in h
+    assert "#mphotoctl button{min-width:44px;min-height:44px" in h
+
+
 def test_final_approval_authorizes_production(tmp_path):
     """The final approval step must be an AFFIRMATIVE authorization: the buyer
     approves the print exactly as shown AND authorizes it to proceed to

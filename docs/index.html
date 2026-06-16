@@ -721,6 +721,12 @@
    border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;
    line-height:1.55}
  @media(max-width:560px){ .fcrow{flex-direction:column;gap:0} }
+ /* Checkout trust strip (steps 2 & 3): security + free-proof + payment methods. */
+ .trustband{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;
+   background:#f3f8f4;border:1px solid #cfe3d6;border-radius:10px;
+   padding:9px 12px;margin-bottom:12px;font-size:12px;color:#1f4d38;text-align:left}
+ .trustband .paylogos{margin-left:auto;color:#5b6b62;font-weight:700;white-space:nowrap}
+ @media(max-width:560px){ .trustband .paylogos{margin-left:0} }
  /* Benefit chips: the section's reassurances as large scannable pills. */
  .freebar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
  .fchk{background:#eaf4ed;border:1px solid #9fc4ab;color:#0f7a3d;
@@ -837,8 +843,13 @@
    .ocimg{height:104px} .octitle{font-size:17px}
    .photorow{flex-wrap:wrap} .b2bform{grid-template-columns:1fr}
    .b2bform textarea,.b2bform button{grid-column:1}
-   .occrow{gap:6px} .occhip{padding:6px 11px;font-size:12.5px}
+   .occrow{gap:6px} .occhip{padding:6px 11px;font-size:12.5px;min-height:40px}
    .proofactions,.bpactions{flex-wrap:wrap}
+   /* Comfortable touch targets on phones (>=~44px) for the dense controls. */
+   #mfchips .fchip{min-height:44px}
+   .fonts .fchip{min-height:40px;display:inline-flex;align-items:center}
+   .sw span{width:38px;height:38px}
+   #mphotoctl button{min-width:44px;min-height:44px;font-size:18px}
  }
 </style></head><body>
 
@@ -1683,6 +1694,15 @@
    }catch(e){}
  }
  function _fv(v){ return (v||'').replace(/"/g,'&quot;'); }
+ function _trustStripHTML(){
+   // Reassurance at the highest-anxiety steps (address + pay): security, the
+   // free-proof promise, and accepted payment methods. No supplier/marketplace name.
+   return '<div class="trustband">'+
+     '<span>🔒 Secure checkout - your card details never touch this site</span>'+
+     '<span>💚 Free proof before we print</span>'+
+     '<span class="paylogos">Card &middot; PayPal &middot; Apple&nbsp;Pay &middot; Google&nbsp;Pay</span>'+
+     '</div>';
+ }
  function _contactFormHTML(){ const c=CONTACT;
    return '<div class="fcform">'+
     '<label>Full name *<input id="fc_name" value="'+_fv(c.name)+'" autocomplete="name"></label>'+
@@ -1729,14 +1749,14 @@
    } else if(n===2){
      if(title)title.textContent='Step 2 of 3 - Your details';
      if(sub)sub.textContent='Shipping address verification and final confirmation.';
-     if(sum)sum.innerHTML=_contactFormHTML()+
+     if(sum)sum.innerHTML=_trustStripHTML()+_contactFormHTML()+
        '<div class="fcback" role="button" tabindex="0" onclick="finalStep(1)">&larr; Back to basket</div>';
      if(acc){ acc.textContent='Next: confirm →'; acc.disabled=false;
        acc.onclick=function(){ if(_readContact()) finalStep(3); }; }
    } else {
      if(title)title.textContent='Step 3 of 3 - Confirm & complete';
      if(sub)sub.textContent='Confirm your design below, then tap Complete order.';
-     if(sum)sum.innerHTML=_basketSummary().replace(/\n/g,'<br>')+
+     if(sum)sum.innerHTML=_trustStripHTML()+_basketSummary().replace(/\n/g,'<br>')+
        '<div class="fcship"><b>Ship to</b><br>'+_shipToHTML()+'</div>'+
        _confirmChecklistHTML()+
        '<div class="fcback" role="button" tabindex="0" onclick="finalStep(2)">&larr; Edit details</div>';
