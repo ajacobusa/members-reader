@@ -32,8 +32,9 @@ coverage.xml
 .idea/
 *.swp
 .claude/*
-# Project agent definitions ARE versioned (the rest of .claude stays local)
+# Project agent definitions + skills ARE versioned (the rest of .claude stays local)
 !.claude/agents/
+!.claude/skills/
 
 # OS
 .DS_Store
