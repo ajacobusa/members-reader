@@ -342,6 +342,23 @@ def test_mobile_tap_targets_are_comfortable(tmp_path):
     assert "#mphotoctl button{min-width:44px;min-height:44px" in h
 
 
+def test_frame_pills_have_colour_swatch(tmp_path):
+    """Each frame/material pill shows a colour-cue dot (visual, keeps the pill
+    layout) - NOT the reverted heavy image tiles."""
+    h = _page(tmp_path)
+    assert "function swatchDot(" in h
+    assert "swatchDot(f.name)" in h        # wired into the pill template
+    assert "#mfchips .fdot" in h           # dot styling
+
+
+def test_editor_pick_badge_is_curated_not_fabricated(tmp_path):
+    """An honest, owner-curated 'Editor's pick' ribbon (no fabricated sales)."""
+    h = _page(tmp_path)
+    assert "EDITOR_PICKS" in h             # owner-editable curation list
+    assert ".epick" in h                   # ribbon styling
+    assert "Editor&#39;s pick" in h        # the ribbon label
+
+
 def test_final_approval_authorizes_production(tmp_path):
     """The final approval step must be an AFFIRMATIVE authorization: the buyer
     approves the print exactly as shown AND authorizes it to proceed to
