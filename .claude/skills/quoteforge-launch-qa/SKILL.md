@@ -75,6 +75,39 @@ python -m quoteforge.admin verify-backup       # health check (no write); exit!=
 Long commands (the full suite, `backup-all`) should be run in the background and
 awaited, not polled in a sleep loop.
 
+## Grounding — do not hallucinate (verify before you claim)
+
+Most "bugs" introduced during development here are hallucinations: a call to a
+function/CLI/config key that doesn't exist, an assertion on a string the page
+never actually renders, or a "tests pass" claim for a run that never happened.
+Ground every reference in the real code — recall is not evidence:
+
+- **Before you call or assert on a symbol, confirm it exists.** Grep/read for the
+  function, method, attribute, CLI command (`admin.COMMANDS`), config constant
+  (`config.py`), test name, status string, or column before using it. If you
+  can't point to its definition, don't write it.
+- **Cite file:line for claims about code.** "X is handled in `router.py:27`" must
+  be a line you actually read, not a guess.
+- **Audit findings get adversarially verified.** When auditing, read the code
+  that proves the finding; don't infer behavior from a function name. A passing
+  suite does not prove a path is wired — confirm reachability.
+- **Editing the `listing_preview.py` page f-string is the top hallucination
+  trap.** It is brace-escaped (`{{ }}` literal, `${{...}}` JS interpolation). A
+  wrong brace or a phrase split across a `'+'` concatenation produces WRONG output
+  silently (no Python error). After any storefront edit: `rebuild-site`, then
+  `grep` the regenerated `docs/index.html` for the exact literal you intended and
+  confirm count > 0. Don't trust that it rendered — check.
+- **Never claim green without the output.** Run the suite (or the targeted file),
+  then quote the real numbers ("1163 passed, 0 failed"). Never invent counts,
+  durations, or "should pass". `verify-backup` must print `RESULT: HEALTHY` before
+  you say backups are healthy.
+- **Run the source-integrity guard after edits.** `test_source_integrity.py`
+  byte-compiles every module (catches f-string/syntax breakage) and imports the
+  core modules (catches dangling references). It is the fast net before the full
+  suite; if it fails, you referenced something that isn't there.
+- **When unsure, say so and check** rather than filling the gap with a plausible
+  guess. A wrong-but-confident reference costs far more than a quick grep.
+
 ## The 21 scope items → where they live
 
 Validate each against real code + a passing test. Many already have dedicated
