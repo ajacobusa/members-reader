@@ -779,10 +779,12 @@ _APPAREL_TILE = {
 }
 
 
-def _apparel_section() -> str:
-    """Visible top-level Apparel department (T-Shirt / Hoodie / Sweatshirt) as
-    colourful product tiles. Each card opens the design editor straight into
-    apparel mode via shopApparel(). Emits garment / from-price only."""
+def _apparel_section(photos: dict | None = None) -> str:
+    """Visible top-level Apparel department (T-Shirt / Hoodie / Sweatshirt).
+    Uses a real product PHOTO per garment when `photos` (garment_id -> src) is
+    supplied, else a shaded SVG product tile as a graceful fallback. Each card
+    opens the design editor straight into apparel mode via shopApparel()."""
+    photos = photos or {}
     try:
         from quoteforge.etsy.apparel_catalog import (
             APPAREL_CATALOG, build_apparel_variations)
@@ -798,14 +800,20 @@ def _apparel_section() -> str:
         low = frm.get(g.garment_id)
         if low is None:
             continue
-        grad, art = _APPAREL_TILE.get(g.garment_id, _APPAREL_TILE["tshirt"])
+        if photos.get(g.garment_id):
+            tile = (f'<span class="apptile apptilephoto">'
+                    f'<img class="appimg" loading="lazy" '
+                    f'src="{photos[g.garment_id]}" alt="Custom {g.name}"></span>')
+        else:
+            grad, art = _APPAREL_TILE.get(g.garment_id, _APPAREL_TILE["tshirt"])
+            tile = (f'<span class="apptile" style="background:{grad}">'
+                    f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
+                    f'{art}</svg></span>')
         cards.append(
             f'<button class="appcard" type="button" '
             f'onclick="shopApparel(\'{g.garment_id}\')" '
             f'aria-label="Design a custom {g.name}">'
-            f'<span class="apptile" style="background:{grad}">'
-            f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">{art}</svg>'
-            f'</span>'
+            f'{tile}'
             f'<span class="appname">{g.name}</span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
@@ -1098,6 +1106,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     _dept_app_img = next((p for p in (brand / "dept-apparel.jpg",
                                       brand / "dept-apparel.png") if p.exists()), None)
     dept_app_src = _emit(_dept_app_img, "dept-apparel.jpg") if _dept_app_img else ""
+    # Per-garment product photos for the apparel tiles (brand/tile-<garment>.jpg);
+    # fall back to the shaded SVG tile when a photo is absent.
+    _garment_photos: dict = {}
+    for _gid in ("tshirt", "hoodie", "sweatshirt"):
+        _gp = next((brand / f"tile-{_gid}.{e}" for e in ("jpg", "png")
+                    if (brand / f"tile-{_gid}.{e}").exists()), None)
+        if _gp:
+            _garment_photos[_gid] = _emit(_gp, f"tile-{_gid}.jpg")
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
     # Order-by gift-deadline banner (urgency) + verified reviews summary.
@@ -1291,6 +1307,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apptile{{display:flex;align-items:center;justify-content:center;width:100%;
    height:172px;border-radius:13px;margin-bottom:6px;
    box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}}
+ .apptilephoto{{height:240px;overflow:hidden;background:#f1ede4}}
+ .appimg{{width:100%;height:100%;object-fit:cover;display:block;border-radius:13px}}
  .appsvg{{width:118px;height:118px}}
  .appname{{font-weight:700;color:var(--green);font-size:18px;letter-spacing:.01em}}
  .appfrom{{color:#7a7466;font-size:13px}}
@@ -2152,7 +2170,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="btot" id="btot">Select 2 or more to see your set price.</div>
    </div>
  </div>
- {_apparel_section()}
+ {_apparel_section(_garment_photos)}
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}

@@ -52,14 +52,13 @@ def test_apparel_department_has_garment_cards(tmp_path):
 
 
 def test_apparel_cards_are_professional_product_tiles(tmp_path):
-    # REGRESSION: garment cards are professional product tiles - a shaded garment
-    # illustration on a studio backdrop, not flat emoji.
+    # REGRESSION: garment cards are professional product PHOTOS (one per garment),
+    # not emoji - the SVG illustration remains only as a no-photo fallback.
     h = _page(tmp_path)
-    assert h.count('class="apptile"') == 3        # one tile per garment
-    assert h.count('class="appsvg"') == 3         # a garment illustration each
-    assert "radial-gradient(circle at 50% 38%" in h   # studio backdrop
-    assert "linearGradient" in h                       # shaded garment fill
-    assert "appemoji" not in h                         # old emoji tiles gone
+    assert h.count('class="apptile') == 3         # one tile per garment
+    assert h.count('class="appimg"') == 3         # a real product photo each
+    assert h.count('class="apptile apptilephoto"') == 3   # photo tile, not SVG fallback
+    assert "appemoji" not in h                     # old emoji tiles gone
 
 
 def test_product_type_toggle_present(tmp_path):
