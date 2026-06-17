@@ -796,8 +796,14 @@ def _apparel_section(photos: dict | None = None) -> str:
     if not frm:
         return ""
 
+    def _brand_disp(g) -> str:
+        """Brand label without the trailing style code (e.g. 'Lane Seven')."""
+        return g.brand.rsplit(" ", 1)[0] if g.brand else ""   # drop style code
+
     def _card(g) -> str:
-        """Render one garment tile (product photo, else shaded SVG fallback)."""
+        """Render one garment tile (product photo, else shaded SVG fallback).
+        Carries data-* facets (gender/type/brand/colours/sizes) the filter bar
+        reads to show or hide the tile."""
         low = frm.get(g.garment_id)
         if low is None:
             return ""
@@ -811,11 +817,14 @@ def _apparel_section(photos: dict | None = None) -> str:
                     f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
                     f'{art}</svg></span>')
         name_js = g.name.replace("\\", "\\\\").replace("'", "\\'")
-        brand_disp = g.brand.rsplit(" ", 1)[0] if g.brand else ""   # drop style code
+        brand_disp = _brand_disp(g)
         tier_line = (f'<span class="apptier">{g.tier} · {brand_disp}</span>'
                      if g.tier and brand_disp else "")
         return (
             f'<button class="appcard" type="button" '
+            f'data-gender="{g.gender}" data-type="{g.type_name}" '
+            f'data-brand="{brand_disp}" data-tier="{g.tier}" '
+            f'data-colors="{"|".join(g.colors)}" data-sizes="{"|".join(g.sizes)}" '
             f'onclick="shopApparel(\'{name_js}\')" '
             f'aria-label="Design a custom {g.name}">'
             f'{tile}'
@@ -824,22 +833,73 @@ def _apparel_section(photos: dict | None = None) -> str:
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
 
+    shown = [g for g in APPAREL_CATALOG if frm.get(g.garment_id) is not None]
+    if not shown:
+        return ""
+
     groups = []
     for gender, label in (("men", "Men's Clothing"), ("women", "Women's Apparel")):
-        cards = [c for c in (_card(g) for g in APPAREL_CATALOG
-                             if g.gender == gender) if c]
+        cards = [_card(g) for g in shown if g.gender == gender]
+        cards = [c for c in cards if c]
         if cards:
-            groups.append(f'<h3 class="appghead">{label}</h3>'
-                          f'<div class="appgrid">{"".join(cards)}</div>')
+            groups.append(f'<div class="appgroup" data-gender="{gender}">'
+                          f'<h3 class="appghead">{label}</h3>'
+                          f'<div class="appgrid">{"".join(cards)}</div></div>')
     if not groups:
         return ""
+
+    # ── Faceted filter bar (Department / Type / Brand / Colour / Size) ──
+    def _distinct(seq) -> list:
+        """Unique truthy values, preserving first-seen order."""
+        out: list = []
+        for x in seq:
+            if x and x not in out:
+                out.append(x)
+        return out
+    types_f = _distinct(g.type_name for g in shown)
+    brands_f = _distinct(_brand_disp(g) for g in shown)
+    colors_f = _distinct(c for g in shown for c in g.colors)
+    _size_order = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]
+    _present = {s for g in shown for s in g.sizes}
+    sizes_f = ([s for s in _size_order if s in _present]
+               + _distinct(s for g in shown for s in g.sizes if s not in _size_order))
+    genders_f = _distinct(g.gender for g in shown)
+
+    def _opts(vals) -> str:
+        """Render <option> tags for a list of facet values."""
+        return "".join(f'<option value="{v}">{v}</option>' for v in vals)
+    dept_opts = "".join(
+        f'<option value="{gd}">{lbl}</option>'
+        for gd, lbl in (("men", "Men's"), ("women", "Women's")) if gd in genders_f)
+
+    def _sel(sid, label, all_label, opts) -> str:
+        """Render one labelled filter <select> with an 'all' default option."""
+        return (f'<select class="appfilter" id="{sid}" aria-label="{label}" '
+                f'onchange="applyApparelFilters()">'
+                f'<option value="">{all_label}</option>{opts}</select>')
+    filterbar = (
+        '<div class="appfilters" role="group" aria-label="Filter apparel">'
+        + _sel("afDept", "Department", "All departments", dept_opts)
+        + _sel("afType", "Type", "All types", _opts(types_f))
+        + _sel("afBrand", "Brand", "All brands", _opts(brands_f))
+        + _sel("afColor", "Colour", "All colours", _opts(colors_f))
+        + _sel("afSize", "Size", "All sizes", _opts(sizes_f))
+        + '<button type="button" class="appfilterclear" '
+          'onclick="clearApparelFilters()">Clear</button>'
+        + f'<span class="appfiltercount" id="afCount">{len(shown)} styles</span>'
+        + '</div>')
+    nomatch = (
+        '<p class="apnomatch" id="afNoMatch" style="display:none">'
+        'No styles match those filters. '
+        '<button type="button" class="appfilterclear" '
+        'onclick="clearApparelFilters()">Clear filters</button></p>')
     return (
         '<section class="apparel-sec" id="apparel">'
         '<h2>👕 Custom Apparel</h2>'
         '<p class="apsub">Put your name, words or photo on a tee, hoodie, tank, '
-        'sweatshirt and more - the same easy editor, made to order. Pick a garment '
-        'to start designing.</p>'
-        f'{"".join(groups)}</section>')
+        'sweatshirt and more - the same easy editor, made to order. Filter to find '
+        'your garment, then pick one to start designing.</p>'
+        f'{filterbar}{"".join(groups)}{nomatch}</section>')
 
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
@@ -1334,6 +1394,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apptier{{color:var(--gold-d);font-size:12px;font-weight:600;letter-spacing:.02em}}
  .appfrom{{color:#7a7466;font-size:13px}}
  .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
+ .appfilters{{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 20px}}
+ .appfilter{{appearance:none;-webkit-appearance:none;background:#fff;border:1px solid var(--line);
+   border-radius:10px;padding:8px 30px 8px 12px;font:inherit;font-size:14px;color:var(--ink);
+   cursor:pointer;background-repeat:no-repeat;background-position:right 11px center;
+   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7a72' stroke-width='1.6'/></svg>")}}
+ .appfilter:hover{{border-color:var(--gold)}}
+ .appfilter:focus{{outline:none;border-color:var(--gold-d);box-shadow:0 0 0 3px rgba(201,168,76,.25)}}
+ .appfilterclear{{background:none;border:1px solid var(--line);border-radius:10px;
+   padding:8px 14px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}}
+ .appfilterclear:hover{{color:var(--ink);border-color:var(--gold)}}
+ .appfiltercount{{margin-left:auto;color:var(--muted);font-size:13px;white-space:nowrap}}
+ .appgroup.hide,.appcard.hide{{display:none}}
+ .apnomatch{{text-align:center;color:var(--muted);padding:22px 0;font-size:15px}}
+ @media(max-width:640px){{.appfilter,.appfilterclear{{flex:1 1 42%}}
+   .appfiltercount{{flex-basis:100%;margin:4px 0 0;text-align:center}}}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
@@ -2718,6 +2793,32 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    openM(0);                       // openM clears CURGARMENT; set it AFTER
    CURGARMENT=garment||"";         // the full garment name, e.g. "Men's T-Shirt"
    setProductType('apparel');      // scopes the pills to that garment's colours
+ }}
+ function _afVal(id){{var e=document.getElementById(id);return e?e.value:'';}}
+ function applyApparelFilters(){{
+   var d=_afVal('afDept'),t=_afVal('afType'),b=_afVal('afBrand'),
+       c=_afVal('afColor'),s=_afVal('afSize');
+   var cards=document.querySelectorAll('.appcard'),shown=0;
+   cards.forEach(function(card){{
+     var ds=card.dataset;
+     var ok=(!d||ds.gender===d)&&(!t||ds.type===t)&&(!b||ds.brand===b)
+       &&(!c||(ds.colors||'').split('|').indexOf(c)>=0)
+       &&(!s||(ds.sizes||'').split('|').indexOf(s)>=0);
+     card.classList.toggle('hide',!ok); if(ok)shown++;
+   }});
+   document.querySelectorAll('.appgroup').forEach(function(gp){{
+     gp.classList.toggle('hide',gp.querySelectorAll('.appcard:not(.hide)').length===0);
+   }});
+   var cnt=document.getElementById('afCount');
+   if(cnt)cnt.textContent=shown+(shown===1?' style':' styles');
+   var nm=document.getElementById('afNoMatch');
+   if(nm)nm.style.display=shown?'none':'block';
+ }}
+ function clearApparelFilters(){{
+   ['afDept','afType','afBrand','afColor','afSize'].forEach(function(id){{
+     var e=document.getElementById(id); if(e)e.value='';
+   }});
+   applyApparelFilters();
  }}
  let CART = [];
  const QD = {qty_discount_json};
