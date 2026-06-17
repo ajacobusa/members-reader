@@ -192,3 +192,27 @@ def test_apparel_inventory_payload_two_axes_priced():
         assert names == {"Size", "Color"}
         assert prod["offerings"][0]["price"] > 0
     assert "gelato" not in json.dumps(p).lower().replace("gel-", "")  # no supplier name
+
+
+# ── End-to-end: an apparel order through the live pipeline ────────
+
+def test_apparel_order_through_pipeline(tmp_path, monkeypatch):
+    # REGRESSION: a direct apparel order is enriched (product_type/colour/cost),
+    # persisted, and does NOT get a wall-art room mockup. Proves the pipeline is
+    # apparel-aware regardless of ingest path.
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.GENERATE_ROOM_MOCKUP", True, raising=False)
+    from quoteforge.db import database as db
+    db.init_db()
+    from quoteforge.automation.pipeline_orchestrator import run_full_pipeline
+    run_full_pipeline({"order_id": "APX", "etsy_order_id": "APX",
+                       "recipient_name": "Sam", "occasion": "Birthday",
+                       "material": "T-Shirt - Black", "product_size": "M"},
+                      skip_proof=True)
+    o = db.get_order("APX")
+    assert o["product_type"] == "apparel"
+    assert o["color"] == "Black"
+    assert o["gelato_cost"] == 13.0          # true garment cost on the order
+    assert not o.get("mockup_url")           # no room mockup for apparel

@@ -184,6 +184,12 @@ def run_full_pipeline(
         log_pipeline_stage(order_id, stage, status, msg)
         update_order(order_id, status=STATUS_MAP.get(stage, stage))
 
+    # Apparel-enrich at the pipeline entry so EVERY ingest path (webhook, direct,
+    # resume) gets product_type/garment/colour/cost/UID. Idempotent (re-deriving
+    # the same fields) and a no-op for wall art, so it never disturbs prints.
+    from quoteforge.etsy.apparel_catalog import enrich_apparel_order
+    order_data = {**order_data, **enrich_apparel_order(order_data)}
+
     # ── Stage 1: Order Intake ────────────────────────────────────
     _notify("order_intake", "Storing order in database...")
     order_id = create_order(order_data)
@@ -343,7 +349,10 @@ def run_full_pipeline(
         # have a local print file. Context sells high-ticket wall art (a framed
         # print on a styled wall converts far better than a print on white).
         # Best-effort: a mockup failure must never block the print itself.
-        if GENERATE_ROOM_MOCKUP and png_path and png_path.exists():
+        # Apparel is skipped - a room-on-wall mockup is meaningless for a garment
+        # (the customer already previews the garment live in the design editor).
+        if (GENERATE_ROOM_MOCKUP and png_path and png_path.exists()
+                and order_data.get("product_type") != "apparel"):
             try:
                 from quoteforge.images.room_mockup import render_room_mockup
                 mockup_path = render_room_mockup(
