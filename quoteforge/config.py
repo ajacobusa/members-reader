@@ -206,6 +206,13 @@ PREFLIGHT_ASPECT_TOLERANCE: float = float(
 CUSTOMER_PHOTO_MIN_DPI: int = int(os.getenv("CUSTOMER_PHOTO_MIN_DPI", "120"))
 # Auto-email the buyer (when their email is known) on a bad photo.
 AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
+# AI-assisted photo enhancement: before bouncing a too-low-res buyer photo, try
+# to upscale it to print resolution and re-review it (photo_enhance). The Lanczos
+# baseline is free + offline (capped 2x); set an AI super-resolution provider
+# (key + URL) for the premium tier (capped 4x). Kill-switch defaults ON.
+AI_PHOTO_ENHANCE: bool = _env_bool("AI_PHOTO_ENHANCE", True)
+AI_UPSCALE_API_KEY: str = os.getenv("AI_UPSCALE_API_KEY", "")
+AI_UPSCALE_API_URL: str = os.getenv("AI_UPSCALE_API_URL", "")
 
 # ── UAT / feedback collection ────────────────────────────────────
 # Optional Google Form (or any survey) URL. When set, the UAT shop-home page
