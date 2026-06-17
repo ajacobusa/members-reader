@@ -797,6 +797,7 @@ def _apparel_section(photos: dict | None = None) -> str:
         return ""
 
     def _card(g) -> str:
+        """Render one garment tile (product photo, else shaded SVG fallback)."""
         low = frm.get(g.garment_id)
         if low is None:
             return ""
