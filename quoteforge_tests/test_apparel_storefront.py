@@ -49,14 +49,15 @@ def test_apparel_department_has_garment_cards(tmp_path):
     assert "Design yours" in h                    # the per-garment CTA
 
 
-def test_apparel_cards_are_colourful_product_tiles(tmp_path):
-    # REGRESSION: garment cards are real colourful product tiles (gradient tile +
-    # garment SVG), not flat emoji.
+def test_apparel_cards_are_professional_product_tiles(tmp_path):
+    # REGRESSION: garment cards are professional product tiles - a shaded garment
+    # illustration on a studio backdrop, not flat emoji.
     h = _page(tmp_path)
     assert h.count('class="apptile"') == 3        # one tile per garment
     assert h.count('class="appsvg"') == 3         # a garment illustration each
-    assert "linear-gradient" in h
-    assert "appemoji" not in h                     # the old emoji tiles are gone
+    assert "radial-gradient(circle at 50% 38%" in h   # studio backdrop
+    assert "linearGradient" in h                       # shaded garment fill
+    assert "appemoji" not in h                         # old emoji tiles gone
 
 
 def test_product_type_toggle_present(tmp_path):

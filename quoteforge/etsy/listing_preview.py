@@ -727,30 +727,55 @@ def _generalize_desc(d: str) -> str:
     return s
 
 
-# Colourful product tiles: a clean white garment illustration on a vivid
-# gradient, per garment - the modern POD-storefront look (no photo assets needed).
+# Professional product tiles: a detailed, shaded garment illustration on a soft
+# studio backdrop, per garment - on-brand muted palette (sage / teal / clay),
+# fabric detail + ground shadow, so each reads like a real product shot.
 _APPAREL_TILE = {
-    "tshirt": ("linear-gradient(135deg,#ff9a8b 0%,#ff6a88 100%)",
-        '<path d="M44 24 L24 33 L31 51 L42 46 L42 96 L78 96 L78 46 L89 51 L96 33 '
-        'L76 24 Q60 36 44 24Z" fill="#fff"/>'
-        '<path d="M44 24 Q60 36 76 24" fill="none" stroke="rgba(0,0,0,.12)" '
-        'stroke-width="2.5"/>'),
-    "hoodie": ("linear-gradient(135deg,#43cea2 0%,#1c92d2 100%)",
-        '<path d="M40 32 L24 40 L31 57 L40 52 L40 96 L80 96 L80 52 L89 57 L96 40 '
-        'L80 32Z" fill="#fff"/>'
-        '<path d="M48 28 Q60 18 72 28 Q72 40 60 42 Q48 40 48 28Z" '
-        'fill="rgba(0,0,0,.12)"/>'
-        '<rect x="46" y="70" width="28" height="15" rx="4" fill="none" '
-        'stroke="rgba(0,0,0,.12)" stroke-width="2.5"/>'
-        '<line x1="56" y1="42" x2="56" y2="58" stroke="rgba(0,0,0,.16)" '
-        'stroke-width="2.5"/>'
-        '<line x1="64" y1="42" x2="64" y2="58" stroke="rgba(0,0,0,.16)" '
-        'stroke-width="2.5"/>'),
-    "sweatshirt": ("linear-gradient(135deg,#a18cd1 0%,#7b5fd6 100%)",
-        '<path d="M44 28 L24 37 L31 55 L42 50 L42 96 L78 96 L78 50 L89 55 L96 37 '
-        'L76 28 Q60 38 44 28Z" fill="#fff"/>'
-        '<path d="M44 28 Q60 39 76 28" fill="none" stroke="rgba(0,0,0,.15)" '
-        'stroke-width="3.5"/>'),
+    "tshirt": ("radial-gradient(circle at 50% 38%,#f3f6f1 0%,#dde6da 100%)",
+        '<defs><linearGradient id="teeG" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#9fb89f"/><stop offset="1" stop-color="#79977c"/>'
+        '</linearGradient></defs>'
+        '<ellipse cx="60" cy="111" rx="33" ry="5" fill="rgba(0,0,0,.12)"/>'
+        '<path d="M47 22 C41 25 34 28 27 31 L20 46 L35 52 L35 104 L85 104 L85 52 '
+        'L100 46 L93 31 C86 28 79 25 73 22 C66 31 54 31 47 22 Z" fill="url(#teeG)"/>'
+        '<path d="M35 52 L35 104 L45 104 L43 53 Z" fill="rgba(0,0,0,.07)"/>'
+        '<path d="M47 22 C54 31 66 31 73 22 L69 28 C60 37 51 37 51 28 Z" '
+        'fill="rgba(0,0,0,.13)"/>'
+        '<path d="M51 28 C51 37 60 37 69 28" fill="none" '
+        'stroke="rgba(255,255,255,.4)" stroke-width="1.3"/>'
+        '<path d="M35 52 L27 31" fill="none" stroke="rgba(255,255,255,.16)" '
+        'stroke-width="1.2"/>'),
+    "hoodie": ("radial-gradient(circle at 50% 38%,#eef4f4 0%,#d4e3e3 100%)",
+        '<defs><linearGradient id="hooG" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#54908f"/><stop offset="1" stop-color="#3b6c6e"/>'
+        '</linearGradient></defs>'
+        '<ellipse cx="60" cy="111" rx="34" ry="5" fill="rgba(0,0,0,.12)"/>'
+        '<path d="M44 30 C38 33 32 36 26 39 L20 54 L34 60 L34 104 L86 104 L86 60 '
+        'L100 54 L94 39 C88 36 82 33 76 30 Z" fill="url(#hooG)"/>'
+        '<path d="M44 30 C38 22 50 14 60 14 C70 14 82 22 76 30 C68 38 52 38 44 30 Z" '
+        'fill="url(#hooG)"/>'
+        '<path d="M49 28 C45 21 53 15 60 15 C67 15 75 21 71 28 C66 35 54 35 49 28 Z" '
+        'fill="rgba(0,0,0,.17)"/>'
+        '<path d="M34 60 L34 104 L44 104 L42 61 Z" fill="rgba(0,0,0,.08)"/>'
+        '<rect x="42" y="80" width="36" height="18" rx="4" fill="none" '
+        'stroke="rgba(0,0,0,.13)" stroke-width="1.5"/>'
+        '<line x1="56" y1="33" x2="56" y2="52" stroke="rgba(0,0,0,.2)" '
+        'stroke-width="2" stroke-linecap="round"/>'
+        '<line x1="64" y1="33" x2="64" y2="52" stroke="rgba(0,0,0,.2)" '
+        'stroke-width="2" stroke-linecap="round"/>'),
+    "sweatshirt": ("radial-gradient(circle at 50% 38%,#f7efe5 0%,#e6d6c4 100%)",
+        '<defs><linearGradient id="sweG" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#cd9576"/><stop offset="1" stop-color="#b07a5c"/>'
+        '</linearGradient></defs>'
+        '<ellipse cx="60" cy="111" rx="33" ry="5" fill="rgba(0,0,0,.12)"/>'
+        '<path d="M47 24 C41 27 34 30 27 33 L21 48 L34 54 L34 100 L86 100 L86 54 '
+        'L99 48 L93 33 C86 30 79 27 73 24 C66 33 54 33 47 24 Z" fill="url(#sweG)"/>'
+        '<path d="M47 24 C54 33 66 33 73 24" fill="none" stroke="rgba(0,0,0,.17)" '
+        'stroke-width="3.2"/>'
+        '<path d="M34 96 L86 96" stroke="rgba(0,0,0,.13)" stroke-width="3.6"/>'
+        '<path d="M28 50 L36 53" stroke="rgba(0,0,0,.13)" stroke-width="3"/>'
+        '<path d="M92 50 L84 53" stroke="rgba(0,0,0,.13)" stroke-width="3"/>'
+        '<path d="M34 54 L34 100 L44 100 L42 55 Z" fill="rgba(0,0,0,.08)"/>'),
 }
 
 
@@ -1249,17 +1274,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
  .appgrid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}
  @media(max-width:640px){{.appgrid{{grid-template-columns:1fr}}}}
- .appcard{{display:flex;flex-direction:column;align-items:center;gap:7px;
-   padding:14px 14px 20px;border:1px solid #e6e0d2;border-radius:16px;background:#fff;
-   cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}}
- .appcard:hover{{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.12);
+ .appcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
+   padding:12px 12px 18px;border:1px solid #ece7da;border-radius:16px;background:#fff;
+   box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer;
+   transition:transform .14s,box-shadow .14s,border-color .14s}}
+ .appcard:hover{{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.13);
    border-color:var(--gold)}}
  .apptile{{display:flex;align-items:center;justify-content:center;width:100%;
-   height:150px;border-radius:12px;margin-bottom:4px}}
- .appsvg{{width:96px;height:96px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.20))}}
- .appname{{font-weight:700;color:var(--green);font-size:18px}}
+   height:172px;border-radius:13px;margin-bottom:6px;
+   box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}}
+ .appsvg{{width:118px;height:118px}}
+ .appname{{font-weight:700;color:var(--green);font-size:18px;letter-spacing:.01em}}
  .appfrom{{color:#7a7466;font-size:13px}}
- .appcta{{margin-top:4px;font-weight:700;color:var(--gold);font-size:14px}}
+ .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
