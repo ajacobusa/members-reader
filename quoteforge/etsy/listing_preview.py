@@ -727,10 +727,37 @@ def _generalize_desc(d: str) -> str:
     return s
 
 
+# Colourful product tiles: a clean white garment illustration on a vivid
+# gradient, per garment - the modern POD-storefront look (no photo assets needed).
+_APPAREL_TILE = {
+    "tshirt": ("linear-gradient(135deg,#ff9a8b 0%,#ff6a88 100%)",
+        '<path d="M44 24 L24 33 L31 51 L42 46 L42 96 L78 96 L78 46 L89 51 L96 33 '
+        'L76 24 Q60 36 44 24Z" fill="#fff"/>'
+        '<path d="M44 24 Q60 36 76 24" fill="none" stroke="rgba(0,0,0,.12)" '
+        'stroke-width="2.5"/>'),
+    "hoodie": ("linear-gradient(135deg,#43cea2 0%,#1c92d2 100%)",
+        '<path d="M40 32 L24 40 L31 57 L40 52 L40 96 L80 96 L80 52 L89 57 L96 40 '
+        'L80 32Z" fill="#fff"/>'
+        '<path d="M48 28 Q60 18 72 28 Q72 40 60 42 Q48 40 48 28Z" '
+        'fill="rgba(0,0,0,.12)"/>'
+        '<rect x="46" y="70" width="28" height="15" rx="4" fill="none" '
+        'stroke="rgba(0,0,0,.12)" stroke-width="2.5"/>'
+        '<line x1="56" y1="42" x2="56" y2="58" stroke="rgba(0,0,0,.16)" '
+        'stroke-width="2.5"/>'
+        '<line x1="64" y1="42" x2="64" y2="58" stroke="rgba(0,0,0,.16)" '
+        'stroke-width="2.5"/>'),
+    "sweatshirt": ("linear-gradient(135deg,#a18cd1 0%,#7b5fd6 100%)",
+        '<path d="M44 28 L24 37 L31 55 L42 50 L42 96 L78 96 L78 50 L89 55 L96 37 '
+        'L76 28 Q60 38 44 28Z" fill="#fff"/>'
+        '<path d="M44 28 Q60 39 76 28" fill="none" stroke="rgba(0,0,0,.15)" '
+        'stroke-width="3.5"/>'),
+}
+
+
 def _apparel_section() -> str:
-    """Visible top-level Apparel category band (T-Shirt / Hoodie / Sweatshirt).
-    Each card opens the design editor straight into apparel mode via shopApparel().
-    Emits garment / from-price only - no supplier name."""
+    """Visible top-level Apparel department (T-Shirt / Hoodie / Sweatshirt) as
+    colourful product tiles. Each card opens the design editor straight into
+    apparel mode via shopApparel(). Emits garment / from-price only."""
     try:
         from quoteforge.etsy.apparel_catalog import (
             APPAREL_CATALOG, build_apparel_variations)
@@ -741,17 +768,19 @@ def _apparel_section() -> str:
         frm[v.garment_id] = min(frm.get(v.garment_id, 1e9), v.price)
     if not frm:
         return ""
-    emoji = {"tshirt": "👕", "hoodie": "🧥", "sweatshirt": "👚"}
     cards = []
     for g in APPAREL_CATALOG:
         low = frm.get(g.garment_id)
         if low is None:
             continue
+        grad, art = _APPAREL_TILE.get(g.garment_id, _APPAREL_TILE["tshirt"])
         cards.append(
             f'<button class="appcard" type="button" '
             f'onclick="shopApparel(\'{g.garment_id}\')" '
             f'aria-label="Design a custom {g.name}">'
-            f'<span class="appemoji">{emoji.get(g.garment_id, "👕")}</span>'
+            f'<span class="apptile" style="background:{grad}">'
+            f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">{art}</svg>'
+            f'</span>'
             f'<span class="appname">{g.name}</span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
@@ -1220,15 +1249,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
  .appgrid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}
  @media(max-width:640px){{.appgrid{{grid-template-columns:1fr}}}}
- .appcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
-   padding:22px 14px;border:1px solid #e6e0d2;border-radius:14px;background:#fff;
+ .appcard{{display:flex;flex-direction:column;align-items:center;gap:7px;
+   padding:14px 14px 20px;border:1px solid #e6e0d2;border-radius:16px;background:#fff;
    cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}}
- .appcard:hover{{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.10);
+ .appcard:hover{{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.12);
    border-color:var(--gold)}}
- .appemoji{{font-size:38px;line-height:1}}
+ .apptile{{display:flex;align-items:center;justify-content:center;width:100%;
+   height:150px;border-radius:12px;margin-bottom:4px}}
+ .appsvg{{width:96px;height:96px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.20))}}
  .appname{{font-weight:700;color:var(--green);font-size:18px}}
  .appfrom{{color:#7a7466;font-size:13px}}
- .appcta{{margin-top:6px;font-weight:700;color:var(--gold);font-size:14px}}
+ .appcta{{margin-top:4px;font-weight:700;color:var(--gold);font-size:14px}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
