@@ -1191,6 +1191,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     if (brand / f"tile-{_gid}.{e}").exists()), None)
         if _gp:
             _garment_photos[_gid] = _emit(_gp, f"tile-{_gid}.jpg")
+    # Real print-partner product images override the AI tiles when the supplier API
+    # is live (key set + UIDs mapped); TEST_MODE / no key leaves the AI tiles as-is.
+    try:
+        from quoteforge.images.supplier_mockup import apparel_tile_images
+        for _t, _url in apparel_tile_images().items():
+            if _url:
+                _garment_photos[_t] = _url
+    except Exception:  # noqa: BLE001 — never break the build on the supplier API
+        pass
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
     # Order-by gift-deadline banner (urgency) + verified reviews summary.
