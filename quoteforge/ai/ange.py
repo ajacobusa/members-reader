@@ -23,6 +23,14 @@ KB = [
      "What sizes do you offer?",
      "Sizes range from 8x10 up to 24x36 inches depending on the material. You "
      "pick the size (and quantity) right on the product page."),
+    (["shirt", "t-shirt", "tshirt", "hoodie", "sweatshirt", "apparel", "garment",
+      "fit", "runs small", "true to size", "exchange size"],
+     "How do the apparel sizes run, and can I exchange for fit?",
+     "Our t-shirts, hoodies and sweatshirts are made to order in the exact size "
+     "you choose, so please check the size guide before ordering - sizing is "
+     "final and we can't exchange for fit. Of course, if an item arrives damaged, "
+     "defective or wrong, message us within 7 days with a photo and we'll remake "
+     "it free."),
     (["personalize", "custom", "wording", "name", "text", "quote", "message"],
      "Can I personalize it?",
      "Yes - that's our specialty. Add the recipient's name, the occasion, and "

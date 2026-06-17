@@ -1242,6 +1242,44 @@ def _cmd_variations(args: list[str]) -> int:
     return 0
 
 
+def _cmd_apparel(args: list[str]) -> int:
+    """Show the apparel catalogue (garment x size x colour), 60%-floor pricing,
+    Gelato UID mapping status, and write an apparel inventory CSV. `apparel`."""
+    import csv
+    from quoteforge.config import OUTPUT_DIR
+    from quoteforge.etsy.apparel_catalog import (
+        APPAREL_CATALOG, build_apparel_variations, verify_apparel_mappings)
+    vs = build_apparel_variations()
+    prices = [v.price for v in vs]
+    print("APPAREL CATALOGUE")
+    print(f"Apparel variants: {len(vs)} | all clear 60%: "
+          f"{all(v.margin_pct >= 60 for v in vs)}")
+    if prices:
+        print(f"Price range: ${min(prices):.2f} - ${max(prices):.2f}")
+    for g in APPAREL_CATALOG:
+        gv = [v for v in vs if v.garment_id == g.garment_id]
+        low = min((v.price for v in gv), default=0.0)
+        print(f"  {g.name}: sizes {', '.join(g.sizes)} | colours "
+              f"{', '.join(g.colors)} | from ${low:.2f}")
+    m = verify_apparel_mappings()
+    status = ("ALL REAL" if m["all_real"]
+              else f"{m['placeholder_count']} PLACEHOLDER UID(s) - map in "
+                   f"GELATO_UID_MAP before go-live")
+    print(f"Gelato UID mapping: {status}")
+    out = OUTPUT_DIR / "apparel_inventory.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["garment", "size", "color", "price", "margin_pct",
+                    "gelato_sku", "gelato_cost"])
+        for v in vs:
+            w.writerow([v.name, v.size, v.color, f"{v.price:.2f}",
+                        v.margin_pct, v.gelato_sku, f"{v.gelato_cost:.2f}"])
+    print(f"Apparel inventory CSV -> {out}")
+    print("Each garment becomes ONE Etsy listing with Size + Colour variations.")
+    return 0
+
+
 def _cmd_frame_preview(args: list[str]) -> int:
     """Render a 'see it before you buy' preview (one mockup per frame/material)
     + an interactive page. `frame-preview [N|POSTER.png]`."""
@@ -2193,6 +2231,7 @@ def _cmd_subscribers(args: list[str]) -> int:
 
 COMMANDS = {
     "variations": _cmd_variations,
+    "apparel": _cmd_apparel,
     "frame-preview": _cmd_frame_preview,
     "affiliates": _cmd_affiliates,
     "subscriptions": _cmd_subscriptions,

@@ -150,3 +150,23 @@ def test_messages_generalized_not_print_specific():
     assert "your personalized item" in blob   # generalized wording present
     # supplier euphemism is fine; the real supplier name is not
     assert "gelato" not in blob.lower()
+
+
+# ── Apparel folded into reporting + support surfaces ─────────────
+
+def test_margin_audit_includes_apparel():
+    # REGRESSION: the catalog margin audit covers apparel variants (was print-only).
+    from quoteforge.etsy.margin_guard import audit_catalog
+    rows = audit_catalog()["rows"]
+    appa = [r for r in rows if r["kind"] == "apparel"]
+    assert appa and all(r["ok"] for r in appa)   # apparel present + clears floor
+
+
+def test_ange_kb_answers_apparel_sizing():
+    # REGRESSION: the storefront assistant can answer apparel fit without leaking.
+    from quoteforge.ai.ange import KB
+    hits = [a for (kw, q, a) in KB if "hoodie" in kw or "apparel" in kw]
+    assert hits
+    a = hits[0].lower()
+    assert "final" in a and "fit" in a
+    assert "gelato" not in a and "printify" not in a

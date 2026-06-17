@@ -152,6 +152,26 @@ def test_apparel_has_its_own_placeholder_guard():
     assert m["configured"] + m["placeholder_count"] == m["total"]
 
 
+def test_apparel_names_match_strategic_catalog():
+    # REGRESSION: a rename in one catalogue without the other breaks cost lookups
+    # + cross-sell. Every apparel garment name must exist in product_lines.py.
+    from quoteforge.etsy.product_lines import PRODUCT_LINES
+    names = {p.name for p in PRODUCT_LINES}
+    for g in A.APPAREL_CATALOG:
+        assert g.name in names, g.name
+
+
+def test_admin_apparel_command(capsys, tmp_path, monkeypatch):
+    # REGRESSION: operators get an apparel view (catalogue + pricing + UID status).
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    from quoteforge import admin
+    rc = admin.main(["apparel"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "APPAREL CATALOGUE" in out and "T-Shirt" in out
+    assert (tmp_path / "apparel_inventory.csv").exists()
+
+
 def test_apparel_guard_is_separate_from_print_guard():
     # REGRESSION: the print catalog guard must be untouched by apparel; the two
     # catalogs are independent, so the existing go-live tests keep passing.

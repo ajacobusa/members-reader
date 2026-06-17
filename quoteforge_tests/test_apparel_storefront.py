@@ -91,6 +91,14 @@ def test_wall_art_picker_still_intact(tmp_path):
     assert "IS_APPAREL=false" in h.replace(" ", "")
 
 
+def test_storefront_faq_covers_apparel_and_defects(tmp_path):
+    # REGRESSION: the returns/FAQ copy is generalized for apparel (sizing-final
+    # note + "defective", not the old "print defect").
+    h = _page(tmp_path)
+    assert "Apparel sizing" in h
+    assert "damaged or defective" in h
+
+
 def test_no_supplier_name_in_apparel_storefront(tmp_path):
     # REGRESSION: apparel data is emitted from garment/colour/size/price ONLY -
     # never the gelato_sku/gelato_cost fields on the variant.

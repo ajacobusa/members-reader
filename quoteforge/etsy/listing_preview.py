@@ -287,10 +287,15 @@ def _competitive_sections() -> str:
     # marketplace. Keeps the customer promise nested inside the 30-day partner
     # window via a 7-day reporting ask.
     policy_points = [
-        ("Arrived damaged or a print defect?",
+        ("Arrived damaged or defective?",
          "That\'s on us. Message a photo within 7 days of delivery and we\'ll "
          "send a free replacement - there\'s no need to return the original, "
          "just keep or recycle it."),
+        ("Apparel sizing &amp; fit",
+         "T-shirts, hoodies and sweatshirts are made to order in the exact size "
+         "you choose, so sizing is final - please check the size before ordering. "
+         "We can\'t exchange for fit, but we\'ll always make it right if an item "
+         "arrives damaged, defective or wrong."),
         ("Made to order means your order is final",
          "Because each piece is personalized and made to order from the design "
          "you submit at checkout, all sales are final - we can\'t accept returns, "
@@ -313,9 +318,9 @@ def _competitive_sections() -> str:
         f'<div class="why" id="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
         f'{cmp_rows}</table></div>'
-        f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is '
+        f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every order is '
         f'made to order from the design you submit, with a free emailed proof '
-        f'so you see exactly what prints. If it arrives damaged or defective, is '
+        f'so you see exactly what you\'ll get. If it arrives damaged or defective, is '
         f'the wrong item, or doesn\'t arrive, we\'ll make it right with a free '
         f'replacement.</div>'
         f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>'
