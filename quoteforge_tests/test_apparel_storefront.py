@@ -77,6 +77,34 @@ def test_apparel_brand_tiers_present(tmp_path):
     assert "bella" not in h.lower() and "gildan" not in h.lower()
 
 
+def test_apparel_filter_bar(tmp_path):
+    # REGRESSION: a Gelato-style facet filter bar lets customers narrow apparel by
+    # Department / Type / Brand / Colour / Size across both Men's and Women's, with
+    # client-side show/hide driven by per-tile data-* attributes.
+    h = _page(tmp_path)
+    assert 'class="appfilters"' in h
+    for sid in ('id="afDept"', 'id="afType"', 'id="afBrand"',
+                'id="afColor"', 'id="afSize"'):
+        assert sid in h, sid
+    assert h.count('class="appfilter"') == 5          # five facet dropdowns
+    assert "function applyApparelFilters" in h and "function clearApparelFilters" in h
+    # every tile carries the facets the filter reads
+    assert h.count("data-type=") == 39 and h.count("data-colors=") == 39
+    for attr in ("data-gender=", "data-brand=", "data-sizes="):
+        assert attr in h, attr
+    # the two departments are wrapped so a whole group can hide
+    assert h.count('class="appgroup"') == 2
+    # real facet option values are populated from the catalogue
+    assert '<option value="Hoodie">' in h and '<option value="Tank Top">' in h
+    assert '<option value="Comfort Colors">' in h     # brand facet
+    assert '<option value="White">' in h              # colour facet
+    assert '<option value="2XL">' in h                # size facet
+    assert '<option value="men">' in h and '<option value="women">' in h
+    assert 'id="afNoMatch"' in h                      # empty-state message
+    # no supplier leak via the new facet values
+    assert "gelato" not in h.lower() and "gildan" not in h.lower()
+
+
 def test_editor_apparel_pills_are_garment_scoped(tmp_path):
     # REGRESSION: with many garments the editor must scope colour pills to the
     # SELECTED garment (CURGARMENT), not show every garment's colours at once.
