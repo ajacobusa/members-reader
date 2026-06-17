@@ -37,36 +37,39 @@ SIZE_UPCHARGE: dict[str, float] = {"2XL": 2.0, "3XL": 4.0}
 
 @dataclass
 class ApparelGarment:
-    """One garment line: its sizes, colours, print geometry and base cost."""
+    """One garment line: its sizes, colours, print geometry, base cost + brand."""
     garment_id: str            # "tshirt" | "hoodie" | "sweatshirt"
     name: str                  # must match product_lines.py exactly
     sizes: list[str]
-    colors: list[str]
+    colors: list[str]          # LIGHT shades first (best DTG render on the default)
     base_cost: float           # Gelato cost for the base size (USD)
     sku_prefix: str            # "GEL-TSHIRT" -> variant SKUs derive from this
+    brand: str = ""            # blank-garment brand intent (Bella+Canvas, Gildan...)
     width_px: int = DEFAULT_APPAREL_DIMS[0]
     height_px: int = DEFAULT_APPAREL_DIMS[1]
     category: str = "apparel"
     placement: str = "front"   # launch = front only (back/pocket are future)
 
 
-# The launch apparel range. Colours are realistic Gelato garment colours; costs
-# mirror product_lines.py so the strategic catalog and the live catalog agree.
+# The launch apparel range. Colours are LIGHT-FORWARD (light shades first) because
+# DTG prints full-colour designs/photos cleanly on light garments; the first pill
+# is the default the editor opens on. Costs mirror product_lines.py. `brand` is the
+# recommended Gelato blank to map each garment to (verify in the Gelato dashboard).
 APPAREL_CATALOG: list[ApparelGarment] = [
     ApparelGarment(
-        garment_id="tshirt", name="T-Shirt",
+        garment_id="tshirt", name="T-Shirt", brand="Bella+Canvas 3001",
         sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["Black", "White", "Navy", "Heather Grey", "Sand"],
+        colors=["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"],
         base_cost=13.00, sku_prefix="GEL-TSHIRT"),
     ApparelGarment(
-        garment_id="hoodie", name="Hoodie",
+        garment_id="hoodie", name="Hoodie", brand="Gildan 18500",
         sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["Black", "Heather Grey", "Navy", "Maroon", "White"],
+        colors=["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"],
         base_cost=28.00, sku_prefix="GEL-HOODIE"),
     ApparelGarment(
-        garment_id="sweatshirt", name="Sweatshirt",
+        garment_id="sweatshirt", name="Sweatshirt", brand="Gildan 18000",
         sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["Black", "Heather Grey", "Navy", "Sand", "White"],
+        colors=["White", "Sand", "Heather Grey", "Navy", "Black"],
         base_cost=24.00, sku_prefix="GEL-SWEATSHIRT"),
 ]
 

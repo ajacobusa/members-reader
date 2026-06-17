@@ -162,6 +162,33 @@ def test_margin_audit_includes_apparel():
     assert appa and all(r["ok"] for r in appa)   # apparel present + clears floor
 
 
+def test_apparel_cost_override_reprices_and_holds_floor(tmp_path, monkeypatch):
+    # REGRESSION: a live Gelato cost increase reprices apparel UP and still clears
+    # the 60% floor - the same auto-reprice the print catalog gets (was untested).
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    from quoteforge.etsy.catalog_state import save_state
+    from quoteforge.config import TARGET_MARGIN_PCT
+    sku = "GEL-TSHIRT-M-WHITE"
+    base = next(v for v in A.build_apparel_variations() if v.gelato_sku == sku)
+    save_state({sku: {"available": True, "cost": 25.0}})       # cost jumps 13 -> 25
+    hi = next(v for v in A.build_apparel_variations() if v.gelato_sku == sku)
+    assert hi.gelato_cost == 25.0
+    assert hi.price > base.price                               # repriced up
+    assert hi.margin_pct >= TARGET_MARGIN_PCT                  # still clears floor
+
+
+def test_router_never_submits_placeholder_uid():
+    # REGRESSION: a GEL-* placeholder UID routes to manual, never to production.
+    from quoteforge.fulfillment.router import route_order
+    r = route_order({"order_id": "PH1", "gelato_product_uid": "GEL-TSHIRT-M-WHITE",
+                     "vendor": "gelato"},
+                    recipient={"name": "A", "address": "1 St", "city": "X",
+                               "postCode": "1", "country": "US"},
+                    artwork_url="http://x/a.png")
+    assert r["status"] == "manual"
+    assert "placeholder" in r["detail"].lower()
+
+
 def test_ange_kb_answers_apparel_sizing():
     # REGRESSION: the storefront assistant can answer apparel fit without leaking.
     from quoteforge.ai.ange import KB

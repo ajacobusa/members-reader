@@ -3336,7 +3336,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
    "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"}};
  const APPARELCOLOR = {{"Black":"#1c1c1e","White":"#f4f3ef","Navy":"#26324a",
-   "Heather Grey":"#b9bdc2","Sand":"#d8c9a8","Maroon":"#5e2a32"}};
+   "Heather Grey":"#b9bdc2","Sand":"#d8c9a8","Maroon":"#5e2a32",
+   "Light Blue":"#a7c7e7"}};
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
@@ -3349,7 +3350,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    else if(n.indexOf('Metal')===0) c='#9aa3a8';
    else if(n.indexOf('T-Shirt - ')===0||n.indexOf('Hoodie - ')===0||n.indexOf('Sweatshirt - ')===0){{
      const cn=n.split(' - ')[1]||''; c=APPARELCOLOR[cn]||'#bbbbbb';
-     if(cn==='White'||cn==='Sand'||cn==='Heather Grey') ring='box-shadow:inset 0 0 0 1px #cfcabb'; }}
+     if(cn==='White'||cn==='Sand'||cn==='Heather Grey'||cn==='Light Blue') ring='box-shadow:inset 0 0 0 1px #cfcabb'; }}
    return `<span class="fdot" style="background:${{c}};${{ring}}"></span>`;
  }}
  let CURFMT="";
@@ -3386,7 +3387,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ctx.fillStyle='rgba(0,0,0,.16)';
    ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.05,w*0.13,h*0.04,0,0,Math.PI); ctx.fill();
    // a light garment still reads as fabric with a faint edge
-   if(cn==='White'||cn==='Sand'||cn==='Heather Grey'){{
+   if(cn==='White'||cn==='Sand'||cn==='Heather Grey'||cn==='Light Blue'){{
      ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=1; ctx.strokeRect(x+1,y+1,w-2,h-2); }}
  }}
  function drawArt(){{
