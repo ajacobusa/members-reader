@@ -394,6 +394,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN material TEXT")
     if "size" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN size TEXT")
+    # Apparel variants carry a colour (NULL for wall art, which has none).
+    if "color" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN color TEXT")
     if "listing" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN listing TEXT")
     if "acquisition_source" not in cols:
