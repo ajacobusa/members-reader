@@ -37,6 +37,8 @@ def test_two_departments_wall_art_and_apparel(tmp_path):
     for anchor in ('id="wallart"', 'id="apparel"', 'href="#wallart"', 'href="#apparel"'):
         assert anchor in h, anchor
     assert "Wall Art" in h and "Apparel" in h
+    # departments use real lifestyle PHOTOS (not emoji), in a body block
+    assert "deptimg" in h and "deptbody" in h
 
 
 def test_apparel_department_has_garment_cards(tmp_path):
