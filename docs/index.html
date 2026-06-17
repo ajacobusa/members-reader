@@ -92,7 +92,21 @@
    border-bottom:2px solid transparent}
  .navlinks a:hover{border-bottom-color:var(--gold)}
  /* anchored sections clear the sticky header when jumped to */
- #grid,#occasions,#why,#faq{scroll-margin-top:74px}
+ #grid,#occasions,#apparel,#why,#faq{scroll-margin-top:74px}
+ .apparel-sec{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}
+ .apparel-sec h2{margin:0 0 6px;color:var(--green)}
+ .apparel-sec .apsub{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}
+ .appgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+ @media(max-width:640px){.appgrid{grid-template-columns:1fr}}
+ .appcard{display:flex;flex-direction:column;align-items:center;gap:6px;
+   padding:22px 14px;border:1px solid #e6e0d2;border-radius:14px;background:#fff;
+   cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}
+ .appcard:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.10);
+   border-color:var(--gold)}
+ .appemoji{font-size:38px;line-height:1}
+ .appname{font-weight:700;color:var(--green);font-size:18px}
+ .appfrom{color:#7a7466;font-size:13px}
+ .appcta{margin-top:6px;font-weight:700;color:var(--gold);font-size:14px}
  #basketBtnNav.pulse{animation:basketpulse .5s ease 2}
  /* gift finder quiz */
  #quiz{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
@@ -889,6 +903,7 @@
    <nav class="navlinks" aria-label="Sections">
      <a href="#grid">Shop</a>
      <a href="#occasions">Occasions</a>
+     <a href="#apparel">👕 Apparel</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
    </nav>
@@ -922,6 +937,7 @@
      a free digital proof is sent before anything is printed.</p>
  </div>
  <div class="occasions" id="occasions"><h2>Shop by occasion</h2><p class="ocintro">Find the perfect personalized gift for the moment that matters - tap an occasion to explore.</p><div class="ocgrid"><button class="occard" aria-label="Shop Birthday gifts" onclick="shopByOccasion('Birthday',this)"><img class="ocimg" loading="lazy" src="assets/occasion-birthday.jpg" alt="Birthday gift idea"><div class="occap"><div class="octitle">Birthday</div><div class="ocsub">Celebrate their special day</div></div></button><button class="occard" aria-label="Shop Anniversary gifts" onclick="shopByOccasion('Anniversary',this)"><img class="ocimg" loading="lazy" src="assets/occasion-anniversary.jpg" alt="Anniversary gift idea"><div class="occap"><div class="octitle">Anniversary</div><div class="ocsub">Celebrate your love story</div></div></button><button class="occard" aria-label="Shop Wedding gifts" onclick="shopByOccasion('Wedding',this)"><img class="ocimg" loading="lazy" src="assets/occasion-wedding.jpg" alt="Wedding gift idea"><div class="occap"><div class="octitle">Wedding</div><div class="ocsub">For their beautiful beginning</div></div></button><button class="occard" aria-label="Shop Mother's Day gifts" onclick="shopByOccasion('Mother\'s Day',this)"><img class="ocimg" loading="lazy" src="assets/occasion-mothers-day.jpg" alt="Mother's Day gift idea"><div class="occap"><div class="octitle">Mother's Day</div><div class="ocsub">Thank her for everything</div></div></button><button class="occard" aria-label="Shop Father's Day gifts" onclick="shopByOccasion('Father\'s Day',this)"><img class="ocimg" loading="lazy" src="assets/occasion-fathers-day.jpg" alt="Father's Day gift idea"><div class="occap"><div class="octitle">Father's Day</div><div class="ocsub">Honour the one who inspires</div></div></button><button class="occard" aria-label="Shop Valentine's Day gifts" onclick="shopByOccasion('Valentine\'s Day',this)"><img class="ocimg" loading="lazy" src="assets/occasion-valentines-day.jpg" alt="Valentine's Day gift idea"><div class="occap"><div class="octitle">Valentine's Day</div><div class="ocsub">Celebrate your special bond</div></div></button><button class="occard" aria-label="Shop Graduation gifts" onclick="shopByOccasion('Graduation',this)"><img class="ocimg" loading="lazy" src="assets/occasion-graduation.jpg" alt="Graduation gift idea"><div class="occap"><div class="octitle">Graduation</div><div class="ocsub">Cheer their big achievement</div></div></button><button class="occard" aria-label="Shop New Baby gifts" onclick="shopByOccasion('New Baby',this)"><img class="ocimg" loading="lazy" src="assets/occasion-new-baby.jpg" alt="New Baby gift idea"><div class="occap"><div class="octitle">New Baby</div><div class="ocsub">Welcome the little one</div></div></button><button class="occard" aria-label="Shop Housewarming gifts" onclick="shopByOccasion('Housewarming',this)"><img class="ocimg" loading="lazy" src="assets/occasion-housewarming.jpg" alt="Housewarming gift idea"><div class="occap"><div class="octitle">Housewarming</div><div class="ocsub">Bless their new home</div></div></button><button class="occard" aria-label="Shop Christmas gifts" onclick="shopByOccasion('Christmas',this)"><img class="ocimg" loading="lazy" src="assets/occasion-christmas.jpg" alt="Christmas gift idea"><div class="occap"><div class="octitle">Christmas</div><div class="ocsub">Make the season magical</div></div></button></div><div class="ocall"><button class="occhip sel" onclick="shopByOccasion('',this)">Show all designs</button></div></div>
+ <section class="apparel-sec" id="apparel"><h2>👕 Custom Apparel</h2><p class="apsub">Put your name, words or photo on a tee, hoodie or sweatshirt - the same easy editor, made to order. Pick a garment to start designing.</p><div class="appgrid"><button class="appcard" type="button" onclick="shopApparel('tshirt')" aria-label="Design a custom T-Shirt"><span class="appemoji">👕</span><span class="appname">T-Shirt</span><span class="appfrom">from $51.99</span><span class="appcta">Design yours →</span></button><button class="appcard" type="button" onclick="shopApparel('hoodie')" aria-label="Design a custom Hoodie"><span class="appemoji">🧥</span><span class="appname">Hoodie</span><span class="appfrom">from $110.99</span><span class="appcta">Design yours →</span></button><button class="appcard" type="button" onclick="shopApparel('sweatshirt')" aria-label="Design a custom Sweatshirt"><span class="appemoji">👚</span><span class="appname">Sweatshirt</span><span class="appfrom">from $94.99</span><span class="appcta">Design yours →</span></button></div></section>
  <div id="gridcount" class="gridcount"></div>
  <p class="quiznudge">Not sure which one? <a href="#" onclick="openQuiz();return false">&#127873; Take the 30-second Gift Finder</a></p>
  <!-- Quick-jump: every design as a tap-able thumbnail that opens its page
@@ -1423,6 +1439,15 @@
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
    CURFMT=(fmts[0]&&fmts[0].name)||"";
    fillSizes(); drawArt(); updateReview();
+ }
+ // Entry point from the homepage Apparel category: open the editor straight into
+ // apparel mode and preselect the chosen garment's first colour.
+ function shopApparel(garment){
+   if(!DATA.length) return;
+   openM(0); setProductType('apparel');
+   const label={tshirt:'T-Shirt',hoodie:'Hoodie',sweatshirt:'Sweatshirt'}[garment];
+   if(label){ const idx=APPAREL_FORMATS.findIndex(f=>f.name.indexOf(label+' - ')===0);
+     if(idx>=0) pickFmt(CUR, idx); }
  }
  let CART = [];
  const QD = [[4, 0.15], [3, 0.12], [2, 0.08], [1, 0.0]];
