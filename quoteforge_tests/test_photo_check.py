@@ -101,6 +101,34 @@ def test_pipeline_proceeds_on_good_photo(tmp_path):
     assert order["status"] != "needs_better_photo"
 
 
+# ── AI enhancement: a rescuable low-res photo proceeds (not bounced) ──
+
+def test_pipeline_enhances_borderline_photo_instead_of_bouncing(tmp_path):
+    # REGRESSION: a modestly-low-res photo (1800x2400 ≈ 100 DPI at 18x24) is now
+    # AI-enhanced to print resolution and the order PROCEEDS, instead of bouncing
+    # to needs_better_photo. The enhancement is re-reviewed before it's used.
+    import quoteforge.db.database as db
+    from quoteforge.automation import pipeline_orchestrator as po
+    low = _photo(tmp_path / "borderline.jpg", (1800, 2400))
+    assert check_customer_photo(low, "18x24 in")["ok"] is False     # would have bounced
+    with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
+         patch.object(db, "OUTPUT_DIR", tmp_path), \
+         patch.object(po, "OUTPUT_DIR", tmp_path), \
+         patch.object(po, "RENDERER", "local"), \
+         patch.object(po, "TEST_MODE", False), \
+         patch.object(po, "PREFLIGHT_ENABLED", False), \
+         patch.object(po, "GENERATE_ROOM_MOCKUP", False), \
+         patch.object(po, "CUSTOMER_PROOF_APPROVAL", False), \
+         patch.object(po, "PIPELINE_AUTO_APPROVE_PROOF", True):
+        db.init_db()
+        po.run_full_pipeline({
+            "order_id": "PH3", "recipient_name": "Buddy", "occasion": "Pet Memorial",
+            "custom_text": "Best dog ever.", "custom_image": str(low),
+            "product_size": "18x24 in"}, skip_proof=True)
+        order = db.get_order("PH3")
+    assert order["status"] != "needs_better_photo"      # rescued, not bounced
+
+
 # ── CLI ──────────────────────────────────────────────────────────
 
 def test_cli_check_photo(tmp_path, capsys):

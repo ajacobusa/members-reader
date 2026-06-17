@@ -276,6 +276,21 @@ def run_full_pipeline(
                         check_customer_photo, photo_request_message)
                     chk = check_customer_photo(local, photo_size)
                     if not chk["ok"]:
+                        # AI-ASSISTED ENHANCEMENT: before bouncing a low-res photo,
+                        # try to upscale it to print resolution and 100%-RE-REVIEW.
+                        # Only a result that genuinely clears the floor is used;
+                        # an un-rescuable photo still falls through to the ask.
+                        from quoteforge.images.photo_enhance import enhance_to_print
+                        enh = enhance_to_print(local, photo_size, out_dir)
+                        if enh.get("ok"):
+                            local, chk = enh["path"], enh["review"]
+                            _log(order_id, "photo_enhance", "ok",
+                                 f"{enh['method']} x{enh['scale']} -> "
+                                 f"{chk['effective_dpi']} DPI")
+                            _notify("artwork_generation",
+                                    "Buyer photo auto-enhanced to print "
+                                    f"resolution ({enh['method']}).")
+                    if not chk["ok"]:
                         msg = photo_request_message(
                             chk, order_data.get("customer_name", "there"),
                             order_data.get("recipient_name", "your order"))

@@ -713,6 +713,28 @@ def _cmd_check_photo(args: list[str]) -> int:
     return 0 if chk["ok"] else 1
 
 
+def _cmd_enhance_photo(args: list[str]) -> int:
+    """AI-enhance a low-res customer photo toward print quality, then re-review.
+    Writes the enhanced image next to the source and reports whether it now
+    clears the floor (or whether the buyer must still send a better one)."""
+    from quoteforge.images.photo_enhance import enhance_to_print
+    if not args:
+        print("Usage: python -m quoteforge.admin enhance-photo PHOTO.jpg [size]")
+        return 2
+    size = args[1] if len(args) > 1 else "18x24 in"
+    res = enhance_to_print(args[0], size)
+    rv = res["review"]
+    print(f"Method  : {res['method']}  (scale x{res['scale']})")
+    print(f"Reviewed: {rv['actual_px'][0]}x{rv['actual_px'][1]}px  "
+          f"effective {rv['effective_dpi']} DPI  (min {rv['min_dpi']})")
+    if res["ok"]:
+        print(f"Result  : RESCUED - print quality. Use: {res['path']}")
+        return 0
+    print(f"Result  : STILL TOO LOW ({rv['reason']}) - ask the buyer for a "
+          "higher-resolution original.")
+    return 1
+
+
 def _cmd_delight(args: list[str]) -> int:
     """Post-delivery review + referral touches (the delight loop)."""
     from quoteforge.etsy.delight_loop import (
@@ -2336,6 +2358,7 @@ COMMANDS = {
     "publish-listings": _cmd_publish_listings,
     "delight": _cmd_delight,
     "check-photo": _cmd_check_photo,
+    "enhance-photo": _cmd_enhance_photo,
     "custom-copy": _cmd_custom_copy,
     "remind": _cmd_remind,
     "briefing": _cmd_briefing,
