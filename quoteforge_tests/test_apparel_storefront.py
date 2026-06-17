@@ -55,14 +55,25 @@ def test_apparel_department_has_mens_and_womens_sections(tmp_path):
 
 
 def test_apparel_cards_use_photos_with_svg_fallback(tmp_path):
-    # REGRESSION: garment tiles are real product PHOTOS where we have them (the 3
-    # core types x 2 genders = 6), with the shaded SVG as the fallback for the rest.
+    # REGRESSION: full gendered + 3-tier range (13 garments x 3 tiers = 39 tiles).
+    # Real PHOTOS for the 3 core types (x2 genders x3 tiers = 18); SVG for the rest.
     h = _page(tmp_path)
-    assert h.count('class="apptile') == 13        # full gendered range
-    assert h.count('class="appimg"') == 6         # photo for the 3 core types x 2
-    assert h.count('class="apptile apptilephoto"') == 6
-    assert h.count('class="appsvg"') == 7         # SVG fallback for the rest
+    assert h.count('class="apptile') == 39        # 13 garments x 3 brand tiers
+    assert h.count('class="appimg"') == 18        # photo for the 3 core types
+    assert h.count('class="apptile apptilephoto"') == 18
+    assert h.count('class="appsvg"') == 21        # SVG fallback for the rest
     assert "appemoji" not in h                     # old emoji tiles gone
+
+
+def test_apparel_brand_tiers_present(tmp_path):
+    # REGRESSION: each garment is offered in 3 brand tiers (Value/Classic/Premium)
+    # with the Gelato brand shown - never Bella+Canvas/Gildan.
+    h = _page(tmp_path)
+    assert h.count('class="apptier"') == 39
+    for tier in ("Value", "Classic", "Premium"):
+        assert tier in h
+    assert "Comfort Colors" in h and "Lane Seven" in h     # real Gelato brands shown
+    assert "bella" not in h.lower() and "gildan" not in h.lower()
 
 
 def test_editor_apparel_pills_are_garment_scoped(tmp_path):
@@ -160,9 +171,9 @@ def test_storefront_faq_covers_apparel_and_defects(tmp_path):
     assert "damaged or defective" in h
 
 
-def test_garment_brand_names_not_exposed_on_storefront(tmp_path):
-    # REGRESSION: the blank-garment brand intent (Bella+Canvas / Gildan) is ops-
-    # only metadata and must never render to customers.
+def test_wrong_brands_never_on_storefront(tmp_path):
+    # REGRESSION: real Gelato brands now render (the tier value-prop), but the
+    # WRONG brands (Bella+Canvas / Gildan, which Gelato doesn't carry) must never.
     h = _page(tmp_path).lower()
     assert "bella" not in h and "gildan" not in h
 
