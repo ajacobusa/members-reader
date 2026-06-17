@@ -148,7 +148,7 @@ sufficient — also confirm the behavior is actually wired end to end.
 17. Customer-approved spelling/sizing/design/photo issues denied/flagged —
     `etsy/resolution.py` customer-fault categories; never auto-refunded.
 18. No automatic cancel/refund/return after submission — `autopilot` hard rule +
-    `$0` cap; `_execute` has no money-out path.
+    a zero-dollar cap (AUTOPILOT_MAX_AUTO_REFUND defaults to 0); `_execute` has no money-out path.
 19. Admin manual-review queue — `enqueue_approval` / `get_pending_approvals` /
     `admin approvals`.
 20. Financial/margin/shipping-variance/status reports accurate — `etsy/financials`,
@@ -170,14 +170,14 @@ For each, find the guard, confirm it's reachable, and confirm a test pins it:
 4. Tracking missing/stale → `fulfillment_tracker` detectors + alert.
 5. In-transit incorrectly marked delivered → strict "delivered"-only.
 6. Review request before delivery → `delight_loop`.
-7. Refund/return/cancel allowed automatically → `autopilot` hard rule + `$0` cap.
+7. Refund/return/cancel allowed automatically → `autopilot` hard rule + a zero-dollar cap (AUTOPILOT_MAX_AUTO_REFUND defaults to 0).
 8. Claim accepted after 7 days without admin override → window tiers.
 9. Missing evidence accepted for damage claim → `auto_replacement_block_reason`
    reuses `gelato_returns.build_claim_package().ready_to_file` (one evidence
    table, one window — don't let it drift).
 10. Customer-approved mistake refunded → customer-fault denials.
 11. Margin below floor → `margin_guard` + an order-time check in `order_monitor`
-    (guard `sale_price is not None and gelato_cost:` so a $0 sale at real cost is
+    (guard `sale_price is not None and gelato_cost:` so a zero-priced sale at real cost is
     still caught).
 12. Shipping variance not detected → `shipping_audit`.
 13. Failed deploy with no rollback → `GO_LIVE_GUIDE.md` rollback section +
