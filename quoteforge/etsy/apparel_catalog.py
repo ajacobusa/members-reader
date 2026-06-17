@@ -35,46 +35,74 @@ DEFAULT_APPAREL_DIMS: tuple[int, int] = (3600, 4800)
 SIZE_UPCHARGE: dict[str, float] = {"2XL": 2.0, "3XL": 4.0}
 
 
+DEFAULT_SIZES = ["S", "M", "L", "XL", "2XL"]
+
+
 @dataclass
 class ApparelGarment:
-    """One garment line: its sizes, colours, print geometry, base cost + brand."""
-    garment_id: str            # "tshirt" | "hoodie" | "sweatshirt"
-    name: str                  # must match product_lines.py exactly
+    """One sellable garment line (a gender + type), with sizes, colours, print
+    geometry, base cost and the recommended Gelato blank brand."""
+    garment_id: str            # unique: "m_tshirt", "w_hoodie", ...
+    name: str                  # customer-facing: "Men's T-Shirt", "Women's Hoodie"
     sizes: list[str]
     colors: list[str]          # LIGHT shades first (best DTG render on the default)
     base_cost: float           # Gelato cost for the base size (USD)
-    sku_prefix: str            # "GEL-TSHIRT" -> variant SKUs derive from this
-    brand: str = ""            # blank-garment brand intent (Bella+Canvas, Gildan...)
+    sku_prefix: str            # "GEL-M-TSHIRT" -> variant SKUs derive from this
+    brand: str = ""            # recommended Gelato blank (Comfort Colors, Lane Seven...)
+    gender: str = "unisex"     # "men" | "women" | "unisex"
+    garment_type: str = ""     # base type: tshirt/tank/hoodie/... (photo + cost key)
+    type_name: str = ""        # type display w/o gender: "T-Shirt", "Tank Top"
     width_px: int = DEFAULT_APPAREL_DIMS[0]
     height_px: int = DEFAULT_APPAREL_DIMS[1]
     category: str = "apparel"
     placement: str = "front"   # launch = front only (back/pocket are future)
 
 
-# The launch apparel range. Colours are LIGHT-FORWARD (light shades first) because
-# DTG prints full-colour designs/photos cleanly on light garments; the first pill
-# is the default the editor opens on. Costs mirror product_lines.py. `brand` is the
-# recommended GELATO blank to map each garment to - chosen from Gelato's ACTUAL
-# apparel roster (Lane Seven, Comfort Colors, Stanley/Stella, Next Level, SOL's,
-# Champion, ...); NOT Bella+Canvas/Gildan, which Gelato does not carry. Confirm the
-# exact product + UID in the Gelato dashboard before go-live.
-APPAREL_CATALOG: list[ApparelGarment] = [
-    ApparelGarment(
-        garment_id="tshirt", name="T-Shirt", brand="Comfort Colors 1717",
-        sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"],
-        base_cost=13.00, sku_prefix="GEL-TSHIRT"),
-    ApparelGarment(
-        garment_id="hoodie", name="Hoodie", brand="Lane Seven LS14001",
-        sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"],
-        base_cost=28.00, sku_prefix="GEL-HOODIE"),
-    ApparelGarment(
-        garment_id="sweatshirt", name="Sweatshirt", brand="Comfort Colors 1566",
-        sizes=["S", "M", "L", "XL", "2XL"],
-        colors=["White", "Sand", "Heather Grey", "Navy", "Black"],
-        base_cost=24.00, sku_prefix="GEL-SWEATSHIRT"),
+# Gelato's full men's/women's apparel range. `brand` is the recommended GELATO
+# blank (from Gelato's ACTUAL roster - Comfort Colors, Lane Seven, Next Level,
+# SOL's, Port & Company, Stanley/Stella, Champion...; NOT Bella+Canvas/Gildan).
+# Colours are LIGHT-FORWARD (best DTG render on the default pill). Each (type x
+# gender) becomes its own Etsy listing (Size x Colour). Confirm exact product +
+# UID in the Gelato dashboard before go-live.
+# (type_id, type_name, base_cost, brand, colours, genders)
+_APPAREL_TYPES = [
+    ("tshirt", "T-Shirt", 13.00, "Comfort Colors 1717",
+     ["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"], ("men", "women")),
+    ("tank", "Tank Top", 12.00, "Next Level 6733",
+     ["White", "Sand", "Heather Grey", "Black"], ("men", "women")),
+    ("longsleeve", "Long Sleeve Shirt", 16.00, "Comfort Colors 6014",
+     ["White", "Sand", "Heather Grey", "Navy", "Black"], ("men", "women")),
+    ("raglan", "3/4 Sleeve Shirt", 16.00, "Next Level 6051",
+     ["White", "Heather Grey", "Navy", "Black"], ("men", "women")),
+    ("polo", "Polo Shirt", 22.00, "Port & Company KP55",
+     ["White", "Light Blue", "Navy", "Black"], ("men",)),
+    ("hoodie", "Hoodie", 28.00, "Lane Seven LS14001",
+     ["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"], ("men", "women")),
+    ("sweatshirt", "Sweatshirt", 24.00, "Comfort Colors 1566",
+     ["White", "Sand", "Heather Grey", "Navy", "Black"], ("men", "women")),
 ]
+_GENDER_LABEL = {"men": "Men's", "women": "Women's", "unisex": "Unisex"}
+
+
+def _build_catalog() -> list[ApparelGarment]:
+    """Build the gendered garment catalog from the type spec."""
+    out: list[ApparelGarment] = []
+    for type_id, type_name, cost, brand, colors, genders in _APPAREL_TYPES:
+        for gender in genders:
+            code = gender[0].upper()           # M / W
+            out.append(ApparelGarment(
+                garment_id=f"{gender[0]}_{type_id}",
+                name=f"{_GENDER_LABEL[gender]} {type_name}",
+                sizes=list(DEFAULT_SIZES),
+                colors=list(colors),
+                base_cost=cost,
+                sku_prefix=f"GEL-{code}-{type_id.upper()}",
+                brand=brand, gender=gender,
+                garment_type=type_id, type_name=type_name))
+    return out
+
+
+APPAREL_CATALOG: list[ApparelGarment] = _build_catalog()
 
 
 @dataclass
