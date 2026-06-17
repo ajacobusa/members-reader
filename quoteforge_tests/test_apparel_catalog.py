@@ -53,7 +53,7 @@ def test_garment_costs_match_strategic_catalog():
     # core types map by TYPE name (gendered garments share the type cost); new
     # types (tank/long-sleeve/raglan/polo) carry their own costs not in product_lines.
     for g in A.APPAREL_CATALOG:
-        if g.type_name in strat:
+        if g.type_name in strat and g.tier == "Classic":
             assert g.base_cost == strat[g.type_name], g.name
 
 
@@ -206,15 +206,16 @@ def test_apparel_guard_clears_only_when_all_mapped(monkeypatch):
     # REGRESSION: the go-live guard reads GELATO_UID_MAP (same source as
     # resolve_apparel_uid) and clears to all_real ONLY when every SKU maps to a
     # real (non-GEL-*) UID - so the owner can tell when apparel is launch-ready.
-    import json
+    # Patch the UID map directly (not the env var): at this SKU count the full
+    # map exceeds the OS env-var size limit, so production should use a file map.
     skus = A.apparel_skus()
     real = {s: f"apparel_real_{i}" for i, s in enumerate(skus)}
-    monkeypatch.setenv("GELATO_UID_MAP", json.dumps(real))
+    monkeypatch.setattr("quoteforge.automation.gelato_sync._uid_map", lambda: real)
     m = A.verify_apparel_mappings()
     assert m["all_real"] is True and m["placeholder_count"] == 0
     # a still-GEL-* mapped value is treated as a placeholder, not real
     bad = dict(real); bad[skus[0]] = "GEL-STILL-SEED"
-    monkeypatch.setenv("GELATO_UID_MAP", json.dumps(bad))
+    monkeypatch.setattr("quoteforge.automation.gelato_sync._uid_map", lambda: bad)
     assert A.verify_apparel_mappings()["placeholder_count"] == 1
 
 

@@ -48,57 +48,79 @@ class ApparelGarment:
     colors: list[str]          # LIGHT shades first (best DTG render on the default)
     base_cost: float           # Gelato cost for the base size (USD)
     sku_prefix: str            # "GEL-M-TSHIRT" -> variant SKUs derive from this
-    brand: str = ""            # recommended Gelato blank (Comfort Colors, Lane Seven...)
+    brand: str = ""            # Gelato blank brand (Comfort Colors, Lane Seven...)
     gender: str = "unisex"     # "men" | "women" | "unisex"
     garment_type: str = ""     # base type: tshirt/tank/hoodie/... (photo + cost key)
     type_name: str = ""        # type display w/o gender: "T-Shirt", "Tank Top"
+    tier: str = "Classic"      # brand tier: "Value" | "Classic" | "Premium"
     width_px: int = DEFAULT_APPAREL_DIMS[0]
     height_px: int = DEFAULT_APPAREL_DIMS[1]
     category: str = "apparel"
     placement: str = "front"   # launch = front only (back/pocket are future)
 
 
-# Gelato's full men's/women's apparel range. `brand` is the recommended GELATO
-# blank (from Gelato's ACTUAL roster - Comfort Colors, Lane Seven, Next Level,
-# SOL's, Port & Company, Stanley/Stella, Champion...; NOT Bella+Canvas/Gildan).
-# Colours are LIGHT-FORWARD (best DTG render on the default pill). Each (type x
-# gender) becomes its own Etsy listing (Size x Colour). Confirm exact product +
-# UID in the Gelato dashboard before go-live.
-# (type_id, type_name, base_cost, brand, colours, genders)
+# Gelato's full men's/women's apparel range, in 3 BRAND TIERS per garment
+# (Value / Classic / Premium) - all real Gelato blanks (Comfort Colors, Lane
+# Seven, Next Level, SOL's, Port & Company, Stanley/Stella; NOT Bella+Canvas/
+# Gildan). The CLASSIC tier keeps the base name/SKU (the recommended default);
+# Value is cheaper, Premium is higher-end. Brand can't be a 3rd Etsy axis (Size +
+# Colour fill both), so each tier is its own listing. Confirm exact product + UID
+# in the Gelato dashboard before go-live.
+# (type_id, type_name, colours, genders, tiers[(tier, brand, cost)] Classic first)
 _APPAREL_TYPES = [
-    ("tshirt", "T-Shirt", 13.00, "Comfort Colors 1717",
-     ["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"], ("men", "women")),
-    ("tank", "Tank Top", 12.00, "Next Level 6733",
-     ["White", "Sand", "Heather Grey", "Black"], ("men", "women")),
-    ("longsleeve", "Long Sleeve Shirt", 16.00, "Comfort Colors 6014",
-     ["White", "Sand", "Heather Grey", "Navy", "Black"], ("men", "women")),
-    ("raglan", "3/4 Sleeve Shirt", 16.00, "Next Level 6051",
-     ["White", "Heather Grey", "Navy", "Black"], ("men", "women")),
-    ("polo", "Polo Shirt", 22.00, "Port & Company KP55",
-     ["White", "Light Blue", "Navy", "Black"], ("men",)),
-    ("hoodie", "Hoodie", 28.00, "Lane Seven LS14001",
-     ["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"], ("men", "women")),
-    ("sweatshirt", "Sweatshirt", 24.00, "Comfort Colors 1566",
-     ["White", "Sand", "Heather Grey", "Navy", "Black"], ("men", "women")),
+    ("tshirt", "T-Shirt", ["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"],
+     ("men", "women"), [("Classic", "Comfort Colors 1717", 13.00),
+                        ("Value", "SOL's 11500", 10.00),
+                        ("Premium", "Lane Seven LS15001", 17.00)]),
+    ("tank", "Tank Top", ["White", "Sand", "Heather Grey", "Black"],
+     ("men", "women"), [("Classic", "Next Level 6733", 12.00),
+                        ("Value", "SOL's 01175", 9.00),
+                        ("Premium", "Lane Seven LS15003", 15.00)]),
+    ("longsleeve", "Long Sleeve Shirt", ["White", "Sand", "Heather Grey", "Navy", "Black"],
+     ("men", "women"), [("Classic", "Comfort Colors 6014", 16.00),
+                        ("Value", "SOL's 02074", 14.00),
+                        ("Premium", "Stanley/Stella M001", 20.00)]),
+    ("raglan", "3/4 Sleeve Shirt", ["White", "Heather Grey", "Navy", "Black"],
+     ("men", "women"), [("Classic", "Next Level 6051", 16.00),
+                        ("Value", "SOL's 01166", 13.00),
+                        ("Premium", "Lane Seven LS14002", 19.00)]),
+    ("polo", "Polo Shirt", ["White", "Light Blue", "Navy", "Black"],
+     ("men",), [("Classic", "Port & Company KP55", 22.00),
+                ("Value", "SOL's 11362", 18.00),
+                ("Premium", "Lane Seven LS25001", 28.00)]),
+    ("hoodie", "Hoodie", ["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"],
+     ("men", "women"), [("Classic", "Lane Seven LS14001", 28.00),
+                        ("Value", "SOL's 01695", 22.00),
+                        ("Premium", "Stanley/Stella M002", 34.00)]),
+    ("sweatshirt", "Sweatshirt", ["White", "Sand", "Heather Grey", "Navy", "Black"],
+     ("men", "women"), [("Classic", "Comfort Colors 1566", 24.00),
+                        ("Value", "SOL's 03102", 19.00),
+                        ("Premium", "Stanley/Stella M003", 30.00)]),
 ]
 _GENDER_LABEL = {"men": "Men's", "women": "Women's", "unisex": "Unisex"}
 
 
 def _build_catalog() -> list[ApparelGarment]:
-    """Build the gendered garment catalog from the type spec."""
+    """Build the gendered, tiered garment catalog from the type spec. The Classic
+    tier keeps the base name/id/SKU (continuity); Value/Premium get a suffix."""
     out: list[ApparelGarment] = []
-    for type_id, type_name, cost, brand, colors, genders in _APPAREL_TYPES:
+    for type_id, type_name, colors, genders, tiers in _APPAREL_TYPES:
         for gender in genders:
             code = gender[0].upper()           # M / W
-            out.append(ApparelGarment(
-                garment_id=f"{gender[0]}_{type_id}",
-                name=f"{_GENDER_LABEL[gender]} {type_name}",
-                sizes=list(DEFAULT_SIZES),
-                colors=list(colors),
-                base_cost=cost,
-                sku_prefix=f"GEL-{code}-{type_id.upper()}",
-                brand=brand, gender=gender,
-                garment_type=type_id, type_name=type_name))
+            for tier, brand, cost in tiers:
+                if tier == "Classic":
+                    gid = f"{gender[0]}_{type_id}"
+                    name = f"{_GENDER_LABEL[gender]} {type_name}"
+                    prefix = f"GEL-{code}-{type_id.upper()}"
+                else:
+                    gid = f"{gender[0]}_{type_id}_{tier.lower()}"
+                    name = f"{_GENDER_LABEL[gender]} {type_name} ({tier})"
+                    prefix = f"GEL-{code}-{type_id.upper()}-{tier[:3].upper()}"
+                out.append(ApparelGarment(
+                    garment_id=gid, name=name, sizes=list(DEFAULT_SIZES),
+                    colors=list(colors), base_cost=cost, sku_prefix=prefix,
+                    brand=brand, gender=gender, garment_type=type_id,
+                    type_name=type_name, tier=tier))
     return out
 
 

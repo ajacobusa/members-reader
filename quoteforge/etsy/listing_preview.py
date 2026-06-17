@@ -811,12 +811,16 @@ def _apparel_section(photos: dict | None = None) -> str:
                     f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
                     f'{art}</svg></span>')
         name_js = g.name.replace("\\", "\\\\").replace("'", "\\'")
+        brand_disp = g.brand.rsplit(" ", 1)[0] if g.brand else ""   # drop style code
+        tier_line = (f'<span class="apptier">{g.tier} · {brand_disp}</span>'
+                     if g.tier and brand_disp else "")
         return (
             f'<button class="appcard" type="button" '
             f'onclick="shopApparel(\'{name_js}\')" '
             f'aria-label="Design a custom {g.name}">'
             f'{tile}'
             f'<span class="appname">{g.type_name}</span>'
+            f'{tier_line}'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
 
@@ -1326,6 +1330,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .appimg{{width:100%;height:100%;object-fit:cover;display:block;border-radius:13px}}
  .appsvg{{width:118px;height:118px}}
  .appname{{font-weight:700;color:var(--green);font-size:18px;letter-spacing:.01em}}
+ .apptier{{color:var(--gold-d);font-size:12px;font-weight:600;letter-spacing:.02em}}
  .appfrom{{color:#7a7466;font-size:13px}}
  .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}

@@ -23,14 +23,25 @@ import os
 
 
 def _uid_map() -> dict:
-    """our_sku -> gelato_product_uid. From GELATO_UID_MAP env (JSON) if present."""
+    """our_sku -> gelato_product_uid. From GELATO_UID_MAP (inline JSON env) AND/OR
+    GELATO_UID_MAP_FILE (path to a JSON file) - the file is merged over the env.
+    The file form is required once the map grows past a few hundred SKUs, since a
+    full apparel map (long real UIDs) exceeds the OS env-var size limit."""
+    out: dict = {}
     raw = os.getenv("GELATO_UID_MAP", "").strip()
-    if not raw:
-        return {}
-    try:
-        return json.loads(raw)
-    except Exception:  # noqa: BLE001
-        return {}
+    if raw:
+        try:
+            out.update(json.loads(raw))
+        except Exception:  # noqa: BLE001
+            pass
+    path = os.getenv("GELATO_UID_MAP_FILE", "").strip()
+    if path:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                out.update(json.load(fh))
+        except Exception:  # noqa: BLE001
+            pass
+    return out
 
 
 def _all_skus() -> list[str]:
