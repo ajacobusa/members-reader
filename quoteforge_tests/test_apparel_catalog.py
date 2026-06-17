@@ -108,6 +108,40 @@ def test_discontinued_colour_auto_disabled(tmp_path, monkeypatch):
     assert target.gelato_sku not in skus
 
 
+# ── Fulfilment resolver (storefront basket line -> variant SKU) ───
+
+def test_resolve_apparel_sku_happy_path():
+    # REGRESSION: the storefront basket line "T-Shirt - Black" + "M" must resolve
+    # to the exact variant SKU order-ingest will map to a Gelato apparel UID.
+    assert A.resolve_apparel_sku("T-Shirt - Black", "M") == "GEL-TSHIRT-M-BLACK"
+    assert A.resolve_apparel_sku("Hoodie - Navy", "XL") == "GEL-HOODIE-XL-NAVY"
+    # multi-word colour stays consistent with the catalogue's SKU convention
+    assert A.resolve_apparel_sku("T-Shirt - Heather Grey", "L") == "GEL-TSHIRT-L-HEATHER-GREY"
+
+
+def test_resolved_sku_is_a_real_catalogue_sku():
+    # REGRESSION: every resolvable basket line points at a SKU the catalogue (and
+    # thus the placeholder guard + UID map) actually knows about - no orphans.
+    skus = set(A.apparel_skus())
+    assert A.resolve_apparel_sku("Sweatshirt - Sand", "S") in skus
+
+
+def test_wall_art_format_is_not_resolved_as_apparel():
+    # REGRESSION: a wall-art format must NEVER be misread as apparel.
+    assert A.resolve_apparel_sku("Framed - Premium Solid Oak", "18x24 in") is None
+    assert A.resolve_apparel_sku("Poster (unframed)", "18x24") is None
+    assert A.parse_apparel_format("Framed - Premium Solid Oak") == (None, None)
+
+
+def test_bad_size_or_colour_does_not_route():
+    # A size/colour not in the catalogue returns None so it goes to manual review
+    # instead of routing a guessed (possibly non-existent) variant to production.
+    assert A.resolve_apparel_sku("T-Shirt - Black", "XXXL") is None
+    assert A.resolve_apparel_sku("T-Shirt - Lime", "M") is None
+    assert A.apparel_sku_for("tshirt", "M", "Black") == "GEL-TSHIRT-M-BLACK"
+    assert A.apparel_sku_for("nope", "M", "Black") is None
+
+
 # ── Isolated placeholder guard (does NOT touch the print guard) ───
 
 def test_apparel_has_its_own_placeholder_guard():

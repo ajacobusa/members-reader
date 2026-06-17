@@ -165,6 +165,48 @@ def apparel_skus() -> list[str]:
     return sorted(skus)
 
 
+# ── Fulfilment resolver: storefront cart line -> variant SKU ──────
+# The storefront records an apparel choice as CURFMT = "{garment} - {colour}"
+# plus a size. Order-ingest calls these pure functions to turn that basket line
+# into the variant SKU, which maps to a real Gelato apparel UID via the SAME
+# GELATO_UID_MAP mechanism wall-art SKUs use. Pure + side-effect-free so they are
+# safe to call from any ingest path without touching the live order pipeline.
+
+def parse_apparel_format(fmt: str) -> tuple[str | None, str | None]:
+    """Split a storefront apparel format ("T-Shirt - Black") into
+    (garment_id, colour). Returns (None, None) for anything that is not a real
+    apparel format - so a wall-art format like "Framed - Oak" is never misread
+    as apparel."""
+    if not fmt or " - " not in fmt:
+        return (None, None)
+    name, _, color = fmt.partition(" - ")
+    g = next((x for x in APPAREL_CATALOG if x.name == name.strip()), None)
+    if not g:
+        return (None, None)
+    return (g.garment_id, color.strip())
+
+
+def apparel_sku_for(garment_id: str, size: str, color: str) -> str | None:
+    """The variant SKU for a (garment, size, colour), or None if the combination
+    is not in the catalogue (so a bad size/colour can never route to production)."""
+    g = get_garment(garment_id)
+    if not g or size not in g.sizes or color not in g.colors:
+        return None
+    return _variant_sku(g, size, color)
+
+
+def resolve_apparel_sku(fmt: str, size: str) -> str | None:
+    """Storefront basket line ("T-Shirt - Black", "M") -> variant SKU, or None
+    when the line is not a valid apparel selection. The single entry point
+    order-ingest will call to obtain a fulfilment routing key for an apparel
+    item; None means 'not apparel / not orderable' - the caller routes to manual
+    review rather than guessing."""
+    gid, color = parse_apparel_format(fmt)
+    if not gid:
+        return None
+    return apparel_sku_for(gid, size, color)
+
+
 # ── Isolated Gelato placeholder guard (separate from the print guard) ──
 
 def verify_apparel_mappings() -> dict:
