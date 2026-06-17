@@ -727,6 +727,43 @@ def _generalize_desc(d: str) -> str:
     return s
 
 
+def _apparel_section() -> str:
+    """Visible top-level Apparel category band (T-Shirt / Hoodie / Sweatshirt).
+    Each card opens the design editor straight into apparel mode via shopApparel().
+    Emits garment / from-price only - no supplier name."""
+    try:
+        from quoteforge.etsy.apparel_catalog import (
+            APPAREL_CATALOG, build_apparel_variations)
+    except Exception:  # noqa: BLE001
+        return ""
+    frm: dict = {}
+    for v in build_apparel_variations():
+        frm[v.garment_id] = min(frm.get(v.garment_id, 1e9), v.price)
+    if not frm:
+        return ""
+    emoji = {"tshirt": "👕", "hoodie": "🧥", "sweatshirt": "👚"}
+    cards = []
+    for g in APPAREL_CATALOG:
+        low = frm.get(g.garment_id)
+        if low is None:
+            continue
+        cards.append(
+            f'<button class="appcard" type="button" '
+            f'onclick="shopApparel(\'{g.garment_id}\')" '
+            f'aria-label="Design a custom {g.name}">'
+            f'<span class="appemoji">{emoji.get(g.garment_id, "👕")}</span>'
+            f'<span class="appname">{g.name}</span>'
+            f'<span class="appfrom">from ${low:.2f}</span>'
+            f'<span class="appcta">Design yours →</span></button>')
+    return (
+        '<section class="apparel-sec" id="apparel">'
+        '<h2>👕 Custom Apparel</h2>'
+        '<p class="apsub">Put your name, words or photo on a tee, hoodie or '
+        'sweatshirt - the same easy editor, made to order. Pick a garment to '
+        'start designing.</p>'
+        f'<div class="appgrid">{"".join(cards)}</div></section>')
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -1162,7 +1199,36 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-bottom:2px solid transparent}}
  .navlinks a:hover{{border-bottom-color:var(--gold)}}
  /* anchored sections clear the sticky header when jumped to */
- #grid,#occasions,#why,#faq{{scroll-margin-top:74px}}
+ #grid,#wallart,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
+ .depts{{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}}
+ .deptshead{{margin:0 0 14px;color:var(--green);font-size:20px;
+   text-transform:uppercase;letter-spacing:.06em}}
+ .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
+ @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
+ .deptcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
+   padding:30px 18px;border-radius:18px;text-decoration:none;
+   border:1px solid #e6e0d2;transition:transform .12s,box-shadow .12s}}
+ .deptwall{{background:linear-gradient(135deg,#f4efe6,#e9e2d2)}}
+ .deptapp{{background:linear-gradient(135deg,#eaf1ee,#d8e8e0)}}
+ .deptcard:hover{{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}}
+ .depticon{{font-size:46px;line-height:1}}
+ .depttitle{{font-weight:800;color:var(--green);font-size:24px}}
+ .deptsub{{color:#5b5b52;font-size:14px;max-width:280px}}
+ .deptgo{{margin-top:6px;font-weight:700;color:var(--gold);font-size:15px}}
+ .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
+ .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
+ .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
+ .appgrid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}
+ @media(max-width:640px){{.appgrid{{grid-template-columns:1fr}}}}
+ .appcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
+   padding:22px 14px;border:1px solid #e6e0d2;border-radius:14px;background:#fff;
+   cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}}
+ .appcard:hover{{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.10);
+   border-color:var(--gold)}}
+ .appemoji{{font-size:38px;line-height:1}}
+ .appname{{font-weight:700;color:var(--green);font-size:18px}}
+ .appfrom{{color:#7a7466;font-size:13px}}
+ .appcta{{margin-top:6px;font-weight:700;color:var(--gold);font-size:14px}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
@@ -1935,7 +2001,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
    <span class="bn">{SHOP_NAME}</span>
    <nav class="navlinks" aria-label="Sections">
-     <a href="#grid">Shop</a>
+     <a href="#wallart">🖼️ Wall Art</a>
+     <a href="#apparel">👕 Apparel</a>
      <a href="#occasions">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
@@ -1960,6 +2027,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
+ <section class="depts" aria-label="Shop by department">
+   <h2 class="deptshead">Shop by department</h2>
+   <div class="deptgrid">
+     <a class="deptcard deptwall" href="#wallart">
+       <span class="depticon">🖼️</span>
+       <span class="depttitle">Wall Art</span>
+       <span class="deptsub">Posters, framed prints, canvas, acrylic &amp; metal</span>
+       <span class="deptgo">Browse Wall Art →</span>
+     </a>
+     <a class="deptcard deptapp" href="#apparel">
+       <span class="depticon">👕</span>
+       <span class="depttitle">Apparel</span>
+       <span class="deptsub">T-shirts, hoodies &amp; sweatshirts</span>
+       <span class="deptgo">Browse Apparel →</span>
+     </a>
+   </div>
+ </section>
  {sproof_html}
  {cutoff_html}
  {"<div class='uatbar'>👋 Thanks for helping review " + SHOP_NAME +
@@ -1967,8 +2051,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   "tap <b>feedback</b>. "
   "<a href='mailto:" + owner + "?subject=Joffiels%20overall%20feedback'>"
   "Send overall feedback</a></div>" if uat else ""}
- <div class="intro">
-   <h2>Gifts they'll keep forever</h2>
+ <div class="intro" id="wallart">
+   <h2>🖼️ Wall Art — gifts they'll keep forever</h2>
    <p>Every piece is custom-made for your recipient - a name, an occasion, their
      story. Choose poster, framed, canvas, acrylic or metal when you personalize;
      a free digital proof is sent before anything is printed.</p>
@@ -1998,6 +2082,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="btot" id="btot">Select 2 or more to see your set price.</div>
    </div>
  </div>
+ {_apparel_section()}
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
@@ -2475,6 +2560,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
    CURFMT=(fmts[0]&&fmts[0].name)||"";
    fillSizes(); drawArt(); updateReview();
+ }}
+ // Entry point from the homepage Apparel category: open the editor straight into
+ // apparel mode and preselect the chosen garment's first colour.
+ function shopApparel(garment){{
+   if(!DATA.length) return;
+   openM(0); setProductType('apparel');
+   const label={{tshirt:'T-Shirt',hoodie:'Hoodie',sweatshirt:'Sweatshirt'}}[garment];
+   if(label){{ const idx=APPAREL_FORMATS.findIndex(f=>f.name.indexOf(label+' - ')===0);
+     if(idx>=0) pickFmt(CUR, idx); }}
  }}
  let CART = [];
  const QD = {qty_discount_json};

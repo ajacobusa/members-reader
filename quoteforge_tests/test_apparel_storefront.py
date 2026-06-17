@@ -26,6 +26,29 @@ def _page(tmp_path) -> str:
 
 # ── Apparel is selectable alongside wall art ─────────────────────
 
+def test_two_departments_wall_art_and_apparel(tmp_path):
+    # REGRESSION: the store is organized into TWO co-equal departments - Wall Art
+    # and Apparel - with a "Shop by department" chooser and a nav link + anchor
+    # for each, so apparel is a real department, not buried in the editor.
+    h = _page(tmp_path)
+    assert "Shop by department" in h
+    assert "deptcard" in h and "deptwall" in h and "deptapp" in h
+    # both department anchors + nav links
+    for anchor in ('id="wallart"', 'id="apparel"', 'href="#wallart"', 'href="#apparel"'):
+        assert anchor in h, anchor
+    assert "Wall Art" in h and "Apparel" in h
+
+
+def test_apparel_department_has_garment_cards(tmp_path):
+    # REGRESSION: the Apparel department surfaces each garment with a design CTA.
+    h = _page(tmp_path)
+    assert "Custom Apparel" in h
+    for garment in ("T-Shirt", "Hoodie", "Sweatshirt"):
+        assert garment in h
+    assert "function shopApparel" in h            # opens the editor in apparel mode
+    assert "Design yours" in h                    # the per-garment CTA
+
+
 def test_product_type_toggle_present(tmp_path):
     h = _page(tmp_path)
     assert "function setProductType" in h
