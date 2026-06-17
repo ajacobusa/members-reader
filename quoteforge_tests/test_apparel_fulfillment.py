@@ -1,0 +1,109 @@
+"""Operationalization: an apparel order flows through the live pipeline.
+
+Covers the ingest seam (format -> product_type/garment/colour + resolved Gelato
+apparel UID), UID resolution (placeholder vs real), the colour proof-lock, and
+the sync/go-live guard coverage. Wall-art behaviour must be untouched throughout.
+"""
+import json
+
+import pytest
+
+from quoteforge.etsy import apparel_catalog as A
+
+
+# ── Ingest enrichment (the single seam) ──────────────────────────
+
+def test_enrich_apparel_order_sets_product_type_and_colour():
+    # REGRESSION: an apparel basket line is turned into structured fields the
+    # pipeline + reporting use; colour is no longer trapped inside the format.
+    out = A.enrich_apparel_order({"material": "T-Shirt - Black", "product_size": "M"})
+    assert out["product_type"] == "apparel"
+    assert out["garment_id"] == "tshirt"
+    assert out["color"] == "Black"
+    assert out["gelato_sku"] == "GEL-TSHIRT-M-BLACK"
+
+
+def test_enrich_is_noop_for_wall_art():
+    # REGRESSION: wall art must be completely unaffected - enrichment returns {}.
+    assert A.enrich_apparel_order({"material": "Framed - Premium Solid Oak",
+                                   "size": "18x24 in"}) == {}
+    assert A.enrich_apparel_order({"material": "Poster (unframed)", "size": "18x24"}) == {}
+
+
+def test_webhook_build_order_data_enriches_apparel():
+    # REGRESSION: the real ingest choke point wires the enrichment.
+    from quoteforge.automation.webhook_server import _build_order_data
+    od = _build_order_data(
+        {"recipient_name": "Sam", "occasion": "Birthday",
+         "material": "Hoodie - Navy", "size": "XL"}, "E1")
+    assert od["product_type"] == "apparel"
+    assert od["color"] == "Navy" and od["garment_id"] == "hoodie"
+
+
+def test_webhook_build_order_data_leaves_wall_art_alone():
+    from quoteforge.automation.webhook_server import _build_order_data
+    od = _build_order_data(
+        {"recipient_name": "Sam", "occasion": "Birthday",
+         "material": "Framed - Slim Black", "size": "11x14 in"}, "E2")
+    assert od.get("product_type") in (None, "print", "")  # not flipped to apparel
+    assert "garment_id" not in od
+
+
+# ── UID resolution (placeholder vs real) ─────────────────────────
+
+def test_unmapped_or_placeholder_uid_resolves_to_none(monkeypatch):
+    # No map -> None (routes to manual, never ships a placeholder).
+    monkeypatch.delenv("GELATO_UID_MAP", raising=False)
+    assert A.resolve_apparel_uid("GEL-TSHIRT-M-BLACK") is None
+    # A map that still points at a GEL-* placeholder is also rejected.
+    monkeypatch.setenv("GELATO_UID_MAP",
+                       json.dumps({"GEL-TSHIRT-M-BLACK": "GEL-STILL-PLACEHOLDER"}))
+    assert A.resolve_apparel_uid("GEL-TSHIRT-M-BLACK") is None
+
+
+def test_real_uid_resolves_and_enriches(monkeypatch):
+    monkeypatch.setenv("GELATO_UID_MAP",
+                       json.dumps({"GEL-TSHIRT-M-BLACK": "apparel_real_uid_123"}))
+    assert A.resolve_apparel_uid("GEL-TSHIRT-M-BLACK") == "apparel_real_uid_123"
+    out = A.enrich_apparel_order({"material": "T-Shirt - Black", "size": "M"})
+    assert out["gelato_product_uid"] == "apparel_real_uid_123"
+
+
+# ── Colour is part of the locked proof ───────────────────────────
+
+def test_color_is_locked_after_proof_approval(tmp_path, monkeypatch):
+    # REGRESSION: once the apparel proof is approved, colour is immutable like
+    # size/material - an approved Black tee can't silently become Navy.
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.DB_PATH", tmp_path / "t.db", raising=False)
+    import importlib
+    from quoteforge.db import database as db
+    importlib.reload(db)
+    db.init_db()
+    db.create_order({"order_id": "AP1", "recipient_name": "X", "occasion": "Y",
+                     "color": "Black"})
+    db.update_order("AP1", proof_approved=1)
+    with pytest.raises(db.OrderLockedError):
+        db.update_order("AP1", color="Navy")
+    # re-writing the same colour is a no-op (allowed)
+    db.update_order("AP1", color="Black")
+
+
+# ── Sync + go-live guard cover apparel ───────────────────────────
+
+def test_gelato_sync_includes_apparel_skus():
+    # REGRESSION: apparel availability/cost syncs and apparel placeholders are
+    # surfaced by the same guard as print products.
+    from quoteforge.automation.gelato_sync import _all_skus
+    skus = set(_all_skus())
+    assert "GEL-TSHIRT-M-BLACK" in skus
+    assert any(s.startswith("GEL-HOODIE-") for s in skus)
+
+
+def test_sync_text_warns_on_apparel_placeholders(monkeypatch):
+    # In TEST_MODE the sync is a no-op but still reports placeholders; apparel
+    # seed UIDs must be counted so they can't silently ship.
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", True, raising=False)
+    from quoteforge.automation import gelato_sync
+    r = gelato_sync.sync_catalog()
+    assert r["placeholder_uids"] >= 75      # all apparel variants are placeholders

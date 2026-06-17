@@ -503,10 +503,10 @@ def create_order(data: dict) -> str:
              recipient_name, sender_name, relationship, occasion,
              scenery, tone, memory, output_style, status,
              sale_price, gelato_cost, channel, vendor, product_type,
-             material, size, listing, acquisition_source,
+             material, size, color, listing, acquisition_source,
              line_items, item_count, country, state,
              shipping_cost, shipping_collected)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -528,6 +528,7 @@ def create_order(data: dict) -> str:
             data.get("product_type", "print"),
             data.get("material"),
             data.get("size"),
+            data.get("color"),
             data.get("listing"),
             data.get("acquisition_source"),
             data.get("line_items"),
@@ -548,6 +549,7 @@ def create_order(data: dict) -> str:
 LOCKED_FIELDS = frozenset({
     "recipient_name", "sender_name", "relationship", "occasion", "scenery",
     "tone", "memory", "output_style", "generated_quote", "size", "material",
+    "color",   # apparel colour is part of the approved proof - immutable after
 })
 
 

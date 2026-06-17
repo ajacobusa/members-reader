@@ -207,6 +207,43 @@ def resolve_apparel_sku(fmt: str, size: str) -> str | None:
     return apparel_sku_for(gid, size, color)
 
 
+def resolve_apparel_uid(sku: str | None) -> str | None:
+    """Map an apparel variant SKU to its REAL Gelato product UID via the
+    GELATO_UID_MAP env (the SAME mechanism wall-art SKUs use). Returns None when
+    the SKU is unmapped or still a GEL-* placeholder, so the caller routes to
+    manual review instead of submitting a placeholder to production."""
+    if not sku:
+        return None
+    from quoteforge.automation.gelato_sync import _uid_map
+    uid = _uid_map().get(sku)
+    if not uid or str(uid).upper().startswith("GEL-"):
+        return None
+    return uid
+
+
+def enrich_apparel_order(order_data: dict) -> dict:
+    """Given an order carrying an apparel format ("T-Shirt - Black") + size,
+    return the apparel fields to MERGE into the order: product_type, garment_id,
+    color, gelato_sku, and gelato_product_uid (the real UID, omitted when the SKU
+    is unmapped so routing falls back to manual). Returns {} for a non-apparel
+    order so wall-art orders are completely unaffected.
+
+    This is the single ingest seam: call it once where order_data is assembled."""
+    fmt = (order_data.get("material") or order_data.get("fmt")
+           or order_data.get("product_format") or order_data.get("format") or "")
+    size = (order_data.get("product_size") or order_data.get("size") or "")
+    gid, color = parse_apparel_format(fmt)
+    if not gid:
+        return {}
+    sku = apparel_sku_for(gid, size, color)
+    out: dict = {"product_type": "apparel", "garment_id": gid,
+                 "color": color, "material": fmt, "gelato_sku": sku}
+    uid = resolve_apparel_uid(sku)
+    if uid:
+        out["gelato_product_uid"] = uid
+    return out
+
+
 # ── Isolated Gelato placeholder guard (separate from the print guard) ──
 
 def verify_apparel_mappings() -> dict:
