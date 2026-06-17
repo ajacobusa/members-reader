@@ -56,12 +56,13 @@ def test_apparel_department_has_mens_and_womens_sections(tmp_path):
 
 def test_apparel_cards_use_photos_with_svg_fallback(tmp_path):
     # REGRESSION: full gendered + 3-tier range (13 garments x 3 tiers = 39 tiles).
-    # Real PHOTOS for the 3 core types (x2 genders x3 tiers = 18); SVG for the rest.
+    # Every garment TYPE now ships a real product PHOTO (brand/tile-<type>.jpg),
+    # so all 39 tiles are photos and the SVG fallback is unused on the live page.
     h = _page(tmp_path)
     assert h.count('class="apptile') == 39        # 13 garments x 3 brand tiers
-    assert h.count('class="appimg"') == 18        # photo for the 3 core types
-    assert h.count('class="apptile apptilephoto"') == 18
-    assert h.count('class="appsvg"') == 21        # SVG fallback for the rest
+    assert h.count('class="appimg"') == 39        # a photo for every tile
+    assert h.count('class="apptile apptilephoto"') == 39
+    assert h.count('class="appsvg"') == 0         # no tile falls back to SVG
     assert "appemoji" not in h                     # old emoji tiles gone
 
 

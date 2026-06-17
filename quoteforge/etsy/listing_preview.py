@@ -1125,7 +1125,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # Per-garment product photos for the apparel tiles (brand/tile-<garment>.jpg);
     # fall back to the shaded SVG tile when a photo is absent.
     _garment_photos: dict = {}
-    for _gid in ("tshirt", "hoodie", "sweatshirt"):
+    for _gid in ("tshirt", "tank", "longsleeve", "raglan", "polo",
+                 "hoodie", "sweatshirt"):
         _gp = next((brand / f"tile-{_gid}.{e}" for e in ("jpg", "png")
                     if (brand / f"tile-{_gid}.{e}").exists()), None)
         if _gp:
