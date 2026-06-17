@@ -170,3 +170,25 @@ def test_ange_kb_answers_apparel_sizing():
     a = hits[0].lower()
     assert "final" in a and "fit" in a
     assert "gelato" not in a and "printify" not in a
+
+
+# ── Etsy apparel inventory: one listing per garment, Size x Colour ──
+
+def test_apparel_inventory_payload_two_axes_priced():
+    # REGRESSION: each garment is a Size x Colour Etsy listing (the 2-axis limit),
+    # every offering priced > 0, no supplier name in the payload.
+    from quoteforge.automation.etsy_publisher import (
+        build_apparel_inventory_payload, apparel_listing_garments)
+    import json
+    garments = apparel_listing_garments()
+    assert set(garments) >= {"tshirt", "hoodie", "sweatshirt"}
+    p = build_apparel_inventory_payload("tshirt")
+    g = A.get_garment("tshirt")
+    assert len(p["products"]) == len(g.sizes) * len(g.colors)   # full grid
+    assert p["price_on_property"] == [513, 514]                 # exactly two axes
+    for prod in p["products"]:
+        assert len(prod["property_values"]) == 2                # Size + Color only
+        names = {pv["property_name"] for pv in prod["property_values"]}
+        assert names == {"Size", "Color"}
+        assert prod["offerings"][0]["price"] > 0
+    assert "gelato" not in json.dumps(p).lower().replace("gel-", "")  # no supplier name
