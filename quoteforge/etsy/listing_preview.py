@@ -780,10 +780,10 @@ _APPAREL_TILE = {
 
 
 def _apparel_section(photos: dict | None = None) -> str:
-    """Visible top-level Apparel department (T-Shirt / Hoodie / Sweatshirt).
-    Uses a real product PHOTO per garment when `photos` (garment_id -> src) is
-    supplied, else a shaded SVG product tile as a graceful fallback. Each card
-    opens the design editor straight into apparel mode via shopApparel()."""
+    """Visible top-level Apparel department, split into Men's and Women's
+    sub-sections like a department store. Real product PHOTO per garment TYPE when
+    `photos` (garment_type -> src) is supplied, else a shaded SVG fallback. Each
+    card opens the design editor into apparel mode for that garment."""
     photos = photos or {}
     try:
         from quoteforge.etsy.apparel_catalog import (
@@ -795,35 +795,46 @@ def _apparel_section(photos: dict | None = None) -> str:
         frm[v.garment_id] = min(frm.get(v.garment_id, 1e9), v.price)
     if not frm:
         return ""
-    cards = []
-    for g in APPAREL_CATALOG:
+
+    def _card(g) -> str:
         low = frm.get(g.garment_id)
         if low is None:
-            continue
-        if photos.get(g.garment_id):
-            tile = (f'<span class="apptile apptilephoto">'
-                    f'<img class="appimg" loading="lazy" '
-                    f'src="{photos[g.garment_id]}" alt="Custom {g.name}"></span>')
+            return ""
+        src = photos.get(g.garment_type)
+        if src:
+            tile = (f'<span class="apptile apptilephoto"><img class="appimg" '
+                    f'loading="lazy" src="{src}" alt="Custom {g.name}"></span>')
         else:
-            grad, art = _APPAREL_TILE.get(g.garment_id, _APPAREL_TILE["tshirt"])
+            grad, art = _APPAREL_TILE.get(g.garment_type, _APPAREL_TILE["tshirt"])
             tile = (f'<span class="apptile" style="background:{grad}">'
                     f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
                     f'{art}</svg></span>')
-        cards.append(
+        name_js = g.name.replace("\\", "\\\\").replace("'", "\\'")
+        return (
             f'<button class="appcard" type="button" '
-            f'onclick="shopApparel(\'{g.garment_id}\')" '
+            f'onclick="shopApparel(\'{name_js}\')" '
             f'aria-label="Design a custom {g.name}">'
             f'{tile}'
-            f'<span class="appname">{g.name}</span>'
+            f'<span class="appname">{g.type_name}</span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
+
+    groups = []
+    for gender, label in (("men", "Men's Clothing"), ("women", "Women's Apparel")):
+        cards = [c for c in (_card(g) for g in APPAREL_CATALOG
+                             if g.gender == gender) if c]
+        if cards:
+            groups.append(f'<h3 class="appghead">{label}</h3>'
+                          f'<div class="appgrid">{"".join(cards)}</div>')
+    if not groups:
+        return ""
     return (
         '<section class="apparel-sec" id="apparel">'
         '<h2>👕 Custom Apparel</h2>'
-        '<p class="apsub">Put your name, words or photo on a tee, hoodie or '
-        'sweatshirt - the same easy editor, made to order. Pick a garment to '
-        'start designing.</p>'
-        f'<div class="appgrid">{"".join(cards)}</div></section>')
+        '<p class="apsub">Put your name, words or photo on a tee, hoodie, tank, '
+        'sweatshirt and more - the same easy editor, made to order. Pick a garment '
+        'to start designing.</p>'
+        f'{"".join(groups)}</section>')
 
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
@@ -1296,8 +1307,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
  .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
  .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
- .appgrid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}
- @media(max-width:640px){{.appgrid{{grid-template-columns:1fr}}}}
+ .appghead{{margin:22px 0 12px;color:var(--green);font-size:18px;text-align:left;
+   text-transform:uppercase;letter-spacing:.05em}}
+ .appgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+   gap:16px;margin-bottom:6px}}
+ @media(max-width:640px){{.appgrid{{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}}}
  .appcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
    padding:12px 12px 18px;border:1px solid #ece7da;border-radius:16px;background:#fff;
    box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer;
@@ -2574,7 +2588,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    // Every design opens in WALL-ART mode; the buyer can switch to Apparel.
-   IS_APPAREL=false;
+   IS_APPAREL=false; CURGARMENT="";
    {{const _w=document.getElementById('ptwall'),_a=document.getElementById('ptapp');
      if(_w&&_a){{_w.classList.add('ptsel');_a.classList.remove('ptsel');}}}}
    const _l=document.getElementById('mfpicklbl');
@@ -2635,9 +2649,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function fmtsFor(i){{ const f=DATA[i].formats; return (f&&f.length)?f:ALL_FORMATS; }}
  // ── Apparel: a parallel product type sharing this picker + design editor ──
  const APPAREL_FORMATS = {apparel_formats_json};
- let IS_APPAREL=false;
- // The format list for the ACTIVE product type (wall art vs apparel).
- function curFormats(i){{ return IS_APPAREL?APPAREL_FORMATS:fmtsFor(i); }}
+ let IS_APPAREL=false, CURGARMENT="";
+ // Apparel pills are scoped to the SELECTED garment (CURGARMENT) so the editor
+ // shows just that garment's colours, not every garment in the catalogue.
+ function apparelFormatsFor(){{
+   return CURGARMENT
+     ? APPAREL_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
+     : APPAREL_FORMATS; }}
+ function curFormats(i){{ return IS_APPAREL?apparelFormatsFor():fmtsFor(i); }}
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){{ return fmts.map((f,j)=>
    `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join(''); }}
@@ -2672,10 +2691,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function setProductType(t){{
    IS_APPAREL=(t==='apparel');
+   if(IS_APPAREL && !CURGARMENT && APPAREL_FORMATS.length)
+     CURGARMENT=APPAREL_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
    if(wb&&ab){{wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}}
    const lbl=document.getElementById('mfpicklbl');
-   if(lbl)lbl.textContent=IS_APPAREL?'👉 Choose your garment & colour:':'👉 Choose your frame / material:';
+   if(lbl)lbl.textContent=IS_APPAREL?('👉 Choose your '+(CURGARMENT||'garment')+' colour:'):'👉 Choose your frame / material:';
    const an=document.getElementById('mapparelnote'); if(an)an.style.display=IS_APPAREL?'block':'none';
    const fc=document.getElementById('mfchips'), fmts=curFormats(CUR);
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
@@ -2687,10 +2708,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // apparel mode and preselect the chosen garment's first colour.
  function shopApparel(garment){{
    if(!DATA.length) return;
-   openM(0); setProductType('apparel');
-   const label={{tshirt:'T-Shirt',hoodie:'Hoodie',sweatshirt:'Sweatshirt'}}[garment];
-   if(label){{ const idx=APPAREL_FORMATS.findIndex(f=>f.name.indexOf(label+' - ')===0);
-     if(idx>=0) pickFmt(CUR, idx); }}
+   openM(0);                       // openM clears CURGARMENT; set it AFTER
+   CURGARMENT=garment||"";         // the full garment name, e.g. "Men's T-Shirt"
+   setProductType('apparel');      // scopes the pills to that garment's colours
  }}
  let CART = [];
  const QD = {qty_discount_json};

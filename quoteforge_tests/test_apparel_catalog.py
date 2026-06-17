@@ -12,9 +12,14 @@ from quoteforge.config import TARGET_MARGIN_PCT
 
 # ── Catalog shape ────────────────────────────────────────────────
 
-def test_three_apparel_garments_exist():
+def test_full_gendered_range_exists():
     names = {g.name for g in A.APPAREL_CATALOG}
-    assert {"T-Shirt", "Hoodie", "Sweatshirt"} <= names
+    assert {"Men's T-Shirt", "Women's T-Shirt", "Men's Hoodie", "Women's Hoodie",
+            "Men's Sweatshirt", "Women's Sweatshirt"} <= names
+    types = {g.type_name for g in A.APPAREL_CATALOG}
+    assert {"T-Shirt", "Tank Top", "Long Sleeve Shirt", "3/4 Sleeve Shirt",
+            "Polo Shirt", "Hoodie", "Sweatshirt"} <= types
+    assert {"men", "women"} <= {g.gender for g in A.APPAREL_CATALOG}
     # every garment is in the apparel category and has sizes + colours
     for g in A.APPAREL_CATALOG:
         assert g.category == "apparel"
@@ -28,7 +33,7 @@ def test_colours_are_light_forward_and_branded():
     for g in A.APPAREL_CATALOG:
         assert g.colors[0] in light, f"{g.name} first colour not light: {g.colors[0]}"
         assert g.brand, f"{g.name} missing brand"
-    tee = A.get_garment("tshirt")
+    tee = A.get_garment("m_tshirt")
     assert "Light Blue" in tee.colors            # added light photo-friendly option
     # REGRESSION: brands must come from Gelato's ACTUAL roster - never Bella+Canvas
     # or Gildan (Printful/Printify staples that Gelato does not carry).
@@ -45,8 +50,11 @@ def test_garment_costs_match_strategic_catalog():
     # Sweatshirt 24). A silent drift would mis-price every apparel listing.
     from quoteforge.etsy.product_lines import PRODUCT_LINES
     strat = {p.name: p.gelato_cost for p in PRODUCT_LINES}
+    # core types map by TYPE name (gendered garments share the type cost); new
+    # types (tank/long-sleeve/raglan/polo) carry their own costs not in product_lines.
     for g in A.APPAREL_CATALOG:
-        assert g.base_cost == strat[g.name], g.name
+        if g.type_name in strat:
+            assert g.base_cost == strat[g.type_name], g.name
 
 
 # ── Variants ─────────────────────────────────────────────────────
@@ -56,8 +64,8 @@ def test_variants_cover_size_by_colour_grid():
     # variant with a unique SKU (the fulfillment mapping key).
     vs = A.build_apparel_variations()
     assert vs
-    tee = [v for v in vs if v.garment_id == "tshirt"]
-    g = A.get_garment("tshirt")
+    tee = [v for v in vs if v.garment_id == "m_tshirt"]
+    g = A.get_garment("m_tshirt")
     assert len(tee) == len(g.sizes) * len(g.colors)
     assert len({v.gelato_sku for v in vs}) == len(vs)        # SKUs unique
     assert all(v.gelato_sku for v in vs)                     # never empty
@@ -103,7 +111,7 @@ def test_extended_size_upcharge_still_clears_floor():
 def test_apparel_print_area_is_not_poster_default():
     # REGRESSION: apparel must NOT inherit the 18x24 poster default (5400x7200);
     # the editor reads this to draw the garment print-safe boundary.
-    w, h = A.apparel_dimensions_for("tshirt")
+    w, h = A.apparel_dimensions_for("m_tshirt")
     assert (w, h) != (5400, 7200)
     assert 0 < w <= 5000 and 0 < h <= 6000      # chest-area sized
 
@@ -120,7 +128,7 @@ def test_discontinued_colour_auto_disabled(tmp_path, monkeypatch):
     monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
     from quoteforge.etsy.catalog_state import save_state
     vs0 = A.build_apparel_variations()
-    target = next(v for v in vs0 if v.garment_id == "tshirt")
+    target = next(v for v in vs0 if v.garment_id == "m_tshirt")
     save_state({target.gelato_sku: {"available": False, "cost": None}})
     skus = {v.gelato_sku for v in A.build_apparel_variations()}
     assert target.gelato_sku not in skus
@@ -129,19 +137,19 @@ def test_discontinued_colour_auto_disabled(tmp_path, monkeypatch):
 # ── Fulfilment resolver (storefront basket line -> variant SKU) ───
 
 def test_resolve_apparel_sku_happy_path():
-    # REGRESSION: the storefront basket line "T-Shirt - Black" + "M" must resolve
+    # REGRESSION: the storefront basket line "Men's T-Shirt - Black" + "M" must resolve
     # to the exact variant SKU order-ingest will map to a Gelato apparel UID.
-    assert A.resolve_apparel_sku("T-Shirt - Black", "M") == "GEL-TSHIRT-M-BLACK"
-    assert A.resolve_apparel_sku("Hoodie - Navy", "XL") == "GEL-HOODIE-XL-NAVY"
+    assert A.resolve_apparel_sku("Men's T-Shirt - Black", "M") == "GEL-M-TSHIRT-M-BLACK"
+    assert A.resolve_apparel_sku("Men's Hoodie - Navy", "XL") == "GEL-M-HOODIE-XL-NAVY"
     # multi-word colour stays consistent with the catalogue's SKU convention
-    assert A.resolve_apparel_sku("T-Shirt - Heather Grey", "L") == "GEL-TSHIRT-L-HEATHER-GREY"
+    assert A.resolve_apparel_sku("Men's T-Shirt - Heather Grey", "L") == "GEL-M-TSHIRT-L-HEATHER-GREY"
 
 
 def test_resolved_sku_is_a_real_catalogue_sku():
     # REGRESSION: every resolvable basket line points at a SKU the catalogue (and
     # thus the placeholder guard + UID map) actually knows about - no orphans.
     skus = set(A.apparel_skus())
-    assert A.resolve_apparel_sku("Sweatshirt - Sand", "S") in skus
+    assert A.resolve_apparel_sku("Men's Sweatshirt - Sand", "S") in skus
 
 
 def test_wall_art_format_is_not_resolved_as_apparel():
@@ -154,9 +162,9 @@ def test_wall_art_format_is_not_resolved_as_apparel():
 def test_bad_size_or_colour_does_not_route():
     # A size/colour not in the catalogue returns None so it goes to manual review
     # instead of routing a guessed (possibly non-existent) variant to production.
-    assert A.resolve_apparel_sku("T-Shirt - Black", "XXXL") is None
-    assert A.resolve_apparel_sku("T-Shirt - Lime", "M") is None
-    assert A.apparel_sku_for("tshirt", "M", "Black") == "GEL-TSHIRT-M-BLACK"
+    assert A.resolve_apparel_sku("Men's T-Shirt - Black", "XXXL") is None
+    assert A.resolve_apparel_sku("Men's T-Shirt - Lime", "M") is None
+    assert A.apparel_sku_for("m_tshirt", "M", "Black") == "GEL-M-TSHIRT-M-BLACK"
     assert A.apparel_sku_for("nope", "M", "Black") is None
 
 
@@ -175,8 +183,12 @@ def test_apparel_names_match_strategic_catalog():
     # + cross-sell. Every apparel garment name must exist in product_lines.py.
     from quoteforge.etsy.product_lines import PRODUCT_LINES
     names = {p.name for p in PRODUCT_LINES}
+    # core types must still exist in product_lines by TYPE name (gendered garments
+    # share the strategic type); the new Gelato types are apparel-catalog-only.
+    core = {"T-Shirt", "Hoodie", "Sweatshirt"}
     for g in A.APPAREL_CATALOG:
-        assert g.name in names, g.name
+        if g.type_name in core:
+            assert g.type_name in names, g.type_name
 
 
 def test_admin_apparel_command(capsys, tmp_path, monkeypatch):

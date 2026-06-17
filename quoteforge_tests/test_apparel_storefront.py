@@ -41,24 +41,36 @@ def test_two_departments_wall_art_and_apparel(tmp_path):
     assert "deptimg" in h and "deptbody" in h
 
 
-def test_apparel_department_has_garment_cards(tmp_path):
-    # REGRESSION: the Apparel department surfaces each garment with a design CTA.
+def test_apparel_department_has_mens_and_womens_sections(tmp_path):
+    # REGRESSION: the Apparel department is split into Men's / Women's like Gelato's
+    # catalogue, each with garment tiles + a design CTA.
     h = _page(tmp_path)
     assert "Custom Apparel" in h
-    for garment in ("T-Shirt", "Hoodie", "Sweatshirt"):
-        assert garment in h
+    assert "Men's Clothing" in h and "Women's Apparel" in h
+    assert h.count('class="appghead"') == 2       # the two gender sub-sections
+    for garment in ("T-Shirt", "Tank Top", "Hoodie", "Sweatshirt", "Polo"):
+        assert garment in h                        # the broader Gelato range
     assert "function shopApparel" in h            # opens the editor in apparel mode
     assert "Design yours" in h                    # the per-garment CTA
 
 
-def test_apparel_cards_are_professional_product_tiles(tmp_path):
-    # REGRESSION: garment cards are professional product PHOTOS (one per garment),
-    # not emoji - the SVG illustration remains only as a no-photo fallback.
+def test_apparel_cards_use_photos_with_svg_fallback(tmp_path):
+    # REGRESSION: garment tiles are real product PHOTOS where we have them (the 3
+    # core types x 2 genders = 6), with the shaded SVG as the fallback for the rest.
     h = _page(tmp_path)
-    assert h.count('class="apptile') == 3         # one tile per garment
-    assert h.count('class="appimg"') == 3         # a real product photo each
-    assert h.count('class="apptile apptilephoto"') == 3   # photo tile, not SVG fallback
+    assert h.count('class="apptile') == 13        # full gendered range
+    assert h.count('class="appimg"') == 6         # photo for the 3 core types x 2
+    assert h.count('class="apptile apptilephoto"') == 6
+    assert h.count('class="appsvg"') == 7         # SVG fallback for the rest
     assert "appemoji" not in h                     # old emoji tiles gone
+
+
+def test_editor_apparel_pills_are_garment_scoped(tmp_path):
+    # REGRESSION: with many garments the editor must scope colour pills to the
+    # SELECTED garment (CURGARMENT), not show every garment's colours at once.
+    h = _page(tmp_path)
+    assert "CURGARMENT" in h and "function apparelFormatsFor" in h
+    assert "CURGARMENT+' - '" in h                 # filters APPAREL_FORMATS by garment
 
 
 def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):

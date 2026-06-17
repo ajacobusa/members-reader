@@ -16,11 +16,11 @@ from quoteforge.etsy import apparel_catalog as A
 def test_enrich_apparel_order_sets_product_type_and_colour():
     # REGRESSION: an apparel basket line is turned into structured fields the
     # pipeline + reporting use; colour is no longer trapped inside the format.
-    out = A.enrich_apparel_order({"material": "T-Shirt - Black", "product_size": "M"})
+    out = A.enrich_apparel_order({"material": "Men's T-Shirt - Black", "product_size": "M"})
     assert out["product_type"] == "apparel"
-    assert out["garment_id"] == "tshirt"
+    assert out["garment_id"] == "m_tshirt"
     assert out["color"] == "Black"
-    assert out["gelato_sku"] == "GEL-TSHIRT-M-BLACK"
+    assert out["gelato_sku"] == "GEL-M-TSHIRT-M-BLACK"
 
 
 def test_enrich_is_noop_for_wall_art():
@@ -35,9 +35,9 @@ def test_webhook_build_order_data_enriches_apparel():
     from quoteforge.automation.webhook_server import _build_order_data
     od = _build_order_data(
         {"recipient_name": "Sam", "occasion": "Birthday",
-         "material": "Hoodie - Navy", "size": "XL"}, "E1")
+         "material": "Men's Hoodie - Navy", "size": "XL"}, "E1")
     assert od["product_type"] == "apparel"
-    assert od["color"] == "Navy" and od["garment_id"] == "hoodie"
+    assert od["color"] == "Navy" and od["garment_id"] == "m_hoodie"
 
 
 def test_webhook_build_order_data_leaves_wall_art_alone():
@@ -54,18 +54,18 @@ def test_webhook_build_order_data_leaves_wall_art_alone():
 def test_unmapped_or_placeholder_uid_resolves_to_none(monkeypatch):
     # No map -> None (routes to manual, never ships a placeholder).
     monkeypatch.delenv("GELATO_UID_MAP", raising=False)
-    assert A.resolve_apparel_uid("GEL-TSHIRT-M-BLACK") is None
+    assert A.resolve_apparel_uid("GEL-M-TSHIRT-M-BLACK") is None
     # A map that still points at a GEL-* placeholder is also rejected.
     monkeypatch.setenv("GELATO_UID_MAP",
-                       json.dumps({"GEL-TSHIRT-M-BLACK": "GEL-STILL-PLACEHOLDER"}))
-    assert A.resolve_apparel_uid("GEL-TSHIRT-M-BLACK") is None
+                       json.dumps({"GEL-M-TSHIRT-M-BLACK": "GEL-STILL-PLACEHOLDER"}))
+    assert A.resolve_apparel_uid("GEL-M-TSHIRT-M-BLACK") is None
 
 
 def test_real_uid_resolves_and_enriches(monkeypatch):
     monkeypatch.setenv("GELATO_UID_MAP",
-                       json.dumps({"GEL-TSHIRT-M-BLACK": "apparel_real_uid_123"}))
-    assert A.resolve_apparel_uid("GEL-TSHIRT-M-BLACK") == "apparel_real_uid_123"
-    out = A.enrich_apparel_order({"material": "T-Shirt - Black", "size": "M"})
+                       json.dumps({"GEL-M-TSHIRT-M-BLACK": "apparel_real_uid_123"}))
+    assert A.resolve_apparel_uid("GEL-M-TSHIRT-M-BLACK") == "apparel_real_uid_123"
+    out = A.enrich_apparel_order({"material": "Men's T-Shirt - Black", "size": "M"})
     assert out["gelato_product_uid"] == "apparel_real_uid_123"
 
 
@@ -96,8 +96,8 @@ def test_gelato_sync_includes_apparel_skus():
     # surfaced by the same guard as print products.
     from quoteforge.automation.gelato_sync import _all_skus
     skus = set(_all_skus())
-    assert "GEL-TSHIRT-M-BLACK" in skus
-    assert any(s.startswith("GEL-HOODIE-") for s in skus)
+    assert "GEL-M-TSHIRT-M-BLACK" in skus
+    assert any(s.startswith("GEL-M-HOODIE-") for s in skus)
 
 
 def test_sync_text_warns_on_apparel_placeholders(monkeypatch):
@@ -115,9 +115,9 @@ def test_enrich_sets_true_garment_cost():
     # REGRESSION: financials/margin read order['gelato_cost'] directly; apparel
     # must carry the real garment cost incl. the 2XL upcharge (13 + 2 = 15), so
     # no downstream module needs apparel special-casing.
-    out = A.enrich_apparel_order({"material": "T-Shirt - Black", "size": "2XL"})
+    out = A.enrich_apparel_order({"material": "Men's T-Shirt - Black", "size": "2XL"})
     assert out["gelato_cost"] == 15.0
-    base = A.enrich_apparel_order({"material": "T-Shirt - Black", "size": "M"})
+    base = A.enrich_apparel_order({"material": "Men's T-Shirt - Black", "size": "M"})
     assert base["gelato_cost"] == 13.0
 
 
@@ -168,7 +168,7 @@ def test_apparel_cost_override_reprices_and_holds_floor(tmp_path, monkeypatch):
     monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
     from quoteforge.etsy.catalog_state import save_state
     from quoteforge.config import TARGET_MARGIN_PCT
-    sku = "GEL-TSHIRT-M-WHITE"
+    sku = "GEL-M-TSHIRT-M-WHITE"
     base = next(v for v in A.build_apparel_variations() if v.gelato_sku == sku)
     save_state({sku: {"available": True, "cost": 25.0}})       # cost jumps 13 -> 25
     hi = next(v for v in A.build_apparel_variations() if v.gelato_sku == sku)
@@ -180,7 +180,7 @@ def test_apparel_cost_override_reprices_and_holds_floor(tmp_path, monkeypatch):
 def test_router_never_submits_placeholder_uid():
     # REGRESSION: a GEL-* placeholder UID routes to manual, never to production.
     from quoteforge.fulfillment.router import route_order
-    r = route_order({"order_id": "PH1", "gelato_product_uid": "GEL-TSHIRT-M-WHITE",
+    r = route_order({"order_id": "PH1", "gelato_product_uid": "GEL-M-TSHIRT-M-WHITE",
                      "vendor": "gelato"},
                     recipient={"name": "A", "address": "1 St", "city": "X",
                                "postCode": "1", "country": "US"},
@@ -208,9 +208,9 @@ def test_apparel_inventory_payload_two_axes_priced():
         build_apparel_inventory_payload, apparel_listing_garments)
     import json
     garments = apparel_listing_garments()
-    assert set(garments) >= {"tshirt", "hoodie", "sweatshirt"}
-    p = build_apparel_inventory_payload("tshirt")
-    g = A.get_garment("tshirt")
+    assert set(garments) >= {"m_tshirt", "w_tshirt", "m_hoodie", "w_hoodie"}
+    p = build_apparel_inventory_payload("m_tshirt")
+    g = A.get_garment("m_tshirt")
     assert len(p["products"]) == len(g.sizes) * len(g.colors)   # full grid
     assert p["price_on_property"] == [513, 514]                 # exactly two axes
     for prod in p["products"]:
@@ -236,7 +236,7 @@ def test_apparel_order_through_pipeline(tmp_path, monkeypatch):
     from quoteforge.automation.pipeline_orchestrator import run_full_pipeline
     run_full_pipeline({"order_id": "APX", "etsy_order_id": "APX",
                        "recipient_name": "Sam", "occasion": "Birthday",
-                       "material": "T-Shirt - Black", "product_size": "M"},
+                       "material": "Men's T-Shirt - Black", "product_size": "M"},
                       skip_proof=True)
     o = db.get_order("APX")
     assert o["product_type"] == "apparel"
