@@ -17,21 +17,21 @@ BASE_TEMPLATES: dict[str, str] = {
     "Proof Ready": (
         "Your design proof is ready for review! "
         "Please take a look and let me know if you would like any changes to the wording, "
-        "layout, or colors before I send it to print. "
+        "layout, or colors before I send it into production. "
         "I am happy to make adjustments until it is perfect for you."
     ),
     "In Production": (
         "Great news! Your personalized design has been approved and sent to production. "
-        "Our print partner is now carefully printing your piece. "
+        "Our print partner is now carefully making your item. "
         "I will share tracking details the moment it ships. Thank you for your patience!"
     ),
     "Order Shipped": (
         "Great news! Your order has shipped and is on its way. "
         "You will receive a tracking number shortly so you can follow it to your door. "
-        "Thank you for choosing my shop — I hope this print brings joy every time you see it!"
+        "Thank you for choosing my shop — I hope your personalized item brings joy every time you see it!"
     ),
     "Review Request": (
-        "Thank you for your purchase! I hope your personalized print arrived safely "
+        "Thank you for your purchase! I hope your personalized item arrived safely "
         "and that you and your recipient love it. "
         "If you enjoyed your experience, I would greatly appreciate a review — "
         "it helps my small shop grow and helps other customers find me. Thank you so much!"

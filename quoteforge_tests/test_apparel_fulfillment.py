@@ -107,3 +107,46 @@ def test_sync_text_warns_on_apparel_placeholders(monkeypatch):
     from quoteforge.automation import gelato_sync
     r = gelato_sync.sync_catalog()
     assert r["placeholder_uids"] >= 75      # all apparel variants are placeholders
+
+
+# ── Financial accuracy: true garment cost flows off the order ─────
+
+def test_enrich_sets_true_garment_cost():
+    # REGRESSION: financials/margin read order['gelato_cost'] directly; apparel
+    # must carry the real garment cost incl. the 2XL upcharge (13 + 2 = 15), so
+    # no downstream module needs apparel special-casing.
+    out = A.enrich_apparel_order({"material": "T-Shirt - Black", "size": "2XL"})
+    assert out["gelato_cost"] == 15.0
+    base = A.enrich_apparel_order({"material": "T-Shirt - Black", "size": "M"})
+    assert base["gelato_cost"] == 13.0
+
+
+# ── Claims safety: wrong size is customer-fault, never auto-reprinted ──
+
+def test_wrong_size_is_customer_fault_no_cover():
+    # REGRESSION: "too small"/"doesn't fit" must classify as a customer-fault,
+    # NOT-covered issue - declined, never a free reprint/refund.
+    from quoteforge.etsy.resolution import resolve_issue
+    for phrase in ("too small", "doesn't fit", "wrong size"):
+        r = resolve_issue(phrase)
+        assert r["recognized"] and r["category"] == "wrong_size"
+        assert r["fault"] == "customer"
+        assert r["gelato_covered"] is False
+
+
+def test_claim_form_has_apparel_sizing_and_it_is_not_covered():
+    from quoteforge.fulfillment.claim_service import ISSUE_TYPES, _COVERED
+    assert ISSUE_TYPES.get("Apparel sizing / fit") == "wrong_size"
+    assert "wrong_size" not in _COVERED      # never an auto free reprint
+
+
+# ── Customer copy generalized for apparel ────────────────────────
+
+def test_messages_generalized_not_print_specific():
+    from quoteforge.etsy.customer_messages import BASE_TEMPLATES
+    blob = " ".join(BASE_TEMPLATES.values())
+    assert "this print brings joy" not in blob
+    assert "personalized print arrived" not in blob
+    assert "your personalized item" in blob   # generalized wording present
+    # supplier euphemism is fine; the real supplier name is not
+    assert "gelato" not in blob.lower()

@@ -238,6 +238,14 @@ def enrich_apparel_order(order_data: dict) -> dict:
     sku = apparel_sku_for(gid, size, color)
     out: dict = {"product_type": "apparel", "garment_id": gid,
                  "color": color, "material": fmt, "gelato_sku": sku}
+    # Persist the TRUE garment cost (base + size upcharge + any live override) so
+    # every downstream financial/margin module reads an accurate apparel cost
+    # straight off the order - no per-module apparel special-casing needed.
+    g = get_garment(gid)
+    if g and sku:
+        cost = _variant_cost(g, size, sku)
+        if cost is not None:
+            out["gelato_cost"] = cost
     uid = resolve_apparel_uid(sku)
     if uid:
         out["gelato_product_uid"] = uid
