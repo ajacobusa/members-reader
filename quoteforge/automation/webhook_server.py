@@ -89,7 +89,7 @@ _ORDER_LEVEL = ("customer_name", "customer_email", "sale_price", "price",
 
 def _build_order_data(item: dict, etsy_order_id: str) -> dict:
     """Map a (line-item) payload to the pipeline's order_data shape."""
-    return {
+    data = {
         "etsy_order_id": etsy_order_id,
         "order_id": item.get("order_id") or etsy_order_id,
         "customer_name": item.get("customer_name", ""),
@@ -117,7 +117,17 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
         "tax_collected": _parse_money(item.get("tax_collected")),
         "country": item.get("country", ""),
         "state": item.get("state", ""),
+        # Material / format: wall-art material ("Framed - Oak") OR apparel format
+        # ("T-Shirt - Black"). Apparel enrichment below reads this.
+        "material": item.get("material") or item.get("fmt")
+        or item.get("product_format") or item.get("format", ""),
     }
+    # Apparel: turn the "{garment} - {colour}" format + size into product_type,
+    # garment_id, colour and the resolved Gelato apparel UID. No-op for wall art,
+    # so the working print flow is completely unaffected.
+    from quoteforge.etsy.apparel_catalog import enrich_apparel_order
+    data.update(enrich_apparel_order(data))
+    return data
 
 
 def _run_one(item: dict, etsy_order_id: str) -> dict:

@@ -52,6 +52,7 @@ def audit_catalog(floor_pct: float = None) -> dict:
     from quoteforge.etsy.product_lines import PRODUCT_LINES
     from quoteforge.etsy.gallery_sets import GALLERY_SETS
     from quoteforge.etsy.variations import build_variations
+    from quoteforge.etsy.apparel_catalog import build_apparel_variations
 
     rows = []
     # The actual sellable variations (was never audited - the floor was only
@@ -60,6 +61,11 @@ def audit_catalog(floor_pct: float = None) -> dict:
         label = f"{v.material} {v.size}" + (f" {v.frame_color}" if v.frame_color else "")
         c = margin_check(v.price, v.gelato_cost, floor)
         rows.append({"name": label, "kind": "variation", **c})
+    # Apparel variants (garment x size x colour) clear the SAME floor.
+    for v in build_apparel_variations():
+        c = margin_check(v.price, v.gelato_cost, floor)
+        rows.append({"name": f"{v.name} {v.size} {v.color}",
+                     "kind": "apparel", **c})
     for p in PRODUCT_LINES:
         c = margin_check(p.sell_price, p.gelato_cost, floor)
         rows.append({"name": p.name, "kind": "product", **c})

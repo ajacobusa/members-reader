@@ -106,6 +106,43 @@ def build_inventory_payload(floor_pct: int = None) -> dict:
             "sku_on_property": [_PROP_SIZE, _PROP_FORMAT]}
 
 
+def apparel_listing_garments() -> list[str]:
+    """Garment ids that each become their OWN Etsy listing (apparel needs both
+    variation axes for Size + Colour, so it can't share the wall-art listing)."""
+    from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
+    return [g.garment_id for g in APPAREL_CATALOG]
+
+
+def build_apparel_inventory_payload(garment_id: str, floor_pct: int = None) -> dict:
+    """Etsy inventory for ONE apparel garment: Size (513) x Colour (514), each
+    offering priced to clear the 60% floor. Apparel gets its own listing per
+    garment because the print listing already spends both axes on Size + Format
+    and Etsy allows only two. Ready to PUT to the inventory API.
+
+    Emits garment / size / colour / price + the variant SKU ONLY - never a
+    supplier name."""
+    from quoteforge.etsy.apparel_catalog import build_apparel_variations
+    products = []
+    for v in build_apparel_variations(floor_pct):
+        if v.garment_id != garment_id:
+            continue
+        products.append({
+            "sku": v.gelato_sku,
+            "property_values": [
+                {"property_id": _PROP_SIZE, "property_name": "Size",
+                 "values": [v.size]},
+                {"property_id": _PROP_FORMAT, "property_name": "Color",
+                 "values": [v.color]},
+            ],
+            "offerings": [{"price": round(v.price, 2), "quantity": 999,
+                           "is_enabled": True}],
+        })
+    return {"products": products,
+            "price_on_property": [_PROP_SIZE, _PROP_FORMAT],
+            "quantity_on_property": [],
+            "sku_on_property": [_PROP_SIZE, _PROP_FORMAT]}
+
+
 def apply_variations(listing_id, live: bool = False, floor_pct: int = None,
                      runner=requests) -> dict:
     """Push the Size×Format variation matrix onto an Etsy listing.

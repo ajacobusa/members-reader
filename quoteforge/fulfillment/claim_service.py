@@ -22,6 +22,7 @@ ISSUE_TYPES: dict = {
     "Wrong item received": "wrong_product",
     "Missing item": "incomplete_order",
     "Lost package": "lost_package",
+    "Apparel sizing / fit": "wrong_size",   # customer-fault: declined, not reprinted
     "Other": "",
 }
 

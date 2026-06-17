@@ -50,7 +50,7 @@ def delight_message(order: dict) -> str:
     code = referral_code(key)
     msg = (
         f"Hi {customer}! I hope {recipient} absolutely loved their personalized "
-        f"{occ} piece.\n\n"
+        f"{occ} gift.\n\n"
         f"If it brought a smile, a quick review would mean the world to a small "
         f"shop like Joffiels - honest reviews are what help others find us. As a "
         f"thank-you, here's 10% off your next order with code {REVIEW_THANKYOU}.\n\n"

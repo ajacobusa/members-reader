@@ -287,10 +287,15 @@ def _competitive_sections() -> str:
     # marketplace. Keeps the customer promise nested inside the 30-day partner
     # window via a 7-day reporting ask.
     policy_points = [
-        ("Arrived damaged or a print defect?",
+        ("Arrived damaged or defective?",
          "That\'s on us. Message a photo within 7 days of delivery and we\'ll "
          "send a free replacement - there\'s no need to return the original, "
          "just keep or recycle it."),
+        ("Apparel sizing &amp; fit",
+         "T-shirts, hoodies and sweatshirts are made to order in the exact size "
+         "you choose, so sizing is final - please check the size before ordering. "
+         "We can\'t exchange for fit, but we\'ll always make it right if an item "
+         "arrives damaged, defective or wrong."),
         ("Made to order means your order is final",
          "Because each piece is personalized and made to order from the design "
          "you submit at checkout, all sales are final - we can\'t accept returns, "
@@ -313,9 +318,9 @@ def _competitive_sections() -> str:
         f'<div class="why" id="why"><h2>Why {SHOP_NAME} (not a mass printer)</h2>'
         f'<table class="cmp"><tr><th>{SHOP_NAME}</th><th>Big-box printers</th></tr>'
         f'{cmp_rows}</table></div>'
-        f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every piece is '
+        f'<div class="guarantee">💚 <b>Happiness Guarantee.</b> Every order is '
         f'made to order from the design you submit, with a free emailed proof '
-        f'so you see exactly what prints. If it arrives damaged or defective, is '
+        f'so you see exactly what you\'ll get. If it arrives damaged or defective, is '
         f'the wrong item, or doesn\'t arrive, we\'ll make it right with a free '
         f'replacement.</div>'
         f'<div class="faqs" id="faq"><h2>Questions, answered</h2>{faq_html}</div>'
@@ -830,35 +835,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             "imgs": [_emit(p, f"{b.listing_n:02d}_g{i:02d}.jpg")
                      for i, p in enumerate(gallery)],
         }
-        # Real per-frame / per-material previews (tap a frame -> see the look).
-        if frame_picker:
-            poster = next(iter(sorted(
-                kit_dir.glob(f"{b.listing_n:02d}_*/poster*.png"))), None)
-            if poster:
-                try:
-                    if external_assets:
-                        from quoteforge.images.frame_preview import format_preview_files
-                        files = format_preview_files(
-                            poster, assets, f"{b.listing_n:02d}f")
-                        if files:
-                            entry["formats"] = [
-                                {"name": n, "img": f"assets/{fn}",
-                                 "price": fmt_price.get(n)} for n, fn in files]
-                    else:
-                        from quoteforge.images.frame_preview import format_preview_datauris
-                        fmts = format_preview_datauris(poster)
-                        if fmts:
-                            entry["formats"] = [{"name": n, "img": d,
-                                                 "price": fmt_price.get(n)}
-                                                for n, d in fmts]
-                except Exception:  # noqa: BLE001
-                    pass
-        # Guarantee every design is orderable in every format: if the per-frame
-        # previews didn't render (missing poster, transient failure), fall back
-        # to the global format list so the frame picker is NEVER hidden. Only in
-        # frame_picker mode - the lighter no-picker build intentionally omits
-        # formats.
-        if frame_picker and not entry.get("formats") and GLOBAL_FORMATS:
+        # Frame/material picker uses the global name+price format list. The pills
+        # render a colour swatch (swatchDot) + name + price and never read a
+        # per-frame preview image, so we do NOT render per-design frame mockups:
+        # that was dead compute (Pillow render per design every build) plus page/
+        # asset bloat (the base64/JPG was generated but consumed 0 times). Every
+        # design is still orderable in every format via this one global list.
+        if frame_picker and GLOBAL_FORMATS:
             entry["formats"] = GLOBAL_FORMATS
         # Card "from" price = the real lowest variation price (not a flat default).
         prices = [f["price"] for f in entry.get("formats", []) if f.get("price")]
@@ -956,6 +939,33 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             sizemap[k] = sorted(seen.values(), key=lambda r: r["price"])
     except Exception:  # noqa: BLE001
         sizemap = {}
+    # Apparel: a parallel product type that REUSES this same SIZEMAP + picker.
+    # Each garment+colour is a "format" (mirrors "Framed - Oak"); the garment
+    # SIZE lives in SIZEMAP under that key. Emitted from garment / colour / size /
+    # price ONLY - never the supplier SKU or cost - so no fulfilment name can
+    # reach the customer page.
+    apparel_formats: list = []
+    if frame_picker:
+        try:
+            from quoteforge.etsy.apparel_catalog import build_apparel_variations
+            _ap_from: dict = {}
+            _size_order = ["S", "M", "L", "XL", "2XL", "3XL"]
+            for av in build_apparel_variations():
+                key = f"{av.name} - {av.color}"
+                sizemap.setdefault(key, []).append(
+                    {"size": av.size, "price": av.price})
+                _ap_from[key] = min(_ap_from.get(key, 1e9), av.price)
+            for key in _ap_from:                      # sort each garment by size
+                seen = {r["size"]: r for r in sizemap[key]}
+                sizemap[key] = sorted(
+                    seen.values(),
+                    key=lambda r: (_size_order.index(r["size"])
+                                   if r["size"] in _size_order else 99))
+            apparel_formats = [{"name": k, "img": "", "price": round(p, 2)}
+                               for k, p in sorted(_ap_from.items())]
+        except Exception:  # noqa: BLE001
+            apparel_formats = []
+    apparel_formats_json = json.dumps(apparel_formats)
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
     editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
@@ -2190,7 +2200,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        <div class="esec" id="esec3" style="display:none">
        <div class="fpick" id="mfpick" style="display:none">
-         <div class="lbl">👉 Choose your frame / material:</div>
+         <div class="ptype" id="mptype">
+           <button type="button" class="ptbtn ptsel" id="ptwall" onclick="setProductType('wallart')">🖼️ Wall Art</button>
+           <button type="button" class="ptbtn" id="ptapp" onclick="setProductType('apparel')">👕 Apparel</button>
+         </div>
+         <div class="lbl" id="mfpicklbl">👉 Choose your frame / material:</div>
          <div class="fchips" id="mfchips"></div>
        </div>
        <div class="orderbox" id="morderbox">
@@ -2201,6 +2215,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
            <label>Qty <select id="mqty"></select></label>
          </div>
+         <div id="mapparelnote" class="note" style="display:none">📏 Garment sizing is final — please check the size before ordering. Because every item is made to order, we can't exchange for fit.</div>
          <div id="mreview" class="mreview"></div>
          <div class="orderactions">
            <button type="button" class="savebtn" id="mreviewbtn" onclick="showFinalProof('item')">👁️ Review this design</button>
@@ -2383,12 +2398,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
+   // Every design opens in WALL-ART mode; the buyer can switch to Apparel.
+   IS_APPAREL=false;
+   {{const _w=document.getElementById('ptwall'),_a=document.getElementById('ptapp');
+     if(_w&&_a){{_w.classList.add('ptsel');_a.classList.remove('ptsel');}}}}
+   const _l=document.getElementById('mfpicklbl');
+   if(_l)_l.textContent='👉 Choose your frame / material:';
+   const _an=document.getElementById('mapparelnote'); if(_an)_an.style.display='none';
    // Frame picker is ALWAYS available: a card's own previews, else the global
    // format list - so every design is orderable in every frame/material.
-   const fmts = fmtsFor(i);
+   const fmts = curFormats(i);
    if(fmts.length){{
-     fc.innerHTML=fmts.map((f,j)=>
-       `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join('');
+     fc.innerHTML=_fchips(fmts,i);
      fp.style.display='block';
    }}
    document.getElementById('mtitle').textContent = d.full_title;
@@ -2435,6 +2456,26 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // The format list for design i: its own per-frame previews, else the global
  // list (every design is orderable in every format).
  function fmtsFor(i){{ const f=DATA[i].formats; return (f&&f.length)?f:ALL_FORMATS; }}
+ // ── Apparel: a parallel product type sharing this picker + design editor ──
+ const APPAREL_FORMATS = {apparel_formats_json};
+ let IS_APPAREL=false;
+ // The format list for the ACTIVE product type (wall art vs apparel).
+ function curFormats(i){{ return IS_APPAREL?APPAREL_FORMATS:fmtsFor(i); }}
+ // Shared pill renderer (used by openM AND the product-type toggle).
+ function _fchips(fmts,i){{ return fmts.map((f,j)=>
+   `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join(''); }}
+ function setProductType(t){{
+   IS_APPAREL=(t==='apparel');
+   const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
+   if(wb&&ab){{wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}}
+   const lbl=document.getElementById('mfpicklbl');
+   if(lbl)lbl.textContent=IS_APPAREL?'👉 Choose your garment & colour:':'👉 Choose your frame / material:';
+   const an=document.getElementById('mapparelnote'); if(an)an.style.display=IS_APPAREL?'block':'none';
+   const fc=document.getElementById('mfchips'), fmts=curFormats(CUR);
+   if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
+   CURFMT=(fmts[0]&&fmts[0].name)||"";
+   fillSizes(); drawArt(); updateReview();
+ }}
  let CART = [];
  const QD = {qty_discount_json};
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
@@ -2442,7 +2483,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
-   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}} in - $${{r.price}}</option>`).join('');}}
+   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{IS_APPAREL?'':' in'}} - $${{r.price}}</option>`).join('');}}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -3142,6 +3183,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const FRAMECOLOR = {{"Premium Solid Oak":"#b28e60","Premium Walnut":"#5c4030",
    "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
    "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"}};
+ const APPARELCOLOR = {{"Black":"#1c1c1e","White":"#f4f3ef","Navy":"#26324a",
+   "Heather Grey":"#b9bdc2","Sand":"#d8c9a8","Maroon":"#5e2a32"}};
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
@@ -3152,9 +3195,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    else if(n.indexOf('Canvas')===0) c='#f0ece1';
    else if(n.indexOf('Acrylic')===0) c='#bfe0ea';
    else if(n.indexOf('Metal')===0) c='#9aa3a8';
+   else if(n.indexOf('T-Shirt - ')===0||n.indexOf('Hoodie - ')===0||n.indexOf('Sweatshirt - ')===0){{
+     const cn=n.split(' - ')[1]||''; c=APPARELCOLOR[cn]||'#bbbbbb';
+     if(cn==='White'||cn==='Sand'||cn==='Heather Grey') ring='box-shadow:inset 0 0 0 1px #cfcabb'; }}
    return `<span class="fdot" style="background:${{c}};${{ring}}"></span>`;
  }}
  let CURFMT="";
+ let APPAREL_BOUND=null;
  function frameSpec(){{
    if(CURFMT.indexOf('Framed - ')===0){{
      const n=CURFMT.slice(9);
@@ -3165,30 +3212,55 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return null;  // Poster / Canvas = unframed
  }}
  function _printAR(){{  // width/height ratio of the selected print size (e.g. 8x10 -> 0.8)
+   if(IS_APPAREL) return 0.86;   // garment field aspect (shirt body in the canvas)
    const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
    const m=sv.match(/(\\d+(?:\\.\\d+)?)\\s*[xX]\\s*(\\d+(?:\\.\\d+)?)/);
    if(m){{ const a=parseFloat(m[1]), b=parseFloat(m[2]); if(a>0&&b>0) return a/b; }}
    return 0.8;  // default 4:5 portrait
  }}
+ function drawGarment(ctx,x,y,w,h){{
+   // A simple garment field in the chosen colour - enough to preview the design
+   // ON the product without a fragile silhouette path. Colour from the picked
+   // "{{Garment}} - {{Colour}}" format; defaults to black.
+   const cn=(CURFMT.split(' - ')[1]||'Black'); const col=APPARELCOLOR[cn]||'#1c1c1e';
+   const r=Math.min(w,h)*0.08;
+   ctx.fillStyle=col;
+   ctx.beginPath();
+   ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+   ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+   ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+   ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath(); ctx.fill();
+   // soft collar hint
+   ctx.fillStyle='rgba(0,0,0,.16)';
+   ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.05,w*0.13,h*0.04,0,0,Math.PI); ctx.fill();
+   // a light garment still reads as fabric with a faint edge
+   if(cn==='White'||cn==='Sand'||cn==='Heather Grey'){{
+     ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=1; ctx.strokeRect(x+1,y+1,w-2,h-2); }}
+ }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
-   ctx.fillStyle=SELWALL; ctx.fillRect(0,0,W,H);             // room wall
-   const m=16, spec=frameSpec();
-   // Fit the framed piece to the SELECTED SIZE's aspect ratio so the preview shows
-   // the true print proportions (and how the photo will crop). Centered on wall.
+   ctx.fillStyle = IS_APPAREL ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
+   const m=16, spec = IS_APPAREL ? null : frameSpec();
+   // Fit the piece to the selected aspect ratio (apparel: the garment field) so
+   // the preview shows true proportions and how a photo will crop. Centered.
    const ar=_printAR(), AW=W-2*m, AH=H-2*m;
    let w,h; if(AW/AH > ar){{ h=AH; w=AH*ar; }} else {{ w=AW; h=AW/ar; }}
    let x=(W-w)/2, y=(H-h)/2;
    // drop shadow for depth
    ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h);
-   if(spec){{ const t=spec.t*w;
+   if(IS_APPAREL){{ drawGarment(ctx,x,y,w,h);
+     // Print-safe boundary = the chest area the design must stay inside so it is
+     // never cropped at production. The design (text/photo) renders in here.
+     const bx=x+w*0.20, by=y+h*0.20, bw=w*0.60, bh=h*0.50;
+     x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={{x:x,y:y,w:w,h:h}};
+   }} else if(spec){{ const t=spec.t*w;
      ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame
      x+=t; y+=t; w-=2*t; h-=2*t;
      if(spec.mat){{ const mm=0.05*w; ctx.fillStyle="#f7f5ef";
        ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }}
    }}
-   ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h);                 // art background
+   if(!IS_APPAREL){{ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }}  // art background (print only)
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){{        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
      // small bleed (1.06) so there's always room to drag/reposition the photo
@@ -3230,11 +3302,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    let ty=-block/2+fs*0.9;
    for(const ln of lines){{ctx.fillText(ln,0,ty); ty+=lh;}}
    ctx.restore();
+   if(IS_APPAREL && APPAREL_BOUND){{ const b=APPAREL_BOUND;
+     ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1.5;
+     ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
+     ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
+     ctx.fillText('👕 Your design prints here', b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
-     crop.textContent = sv
-       ? `📐 Final print preview - actual ${{sv}}\" crop`+(PHOTO?" (photo auto-fit to frame)":"")
-       : "📐 Final print preview"; }}
+     crop.textContent = IS_APPAREL
+       ? (sv?`👕 Garment preview - size ${{sv}} (your design stays inside the dashed area)`:"👕 Garment preview")
+       : (sv?`📐 Final print preview - actual ${{sv}}\" crop`+(PHOTO?" (photo auto-fit to frame)":"")
+           : "📐 Final print preview"); }}
    saveDraft(); updateReview();
  }}
  // ── Single-item review: show exactly what you're adding, before you add ──

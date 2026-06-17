@@ -34,11 +34,13 @@ def _uid_map() -> dict:
 
 
 def _all_skus() -> list[str]:
-    """Every Gelato SKU we sell (catalog products + frames), sorted."""
+    """Every Gelato SKU we sell (catalog products + frames + apparel), sorted."""
     from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
     from quoteforge.etsy.frames import FRAMES
+    from quoteforge.etsy.apparel_catalog import apparel_skus
     skus = {p.gelato_sku for p in GELATO_CATALOG}
     skus |= {f.gelato_sku for f in FRAMES}
+    skus |= set(apparel_skus())          # apparel availability/cost syncs too
     return sorted(skus)
 
 
@@ -79,9 +81,16 @@ def sync_catalog() -> dict:
     # placeholder means orders silently fail to route, so surface it on every
     # sync (the admin command escalates this to a loud alert when live).
     from quoteforge.etsy.gelato_catalog import verify_catalog_mappings
+    from quoteforge.etsy.apparel_catalog import verify_apparel_mappings
     m = verify_catalog_mappings()
-    ph = {"placeholder_uids": m["placeholder_count"],
-          "placeholders": m["placeholders"]}
+    am = verify_apparel_mappings()
+    # Surface BOTH print and apparel placeholders in the one loud banner so a
+    # leftover apparel GEL-* UID can't silently ship (apparel placeholders are
+    # SKU strings; shape them like the print entries format_sync_text expects).
+    ph = {"placeholder_uids": m["placeholder_count"] + am["placeholder_count"],
+          "placeholders": m["placeholders"] + [
+              {"product_id": s, "size": "apparel", "current_sku": s}
+              for s in am["placeholders"]]}
 
     skus = _all_skus()
     if TEST_MODE or not GELATO_API_KEY:

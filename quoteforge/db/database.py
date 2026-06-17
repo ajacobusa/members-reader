@@ -394,6 +394,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN material TEXT")
     if "size" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN size TEXT")
+    # Apparel variants carry a colour (NULL for wall art, which has none).
+    if "color" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN color TEXT")
     if "listing" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN listing TEXT")
     if "acquisition_source" not in cols:
@@ -500,10 +503,10 @@ def create_order(data: dict) -> str:
              recipient_name, sender_name, relationship, occasion,
              scenery, tone, memory, output_style, status,
              sale_price, gelato_cost, channel, vendor, product_type,
-             material, size, listing, acquisition_source,
+             material, size, color, listing, acquisition_source,
              line_items, item_count, country, state,
              shipping_cost, shipping_collected)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -525,6 +528,7 @@ def create_order(data: dict) -> str:
             data.get("product_type", "print"),
             data.get("material"),
             data.get("size"),
+            data.get("color"),
             data.get("listing"),
             data.get("acquisition_source"),
             data.get("line_items"),
@@ -545,6 +549,7 @@ def create_order(data: dict) -> str:
 LOCKED_FIELDS = frozenset({
     "recipient_name", "sender_name", "relationship", "occasion", "scenery",
     "tone", "memory", "output_style", "generated_quote", "size", "material",
+    "color",   # apparel colour is part of the approved proof - immutable after
 })
 
 

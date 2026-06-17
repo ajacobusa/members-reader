@@ -134,6 +134,16 @@ ISSUE_CASES: dict[str, Resolution] = {
         "I'm sorry part of your order is missing! Let me check the order and "
         "I'll get the missing item made and shipped to you free of charge - "
         "I'll follow up shortly with the details."),
+    "wrong_size": Resolution(
+        "wrong_size", "Apparel wrong size / doesn't fit", "customer",
+        "No refund or exchange - garment made to the size ordered", False, False,
+        ["Confirm the size shipped matches the size the customer selected",
+         "Explain apparel is made to order to the chosen size; sizing is final",
+         "Offer the size guide + a goodwill discount on a re-order if appropriate"],
+        "Thanks for reaching out! Because each garment is made to order in the exact "
+        "size selected at checkout, I'm not able to offer a refund or exchange for "
+        "fit. I'm sorry it isn't the fit you hoped for - I'd be glad to share the "
+        "size guide and offer a small discount if you'd like to re-order another size."),
 }
 
 # Friendly aliases so callers can pass natural language.
@@ -161,6 +171,10 @@ _ALIASES = {
     "cancel": "cancellation", "cancellation": "cancellation",
     "wrong item": "wrong_product", "wrong product": "wrong_product",
     "received the wrong": "wrong_product", "not what i ordered": "wrong_product",
+    "too small": "wrong_size", "too big": "wrong_size", "too tight": "wrong_size",
+    "doesn't fit": "wrong_size", "does not fit": "wrong_size",
+    "wrong size": "wrong_size", "sizing": "wrong_size", "runs small": "wrong_size",
+    "runs large": "wrong_size", "size issue": "wrong_size",
     "missing item": "incomplete_order", "incomplete order": "incomplete_order",
     "item missing": "incomplete_order", "part of my order": "incomplete_order",
 }

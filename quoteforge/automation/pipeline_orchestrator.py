@@ -184,10 +184,22 @@ def run_full_pipeline(
         log_pipeline_stage(order_id, stage, status, msg)
         update_order(order_id, status=STATUS_MAP.get(stage, stage))
 
+    # Apparel-enrich at the pipeline entry so EVERY ingest path (webhook, direct,
+    # resume) gets product_type/garment/colour/cost/UID. Idempotent (re-deriving
+    # the same fields) and a no-op for wall art, so it never disturbs prints.
+    from quoteforge.etsy.apparel_catalog import enrich_apparel_order
+    order_data = {**order_data, **enrich_apparel_order(order_data)}
+
     # ── Stage 1: Order Intake ────────────────────────────────────
     _notify("order_intake", "Storing order in database...")
     order_id = create_order(order_data)
     _log(order_id, "order_intake", "success", f"Order {order_id} created")
+
+    # Apparel ingest resolves the Gelato apparel UID into order_data; honour it
+    # when no explicit UID was passed, and persist it so routing + dedup see it.
+    gelato_product_uid = gelato_product_uid or order_data.get("gelato_product_uid", "")
+    if gelato_product_uid:
+        update_order(order_id, gelato_product_uid=gelato_product_uid)
 
     try:
         # ── Stage 2: Quote (verbatim custom text OR AI-generated) ──
@@ -240,6 +252,15 @@ def run_full_pipeline(
             from quoteforge.etsy.gelato_catalog import dimensions_for
             size_key = (order_data.get("product_size")
                         or order_data.get("size") or gelato_product_uid)
+            # Apparel prints to the GARMENT chest area, not a poster size; a t-shirt
+            # rendered at 5400x7200 would be cropped/wrong-DPI on the garment.
+            if order_data.get("product_type") == "apparel":
+                from quoteforge.etsy.apparel_catalog import apparel_dimensions_for
+                render_size = apparel_dimensions_for(order_data.get("garment_id", ""))
+                photo_size = "12x16 in"      # garment chest area for the DPI gate
+            else:
+                render_size = dimensions_for(size_key)
+                photo_size = size_key
             bg_url = None
             bg_path = None
             if custom_image:
@@ -253,7 +274,7 @@ def run_full_pipeline(
                 if local:
                     from quoteforge.images.photo_check import (
                         check_customer_photo, photo_request_message)
-                    chk = check_customer_photo(local, size_key)
+                    chk = check_customer_photo(local, photo_size)
                     if not chk["ok"]:
                         msg = photo_request_message(
                             chk, order_data.get("customer_name", "there"),
@@ -285,8 +306,8 @@ def run_full_pipeline(
                 mood = get_mood(category, "")
                 keyword = get_unsplash_keyword(mood)
                 bg_url = fetch_background_url(keyword) or fetch_background_url(scenery)
-            # Render at the ORDERED product's exact 300-DPI dimensions.
-            render_size = dimensions_for(size_key)
+            # render_size computed above (apparel = garment chest area, else the
+            # ordered poster size at exact 300 DPI).
             png_path = render_local_poster(
                 quote=quote,
                 output_path=out_dir / "artwork.png",
@@ -328,7 +349,10 @@ def run_full_pipeline(
         # have a local print file. Context sells high-ticket wall art (a framed
         # print on a styled wall converts far better than a print on white).
         # Best-effort: a mockup failure must never block the print itself.
-        if GENERATE_ROOM_MOCKUP and png_path and png_path.exists():
+        # Apparel is skipped - a room-on-wall mockup is meaningless for a garment
+        # (the customer already previews the garment live in the design editor).
+        if (GENERATE_ROOM_MOCKUP and png_path and png_path.exists()
+                and order_data.get("product_type") != "apparel"):
             try:
                 from quoteforge.images.room_mockup import render_room_mockup
                 mockup_path = render_room_mockup(
@@ -354,8 +378,11 @@ def run_full_pipeline(
         # deterministic print preflight with an optional Claude vision review.
         if PREFLIGHT_ENABLED and not TEST_MODE and png_path and png_path.exists():
             from quoteforge.images.final_qc import final_qc
-            size_key = (order_data.get("product_size")
-                        or order_data.get("size") or gelato_product_uid)
+            # Apparel renders to the garment chest area (3600x4800 = "12x16 in");
+            # QC must check against THAT, not the buyer's garment size ("M").
+            size_key = ("12x16 in" if order_data.get("product_type") == "apparel"
+                        else (order_data.get("product_size")
+                              or order_data.get("size") or gelato_product_uid))
             qc = final_qc(png_path, size_key)
             if not qc["ok"]:
                 fails = qc["fails"]
