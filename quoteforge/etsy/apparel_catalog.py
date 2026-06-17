@@ -54,20 +54,23 @@ class ApparelGarment:
 # The launch apparel range. Colours are LIGHT-FORWARD (light shades first) because
 # DTG prints full-colour designs/photos cleanly on light garments; the first pill
 # is the default the editor opens on. Costs mirror product_lines.py. `brand` is the
-# recommended Gelato blank to map each garment to (verify in the Gelato dashboard).
+# recommended GELATO blank to map each garment to - chosen from Gelato's ACTUAL
+# apparel roster (Lane Seven, Comfort Colors, Stanley/Stella, Next Level, SOL's,
+# Champion, ...); NOT Bella+Canvas/Gildan, which Gelato does not carry. Confirm the
+# exact product + UID in the Gelato dashboard before go-live.
 APPAREL_CATALOG: list[ApparelGarment] = [
     ApparelGarment(
-        garment_id="tshirt", name="T-Shirt", brand="Bella+Canvas 3001",
+        garment_id="tshirt", name="T-Shirt", brand="Comfort Colors 1717",
         sizes=["S", "M", "L", "XL", "2XL"],
         colors=["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"],
         base_cost=13.00, sku_prefix="GEL-TSHIRT"),
     ApparelGarment(
-        garment_id="hoodie", name="Hoodie", brand="Gildan 18500",
+        garment_id="hoodie", name="Hoodie", brand="Lane Seven LS14001",
         sizes=["S", "M", "L", "XL", "2XL"],
         colors=["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"],
         base_cost=28.00, sku_prefix="GEL-HOODIE"),
     ApparelGarment(
-        garment_id="sweatshirt", name="Sweatshirt", brand="Gildan 18000",
+        garment_id="sweatshirt", name="Sweatshirt", brand="Comfort Colors 1566",
         sizes=["S", "M", "L", "XL", "2XL"],
         colors=["White", "Sand", "Heather Grey", "Navy", "Black"],
         base_cost=24.00, sku_prefix="GEL-SWEATSHIRT"),

@@ -30,7 +30,13 @@ def test_colours_are_light_forward_and_branded():
         assert g.brand, f"{g.name} missing brand"
     tee = A.get_garment("tshirt")
     assert "Light Blue" in tee.colors            # added light photo-friendly option
-    assert tee.brand.startswith("Bella")         # the Etsy-trust tee blank
+    # REGRESSION: brands must come from Gelato's ACTUAL roster - never Bella+Canvas
+    # or Gildan (Printful/Printify staples that Gelato does not carry).
+    gelato_brands = ("Comfort Colors", "Lane Seven", "Stanley", "Next Level",
+                     "SOL", "Champion", "Under Armour", "Port", "Royal", "Stedman")
+    for g in A.APPAREL_CATALOG:
+        assert any(g.brand.startswith(b) for b in gelato_brands), g.brand
+        assert not g.brand.startswith(("Bella", "Gildan")), g.brand
 
 
 def test_garment_costs_match_strategic_catalog():
