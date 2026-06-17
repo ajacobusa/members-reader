@@ -21,6 +21,18 @@ def test_three_apparel_garments_exist():
         assert g.sizes and g.colors
 
 
+def test_colours_are_light_forward_and_branded():
+    # REGRESSION: each garment lists a LIGHT colour first (best DTG render on the
+    # default pill) and carries a blank-garment brand intent for ops/listing.
+    light = {"White", "Sand", "Heather Grey", "Light Blue", "Ash", "Natural"}
+    for g in A.APPAREL_CATALOG:
+        assert g.colors[0] in light, f"{g.name} first colour not light: {g.colors[0]}"
+        assert g.brand, f"{g.name} missing brand"
+    tee = A.get_garment("tshirt")
+    assert "Light Blue" in tee.colors            # added light photo-friendly option
+    assert tee.brand.startswith("Bella")         # the Etsy-trust tee blank
+
+
 def test_garment_costs_match_strategic_catalog():
     # REGRESSION: apparel base costs stay in lock-step with product_lines.py,
     # the strategic catalog the owner prices against (T-Shirt 13 / Hoodie 28 /

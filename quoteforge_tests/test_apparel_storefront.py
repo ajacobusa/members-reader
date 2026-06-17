@@ -133,6 +133,13 @@ def test_storefront_faq_covers_apparel_and_defects(tmp_path):
     assert "damaged or defective" in h
 
 
+def test_garment_brand_names_not_exposed_on_storefront(tmp_path):
+    # REGRESSION: the blank-garment brand intent (Bella+Canvas / Gildan) is ops-
+    # only metadata and must never render to customers.
+    h = _page(tmp_path).lower()
+    assert "bella" not in h and "gildan" not in h
+
+
 def test_no_supplier_name_in_apparel_storefront(tmp_path):
     # REGRESSION: apparel data is emitted from garment/colour/size/price ONLY -
     # never the gelato_sku/gelato_cost fields on the variant.

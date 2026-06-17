@@ -41,6 +41,13 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
     if vendor == "gelato":
         from quoteforge.config import TEST_MODE
         product_uid = order.get("gelato_product_uid") or order.get("product_uid")
+        # Defence in depth: a GEL-* seed placeholder must NEVER be submitted to
+        # production. Route to manual so the owner maps the real Gelato UID first
+        # (protects both apparel and any print SKU left on a placeholder).
+        if product_uid and str(product_uid).upper().startswith("GEL-"):
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "placeholder product UID - map the real Gelato UID "
+                              "in GELATO_UID_MAP before fulfilment"}
         if not (product_uid and recipient and artwork_url):
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",
