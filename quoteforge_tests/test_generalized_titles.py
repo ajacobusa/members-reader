@@ -47,8 +47,13 @@ def test_no_sample_names_on_page(tmp_path):
     from quoteforge.etsy.listing_preview import build_shop_home
     h = build_shop_home(numbers=nums, kit_dir=tmp_path,
                         out_path=tmp_path / "h.html", frame_picker=False).read_text("utf-8")
+    # Strip inline base64 image bytes before the name check: this test guards
+    # VISIBLE quote text, and random base64 will contain short substrings like
+    # "Liam" by chance (it is not visible to the buyer).
+    import re
+    visible = re.sub(r"data:image/[^\"')]+", "", h)
     for name in ("Emma", "Liam", "Sarah", "James", "Grace"):
-        assert name not in h, f"{name} still in preview quotes"
+        assert name not in visible, f"{name} still in preview quotes"
     # ([Name] placeholder is exercised by test_generalize_quote; in TEST_MODE the
     #  preview quotes fall back to a generic, already-neutral line.)
 

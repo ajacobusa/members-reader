@@ -779,10 +779,12 @@ _APPAREL_TILE = {
 }
 
 
-def _apparel_section() -> str:
-    """Visible top-level Apparel department (T-Shirt / Hoodie / Sweatshirt) as
-    colourful product tiles. Each card opens the design editor straight into
-    apparel mode via shopApparel(). Emits garment / from-price only."""
+def _apparel_section(photos: dict | None = None) -> str:
+    """Visible top-level Apparel department (T-Shirt / Hoodie / Sweatshirt).
+    Uses a real product PHOTO per garment when `photos` (garment_id -> src) is
+    supplied, else a shaded SVG product tile as a graceful fallback. Each card
+    opens the design editor straight into apparel mode via shopApparel()."""
+    photos = photos or {}
     try:
         from quoteforge.etsy.apparel_catalog import (
             APPAREL_CATALOG, build_apparel_variations)
@@ -798,14 +800,20 @@ def _apparel_section() -> str:
         low = frm.get(g.garment_id)
         if low is None:
             continue
-        grad, art = _APPAREL_TILE.get(g.garment_id, _APPAREL_TILE["tshirt"])
+        if photos.get(g.garment_id):
+            tile = (f'<span class="apptile apptilephoto">'
+                    f'<img class="appimg" loading="lazy" '
+                    f'src="{photos[g.garment_id]}" alt="Custom {g.name}"></span>')
+        else:
+            grad, art = _APPAREL_TILE.get(g.garment_id, _APPAREL_TILE["tshirt"])
+            tile = (f'<span class="apptile" style="background:{grad}">'
+                    f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
+                    f'{art}</svg></span>')
         cards.append(
             f'<button class="appcard" type="button" '
             f'onclick="shopApparel(\'{g.garment_id}\')" '
             f'aria-label="Design a custom {g.name}">'
-            f'<span class="apptile" style="background:{grad}">'
-            f'<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">{art}</svg>'
-            f'</span>'
+            f'{tile}'
             f'<span class="appname">{g.name}</span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
@@ -1092,6 +1100,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                                      brand / "hero.jpeg") if p.exists()), None)
     banner_src = _web_img(hero_img, 1600) if hero_img else (
         _web_img(banner, 1400) if banner.exists() else "")
+    # Department-card lifestyle photos: Wall Art reuses the hero room shot; Apparel
+    # uses a dedicated lifestyle photo. Emoji fallback if a photo is missing.
+    dept_wall_src = _emit(hero_img, "dept-wallart.jpg") if hero_img else ""
+    _dept_app_img = next((p for p in (brand / "dept-apparel.jpg",
+                                      brand / "dept-apparel.png") if p.exists()), None)
+    dept_app_src = _emit(_dept_app_img, "dept-apparel.jpg") if _dept_app_img else ""
+    # Per-garment product photos for the apparel tiles (brand/tile-<garment>.jpg);
+    # fall back to the shaded SVG tile when a photo is absent.
+    _garment_photos: dict = {}
+    for _gid in ("tshirt", "hoodie", "sweatshirt"):
+        _gp = next((brand / f"tile-{_gid}.{e}" for e in ("jpg", "png")
+                    if (brand / f"tile-{_gid}.{e}").exists()), None)
+        if _gp:
+            _garment_photos[_gid] = _emit(_gp, f"tile-{_gid}.jpg")
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
     # Order-by gift-deadline banner (urgency) + verified reviews summary.
@@ -1259,15 +1281,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    text-transform:uppercase;letter-spacing:.06em}}
  .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
  @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
- .deptcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
-   padding:30px 18px;border-radius:18px;text-decoration:none;
-   border:1px solid #e6e0d2;transition:transform .12s,box-shadow .12s}}
- .deptwall{{background:linear-gradient(135deg,#f4efe6,#e9e2d2)}}
- .deptapp{{background:linear-gradient(135deg,#eaf1ee,#d8e8e0)}}
- .deptcard:hover{{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}}
- .depticon{{font-size:46px;line-height:1}}
+ .deptcard{{display:flex;flex-direction:column;text-decoration:none;
+   border-radius:18px;overflow:hidden;border:1px solid #e6e0d2;background:#fff;
+   box-shadow:0 2px 10px rgba(0,0,0,.05);transition:transform .14s,box-shadow .14s}}
+ .deptcard:hover{{transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.14)}}
+ .deptimg{{width:100%;height:210px;object-fit:cover;display:block}}
+ .deptbody{{padding:18px 18px 22px;display:flex;flex-direction:column;
+   align-items:center;gap:6px}}
+ .deptwall .deptimg,.deptapp .deptimg{{background:#ece6da}}
+ .depticon{{font-size:46px;line-height:1;padding:34px 0 0}}
  .depttitle{{font-weight:800;color:var(--green);font-size:24px}}
- .deptsub{{color:#5b5b52;font-size:14px;max-width:280px}}
+ .deptsub{{color:#5b5b52;font-size:14px;max-width:300px}}
  .deptgo{{margin-top:6px;font-weight:700;color:var(--gold);font-size:15px}}
  .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
  .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
@@ -1283,6 +1307,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apptile{{display:flex;align-items:center;justify-content:center;width:100%;
    height:172px;border-radius:13px;margin-bottom:6px;
    box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}}
+ .apptilephoto{{height:240px;overflow:hidden;background:#f1ede4}}
+ .appimg{{width:100%;height:100%;object-fit:cover;display:block;border-radius:13px}}
  .appsvg{{width:118px;height:118px}}
  .appname{{font-weight:700;color:var(--green);font-size:18px;letter-spacing:.01em}}
  .appfrom{{color:#7a7466;font-size:13px}}
@@ -2089,16 +2115,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <h2 class="deptshead">Shop by department</h2>
    <div class="deptgrid">
      <a class="deptcard deptwall" href="#wallart">
-       <span class="depticon">🖼️</span>
-       <span class="depttitle">Wall Art</span>
-       <span class="deptsub">Posters, framed prints, canvas, acrylic &amp; metal</span>
-       <span class="deptgo">Browse Wall Art →</span>
+       {f'<img class="deptimg" loading="lazy" src="{dept_wall_src}" alt="Personalized wall art styled in a room">' if dept_wall_src else '<span class="depticon">🖼️</span>'}
+       <div class="deptbody">
+         <span class="depttitle">Wall Art</span>
+         <span class="deptsub">Posters, framed prints, canvas, acrylic &amp; metal</span>
+         <span class="deptgo">Browse Wall Art →</span>
+       </div>
      </a>
      <a class="deptcard deptapp" href="#apparel">
-       <span class="depticon">👕</span>
-       <span class="depttitle">Apparel</span>
-       <span class="deptsub">T-shirts, hoodies &amp; sweatshirts</span>
-       <span class="deptgo">Browse Apparel →</span>
+       {f'<img class="deptimg" loading="lazy" src="{dept_app_src}" alt="People wearing custom personalized apparel">' if dept_app_src else '<span class="depticon">👕</span>'}
+       <div class="deptbody">
+         <span class="depttitle">Apparel</span>
+         <span class="deptsub">T-shirts, hoodies &amp; sweatshirts</span>
+         <span class="deptgo">Browse Apparel →</span>
+       </div>
      </a>
    </div>
  </section>
@@ -2140,7 +2170,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="btot" id="btot">Select 2 or more to see your set price.</div>
    </div>
  </div>
- {_apparel_section()}
+ {_apparel_section(_garment_photos)}
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
