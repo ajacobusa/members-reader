@@ -26,12 +26,22 @@ def _page(tmp_path) -> str:
 
 # ── Apparel is selectable alongside wall art ─────────────────────
 
-def test_apparel_is_a_visible_top_level_section(tmp_path):
-    # REGRESSION: apparel must be DISCOVERABLE from the storefront, not buried in
-    # the editor - a nav link + a "Custom Apparel" category band with each garment.
+def test_two_departments_wall_art_and_apparel(tmp_path):
+    # REGRESSION: the store is organized into TWO co-equal departments - Wall Art
+    # and Apparel - with a "Shop by department" chooser and a nav link + anchor
+    # for each, so apparel is a real department, not buried in the editor.
     h = _page(tmp_path)
-    assert 'href="#apparel"' in h                 # nav jump link
-    assert 'id="apparel"' in h                    # the section anchor
+    assert "Shop by department" in h
+    assert "deptcard" in h and "deptwall" in h and "deptapp" in h
+    # both department anchors + nav links
+    for anchor in ('id="wallart"', 'id="apparel"', 'href="#wallart"', 'href="#apparel"'):
+        assert anchor in h, anchor
+    assert "Wall Art" in h and "Apparel" in h
+
+
+def test_apparel_department_has_garment_cards(tmp_path):
+    # REGRESSION: the Apparel department surfaces each garment with a design CTA.
+    h = _page(tmp_path)
     assert "Custom Apparel" in h
     for garment in ("T-Shirt", "Hoodie", "Sweatshirt"):
         assert garment in h

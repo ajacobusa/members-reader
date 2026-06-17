@@ -1199,7 +1199,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-bottom:2px solid transparent}}
  .navlinks a:hover{{border-bottom-color:var(--gold)}}
  /* anchored sections clear the sticky header when jumped to */
- #grid,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
+ #grid,#wallart,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
+ .depts{{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}}
+ .deptshead{{margin:0 0 14px;color:var(--green);font-size:20px;
+   text-transform:uppercase;letter-spacing:.06em}}
+ .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
+ @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
+ .deptcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
+   padding:30px 18px;border-radius:18px;text-decoration:none;
+   border:1px solid #e6e0d2;transition:transform .12s,box-shadow .12s}}
+ .deptwall{{background:linear-gradient(135deg,#f4efe6,#e9e2d2)}}
+ .deptapp{{background:linear-gradient(135deg,#eaf1ee,#d8e8e0)}}
+ .deptcard:hover{{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.12)}}
+ .depticon{{font-size:46px;line-height:1}}
+ .depttitle{{font-weight:800;color:var(--green);font-size:24px}}
+ .deptsub{{color:#5b5b52;font-size:14px;max-width:280px}}
+ .deptgo{{margin-top:6px;font-weight:700;color:var(--gold);font-size:15px}}
  .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
  .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
  .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
@@ -1986,9 +2001,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
    <span class="bn">{SHOP_NAME}</span>
    <nav class="navlinks" aria-label="Sections">
-     <a href="#grid">Shop</a>
-     <a href="#occasions">Occasions</a>
+     <a href="#wallart">🖼️ Wall Art</a>
      <a href="#apparel">👕 Apparel</a>
+     <a href="#occasions">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
    </nav>
@@ -2012,6 +2027,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
+ <section class="depts" aria-label="Shop by department">
+   <h2 class="deptshead">Shop by department</h2>
+   <div class="deptgrid">
+     <a class="deptcard deptwall" href="#wallart">
+       <span class="depticon">🖼️</span>
+       <span class="depttitle">Wall Art</span>
+       <span class="deptsub">Posters, framed prints, canvas, acrylic &amp; metal</span>
+       <span class="deptgo">Browse Wall Art →</span>
+     </a>
+     <a class="deptcard deptapp" href="#apparel">
+       <span class="depticon">👕</span>
+       <span class="depttitle">Apparel</span>
+       <span class="deptsub">T-shirts, hoodies &amp; sweatshirts</span>
+       <span class="deptgo">Browse Apparel →</span>
+     </a>
+   </div>
+ </section>
  {sproof_html}
  {cutoff_html}
  {"<div class='uatbar'>👋 Thanks for helping review " + SHOP_NAME +
@@ -2019,14 +2051,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   "tap <b>feedback</b>. "
   "<a href='mailto:" + owner + "?subject=Joffiels%20overall%20feedback'>"
   "Send overall feedback</a></div>" if uat else ""}
- <div class="intro">
-   <h2>Gifts they'll keep forever</h2>
+ <div class="intro" id="wallart">
+   <h2>🖼️ Wall Art — gifts they'll keep forever</h2>
    <p>Every piece is custom-made for your recipient - a name, an occasion, their
      story. Choose poster, framed, canvas, acrylic or metal when you personalize;
      a free digital proof is sent before anything is printed.</p>
  </div>
  {_occasion_showcase(kit_dir, external_assets, assets)}
- {_apparel_section()}
  <div id="gridcount" class="gridcount"></div>
  <p class="quiznudge">Not sure which one? <a href="#" onclick="openQuiz();return false">&#127873; Take the 30-second Gift Finder</a></p>
  <!-- Quick-jump: every design as a tap-able thumbnail that opens its page
@@ -2051,6 +2082,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="btot" id="btot">Select 2 or more to see your set price.</div>
    </div>
  </div>
+ {_apparel_section()}
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
