@@ -727,6 +727,43 @@ def _generalize_desc(d: str) -> str:
     return s
 
 
+def _apparel_section() -> str:
+    """Visible top-level Apparel category band (T-Shirt / Hoodie / Sweatshirt).
+    Each card opens the design editor straight into apparel mode via shopApparel().
+    Emits garment / from-price only - no supplier name."""
+    try:
+        from quoteforge.etsy.apparel_catalog import (
+            APPAREL_CATALOG, build_apparel_variations)
+    except Exception:  # noqa: BLE001
+        return ""
+    frm: dict = {}
+    for v in build_apparel_variations():
+        frm[v.garment_id] = min(frm.get(v.garment_id, 1e9), v.price)
+    if not frm:
+        return ""
+    emoji = {"tshirt": "👕", "hoodie": "🧥", "sweatshirt": "👚"}
+    cards = []
+    for g in APPAREL_CATALOG:
+        low = frm.get(g.garment_id)
+        if low is None:
+            continue
+        cards.append(
+            f'<button class="appcard" type="button" '
+            f'onclick="shopApparel(\'{g.garment_id}\')" '
+            f'aria-label="Design a custom {g.name}">'
+            f'<span class="appemoji">{emoji.get(g.garment_id, "👕")}</span>'
+            f'<span class="appname">{g.name}</span>'
+            f'<span class="appfrom">from ${low:.2f}</span>'
+            f'<span class="appcta">Design yours →</span></button>')
+    return (
+        '<section class="apparel-sec" id="apparel">'
+        '<h2>👕 Custom Apparel</h2>'
+        '<p class="apsub">Put your name, words or photo on a tee, hoodie or '
+        'sweatshirt - the same easy editor, made to order. Pick a garment to '
+        'start designing.</p>'
+        f'<div class="appgrid">{"".join(cards)}</div></section>')
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -1162,7 +1199,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-bottom:2px solid transparent}}
  .navlinks a:hover{{border-bottom-color:var(--gold)}}
  /* anchored sections clear the sticky header when jumped to */
- #grid,#occasions,#why,#faq{{scroll-margin-top:74px}}
+ #grid,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
+ .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
+ .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
+ .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
+ .appgrid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}
+ @media(max-width:640px){{.appgrid{{grid-template-columns:1fr}}}}
+ .appcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
+   padding:22px 14px;border:1px solid #e6e0d2;border-radius:14px;background:#fff;
+   cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}}
+ .appcard:hover{{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.10);
+   border-color:var(--gold)}}
+ .appemoji{{font-size:38px;line-height:1}}
+ .appname{{font-weight:700;color:var(--green);font-size:18px}}
+ .appfrom{{color:#7a7466;font-size:13px}}
+ .appcta{{margin-top:6px;font-weight:700;color:var(--gold);font-size:14px}}
  #basketBtnNav.pulse{{animation:basketpulse .5s ease 2}}
  /* gift finder quiz */
  #quiz{{position:fixed;inset:0;background:rgba(11,28,22,.62);display:none;z-index:70;
@@ -1937,6 +1988,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <nav class="navlinks" aria-label="Sections">
      <a href="#grid">Shop</a>
      <a href="#occasions">Occasions</a>
+     <a href="#apparel">👕 Apparel</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
    </nav>
@@ -1974,6 +2026,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      a free digital proof is sent before anything is printed.</p>
  </div>
  {_occasion_showcase(kit_dir, external_assets, assets)}
+ {_apparel_section()}
  <div id="gridcount" class="gridcount"></div>
  <p class="quiznudge">Not sure which one? <a href="#" onclick="openQuiz();return false">&#127873; Take the 30-second Gift Finder</a></p>
  <!-- Quick-jump: every design as a tap-able thumbnail that opens its page
@@ -2475,6 +2528,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
    CURFMT=(fmts[0]&&fmts[0].name)||"";
    fillSizes(); drawArt(); updateReview();
+ }}
+ // Entry point from the homepage Apparel category: open the editor straight into
+ // apparel mode and preselect the chosen garment's first colour.
+ function shopApparel(garment){{
+   if(!DATA.length) return;
+   openM(0); setProductType('apparel');
+   const label={{tshirt:'T-Shirt',hoodie:'Hoodie',sweatshirt:'Sweatshirt'}}[garment];
+   if(label){{ const idx=APPAREL_FORMATS.findIndex(f=>f.name.indexOf(label+' - ')===0);
+     if(idx>=0) pickFmt(CUR, idx); }}
  }}
  let CART = [];
  const QD = {qty_discount_json};

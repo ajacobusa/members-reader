@@ -26,6 +26,19 @@ def _page(tmp_path) -> str:
 
 # ── Apparel is selectable alongside wall art ─────────────────────
 
+def test_apparel_is_a_visible_top_level_section(tmp_path):
+    # REGRESSION: apparel must be DISCOVERABLE from the storefront, not buried in
+    # the editor - a nav link + a "Custom Apparel" category band with each garment.
+    h = _page(tmp_path)
+    assert 'href="#apparel"' in h                 # nav jump link
+    assert 'id="apparel"' in h                    # the section anchor
+    assert "Custom Apparel" in h
+    for garment in ("T-Shirt", "Hoodie", "Sweatshirt"):
+        assert garment in h
+    assert "function shopApparel" in h            # opens the editor in apparel mode
+    assert "Design yours" in h                    # the per-garment CTA
+
+
 def test_product_type_toggle_present(tmp_path):
     h = _page(tmp_path)
     assert "function setProductType" in h
