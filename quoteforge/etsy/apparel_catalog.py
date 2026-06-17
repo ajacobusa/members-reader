@@ -255,11 +255,16 @@ def enrich_apparel_order(order_data: dict) -> dict:
 # ── Isolated Gelato placeholder guard (separate from the print guard) ──
 
 def verify_apparel_mappings() -> dict:
-    """Check every apparel variant SKU carries a REAL Gelato UID (not a GEL-*
-    seed placeholder). Independent of `gelato_catalog.verify_catalog_mappings`
-    so the print go-live guard stays byte-for-byte unchanged."""
+    """Check every apparel variant SKU is MAPPED to a REAL Gelato UID in
+    GELATO_UID_MAP (the same source `resolve_apparel_uid` reads). A SKU is a
+    placeholder when it's unmapped or its mapped value is empty / still a GEL-*
+    seed. Clears to all_real=True only once the owner fills real UIDs. Independent
+    of `gelato_catalog.verify_catalog_mappings` so the print guard is untouched."""
+    from quoteforge.automation.gelato_sync import _uid_map
+    uid_map = _uid_map()
     skus = apparel_skus()
-    placeholders = [s for s in skus if not s or s.upper().startswith("GEL-")]
+    placeholders = [s for s in skus
+                    if not uid_map.get(s) or str(uid_map[s]).upper().startswith("GEL-")]
     total = len(skus)
     return {
         "total": total,

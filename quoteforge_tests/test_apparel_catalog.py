@@ -172,6 +172,22 @@ def test_admin_apparel_command(capsys, tmp_path, monkeypatch):
     assert (tmp_path / "apparel_inventory.csv").exists()
 
 
+def test_apparel_guard_clears_only_when_all_mapped(monkeypatch):
+    # REGRESSION: the go-live guard reads GELATO_UID_MAP (same source as
+    # resolve_apparel_uid) and clears to all_real ONLY when every SKU maps to a
+    # real (non-GEL-*) UID - so the owner can tell when apparel is launch-ready.
+    import json
+    skus = A.apparel_skus()
+    real = {s: f"apparel_real_{i}" for i, s in enumerate(skus)}
+    monkeypatch.setenv("GELATO_UID_MAP", json.dumps(real))
+    m = A.verify_apparel_mappings()
+    assert m["all_real"] is True and m["placeholder_count"] == 0
+    # a still-GEL-* mapped value is treated as a placeholder, not real
+    bad = dict(real); bad[skus[0]] = "GEL-STILL-SEED"
+    monkeypatch.setenv("GELATO_UID_MAP", json.dumps(bad))
+    assert A.verify_apparel_mappings()["placeholder_count"] == 1
+
+
 def test_apparel_guard_is_separate_from_print_guard():
     # REGRESSION: the print catalog guard must be untouched by apparel; the two
     # catalogs are independent, so the existing go-live tests keep passing.
