@@ -735,6 +735,21 @@ def _cmd_enhance_photo(args: list[str]) -> int:
     return 1
 
 
+def _cmd_gelato_mockups(args: list[str]) -> int:
+    """Preview which apparel garment types resolve to a real supplier product
+    image (the storefront uses these instead of the AI tiles when live)."""
+    from quoteforge.images.supplier_mockup import apparel_tile_images
+    imgs = apparel_tile_images(refresh="--refresh" in args)
+    if not imgs:
+        print("No supplier product images resolved (TEST_MODE, no GELATO_API_KEY, "
+              "or UIDs not mapped yet). AI tiles remain in use.")
+        return 0
+    print(f"Supplier product images resolved for {len(imgs)} garment type(s):")
+    for t, u in sorted(imgs.items()):
+        print(f"  {t:12s} {u}")
+    return 0
+
+
 def _cmd_delight(args: list[str]) -> int:
     """Post-delivery review + referral touches (the delight loop)."""
     from quoteforge.etsy.delight_loop import (
@@ -2359,6 +2374,7 @@ COMMANDS = {
     "delight": _cmd_delight,
     "check-photo": _cmd_check_photo,
     "enhance-photo": _cmd_enhance_photo,
+    "gelato-mockups": _cmd_gelato_mockups,
     "custom-copy": _cmd_custom_copy,
     "remind": _cmd_remind,
     "briefing": _cmd_briefing,
