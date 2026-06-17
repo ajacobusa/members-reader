@@ -2285,7 +2285,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
              <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
            </div>
 
-       <div class="swrow" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
+       <div class="swrow" id="mwalltip" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
        <div class="mdescbox">
          <div class="lbl">📋 About this piece</div>
          <div class="mdesc" id="mdesc"></div>
@@ -2293,7 +2293,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
-       <div style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
+       <div id="mavail" style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
          (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
@@ -2305,7 +2305,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <button type="button" data-e="2" onclick="editStep(2)">
            <span class="eicon">📷</span><span class="elbl">2. Photo</span></button>
          <button type="button" data-e="3" onclick="editStep(3)">
-           <span class="eicon">🖼️</span><span class="elbl">3. Frame &amp; size</span></button>
+           <span class="eicon">🖼️</span><span class="elbl" id="e3lbl">3. Frame &amp; size</span></button>
        </div>
        <div class="esec" id="esec1">
        <div class="perso">
@@ -2314,8 +2314,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="sw" id="mbg"></div>
          <div class="swrow">Text color</div>
          <div class="sw" id="mtxt"></div>
+         <div id="mwallrow">
          <div class="swrow">🛋️ Your room wall <span style="color:#9aa49c;font-weight:400">(preview against your wall color)</span></div>
          <div class="sw" id="mwall"></div>
+         </div>
          <div class="wordbox" id="mwordbox">
            <div class="wordlbl">✍️ Your wording - make it yours</div>
            <textarea id="mtext" maxlength="250" rows="4" oninput="onText()"
@@ -2585,10 +2587,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      fc.innerHTML=_fchips(fmts,i);
      fp.style.display='block';
    }}
+   applyProductChrome(fmts);   // wall-art chrome by default; reset on every open
    document.getElementById('mtitle').textContent = d.full_title;
    document.getElementById('mprice').textContent =
      "from $" + ((fmts[0] && fmts[0].price) ? fmts[0].price : d.price);
    document.getElementById('mdesc').innerHTML = fmtDesc(d.desc);
+   WALLART_DESC = document.getElementById('mdesc').innerHTML;  // baseline for restore
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
@@ -2637,6 +2641,35 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){{ return fmts.map((f,j)=>
    `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join(''); }}
+ let WALLART_AVAIL="", WALLART_DESC="";
+ const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Hoodie or Sweatshirt</b> - '
+   +'pick your garment, colour &amp; size next. Made to order, printed on the front.';
+ const APPAREL_DESC_HTML='<b>A personalized garment, made to order just for you.</b><br>'
+   +'1. Add the recipient name, occasion and a short story at checkout.<br>'
+   +'2. We design your artwork and email a FREE digital proof so you see exactly '
+   +'what prints.<br>'
+   +'3. Printed on a premium tee, hoodie or sweatshirt and shipped with tracking.<br>'
+   +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
+   +'printing, and your chosen garment, colour &amp; size. Sizing is final - please '
+   +'check the size before ordering.';
+ // Swap the editor chrome between Wall Art and Apparel: hide the wall-only bits
+ // (room-wall colours + tip) and switch the "available as" line, the "about"
+ // description, the step label and the price so an apparel buyer never sees
+ // poster/frame copy.
+ function applyProductChrome(fmts){{
+   ['mwallrow','mwalltip'].forEach(id=>{{const e=document.getElementById(id);
+     if(e) e.style.display = IS_APPAREL ? 'none' : '';}});
+   const av=document.getElementById('mavail');
+   if(av){{ if(!WALLART_AVAIL && !IS_APPAREL) WALLART_AVAIL=av.innerHTML;
+     av.innerHTML = IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML); }}
+   const md=document.getElementById('mdesc');
+   if(md){{ if(!WALLART_DESC && !IS_APPAREL) WALLART_DESC=md.innerHTML;
+     md.innerHTML = IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML); }}
+   const e3=document.getElementById('e3lbl');
+   if(e3) e3.textContent = IS_APPAREL ? '3. Garment & size' : '3. Frame & size';
+   const mp=document.getElementById('mprice');
+   if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
+ }}
  function setProductType(t){{
    IS_APPAREL=(t==='apparel');
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
@@ -2647,6 +2680,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const fc=document.getElementById('mfchips'), fmts=curFormats(CUR);
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
    CURFMT=(fmts[0]&&fmts[0].name)||"";
+   applyProductChrome(fmts);
    fillSizes(); drawArt(); updateReview();
  }}
  // Entry point from the homepage Apparel category: open the editor straight into

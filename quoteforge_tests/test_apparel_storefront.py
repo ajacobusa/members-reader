@@ -61,6 +61,20 @@ def test_apparel_cards_are_professional_product_tiles(tmp_path):
     assert "appemoji" not in h                     # old emoji tiles gone
 
 
+def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):
+    # REGRESSION: in Apparel mode the editor must hide wall-art-only chrome (room
+    # wall colours + tip) and swap the "available as" line, "about" description,
+    # step-3 label and price - an apparel buyer never sees poster/frame copy.
+    h = _page(tmp_path)
+    assert "function applyProductChrome" in h
+    for el in ('id="mwallrow"', 'id="mwalltip"', 'id="mavail"', 'id="e3lbl"'):
+        assert el in h, el
+    # apparel-specific copy is wired in
+    assert "T-Shirt, Hoodie or Sweatshirt" in h          # apparel availability line
+    assert "made to order just for you" in h             # apparel about-copy
+    assert "Garment & size" in h                          # apparel step-3 label
+
+
 def test_product_type_toggle_present(tmp_path):
     h = _page(tmp_path)
     assert "function setProductType" in h
