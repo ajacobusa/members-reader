@@ -56,3 +56,6 @@ Thumbs.db
 # stock dashboard runtime junk (regenerated; never back up)
 stock_dashboard/cache/
 stock_dashboard/logs/
+
+# stray local dir, not part of the project
+Wireless/
