@@ -40,6 +40,21 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
         f"With gratitude,\nThe {SHOP_NAME} team"
     )
 
+    # Optional production preview: a real mockup of the design ON the garment, as
+    # a VISUAL AID for the buyer. Additive + guarded - never blocks the proof, and
+    # it does NOT change the print file (the parity-gate hash + proof approval are
+    # unchanged). None in TEST_MODE / no key / non-apparel / on any failure.
+    product_mockup = None
+    try:
+        from quoteforge.images.supplier_mockup import design_mockup_for_order
+        product_mockup = design_mockup_for_order(order, artwork_path)
+    except Exception:  # noqa: BLE001
+        product_mockup = None
+    if product_mockup:
+        message += ("\n\nP.S. I've also attached a preview of how your design looks "
+                    "on the garment itself - the wording/photo is what you confirm "
+                    "above.")
+
     # Persist the proof message (so it's logged against the order)
     save_customer_message(order_id, "Proof Ready", message, sent=False)
 
@@ -53,6 +68,7 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
         "recipient": recipient,
         "proof_message": message,
         "artwork_path": artwork_path or order.get("artwork_url", ""),
+        "product_mockup": product_mockup,   # visual aid only; None when unavailable
         "instructions": (
             "Send the proof_message to the buyer in the Etsy order conversation "
             "and attach the artwork image. If no change request arrives within "
