@@ -26,6 +26,19 @@ def _page(tmp_path) -> str:
 
 # ── Apparel is selectable alongside wall art ─────────────────────
 
+def test_homepage_how_it_works_block(tmp_path):
+    # REGRESSION: a 3-step "How it works" block de-risks made-to-order (the free
+    # proof is the trust pivot) - the study's homepage quick win.
+    h = _page(tmp_path)
+    assert 'class="hiw"' in h and ">How it works<" in h
+    assert h.count('class="hiwstep"') == 3
+    for step in ("Personalize it", "Approve a free proof", "We print"):
+        assert step in h, step
+    assert "free proof" in h.lower() and "made to order" in h.lower()
+    # de-risk copy must not leak the supplier
+    assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
 def test_two_departments_wall_art_and_apparel(tmp_path):
     # REGRESSION: the store is organized into TWO co-equal departments - Wall Art
     # and Apparel - with a "Shop by department" chooser and a nav link + anchor
