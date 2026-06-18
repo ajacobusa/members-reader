@@ -81,6 +81,34 @@ def test_apparel_tile_images_empty_in_test_mode():
     assert gm.apparel_tile_images() == {}
 
 
+def test_apparel_tile_color_images_empty_in_test_mode():
+    # TEST_MODE: per-colour map empty -> tile keeps its default photo.
+    assert gm.apparel_tile_color_images() == {}
+
+
+def test_apparel_tile_color_images_resolves_per_colour(tmp_path, monkeypatch):
+    # REGRESSION: when live, each garment type maps colour -> a real image URL, so
+    # the storefront can swap the tile photo to the picked colour.
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", False)
+    monkeypatch.setattr("quoteforge.automation.gelato_api.GELATO_API_KEY", "k_live")
+    # every SKU maps to a real UID; the image URL encodes the SKU so colours differ
+    monkeypatch.setattr("quoteforge.automation.gelato_sync._uid_map",
+                        lambda: {s: f"uid_{i}" for i, s in enumerate(_all_skus())})
+    monkeypatch.setattr(gm, "_fetch_product_image",
+                        lambda uid: f"http://cdn/{uid}.png")
+    out = gm.apparel_tile_color_images()
+    assert out, "expected per-colour images when live"
+    # tshirt resolves multiple colours, each a distinct URL
+    assert "tshirt" in out and len(out["tshirt"]) >= 2
+    assert all(u.startswith("http") for u in out["tshirt"].values())
+
+
+def _all_skus():
+    from quoteforge.etsy.apparel_catalog import apparel_skus
+    return apparel_skus()
+
+
 # ── Storefront wiring ────────────────────────────────────────────
 
 def test_storefront_uses_supplier_image_when_present(tmp_path, monkeypatch):

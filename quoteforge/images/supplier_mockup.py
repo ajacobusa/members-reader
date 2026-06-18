@@ -131,3 +131,35 @@ def apparel_tile_images(*, refresh: bool = False) -> dict:
         if url:
             out[t] = url
     return out
+
+
+def apparel_tile_color_images(*, refresh: bool = False) -> dict:
+    """Map garment_type -> {colour -> real product image URL}, so the storefront
+    can swap a tile's photo to the picked colour. One representative SKU per
+    (type, colour) on the Classic tier. Only entries that resolve to a real image
+    are included; empty in TEST_MODE / no key (the tile keeps its default photo)."""
+    out: dict = {}
+    try:
+        from quoteforge.config import TEST_MODE
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        if TEST_MODE or not GELATO_API_KEY:
+            return out
+        from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
+    except Exception:  # noqa: BLE001
+        return out
+    for g in APPAREL_CATALOG:
+        t = g.garment_type
+        if t in out or getattr(g, "tier", "Classic") != "Classic":
+            continue
+        if not (g.sizes and g.colors):
+            continue
+        per_color: dict = {}
+        for color in g.colors:
+            sku = apparel_sku_for(g.garment_id, g.sizes[0], color)
+            if sku:
+                url = gelato_blank_image(sku, refresh=refresh)
+                if url:
+                    per_color[color] = url
+        if per_color:
+            out[t] = per_color
+    return out
