@@ -105,6 +105,25 @@ def test_apparel_filter_bar(tmp_path):
     assert "gelato" not in h.lower() and "gildan" not in h.lower()
 
 
+def test_apparel_color_swatches_and_carry_through(tmp_path):
+    # REGRESSION: each tile shows its available-colour swatch dots (filled client-
+    # side from APPARELCOLOR), the filter rings the chosen colour, and clicking a
+    # swatch / a tile under an active colour filter opens the editor in that colour
+    # so the live preview recolors. Also fixes pickFmt (was indexing wall-art
+    # formats), so apparel colour selection actually changes the garment.
+    h = _page(tmp_path)
+    assert h.count('class="appsw"') == 39          # a swatch row per tile
+    assert h.count("data-garment=") == 39          # garment name for swatch clicks
+    assert "function initApparelSwatches" in h     # paints the dots on load
+    assert "APPARELCOLOR[cn]" in h                 # dot colour from the shared map
+    assert "function selectApparelColor" in h      # preselect colour in editor
+    assert "function shopApparel(garment,color)" in h   # carries the colour through
+    assert "_afVal('afColor')" in h                # tile click uses the filter colour
+    assert "const f = curFormats(i)[j]" in h       # pickFmt bug fix (apparel-aware)
+    assert "seldot" in h                           # selected-colour ring class
+    assert "initApparelSwatches()" in h            # invoked on DOMContentLoaded
+
+
 def test_editor_apparel_pills_are_garment_scoped(tmp_path):
     # REGRESSION: with many garments the editor must scope colour pills to the
     # SELECTED garment (CURGARMENT), not show every garment's colours at once.

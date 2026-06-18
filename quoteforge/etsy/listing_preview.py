@@ -823,13 +823,14 @@ def _apparel_section(photos: dict | None = None) -> str:
         return (
             f'<button class="appcard" type="button" '
             f'data-gender="{g.gender}" data-type="{g.type_name}" '
-            f'data-brand="{brand_disp}" data-tier="{g.tier}" '
+            f'data-brand="{brand_disp}" data-tier="{g.tier}" data-garment="{g.name}" '
             f'data-colors="{"|".join(g.colors)}" data-sizes="{"|".join(g.sizes)}" '
             f'onclick="shopApparel(\'{name_js}\')" '
             f'aria-label="Design a custom {g.name}">'
             f'{tile}'
             f'<span class="appname">{g.type_name}</span>'
             f'{tier_line}'
+            f'<span class="appsw" aria-label="Available colours"></span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
 
@@ -1403,6 +1404,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apptier{{color:var(--gold-d);font-size:12px;font-weight:600;letter-spacing:.02em}}
  .appfrom{{color:#7a7466;font-size:13px}}
  .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
+ .appsw{{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:2px 0 1px}}
+ .swdot{{width:15px;height:15px;border-radius:50%;border:1px solid rgba(0,0,0,.22);
+   cursor:pointer;transition:transform .12s,box-shadow .12s}}
+ .swdot:hover{{transform:scale(1.18)}}
+ .swdot.seldot{{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold-d);transform:scale(1.12)}}
  .appfilters{{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 20px}}
  .appfilter{{appearance:none;-webkit-appearance:none;background:#fff;border:1px solid var(--line);
    border-radius:10px;padding:8px 30px 8px 12px;font:inherit;font-size:14px;color:var(--ink);
@@ -2807,11 +2813,41 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Entry point from the homepage Apparel category: open the editor straight into
  // apparel mode and preselect the chosen garment's first colour.
- function shopApparel(garment){{
+ function shopApparel(garment,color){{
    if(!DATA.length) return;
    openM(0);                       // openM clears CURGARMENT; set it AFTER
    CURGARMENT=garment||"";         // the full garment name, e.g. "Men's T-Shirt"
+   var col=color||_afVal('afColor');  // a clicked swatch, else the active filter colour
    setProductType('apparel');      // scopes the pills to that garment's colours
+   if(col) selectApparelColor(col);   // open the live preview in that colour
+ }}
+ // Preselect a garment colour in the editor so the preview renders in it -
+ // applies the colour WITHOUT auto-advancing the step (unlike a chip click).
+ function selectApparelColor(color){{
+   var fmts=apparelFormatsFor(), target=CURGARMENT+' - '+color, j=-1;
+   for(var k=0;k<fmts.length;k++){{ if(fmts[k].name===target){{ j=k; break; }} }}
+   if(j<0) return;
+   CURFMT=fmts[j].name;
+   document.querySelectorAll('#mfchips .fchip').forEach(function(e,k){{
+     e.classList.toggle('sel',k===j); }});
+   if(fmts[j].price) document.getElementById('mprice').textContent='from $'+fmts[j].price;
+   drawArt(); fillSizes();
+ }}
+ // Paint each apparel tile's available-colour swatch dots (one source of truth:
+ // APPARELCOLOR). A dot opens the editor straight into that garment + colour.
+ function initApparelSwatches(){{
+   document.querySelectorAll('.appcard').forEach(function(card){{
+     var box=card.querySelector('.appsw'); if(!box||box.children.length) return;
+     var garment=card.dataset.garment||'';
+     (card.dataset.colors||'').split('|').forEach(function(cn){{
+       if(!cn) return;
+       var dot=document.createElement('i');
+       dot.className='swdot'; dot.title=cn; dot.setAttribute('data-color',cn);
+       dot.style.background=(typeof APPARELCOLOR!=='undefined' && APPARELCOLOR[cn])||'#bbb';
+       dot.onclick=function(ev){{ ev.stopPropagation(); shopApparel(garment,cn); }};
+       box.appendChild(dot);
+     }});
+   }});
  }}
  function _afVal(id){{var e=document.getElementById(id);return e?e.value:'';}}
  function applyApparelFilters(){{
@@ -2824,6 +2860,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        &&(!c||(ds.colors||'').split('|').indexOf(c)>=0)
        &&(!s||(ds.sizes||'').split('|').indexOf(s)>=0);
      card.classList.toggle('hide',!ok); if(ok)shown++;
+     // ring the chosen colour's swatch on each matching tile
+     card.querySelectorAll('.swdot').forEach(function(dot){{
+       dot.classList.toggle('seldot', !!c && dot.getAttribute('data-color')===c);
+     }});
    }});
    document.querySelectorAll('.appgroup').forEach(function(gp){{
      gp.classList.toggle('hide',gp.querySelectorAll('.appcard:not(.hide)').length===0);
@@ -3738,7 +3778,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
  }})();
  function pickFmt(i,j){{
-   const f = fmtsFor(i)[j];
+   const f = curFormats(i)[j];   // apparel colour chips OR wall-art frames
    if(f.price) document.getElementById('mprice').textContent = "from $" + f.price;
    document.querySelectorAll('#mfchips .fchip').forEach((e,k)=>
      e.classList.toggle('sel', k===j));
@@ -3980,6 +4020,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function abConvert(){{ for(const exp in AB_ASSIGNED) _abSend(exp, AB_ASSIGNED[exp], 'conversion'); }}
  window.addEventListener('DOMContentLoaded', applyExperiments);
+ window.addEventListener('DOMContentLoaded', function(){{
+   if(typeof initApparelSwatches==='function') initApparelSwatches();
+ }});
  const SIGNUP_URL = "{signup_url}";
  let EXIT_SHOWN = false;
  function _exitDone(){{ try{{localStorage.setItem('jf_exit','1');}}catch(e){{}} }}
