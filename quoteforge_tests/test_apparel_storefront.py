@@ -277,6 +277,19 @@ def test_apparel_preview_is_a_garment_silhouette_by_type(tmp_path):
     assert "chest print area" in h                 # boundary sits on the chest
 
 
+def test_editor_text_legible_over_photo_and_photo_repositionable(tmp_path):
+    # REGRESSION: with an uploaded photo, (1) the wording gets a CONTRASTING
+    # outline so it stays legible over any part of the image (a dark photo would
+    # otherwise swallow dark text), and (2) the photo has enough bleed to actually
+    # be dragged up/down to reposition it (was 1.06 -> barely any room).
+    h = _page(tmp_path)
+    assert "function _isLight" in h                       # text/outline contrast helper
+    assert "overPhoto) ctx.strokeText" in h               # outline drawn over a photo
+    assert "1.25*PHOTO_ZOOM" in h                         # bleed -> room to reposition
+    # drag handlers still move BOTH axes for text and photo
+    assert "TPOS.y=_clamp" in h and "PHOTO_FY=_clamp" in h
+
+
 def test_apparel_sizing_is_final_note_present(tmp_path):
     # REGRESSION: apparel fit is final under the made-to-order policy; the buyer
     # must be told before ordering, so we don't get "wrong size" exchange demands.
