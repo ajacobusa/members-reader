@@ -66,33 +66,42 @@ class ApparelGarment:
 # Value is cheaper, Premium is higher-end. Brand can't be a 3rd Etsy axis (Size +
 # Colour fill both), so each tier is its own listing. Confirm exact product + UID
 # in the Gelato dashboard before go-live.
+# Standard apparel colour palette offered on every garment (light-forward so the
+# default tile/preview stays clean). These are the popular colours common across
+# Gelato's blank brands; the full per-blank palette (up to 80+) is resolved from
+# Gelato at go-live. Every colour here has a hex swatch in listing_preview's
+# APPARELCOLOR map - keep the two in lock-step.
+_STD_COLORS = ["White", "Sand", "Heather Grey", "Light Blue", "Black", "Charcoal",
+               "Navy", "Royal Blue", "Red", "Maroon", "Forest Green", "Sage",
+               "Mustard", "Purple", "Dusty Rose", "Brown"]
+
 # (type_id, type_name, colours, genders, tiers[(tier, brand, cost)] Classic first)
 _APPAREL_TYPES = [
-    ("tshirt", "T-Shirt", ["White", "Sand", "Heather Grey", "Light Blue", "Navy", "Black"],
+    ("tshirt", "T-Shirt", _STD_COLORS,
      ("men", "women"), [("Classic", "Comfort Colors 1717", 13.00),
                         ("Value", "SOL's 11500", 10.00),
                         ("Premium", "Lane Seven LS15001", 17.00)]),
-    ("tank", "Tank Top", ["White", "Sand", "Heather Grey", "Black"],
+    ("tank", "Tank Top", _STD_COLORS,
      ("men", "women"), [("Classic", "Next Level 6733", 12.00),
                         ("Value", "SOL's 01175", 9.00),
                         ("Premium", "Lane Seven LS15003", 15.00)]),
-    ("longsleeve", "Long Sleeve Shirt", ["White", "Sand", "Heather Grey", "Navy", "Black"],
+    ("longsleeve", "Long Sleeve Shirt", _STD_COLORS,
      ("men", "women"), [("Classic", "Comfort Colors 6014", 16.00),
                         ("Value", "SOL's 02074", 14.00),
                         ("Premium", "Stanley/Stella M001", 20.00)]),
-    ("raglan", "3/4 Sleeve Shirt", ["White", "Heather Grey", "Navy", "Black"],
+    ("raglan", "3/4 Sleeve Shirt", _STD_COLORS,
      ("men", "women"), [("Classic", "Next Level 6051", 16.00),
                         ("Value", "SOL's 01166", 13.00),
                         ("Premium", "Lane Seven LS14002", 19.00)]),
-    ("polo", "Polo Shirt", ["White", "Light Blue", "Navy", "Black"],
+    ("polo", "Polo Shirt", _STD_COLORS,
      ("men",), [("Classic", "Port & Company KP55", 22.00),
                 ("Value", "SOL's 11362", 18.00),
                 ("Premium", "Lane Seven LS25001", 28.00)]),
-    ("hoodie", "Hoodie", ["White", "Heather Grey", "Sand", "Maroon", "Navy", "Black"],
+    ("hoodie", "Hoodie", _STD_COLORS,
      ("men", "women"), [("Classic", "Lane Seven LS14001", 28.00),
                         ("Value", "SOL's 01695", 22.00),
                         ("Premium", "Stanley/Stella M002", 34.00)]),
-    ("sweatshirt", "Sweatshirt", ["White", "Sand", "Heather Grey", "Navy", "Black"],
+    ("sweatshirt", "Sweatshirt", _STD_COLORS,
      ("men", "women"), [("Classic", "Comfort Colors 1566", 24.00),
                         ("Value", "SOL's 03102", 19.00),
                         ("Premium", "Stanley/Stella M003", 30.00)]),

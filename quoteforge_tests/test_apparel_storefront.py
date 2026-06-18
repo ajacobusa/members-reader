@@ -300,6 +300,18 @@ def test_apparel_colour_swatches(tmp_path):
     assert "APPARELCOLOR" in h
 
 
+def test_full_colour_palette_has_swatches_and_filter_options(tmp_path):
+    # REGRESSION: every standard colour has a real hex swatch (so tiles/editor/
+    # filter never fall back to grey) and appears as a Colour filter option.
+    h = _page(tmp_path)
+    for colour in ("Royal Blue", "Forest Green", "Sage", "Mustard", "Charcoal",
+                   "Purple", "Dusty Rose", "Brown", "Red"):
+        assert f'"{colour}":"#' in h, f"{colour} missing hex swatch"   # APPARELCOLOR
+        assert f'<option value="{colour}">' in h, f"{colour} missing filter option"
+    # auto-contrast knows the new dark shirts (white text on them)
+    assert "'Forest Green':1" in h and "'Charcoal':1" in h
+
+
 # ── Preservation: wall-art path is unchanged + no supplier leak ──
 
 def test_wall_art_picker_still_intact(tmp_path):
