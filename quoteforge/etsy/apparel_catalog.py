@@ -273,17 +273,15 @@ def resolve_apparel_sku(fmt: str, size: str) -> str | None:
 
 
 def resolve_apparel_uid(sku: str | None) -> str | None:
-    """Map an apparel variant SKU to its REAL Gelato product UID via the
-    GELATO_UID_MAP env (the SAME mechanism wall-art SKUs use). Returns None when
-    the SKU is unmapped or still a GEL-* placeholder, so the caller routes to
-    manual review instead of submitting a placeholder to production."""
+    """Map an apparel variant SKU to its REAL Gelato product UID. A statically
+    mapped UID (GELATO_UID_MAP) wins; otherwise the variant is resolved
+    dynamically from the SKU's mapped product FAMILY via Gelato's API (live only).
+    Returns None when neither is available, so the caller routes to manual review
+    instead of submitting a placeholder to production."""
     if not sku:
         return None
-    from quoteforge.automation.gelato_sync import _uid_map
-    uid = _uid_map().get(sku)
-    if not uid or str(uid).upper().startswith("GEL-"):
-        return None
-    return uid
+    from quoteforge.automation.gelato_variant_resolver import resolve_variant_uid
+    return resolve_variant_uid(sku)
 
 
 def enrich_apparel_order(order_data: dict) -> dict:
@@ -311,7 +309,8 @@ def enrich_apparel_order(order_data: dict) -> dict:
         cost = _variant_cost(g, size, sku)
         if cost is not None:
             out["gelato_cost"] = cost
-    uid = resolve_apparel_uid(sku)
+    from quoteforge.automation.gelato_variant_resolver import resolve_variant_uid
+    uid = resolve_variant_uid(sku, gid, color, size)
     if uid:
         out["gelato_product_uid"] = uid
     return out
@@ -320,17 +319,25 @@ def enrich_apparel_order(order_data: dict) -> dict:
 # ── Isolated Gelato placeholder guard (separate from the print guard) ──
 
 def verify_apparel_mappings() -> dict:
-    """Check every apparel variant SKU is MAPPED to a REAL Gelato UID in
-    GELATO_UID_MAP (the same source `resolve_apparel_uid` reads). A SKU is a
-    placeholder when it's unmapped or its mapped value is empty / still a GEL-*
-    seed. Clears to all_real=True only once the owner fills real UIDs. Independent
-    of `gelato_catalog.verify_catalog_mappings` so the print guard is untouched."""
+    """Check every apparel variant is GO-LIVE READY. A SKU is covered when EITHER
+    its specific UID is statically mapped (GELATO_UID_MAP) OR its (garment_type,
+    tier) product FAMILY is mapped (GELATO_PRODUCT_FAMILY_MAP) - so the dynamic
+    resolver can produce the variant UID at order time. This means mapping ~21
+    families covers all ~3,120 SKUs. A SKU is a placeholder only when neither
+    exists (or the value is still a GEL-* seed). Independent of the print guard."""
     from quoteforge.automation.gelato_sync import _uid_map
+    from quoteforge.automation.gelato_variant_resolver import family_covered
     uid_map = _uid_map()
-    skus = apparel_skus()
-    placeholders = [s for s in skus
-                    if not uid_map.get(s) or str(uid_map[s]).upper().startswith("GEL-")]
-    total = len(skus)
+    vs = build_apparel_variations()
+    placeholders = []
+    for v in vs:
+        st = uid_map.get(v.gelato_sku)
+        if st and not str(st).upper().startswith("GEL-"):
+            continue                      # statically mapped to a real UID
+        if family_covered(v.garment_id):
+            continue                      # family mapped -> resolved dynamically
+        placeholders.append(v.gelato_sku)
+    total = len(vs)
     return {
         "total": total,
         "configured": total - len(placeholders),
