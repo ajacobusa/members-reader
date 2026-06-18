@@ -1158,9 +1158,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     apparel_formats: list = []
     if frame_picker:
         try:
-            from quoteforge.etsy.apparel_catalog import build_apparel_variations
+            from quoteforge.etsy.apparel_catalog import (
+                build_apparel_variations, APPAREL_CATALOG)
             _ap_from: dict = {}
             _size_order = ["S", "M", "L", "XL", "2XL", "3XL"]
+            # Canonical colour order (light-forward, White first) so each garment's
+            # pills/swatches/default open on White - not alphabetical "Black".
+            _corder = {c: i for i, c in enumerate(
+                APPAREL_CATALOG[0].colors if APPAREL_CATALOG else [])}
             for av in build_apparel_variations():
                 key = f"{av.name} - {av.color}"
                 sizemap.setdefault(key, []).append(
@@ -1172,8 +1177,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     seen.values(),
                     key=lambda r: (_size_order.index(r["size"])
                                    if r["size"] in _size_order else 99))
+            def _ap_sort(item):
+                """Sort key: garment, then catalogue colour rank (White first)."""
+                g, _, c = item[0].rpartition(" - ")
+                return (g, _corder.get(c, 99), c)
             apparel_formats = [{"name": k, "img": "", "price": round(p, 2)}
-                               for k, p in sorted(_ap_from.items())]
+                               for k, p in sorted(_ap_from.items(), key=_ap_sort)]
         except Exception:  # noqa: BLE001
             apparel_formats = []
     apparel_formats_json = json.dumps(apparel_formats)

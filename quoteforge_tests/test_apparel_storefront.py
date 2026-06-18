@@ -77,6 +77,14 @@ def test_apparel_brand_tiers_present(tmp_path):
     assert "bella" not in h.lower() and "gildan" not in h.lower()
 
 
+def test_apparel_default_colour_is_white_not_alphabetical(tmp_path):
+    # REGRESSION: a garment opens on its light-forward default (White), not the
+    # alphabetically-first "Black" - the formats are colour-ordered by catalogue.
+    h = _page(tmp_path)
+    assert "Men's T-Shirt - White" in h and "Men's T-Shirt - Black" in h
+    assert h.index("Men's T-Shirt - White") < h.index("Men's T-Shirt - Black")
+
+
 def test_apparel_shop_by_occasion(tmp_path):
     # REGRESSION: the apparel department leads with an occasion-first strip; each
     # chip opens the editor pre-loaded with that occasion's quote (gift intent is
