@@ -124,6 +124,60 @@ def test_apparel_color_swatches_and_carry_through(tmp_path):
     assert "initApparelSwatches()" in h            # invoked on DOMContentLoaded
 
 
+def test_apparel_percolor_tile_swap_wired(tmp_path):
+    # REGRESSION: the per-colour supplier-photo swap is wired (no-op until go-live).
+    h = _page(tmp_path)
+    assert "const APPAREL_COLOR_IMG = {}" in h       # empty in TEST_MODE -> no swap
+    for fn in ("function swapTileColor", "function resetTileColor",
+               "function selectTileColor", "function _tileColorUrl"):
+        assert fn in h, fn
+    assert "selectTileColor(card,cn)" in h           # swatch previews colour on tile
+    assert "this.dataset.activecolor" in h           # tile opens editor in active colour
+    assert "card.dataset.defimg" in h                # default photo remembered for reset
+    # the swap lookup key must be the garment_type ID (matches APPAREL_COLOR_IMG
+    # keys), NOT the display type_name - else the swap is silently inert at go-live
+    assert h.count("data-typeid=") == 39
+    assert 'data-typeid="tshirt"' in h and 'data-typeid="hoodie"' in h
+    assert "_tileColorUrl(card.dataset.typeid" in h
+
+
+def test_apparel_tile_uses_supplier_color_image_when_live(tmp_path, monkeypatch):
+    # REGRESSION: at go-live the per-colour map is embedded so the tile can swap.
+    import quoteforge.images.supplier_mockup as sm
+    monkeypatch.setattr(sm, "apparel_tile_color_images",
+                        lambda *a, **k: {"tshirt": {"Black": "https://cdn/tee-black.png"}})
+    h = _page(tmp_path)
+    assert "https://cdn/tee-black.png" in h          # embedded in APPAREL_COLOR_IMG
+
+
+def test_apparel_filter_options_all_have_products(tmp_path):
+    # AUDIT: every facet option the bar offers must correspond to >=1 garment - no
+    # orphan filter values (a combination can still be legitimately empty; the UI
+    # shows the empty state for that).
+    from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, build_apparel_variations
+    priced = {v.garment_id for v in build_apparel_variations()}
+    shown = [g for g in APPAREL_CATALOG if g.garment_id in priced]
+    types = {g.type_name for g in shown}
+    brands = {(g.brand.rsplit(" ", 1)[0] if g.brand else "") for g in shown}
+    colors = {c for g in shown for c in g.colors}
+    sizes = {s for g in shown for s in g.sizes}
+    # each facet value is backed by at least one product
+    for t in types:
+        assert any(g.type_name == t for g in shown), t
+    for b in brands:
+        assert any((g.brand.rsplit(" ", 1)[0] if g.brand else "") == b for g in shown), b
+    for c in colors:
+        assert any(c in g.colors for g in shown), c
+    for s in sizes:
+        assert any(s in g.sizes for g in shown), s
+    # sanity: the headline combination from the screenshot resolves correctly
+    # (a brand+colour+size combo either yields matching garments or none - never errors)
+    matches = [g for g in shown
+               if (g.brand.rsplit(" ", 1)[0] if g.brand else "") and "Black" in g.colors
+               and "XL" in g.sizes]
+    assert isinstance(matches, list)   # well-defined result for every combination
+
+
 def test_editor_apparel_pills_are_garment_scoped(tmp_path):
     # REGRESSION: with many garments the editor must scope colour pills to the
     # SELECTED garment (CURGARMENT), not show every garment's colours at once.

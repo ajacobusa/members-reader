@@ -824,8 +824,9 @@ def _apparel_section(photos: dict | None = None) -> str:
             f'<button class="appcard" type="button" '
             f'data-gender="{g.gender}" data-type="{g.type_name}" '
             f'data-brand="{brand_disp}" data-tier="{g.tier}" data-garment="{g.name}" '
+            f'data-typeid="{g.garment_type}" '
             f'data-colors="{"|".join(g.colors)}" data-sizes="{"|".join(g.sizes)}" '
-            f'onclick="shopApparel(\'{name_js}\')" '
+            f'onclick="shopApparel(\'{name_js}\', this.dataset.activecolor||\'\')" '
             f'aria-label="Design a custom {g.name}">'
             f'{tile}'
             f'<span class="appname">{g.type_name}</span>'
@@ -880,6 +881,7 @@ def _apparel_section(photos: dict | None = None) -> str:
                 f'<option value="">{all_label}</option>{opts}</select>')
     filterbar = (
         '<div class="appfilters" role="group" aria-label="Filter apparel">'
+        + '<span class="appfilterlbl">Refine</span>'
         + _sel("afDept", "Department", "All departments", dept_opts)
         + _sel("afType", "Type", "All types", _opts(types_f))
         + _sel("afBrand", "Brand", "All brands", _opts(brands_f))
@@ -1142,6 +1144,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         except Exception:  # noqa: BLE001
             apparel_formats = []
     apparel_formats_json = json.dumps(apparel_formats)
+    # Per-colour supplier product photos {garment_type:{colour:url}} - swaps the
+    # tile photo to the picked colour at go-live; empty (no swap) in TEST_MODE.
+    try:
+        from quoteforge.images.supplier_mockup import apparel_tile_color_images
+        apparel_color_img = apparel_tile_color_images()
+    except Exception:  # noqa: BLE001
+        apparel_color_img = {}
+    apparel_color_img_json = json.dumps(apparel_color_img)
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
     editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
@@ -1409,17 +1419,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    cursor:pointer;transition:transform .12s,box-shadow .12s}}
  .swdot:hover{{transform:scale(1.18)}}
  .swdot.seldot{{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold-d);transform:scale(1.12)}}
- .appfilters{{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 20px}}
- .appfilter{{appearance:none;-webkit-appearance:none;background:#fff;border:1px solid var(--line);
-   border-radius:10px;padding:8px 30px 8px 12px;font:inherit;font-size:14px;color:var(--ink);
-   cursor:pointer;background-repeat:no-repeat;background-position:right 11px center;
+ .appfilters{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+   margin:6px 0 24px;padding:13px 16px;background:#fff;border:1px solid var(--line);
+   border-radius:16px;box-shadow:0 3px 16px rgba(16,61,46,.05)}}
+ .appfilterlbl{{font-weight:700;color:var(--green);font-size:12px;letter-spacing:.09em;
+   text-transform:uppercase;padding-right:2px}}
+ .appfilter{{appearance:none;-webkit-appearance:none;min-width:122px;background:var(--cream);
+   border:1px solid var(--line);border-radius:11px;padding:9px 30px 9px 13px;font:inherit;
+   font-size:14px;color:var(--ink);cursor:pointer;background-repeat:no-repeat;
+   background-position:right 11px center;
    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7a72' stroke-width='1.6'/></svg>")}}
- .appfilter:hover{{border-color:var(--gold)}}
+ .appfilter:hover{{border-color:var(--gold);background-color:#fff}}
  .appfilter:focus{{outline:none;border-color:var(--gold-d);box-shadow:0 0 0 3px rgba(201,168,76,.25)}}
- .appfilterclear{{background:none;border:1px solid var(--line);border-radius:10px;
-   padding:8px 14px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}}
+ .appfilterclear{{background:none;border:1px solid var(--line);border-radius:11px;
+   padding:9px 15px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}}
  .appfilterclear:hover{{color:var(--ink);border-color:var(--gold)}}
- .appfiltercount{{margin-left:auto;color:var(--muted);font-size:13px;white-space:nowrap}}
+ .appfiltercount{{margin-left:auto;color:var(--green);font-weight:600;font-size:13px;
+   white-space:nowrap;background:var(--cream);border-radius:20px;padding:6px 13px}}
+ @media(max-width:640px){{.appfilters{{padding:12px;gap:8px}}.appfilterlbl{{flex-basis:100%}}}}
  .appgroup.hide,.appcard.hide{{display:none}}
  .apnomatch{{text-align:center;color:var(--muted);padding:22px 0;font-size:15px}}
  @media(max-width:640px){{.appfilter,.appfilterclear{{flex:1 1 42%}}
@@ -2747,6 +2764,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function fmtsFor(i){{ const f=DATA[i].formats; return (f&&f.length)?f:ALL_FORMATS; }}
  // ── Apparel: a parallel product type sharing this picker + design editor ──
  const APPAREL_FORMATS = {apparel_formats_json};
+ // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
+ // when empty the tile keeps its default photo (the swatch still rings + carries).
+ const APPAREL_COLOR_IMG = {apparel_color_img_json};
  let IS_APPAREL=false, CURGARMENT="";
  // Apparel pills are scoped to the SELECTED garment (CURGARMENT) so the editor
  // shows just that garment's colours, not every garment in the catalogue.
@@ -2833,18 +2853,34 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(fmts[j].price) document.getElementById('mprice').textContent='from $'+fmts[j].price;
    drawArt(); fillSizes();
  }}
+ // Real per-colour photo for a tile (go-live), else '' to keep the default shot.
+ function _tileColorUrl(type,color){{ var m=APPAREL_COLOR_IMG[type]; return (m&&m[color])||''; }}
+ function swapTileColor(card,color){{
+   var img=card.querySelector('.appimg'); if(!img) return;
+   img.src = _tileColorUrl(card.dataset.typeid,color) || card.dataset.defimg || img.src; }}
+ function resetTileColor(card){{
+   var img=card.querySelector('.appimg');
+   if(img && card.dataset.defimg) img.src=card.dataset.defimg; }}
+ // Preview a colour ON the tile (ring the dot + swap the photo at go-live). Does
+ // NOT open the editor - the tile body / CTA does that, in the active colour.
+ function selectTileColor(card,color){{
+   card.dataset.activecolor=color;
+   card.querySelectorAll('.swdot').forEach(function(d){{
+     d.classList.toggle('seldot', d.getAttribute('data-color')===color); }});
+   swapTileColor(card,color); }}
  // Paint each apparel tile's available-colour swatch dots (one source of truth:
- // APPARELCOLOR). A dot opens the editor straight into that garment + colour.
+ // APPARELCOLOR) and remember its default photo so colours can swap + reset.
  function initApparelSwatches(){{
    document.querySelectorAll('.appcard').forEach(function(card){{
+     var img=card.querySelector('.appimg');
+     if(img && !card.dataset.defimg) card.dataset.defimg=img.getAttribute('src')||'';
      var box=card.querySelector('.appsw'); if(!box||box.children.length) return;
-     var garment=card.dataset.garment||'';
      (card.dataset.colors||'').split('|').forEach(function(cn){{
        if(!cn) return;
        var dot=document.createElement('i');
        dot.className='swdot'; dot.title=cn; dot.setAttribute('data-color',cn);
        dot.style.background=(typeof APPARELCOLOR!=='undefined' && APPARELCOLOR[cn])||'#bbb';
-       dot.onclick=function(ev){{ ev.stopPropagation(); shopApparel(garment,cn); }};
+       dot.onclick=function(ev){{ ev.stopPropagation(); selectTileColor(card,cn); }};
        box.appendChild(dot);
      }});
    }});
@@ -2860,10 +2896,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        &&(!c||(ds.colors||'').split('|').indexOf(c)>=0)
        &&(!s||(ds.sizes||'').split('|').indexOf(s)>=0);
      card.classList.toggle('hide',!ok); if(ok)shown++;
-     // ring the chosen colour's swatch on each matching tile
+     // ring the chosen colour's swatch on each matching tile + swap the photo
      card.querySelectorAll('.swdot').forEach(function(dot){{
        dot.classList.toggle('seldot', !!c && dot.getAttribute('data-color')===c);
      }});
+     if(c){{ ds.activecolor=c; swapTileColor(card,c); }}
+     else {{ ds.activecolor=''; resetTileColor(card); }}
    }});
    document.querySelectorAll('.appgroup').forEach(function(gp){{
      gp.classList.toggle('hide',gp.querySelectorAll('.appcard:not(.hide)').length===0);
