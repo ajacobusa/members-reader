@@ -3777,6 +3777,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const cn=(CURFMT.split(' - ')[1]||'Black'); const col=APPARELCOLOR[cn]||'#1c1c1e';
    _garmentShape(ctx,x,y,w,h,_garmentType(),col);
  }}
+ function _isLight(c){{ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+   var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+   return (0.299*r+0.587*g+0.114*b)>150; }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
@@ -3804,7 +3807,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){{        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
      // small bleed (1.06) so there's always room to drag/reposition the photo
-     const cover=Math.max(w/iw, h/ih)*1.06*PHOTO_ZOOM;        // fill + bleed + zoom
+     const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM;        // fill + bleed + zoom (room to reposition)
      const dw=iw*cover, dh=ih*cover;
      // place so the focal point (PHOTO_FX,PHOTO_FY of the image) sits at frame center
      let dx=(x+w/2)-PHOTO_FX*dw, dy=(y+h/2)-PHOTO_FY*dh;
@@ -3840,7 +3843,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ctx.save(); ctx.translate(ax,ay);
    if(TROT) ctx.rotate(TROT*Math.PI/180);                      // rotate the wording
    let ty=-block/2+fs*0.9;
-   for(const ln of lines){{ctx.fillText(ln,0,ty); ty+=lh;}}
+   // Over a photo, give the wording a contrasting outline so it stays legible on
+   // ANY part of the image (a dark scene would otherwise swallow dark text).
+   const overPhoto=!!(PHOTO && PHOTO.complete && PHOTO.naturalWidth);
+   if(overPhoto){{ ctx.lineJoin='round'; ctx.lineWidth=Math.max(2,fs*0.16);
+     ctx.strokeStyle = _isLight(SELTXT) ? 'rgba(0,0,0,.78)' : 'rgba(255,255,255,.92)'; }}
+   for(const ln of lines){{ if(overPhoto) ctx.strokeText(ln,0,ty); ctx.fillText(ln,0,ty); ty+=lh; }}
    ctx.restore();
    if(IS_APPAREL && APPAREL_BOUND){{ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1.5;
