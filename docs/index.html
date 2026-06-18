@@ -706,6 +706,9 @@
    background:transparent;font-size:14px;font-weight:700;cursor:pointer;
    color:var(--green)}
  .dragbar .dmbtn.sel{background:var(--green);color:#fff}
+ .dragbar .plbtn{flex:1;border:0;border-radius:0;margin:0;padding:10px 4px;
+   background:transparent;font-size:13px;font-weight:700;cursor:pointer;color:var(--green)}
+ .dragbar .plbtn.sel{background:var(--green);color:#fff}
  .dbhint{font-size:12.5px;color:var(--muted);font-weight:500;
    text-align:center;margin-top:7px}
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
@@ -1168,6 +1171,15 @@
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
+       <div class="dragbar" id="mplacement" style="display:none">
+         <div class="dbq">&#128085; Where does it print?</div>
+         <div class="dseg" role="group" aria-label="Print placement">
+           <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
+           <button type="button" class="plbtn" data-p="leftchest" onclick="setPlacement('leftchest')">Left chest</button>
+           <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
+           <button type="button" class="plbtn" data-p="sleeve" id="plsleeve" onclick="setPlacement('sleeve')">Sleeve</button>
+         </div>
+       </div>
        <div class="dragbar">
          <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
          <div class="dseg" role="group" aria-label="Select what to move">
@@ -1509,7 +1521,7 @@
    document.getElementById('mdesc').innerHTML = fmtDesc(d.desc);
    WALLART_DESC = document.getElementById('mdesc').innerHTML;  // baseline for restore
    document.getElementById('mratemsg').textContent = "";
-   CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0]; TXT_USER_SET=false;
+   CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0]; TXT_USER_SET=false; APPLACEMENT='front';
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
    TPOS={x:0.5,y:0.5}; TSIZE=0; TROT=0; setDragMode('text');
    var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
@@ -1605,6 +1617,9 @@
    // Heading: apparel buyers must NEVER see the wall-art listing title.
    const mt=document.getElementById('mtitle');
    if(mt) mt.textContent = IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent);
+   // Print-placement bar is apparel-only.
+   const pl=document.getElementById('mplacement');
+   if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
  }
  function setProductType(t){
    IS_APPAREL=(t==='apparel');
@@ -1625,7 +1640,14 @@
    if(lbl)lbl.textContent=IS_APPAREL?'':'👉 Choose your frame / material:';
    applyProductChrome(fmts);
    renderBg();                         // Shirt-colour swatches (apparel) / Background
-   if(IS_APPAREL) autoContrastText((CURFMT.split(' - ')[1]||''));
+   if(IS_APPAREL){
+     autoContrastText((CURFMT.split(' - ')[1]||''));
+     APPLACEMENT='front';              // default placement; Sleeve only for sleeved garments
+     document.querySelectorAll('#mplacement .plbtn').forEach(function(b){
+       b.classList.toggle('sel', b.dataset.p==='front'); });
+     var _sl=document.getElementById('plsleeve');
+     if(_sl) _sl.style.display=(_garmentType()==='tank')?'none':'';
+   }
    fillSizes(); drawArt(); updateReview();
  }
  // Entry point from the homepage Apparel category: open the editor straight into
@@ -1742,7 +1764,8 @@
    }
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{}).value||'1');
    const title=(DATA[CUR]||{}).title||'';
-   CART.push({fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title}); renderCart();
+   CART.push({fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
+     placement:(IS_APPAREL?APPLACEMENT:'')}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
    clearDraft(); if(typeof abConvert==='function') abConvert();
    // In a guided bundle: advance to the next selected design to personalize.
@@ -2320,6 +2343,27 @@
    img.src=URL.createObjectURL(f);}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
+ let APPLACEMENT='front';  // print placement: front | leftchest | back | sleeve
+ const _PLACE_LBL={front:'Front',leftchest:'Left chest',back:'Back',sleeve:'Sleeve'};
+ function setPlacement(p){
+   APPLACEMENT=p;
+   document.querySelectorAll('#mplacement .plbtn').forEach(function(b){
+     b.classList.toggle('sel', b.dataset.p===p); });
+   drawArt();
+ }
+ // Print-safe boundary for the current placement (silhouette mode: relative to the
+ // garment box; mockup mode: relative to the whole canvas). Front/Back = large
+ // centred chest; Left chest = small upper-left; Sleeve = narrow on the sleeve.
+ function _placeBound(x,y,w,h){
+   if(APPLACEMENT==='leftchest') return {x:x+w*0.52,y:y+h*0.30,w:w*0.16,h:h*0.15};
+   if(APPLACEMENT==='sleeve')    return {x:x+w*0.085,y:y+h*0.17,w:w*0.13,h:h*0.13};
+   return {x:x+w*0.30,y:y+h*0.28,w:w*0.40,h:h*0.40};   // front + back
+ }
+ function _placeBoundMock(W,H){
+   if(APPLACEMENT==='leftchest') return {x:W*0.52,y:H*0.32,w:W*0.13,h:H*0.12};
+   if(APPLACEMENT==='sleeve')    return {x:W*0.18,y:H*0.27,w:W*0.10,h:H*0.10};
+   return {x:W*0.34,y:H*0.30,w:W*0.32,h:H*0.30};
+ }
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={x:0.5, y:0.5}, TSIZE=0, TROT=0, ART={x:0,y:0,w:1,h:1}, DRAGMODE='text';
  function setTextRot(v){ TROT=parseInt(v)||0;
@@ -2606,13 +2650,11 @@
    let x=(W-w)/2, y=(H-h)/2;
    if(!_mock){ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }  // shadow (not in real-mockup mode)
    if(IS_APPAREL){
-     if(_mock){                              // design sits on the real mockup's chest
-       const bx=W*0.34, by=H*0.30, bw=W*0.32, bh=H*0.30;   // tuned for front mockup; calibrate at go-live
-       x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={x:x,y:y,w:w,h:h};
+     if(_mock){                              // design sits on the real mockup, per placement
+       const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      } else {
        drawGarment(ctx,x,y,w,h);
-       const bx=x+w*0.30, by=y+h*0.28, bw=w*0.40, bh=h*0.40;   // chest print area
-       x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={x:x,y:y,w:w,h:h};
+       const b=_placeBound(x,y,w,h); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      }
    } else if(spec){ const t=spec.t*w;
      ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame
@@ -2671,7 +2713,8 @@
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
-     ctx.fillText('👕 Your design prints here', b.x+b.w/2, b.y-7); ctx.restore(); }
+     ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - prints here',
+       b.x+b.w/2, b.y-7); ctx.restore(); }
    const crop=document.getElementById('mcrop');
    if(crop){ const sv=((document.getElementById('msize')||{}).value||'').split('|')[0];
      crop.textContent = IS_APPAREL

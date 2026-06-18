@@ -292,6 +292,27 @@ def test_apparel_sizes_in_sizemap(tmp_path):
 
 # ── Design-your-own: the editor is reused with a print-safe boundary ──
 
+def test_apparel_print_placements_multiple_views(tmp_path):
+    # REGRESSION: customers choose the print placement / view - Front, Left chest,
+    # Back, Sleeve - which moves+resizes the print area and is saved on the order.
+    # Sleeve is only offered on sleeved garments (hidden for tanks).
+    h = _page(tmp_path)
+    assert 'id="mplacement"' in h                         # the placement bar (apparel-only)
+    assert h.count('class="plbtn') == 4                   # four placements
+    assert "function setPlacement" in h
+    assert "function _placeBound" in h and "function _placeBoundMock" in h
+    for p in ("setPlacement('front')", "setPlacement('leftchest')",
+              "setPlacement('back')", "setPlacement('sleeve')"):
+        assert p in h, p
+    for label in ("Front", "Left chest", "Back", "Sleeve"):
+        assert f">{label}</button>" in h, label
+    # Sleeve hidden for tanks; placement persisted on the cart line
+    assert "_garmentType()==='tank'" in h.replace(" ", "")
+    assert "placement:(IS_APPAREL" in h.replace(" ", "")
+    # the print-here label reflects the chosen placement
+    assert "_PLACE_LBL[APPLACEMENT]" in h
+
+
 def test_apparel_renders_garment_with_print_boundary(tmp_path):
     h = _page(tmp_path)
     assert "function drawGarment" in h             # apparel preview branch
@@ -326,7 +347,7 @@ def test_apparel_preview_is_a_garment_silhouette_by_type(tmp_path):
         assert kw in h, kw
     assert "indexOf('hoodie')" in h and "indexOf('tank')" in h
     assert "APPARELCOLOR['Heather Grey']" in h      # raglan contrast sleeves
-    assert "chest print area" in h                 # boundary sits on the chest
+    assert "function _placeBound" in h             # placement-aware print boundary
 
 
 def test_editor_text_legible_over_photo_and_photo_repositionable(tmp_path):
