@@ -3656,14 +3656,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Default the text colour to contrast the shirt, unless the buyer set one.
  function autoContrastText(cn){{
    if(TXT_USER_SET) return;
-   SELTXT = ({{Black:1,Navy:1,Maroon:1}})[cn] ? '#ffffff' : '#1b1b1f';
+   var dark={{'Black':1,'Charcoal':1,'Navy':1,'Royal Blue':1,'Red':1,'Maroon':1,
+     'Forest Green':1,'Purple':1,'Brown':1}};
+   SELTXT = dark[cn] ? '#ffffff' : '#1b1b1f';
    renderTxt(); drawArt(); }}
  const FRAMECOLOR = {{"Premium Solid Oak":"#b28e60","Premium Walnut":"#5c4030",
    "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
    "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"}};
- const APPARELCOLOR = {{"Black":"#1c1c1e","White":"#f4f3ef","Navy":"#26324a",
-   "Heather Grey":"#b9bdc2","Sand":"#d8c9a8","Maroon":"#5e2a32",
-   "Light Blue":"#a7c7e7"}};
+ const APPARELCOLOR = {{"White":"#f4f3ef","Sand":"#d8c9a8","Heather Grey":"#b9bdc2",
+   "Light Blue":"#a7c7e7","Black":"#1c1c1e","Charcoal":"#3a3f43","Navy":"#26324a",
+   "Royal Blue":"#2f4ba0","Red":"#b3322c","Maroon":"#5e2a32","Forest Green":"#2e4a39",
+   "Sage":"#7f9b78","Mustard":"#cda434","Purple":"#5b4b8a","Dusty Rose":"#c98a9a",
+   "Brown":"#5a4334"}};
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat

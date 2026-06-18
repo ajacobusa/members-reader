@@ -26,6 +26,22 @@ def test_full_gendered_range_exists():
         assert g.sizes and g.colors
 
 
+def test_full_standard_colour_palette():
+    # REGRESSION: every garment offers the full 16-colour standard palette so
+    # customers have real choice; White stays first (clean default tile/preview),
+    # and the popular new colours are present.
+    expected = {"White", "Sand", "Heather Grey", "Light Blue", "Black", "Charcoal",
+                "Navy", "Royal Blue", "Red", "Maroon", "Forest Green", "Sage",
+                "Mustard", "Purple", "Dusty Rose", "Brown"}
+    for g in A.APPAREL_CATALOG:
+        assert set(g.colors) == expected, g.name
+        assert g.colors[0] == "White"            # light-forward default
+    # the wider palette multiplies variants - all still clear the 60% floor
+    vs = A.build_apparel_variations()
+    assert all(v.margin_pct >= TARGET_MARGIN_PCT for v in vs)
+    assert len(vs) > 2000                          # ~3,120 SKUs at 16 colours
+
+
 def test_colours_are_light_forward_and_branded():
     # REGRESSION: each garment lists a LIGHT colour first (best DTG render on the
     # default pill) and carries a blank-garment brand intent for ops/listing.
