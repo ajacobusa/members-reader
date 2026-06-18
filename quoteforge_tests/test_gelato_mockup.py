@@ -99,9 +99,9 @@ def test_apparel_tile_color_images_resolves_per_colour(tmp_path, monkeypatch):
                         lambda uid: f"http://cdn/{uid}.png")
     out = gm.apparel_tile_color_images()
     assert out, "expected per-colour images when live"
-    # tshirt resolves multiple colours, each a distinct URL
-    assert "tshirt" in out and len(out["tshirt"]) >= 2
-    assert all(u.startswith("http") for u in out["tshirt"].values())
+    # keyed PER GARMENT (garment_id) - the Classic men's tee resolves >=2 colours
+    assert "m_tshirt" in out and len(out["m_tshirt"]) >= 2
+    assert all(u.startswith("http") for u in out["m_tshirt"].values())
 
 
 def _all_skus():

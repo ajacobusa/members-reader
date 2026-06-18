@@ -171,11 +171,11 @@ def test_apparel_percolor_tile_swap_wired(tmp_path):
     assert "selectTileColor(card,cn)" in h           # swatch previews colour on tile
     assert "this.dataset.activecolor" in h           # tile opens editor in active colour
     assert "card.dataset.defimg" in h                # default photo remembered for reset
-    # the swap lookup key must be the garment_type ID (matches APPAREL_COLOR_IMG
-    # keys), NOT the display type_name - else the swap is silently inert at go-live
-    assert h.count("data-typeid=") == 39
-    assert 'data-typeid="tshirt"' in h and 'data-typeid="hoodie"' in h
-    assert "_tileColorUrl(card.dataset.typeid" in h
+    # the swap lookup key is the GARMENT_ID (matches APPAREL_COLOR_IMG keys), so
+    # each tier/gender maps to its exact product - not the display type_name
+    assert h.count("data-gid=") == 39
+    assert 'data-gid="m_tshirt"' in h and 'data-gid="m_hoodie"' in h
+    assert "_tileColorUrl(card.dataset.gid" in h
 
 
 def test_apparel_tile_uses_supplier_color_image_when_live(tmp_path, monkeypatch):
@@ -328,7 +328,7 @@ def test_editor_uses_real_product_mockup_when_available(tmp_path):
     h = _page(tmp_path)
     assert 'class="mcanvaswrap"' in h and 'id="mgarment"' in h   # image layer behind canvas
     assert "function _mockupImg" in h                            # cached mockup loader
-    assert "_tileColorUrl(_garmentType()" in h                   # per type+colour lookup
+    assert "_tileColorUrl((APPGID[CURGARMENT]" in h              # per GARMENT+colour lookup
     assert "ctx.clearRect(0,0,W,H)" in h                         # transparent over the mockup
     assert "_garmentShape" in h                                  # silhouette fallback retained
     # the canvas inside the wrap is transparent so the mockup image shows through
