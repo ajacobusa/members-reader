@@ -299,6 +299,21 @@ def test_apparel_renders_garment_with_print_boundary(tmp_path):
     assert "drawArt" in h                          # same editor canvas reused
 
 
+def test_editor_uses_real_product_mockup_when_available(tmp_path):
+    # REGRESSION: the editor preview uses the ACTUAL product mockup image (per
+    # garment type + colour, from APPAREL_COLOR_IMG) on a transparent canvas, with
+    # the design composited on its chest - falling back to the recolouring
+    # silhouette when no mockup is available (TEST_MODE / pre-go-live).
+    h = _page(tmp_path)
+    assert 'class="mcanvaswrap"' in h and 'id="mgarment"' in h   # image layer behind canvas
+    assert "function _mockupImg" in h                            # cached mockup loader
+    assert "_tileColorUrl(_garmentType()" in h                   # per type+colour lookup
+    assert "ctx.clearRect(0,0,W,H)" in h                         # transparent over the mockup
+    assert "_garmentShape" in h                                  # silhouette fallback retained
+    # the canvas inside the wrap is transparent so the mockup image shows through
+    assert "background:transparent" in h
+
+
 def test_apparel_preview_is_a_garment_silhouette_by_type(tmp_path):
     # REGRESSION: the editor preview draws a recognizable garment SILHOUETTE for the
     # picked type (tee/tank/long-sleeve/raglan/polo/hoodie/sweatshirt), not a plain

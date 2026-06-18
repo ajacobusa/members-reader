@@ -2013,6 +2013,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:999px;font-size:14px}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:4px;background:#103d2e}}
+ .mcanvaswrap{{position:relative;display:block;line-height:0;margin-bottom:4px}}
+ .mcanvaswrap #mgarment{{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+   pointer-events:none;z-index:0;border-radius:8px}}
+ .mcanvaswrap #mcanvas{{margin-bottom:0;background:transparent;position:relative;z-index:1}}
  .mcrop{{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}}
  .dragbar{{margin:0 0 10px;background:#fff7e0;border:1.5px solid var(--gold);
    border-radius:12px;padding:12px 14px}}
@@ -2464,7 +2468,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <canvas id="mcanvas" width="520" height="650"></canvas>
+       <div class="mcanvaswrap"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
@@ -3874,23 +3878,46 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _isLight(c){{ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }}
+ // Cache loaded product-mockup images; redraw once a new one finishes loading.
+ let _MOCKUP_IMG={{}};
+ function _mockupImg(url){{
+   if(_MOCKUP_IMG[url]) return _MOCKUP_IMG[url];
+   var img=new Image(); img.onload=function(){{ drawArt(); }}; img.onerror=function(){{}};
+   img.src=url; _MOCKUP_IMG[url]=img; return img;
+ }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
-   ctx.fillStyle = IS_APPAREL ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
+   // Real product mockup (go-live): show the ACTUAL garment photo in the selected
+   // colour as the preview, with the design composited on its chest. Falls back to
+   // the recolouring silhouette when no mockup is available (TEST_MODE / not live).
+   const _mg=document.getElementById('mgarment');
+   let _mock=null;
+   if(IS_APPAREL){{
+     const _u=_tileColorUrl(_garmentType(),(CURFMT.split(' - ')[1]||''));
+     if(_u){{ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }}
+   }}
+   if(_mock){{
+     if(_mg){{ if(_mg.getAttribute('src')!==_mock) _mg.setAttribute('src',_mock); _mg.style.display='block'; }}
+     ctx.clearRect(0,0,W,H);                  // transparent so the mockup image shows
+   }} else {{
+     if(_mg) _mg.style.display='none';
+     ctx.fillStyle = IS_APPAREL ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
+   }}
    const m=16, spec = IS_APPAREL ? null : frameSpec();
-   // Fit the piece to the selected aspect ratio (apparel: the garment field) so
-   // the preview shows true proportions and how a photo will crop. Centered.
    const ar=_printAR(), AW=W-2*m, AH=H-2*m;
    let w,h; if(AW/AH > ar){{ h=AH; w=AH*ar; }} else {{ w=AW; h=AW/ar; }}
    let x=(W-w)/2, y=(H-h)/2;
-   // drop shadow for depth
-   ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h);
-   if(IS_APPAREL){{ drawGarment(ctx,x,y,w,h);
-     // Print-safe boundary = the chest area the design must stay inside so it is
-     // never cropped at production. The design (text/photo) renders in here.
-     const bx=x+w*0.30, by=y+h*0.28, bw=w*0.40, bh=h*0.40;   // chest print area
-     x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={{x:x,y:y,w:w,h:h}};
+   if(!_mock){{ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }}  // shadow (not in real-mockup mode)
+   if(IS_APPAREL){{
+     if(_mock){{                              // design sits on the real mockup's chest
+       const bx=W*0.34, by=H*0.30, bw=W*0.32, bh=H*0.30;   // tuned for front mockup; calibrate at go-live
+       x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={{x:x,y:y,w:w,h:h}};
+     }} else {{
+       drawGarment(ctx,x,y,w,h);
+       const bx=x+w*0.30, by=y+h*0.28, bw=w*0.40, bh=h*0.40;   // chest print area
+       x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={{x:x,y:y,w:w,h:h}};
+     }}
    }} else if(spec){{ const t=spec.t*w;
      ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame
      x+=t; y+=t; w-=2*t; h-=2*t;
