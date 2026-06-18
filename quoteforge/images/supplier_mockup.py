@@ -163,3 +163,55 @@ def apparel_tile_color_images(*, refresh: bool = False) -> dict:
         if per_color:
             out[t] = per_color
     return out
+
+
+def _gelato_create_design_mockup(product_uid: str, design_url: str) -> str | None:
+    """Ask Gelato to render the buyer's DESIGN on the product, returning the
+    mockup image URL. DEFENSIVE provider seam: never raises, returns None on
+    anything unexpected. Confirm the exact endpoint/shape against a live account
+    (the design must be a URL Gelato can fetch - i.e. print-file hosting set up)."""
+    import requests
+    from quoteforge.automation.gelato_api import GELATO_API_KEY
+    try:
+        resp = requests.post(
+            f"{_PRODUCT_API}/mockups",
+            headers={"X-API-KEY": GELATO_API_KEY, "Content-Type": "application/json"},
+            json={"productUid": product_uid,
+                  "files": [{"type": "default", "url": design_url}]},
+            timeout=45)
+        if resp.status_code not in (200, 201):
+            return None
+        return _extract_image_url(resp.json())
+    except Exception:  # noqa: BLE001 — any failure -> fall back to the flat artwork
+        return None
+
+
+def design_mockup_for_order(order: dict, design_path: str = None) -> str | None:
+    """Real product mockup of the BUYER'S design on the ordered garment, for the
+    customer proof.
+
+    GUARDRAILS: key-gated + TEST_MODE-safe + ADDITIVE. Returns None (so the proof
+    falls back to the flat artwork) in TEST_MODE, without a key, for a non-apparel
+    order, with no resolvable garment UID, or on any failure. It is purely a visual
+    aid in the proof - it does NOT change the print file and cannot bypass the
+    customer's proof approval (the parity-gate hash still fingerprints the real
+    artwork). Never raises.
+    """
+    try:
+        from quoteforge.config import TEST_MODE
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        if TEST_MODE or not GELATO_API_KEY or not isinstance(order, dict):
+            return None
+        if order.get("product_type") != "apparel":
+            return None
+        uid = order.get("gelato_product_uid")
+        if not uid:
+            from quoteforge.etsy.apparel_catalog import resolve_apparel_uid
+            uid = resolve_apparel_uid(order.get("gelato_sku"))
+        design = design_path or order.get("artwork_url") or ""
+        # Gelato must be able to FETCH the design - a local path can't be mocked up.
+        if not uid or not str(design).lower().startswith(("http://", "https://")):
+            return None
+        return _gelato_create_design_mockup(uid, design)
+    except Exception:  # noqa: BLE001
+        return None
