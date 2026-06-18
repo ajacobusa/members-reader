@@ -77,6 +77,22 @@ def test_apparel_brand_tiers_present(tmp_path):
     assert "bella" not in h.lower() and "gildan" not in h.lower()
 
 
+def test_apparel_shop_by_occasion(tmp_path):
+    # REGRESSION: the apparel department leads with an occasion-first strip; each
+    # chip opens the editor pre-loaded with that occasion's quote (gift intent is
+    # what sells a personalized shop).
+    h = _page(tmp_path)
+    assert "🎁 Shop by occasion" in h                 # apparel occasion strip
+    assert h.count('class="appocc"') == 9             # nine occasion chips
+    assert "function shopApparelOccasion" in h        # opens editor pre-loaded
+    for label in ("Birthday", "Anniversary", "For Mom", "Memorial", "Wedding"):
+        assert f'>{label}</span>' in h, label
+    # a real occasion quote is wired into a chip's onclick
+    assert "shopApparelOccasion('[Name]" in h
+    # the chip pre-fills the wording box (editable starter) + redraws the preview
+    assert "t.value=quote" in h and "drawArt();" in h
+
+
 def test_apparel_filter_bar(tmp_path):
     # REGRESSION: a Gelato-style facet filter bar lets customers narrow apparel by
     # Department / Type / Brand / Colour / Size across both Men's and Women's, with
