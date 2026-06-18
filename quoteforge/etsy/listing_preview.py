@@ -2693,6 +2693,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      fp.style.display='block';
    }}
    applyProductChrome(fmts);   // wall-art chrome by default; reset on every open
+   WALLART_TITLE = d.full_title;       // baseline so apparel<->wall-art can restore
    document.getElementById('mtitle').textContent = d.full_title;
    document.getElementById('mprice').textContent =
      "from $" + ((fmts[0] && fmts[0].price) ? fmts[0].price : d.price);
@@ -2751,7 +2752,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){{ return fmts.map((f,j)=>
    `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join(''); }}
- let WALLART_AVAIL="", WALLART_DESC="";
+ let WALLART_AVAIL="", WALLART_DESC="", WALLART_TITLE="";
+ // The modal heading in Apparel mode - garment-aware, never wall-art copy.
+ function apparelTitle(){{
+   return CURGARMENT
+     ? ('Personalized '+CURGARMENT+' - Custom Printed Apparel, You Personalize It')
+     : 'Personalized Custom Apparel - Tees, Hoodies & Sweatshirts You Personalize';
+ }}
  const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Hoodie or Sweatshirt</b> - '
    +'pick your garment, colour &amp; size next. Made to order, printed on the front.';
  const APPAREL_DESC_HTML='<b>A personalized garment, made to order just for you.</b><br>'
@@ -2779,6 +2786,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(e3) e3.textContent = IS_APPAREL ? '3. Garment & size' : '3. Frame & size';
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
+   // Heading: apparel buyers must NEVER see the wall-art listing title.
+   const mt=document.getElementById('mtitle');
+   if(mt) mt.textContent = IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent);
  }}
  function setProductType(t){{
    IS_APPAREL=(t==='apparel');
@@ -3417,7 +3427,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // Photo landed: make Next explicit (the guidance engine keeps it
      // blinking until the customer actually moves on).
      const nx=document.getElementById('esec2next');
-     if(nx) nx.innerHTML='Photo added ✓ - Next: frame &amp; size →';
+     if(nx) nx.innerHTML='Photo added ✓ - Next: '
+       +(IS_APPAREL?'garment':'frame')+' &amp; size →';
      guide(); }};
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}

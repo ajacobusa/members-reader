@@ -113,6 +113,21 @@ def test_editor_apparel_pills_are_garment_scoped(tmp_path):
     assert "CURGARMENT+' - '" in h                 # filters APPAREL_FORMATS by garment
 
 
+def test_apparel_mode_uses_apparel_title_not_wall_art(tmp_path):
+    # REGRESSION: opening a garment must NOT show the wall-art listing title
+    # ("... Birthday Wall Art | Custom Quote Print ..."). The modal heading is
+    # swapped to a garment-aware apparel title, restorable when toggling back.
+    h = _page(tmp_path)
+    assert "function apparelTitle" in h            # apparel heading generator
+    assert "Custom Printed Apparel" in h           # the apparel title copy
+    assert "WALLART_TITLE" in h                     # baseline captured for restore
+    assert "IS_APPAREL ? apparelTitle()" in h      # title swap wired in chrome
+    # the apparel title itself never says "wall art"
+    assert "wall art" not in "Personalized Custom Apparel".lower()
+    # the post-photo Next button is garment-aware, not "frame & size" in apparel
+    assert "IS_APPAREL?'garment':'frame'" in h.replace(" ", "")
+
+
 def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):
     # REGRESSION: in Apparel mode the editor must hide wall-art-only chrome (room
     # wall colours + tip) and swap the "available as" line, "about" description,
