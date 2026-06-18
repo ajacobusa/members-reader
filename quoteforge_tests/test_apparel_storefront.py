@@ -212,7 +212,23 @@ def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):
     # apparel-specific copy is wired in
     assert "T-Shirt, Hoodie or Sweatshirt" in h          # apparel availability line
     assert "made to order just for you" in h             # apparel about-copy
-    assert "Garment & size" in h                          # apparel step-3 label
+    assert "'3. Size'" in h                               # step-3 is size-only in apparel
+
+
+def test_apparel_native_step1_shirt_colour(tmp_path):
+    # REGRESSION: the apparel editor is garment-native - Step 1's colour row is the
+    # SHIRT colour (not the inert wall-art "Background"), picking it recolors the
+    # shirt, text colour auto-contrasts, and the duplicate Step-3 colour picker is
+    # hidden (Step 3 = size only).
+    h = _page(tmp_path)
+    assert 'id="mbglbl"' in h                             # the swappable colour-row label
+    assert "Shirt colour" in h                            # apparel relabel of "Background"
+    assert "function pickShirt" in h                      # Step-1 shirt swatch handler
+    assert "function autoContrastText" in h               # text auto-contrast
+    assert "TXT_USER_SET" in h                            # respects an explicit text pick
+    assert "renderBg" in h and "apparelFormatsFor()" in h  # shirt swatches from garment
+    # Step-3 colour/frame picker is hidden in apparel (colour moved to Step 1)
+    assert "IS_APPAREL ? 'none' : (fmts.length" in h
 
 
 def test_product_type_toggle_present(tmp_path):

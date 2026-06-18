@@ -2438,7 +2438,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div class="esec" id="esec1">
        <div class="perso">
          <div class="lbl">🎨 Your colors - the preview on the left updates live</div>
-         <div class="swrow">Background</div>
+         <div class="swrow" id="mbglbl">Background</div>
          <div class="sw" id="mbg"></div>
          <div class="swrow">Text color</div>
          <div class="sw" id="mtxt"></div>
@@ -2723,7 +2723,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mdesc').innerHTML = fmtDesc(d.desc);
    WALLART_DESC = document.getElementById('mdesc').innerHTML;  // baseline for restore
    document.getElementById('mratemsg').textContent = "";
-   CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0];
+   CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0]; TXT_USER_SET=false;
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
    TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; setDragMode('text');
    var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
@@ -2809,7 +2809,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(md){{ if(!WALLART_DESC && !IS_APPAREL) WALLART_DESC=md.innerHTML;
      md.innerHTML = IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML); }}
    const e3=document.getElementById('e3lbl');
-   if(e3) e3.textContent = IS_APPAREL ? '3. Garment & size' : '3. Frame & size';
+   if(e3) e3.textContent = IS_APPAREL ? '3. Size' : '3. Frame & size';
+   // Step 1 colour row is the SHIRT colour in apparel mode (the wall-art
+   // "Background" fill is not printed on a garment).
+   const bl=document.getElementById('mbglbl');
+   if(bl) bl.textContent = IS_APPAREL ? '👕 Shirt colour' : 'Background';
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
    // Heading: apparel buyers must NEVER see the wall-art listing title.
@@ -2818,17 +2822,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function setProductType(t){{
    IS_APPAREL=(t==='apparel');
+   TXT_USER_SET=false;                 // re-auto-contrast text for the new context
    if(IS_APPAREL && !CURGARMENT && APPAREL_FORMATS.length)
      CURGARMENT=APPAREL_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
    if(wb&&ab){{wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}}
-   const lbl=document.getElementById('mfpicklbl');
-   if(lbl)lbl.textContent=IS_APPAREL?('👉 Choose your '+(CURGARMENT||'garment')+' colour:'):'👉 Choose your frame / material:';
    const an=document.getElementById('mapparelnote'); if(an)an.style.display=IS_APPAREL?'block':'none';
    const fc=document.getElementById('mfchips'), fmts=curFormats(CUR);
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
    CURFMT=(fmts[0]&&fmts[0].name)||"";
+   // Apparel colour lives in Step 1 now, so hide the Step-3 colour/frame picker
+   // (it stays the frame picker for wall art).
+   const fpk=document.getElementById('mfpick');
+   if(fpk) fpk.style.display = IS_APPAREL ? 'none' : (fmts.length?'block':'none');
+   const lbl=document.getElementById('mfpicklbl');
+   if(lbl)lbl.textContent=IS_APPAREL?'':'👉 Choose your frame / material:';
    applyProductChrome(fmts);
+   renderBg();                         // Shirt-colour swatches (apparel) / Background
+   if(IS_APPAREL) autoContrastText((CURFMT.split(' - ')[1]||''));
    fillSizes(); drawArt(); updateReview();
  }}
  // Entry point from the homepage Apparel category: open the editor straight into
@@ -2850,7 +2861,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    CURFMT=fmts[j].name;
    document.querySelectorAll('#mfchips .fchip').forEach(function(e,k){{
      e.classList.toggle('sel',k===j); }});
+   document.querySelectorAll('#mbg span').forEach(function(e,k){{
+     e.classList.toggle('sel',k===j); }});           // Step-1 shirt swatch in sync
    if(fmts[j].price) document.getElementById('mprice').textContent='from $'+fmts[j].price;
+   autoContrastText(color);
    drawArt(); fillSizes();
  }}
  // Real per-colour photo for a tile (go-live), else '' to keep the default shot.
@@ -3511,6 +3525,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
+ let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={{x:0.5, y:0.5}}, TSIZE=0, TROT=0, ART={{x:0,y:0,w:1,h:1}}, DRAGMODE='text';
  function setTextRot(v){{ TROT=parseInt(v)||0;
@@ -3599,8 +3614,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      msg.innerHTML=`Only ${{PHOTO.naturalWidth}}x${{PHOTO.naturalHeight}}px - too low for a sharp ${{inch[0]}}x${{inch[1]}}" print. Try a larger size or a higher-res photo.`+rm; }}
  }}
  function renderBg(){{
-   document.getElementById('mbg').innerHTML = BGCOLORS.map((c,k)=>
-     `<span style="background:${{c}}" class="${{c===SELBG?'sel':''}}" onclick="pickBg('${{c}}',this)" title="${{c}}"></span>`).join('');
+   const box=document.getElementById('mbg'); if(!box) return;
+   if(IS_APPAREL){{                       // Step-1 row = SHIRT colour swatches
+     var fmts=apparelFormatsFor();
+     box.innerHTML=fmts.map(function(f){{
+       var cn=(f.name.split(' - ')[1]||'');
+       var hex=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#bbb';
+       var ring=(cn==='White'||cn==='Sand'||cn==='Heather Grey'||cn==='Light Blue')
+         ?'box-shadow:inset 0 0 0 1px #cfcabb':'';
+       return `<span style="background:${{hex}};${{ring}}" class="${{CURFMT===f.name?'sel':''}}" onclick="pickShirt('${{cn}}',this)" title="${{cn}}"></span>`;
+     }}).join('');
+   }} else {{
+     box.innerHTML = BGCOLORS.map((c,k)=>
+       `<span style="background:${{c}}" class="${{c===SELBG?'sel':''}}" onclick="pickBg('${{c}}',this)" title="${{c}}"></span>`).join('');
+   }}
  }}
  function renderTxt(){{
    document.getElementById('mtxt').innerHTML = TXTCOLORS.map((c,k)=>
@@ -3620,8 +3647,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.querySelectorAll('#mwall span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
  function pickBg(c,el){{ SELBG=c;
    document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
- function pickTxt(c,el){{ SELTXT=c;
+ function pickTxt(c,el){{ SELTXT=c; TXT_USER_SET=true;   // buyer chose -> stop auto-contrast
    document.querySelectorAll('#mtxt span').forEach(e=>e.classList.toggle('sel',e===el)); drawArt(); }}
+ // Apparel: Step-1 colour row picks the SHIRT colour (recolors the garment live).
+ function pickShirt(cn,el){{
+   selectApparelColor(cn);
+   document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); }}
+ // Default the text colour to contrast the shirt, unless the buyer set one.
+ function autoContrastText(cn){{
+   if(TXT_USER_SET) return;
+   SELTXT = ({{Black:1,Navy:1,Maroon:1}})[cn] ? '#ffffff' : '#1b1b1f';
+   renderTxt(); drawArt(); }}
  const FRAMECOLOR = {{"Premium Solid Oak":"#b28e60","Premium Walnut":"#5c4030",
    "Gallery Gold":"#c6a052","Classic Black Wood":"#1c1c1e",
    "Classic White Wood":"#f4f3ef","Slim Black":"#1c1c1e"}};
