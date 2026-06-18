@@ -2435,24 +2435,81 @@
    if(m){ const a=parseFloat(m[1]), b=parseFloat(m[2]); if(a>0&&b>0) return a/b; }
    return 0.8;  // default 4:5 portrait
  }
+ function _garmentType(){
+   var g=(CURGARMENT||'').toLowerCase();
+   if(g.indexOf('tank')>=0) return 'tank';
+   if(g.indexOf('long sleeve')>=0) return 'longsleeve';
+   if(g.indexOf('3/4')>=0||g.indexOf('raglan')>=0) return 'raglan';
+   if(g.indexOf('polo')>=0) return 'polo';
+   if(g.indexOf('hoodie')>=0) return 'hoodie';
+   if(g.indexOf('sweatshirt')>=0) return 'sweatshirt';
+   return 'tshirt';
+ }
+ // Draw a recognizable garment silhouette (by type) in the chosen colour, fit to
+ // the box - so the preview looks like the actual tee/hoodie/tank/etc. picked.
+ function _garmentShape(ctx,x,y,w,h,type,col){
+   const longS=(type==='longsleeve'||type==='hoodie'||type==='sweatshirt');
+   const tank=(type==='tank');
+   const P=(u,v)=>[x+u*w, y+v*h];
+   const sTopO=0.24, cuffV=longS?0.82:0.42, cuffO=longS?0.11:0.16, cuffI=longS?0.215:0.275;
+   const body=new Path2D();
+   const M=(u,v)=>body.moveTo(x+u*w,y+v*h);
+   const L=(u,v)=>body.lineTo(x+u*w,y+v*h);
+   const Q=(cu,cv,u,v)=>body.quadraticCurveTo(x+cu*w,y+cv*h,x+u*w,y+v*h);
+   const nDip = tank?0.125:0.175;
+   M(0.40,0.085);
+   if(tank){ L(0.36,0.06); L(0.305,0.235); L(0.30,0.95); L(0.70,0.95); L(0.695,0.235); L(0.64,0.06); }
+   else {
+     L(0.25,0.105); L(0.07,sTopO); L(cuffO,cuffV); L(cuffI,cuffV); L(0.27,0.31);
+     L(0.25,0.95); L(0.75,0.95);
+     L(0.73,0.31); L(1-cuffI,cuffV); L(1-cuffO,cuffV); L(0.93,sTopO); L(0.75,0.105);
+   }
+   L(0.60,0.085);
+   Q(0.50,nDip,0.40,0.085);
+   body.closePath();
+   ctx.fillStyle=col; ctx.fill(body);
+   const light=['#f4f3ef','#b9bdc2','#d8c9a8','#a7c7e7'].includes((col||'').toLowerCase());
+   if(light){ ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=1.4; ctx.stroke(body); }
+   if(type==='raglan'){
+     ctx.fillStyle=APPARELCOLOR['Heather Grey'];
+     const sl=new Path2D();
+     sl.moveTo(...P(0.25,0.105)); sl.lineTo(...P(0.07,sTopO)); sl.lineTo(...P(cuffO,cuffV));
+     sl.lineTo(...P(cuffI,cuffV)); sl.lineTo(...P(0.30,0.22)); sl.closePath(); ctx.fill(sl);
+     const sr=new Path2D();
+     sr.moveTo(...P(0.75,0.105)); sr.lineTo(...P(0.93,sTopO)); sr.lineTo(...P(1-cuffO,cuffV));
+     sr.lineTo(...P(1-cuffI,cuffV)); sr.lineTo(...P(0.70,0.22)); sr.closePath(); ctx.fill(sr);
+   }
+   ctx.lineWidth=Math.max(1.6,w*0.012); ctx.lineJoin='round';
+   if(type==='polo'){
+     ctx.strokeStyle='rgba(0,0,0,.34)';
+     ctx.beginPath(); ctx.moveTo(...P(0.41,0.085)); ctx.lineTo(...P(0.46,0.19));
+     ctx.lineTo(...P(0.50,0.135)); ctx.lineTo(...P(0.54,0.19)); ctx.lineTo(...P(0.59,0.085)); ctx.stroke();
+     ctx.beginPath(); ctx.moveTo(...P(0.50,0.135)); ctx.lineTo(...P(0.50,0.30)); ctx.stroke();
+     ctx.fillStyle='rgba(0,0,0,.34)';
+     [0.20,0.26].forEach(p=>{ctx.beginPath();ctx.arc(...P(0.50,p),Math.max(2,w*0.013),0,7);ctx.fill();});
+   } else if(type==='hoodie'){
+     ctx.fillStyle=col; const hood=new Path2D();
+     hood.moveTo(...P(0.39,0.09)); hood.quadraticCurveTo(...P(0.50,-0.03),...P(0.61,0.09));
+     hood.quadraticCurveTo(...P(0.50,0.05),...P(0.39,0.09)); hood.closePath(); ctx.fill(hood);
+     if(light){ctx.strokeStyle='rgba(0,0,0,.16)';ctx.stroke(hood);}
+     ctx.strokeStyle='rgba(0,0,0,.24)'; ctx.beginPath();
+     ctx.moveTo(...P(0.41,0.10)); ctx.quadraticCurveTo(...P(0.50,0.17),...P(0.59,0.10)); ctx.stroke();
+     ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.strokeRect(x+0.345*w,y+0.58*h,0.31*w,0.20*h);
+     ctx.strokeStyle='rgba(0,0,0,.30)'; ctx.beginPath();
+     ctx.moveTo(...P(0.47,0.11)); ctx.lineTo(...P(0.47,0.30));
+     ctx.moveTo(...P(0.53,0.11)); ctx.lineTo(...P(0.53,0.30)); ctx.stroke();
+   } else if(!tank){
+     ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.beginPath();
+     ctx.moveTo(...P(0.40,0.095)); ctx.quadraticCurveTo(...P(0.50,0.18),...P(0.60,0.095)); ctx.stroke();
+   }
+   if(type==='sweatshirt'||type==='hoodie'){
+     ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=Math.max(3,w*0.03);
+     ctx.beginPath(); ctx.moveTo(...P(0.25,0.93)); ctx.lineTo(...P(0.75,0.93)); ctx.stroke();
+   }
+ }
  function drawGarment(ctx,x,y,w,h){
-   // A simple garment field in the chosen colour - enough to preview the design
-   // ON the product without a fragile silhouette path. Colour from the picked
-   // "{Garment} - {Colour}" format; defaults to black.
    const cn=(CURFMT.split(' - ')[1]||'Black'); const col=APPARELCOLOR[cn]||'#1c1c1e';
-   const r=Math.min(w,h)*0.08;
-   ctx.fillStyle=col;
-   ctx.beginPath();
-   ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
-   ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
-   ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
-   ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath(); ctx.fill();
-   // soft collar hint
-   ctx.fillStyle='rgba(0,0,0,.16)';
-   ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.05,w*0.13,h*0.04,0,0,Math.PI); ctx.fill();
-   // a light garment still reads as fabric with a faint edge
-   if(cn==='White'||cn==='Sand'||cn==='Heather Grey'||cn==='Light Blue'){
-     ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=1; ctx.strokeRect(x+1,y+1,w-2,h-2); }
+   _garmentShape(ctx,x,y,w,h,_garmentType(),col);
  }
  function drawArt(){
    const cv=document.getElementById('mcanvas'); if(!cv) return;
@@ -2469,7 +2526,7 @@
    if(IS_APPAREL){ drawGarment(ctx,x,y,w,h);
      // Print-safe boundary = the chest area the design must stay inside so it is
      // never cropped at production. The design (text/photo) renders in here.
-     const bx=x+w*0.20, by=y+h*0.20, bw=w*0.60, bh=h*0.50;
+     const bx=x+w*0.30, by=y+h*0.28, bw=w*0.40, bh=h*0.40;   // chest print area
      x=bx; y=by; w=bw; h=bh; APPAREL_BOUND={x:x,y:y,w:w,h:h};
    } else if(spec){ const t=spec.t*w;
      ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame

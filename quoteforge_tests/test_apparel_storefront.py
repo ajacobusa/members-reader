@@ -262,6 +262,21 @@ def test_apparel_renders_garment_with_print_boundary(tmp_path):
     assert "drawArt" in h                          # same editor canvas reused
 
 
+def test_apparel_preview_is_a_garment_silhouette_by_type(tmp_path):
+    # REGRESSION: the editor preview draws a recognizable garment SILHOUETTE for the
+    # picked type (tee/tank/long-sleeve/raglan/polo/hoodie/sweatshirt), not a plain
+    # rounded rectangle - so the "background" looks like the actual garment.
+    h = _page(tmp_path)
+    assert "function _garmentShape" in h and "function _garmentType" in h
+    assert "new Path2D" in h                       # silhouette path, not a rect
+    # type detection covers every garment family
+    for kw in ("'tank'", "'longsleeve'", "'raglan'", "'polo'", "'hoodie'", "'sweatshirt'"):
+        assert kw in h, kw
+    assert "indexOf('hoodie')" in h and "indexOf('tank')" in h
+    assert "APPARELCOLOR['Heather Grey']" in h      # raglan contrast sleeves
+    assert "chest print area" in h                 # boundary sits on the chest
+
+
 def test_apparel_sizing_is_final_note_present(tmp_path):
     # REGRESSION: apparel fit is final under the made-to-order policy; the buyer
     # must be told before ordering, so we don't get "wrong size" exchange demands.
