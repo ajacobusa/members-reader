@@ -840,7 +840,9 @@ def _apparel_section(photos: dict | None = None) -> str:
         low = frm.get(g.garment_id)
         if low is None:
             return ""
-        src = photos.get(g.garment_type)
+        # Prefer the EXACT per-garment product image (tier/gender), else the
+        # per-type AI tile, else the SVG fallback.
+        src = photos.get(g.garment_id) or photos.get(g.garment_type)
         if src:
             tile = (f'<span class="apptile apptilephoto"><img class="appimg" '
                     f'loading="lazy" src="{src}" alt="Custom {g.name}"></span>')
@@ -857,7 +859,7 @@ def _apparel_section(photos: dict | None = None) -> str:
             f'<button class="appcard" type="button" '
             f'data-gender="{g.gender}" data-type="{g.type_name}" '
             f'data-brand="{brand_disp}" data-tier="{g.tier}" data-garment="{g.name}" '
-            f'data-typeid="{g.garment_type}" '
+            f'data-typeid="{g.garment_type}" data-gid="{g.garment_id}" '
             f'data-colors="{"|".join(g.colors)}" data-sizes="{"|".join(g.sizes)}" '
             f'onclick="shopApparel(\'{name_js}\', this.dataset.activecolor||\'\')" '
             f'aria-label="Design a custom {g.name}">'
@@ -1186,14 +1188,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         except Exception:  # noqa: BLE001
             apparel_formats = []
     apparel_formats_json = json.dumps(apparel_formats)
-    # Per-colour supplier product photos {garment_type:{colour:url}} - swaps the
-    # tile photo to the picked colour at go-live; empty (no swap) in TEST_MODE.
+    # Per-colour supplier product photos {garment_id:{colour:url}} - swaps the tile
+    # photo to the picked colour at go-live; empty (no swap) in TEST_MODE.
     try:
         from quoteforge.images.supplier_mockup import apparel_tile_color_images
         apparel_color_img = apparel_tile_color_images()
     except Exception:  # noqa: BLE001
         apparel_color_img = {}
     apparel_color_img_json = json.dumps(apparel_color_img)
+    # garment NAME -> garment_id, so the editor (which knows CURGARMENT by name) can
+    # look up the per-garment mockup.
+    try:
+        from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG as _AC
+        appgid = {g.name: g.garment_id for g in _AC}
+    except Exception:  # noqa: BLE001
+        appgid = {}
+    appgid_json = json.dumps(appgid)
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
     editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
@@ -1245,12 +1255,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         if _gp:
             _garment_photos[_gid] = _emit(_gp, f"tile-{_gid}.jpg")
     # Real print-partner product images override the AI tiles when the supplier API
-    # is live (key set + UIDs mapped); TEST_MODE / no key leaves the AI tiles as-is.
+    # is live (key set + UIDs mapped); keyed PER GARMENT (garment_id) so each tier/
+    # gender shows ITS exact product. TEST_MODE / no key leaves the AI tiles as-is.
     try:
         from quoteforge.images.supplier_mockup import apparel_tile_images
-        for _t, _url in apparel_tile_images().items():
+        for _gidk, _url in apparel_tile_images().items():
             if _url:
-                _garment_photos[_t] = _url
+                _garment_photos[_gidk] = _url    # garment_id key (preferred in _card)
     except Exception:  # noqa: BLE001 — never break the build on the supplier API
         pass
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
@@ -2869,6 +2880,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
+ const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
  let IS_APPAREL=false, CURGARMENT="";
  // Apparel pills are scoped to the SELECTED garment (CURGARMENT) so the editor
  // shows just that garment's colours, not every garment in the catalogue.
@@ -2991,7 +3003,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _tileColorUrl(type,color){{ var m=APPAREL_COLOR_IMG[type]; return (m&&m[color])||''; }}
  function swapTileColor(card,color){{
    var img=card.querySelector('.appimg'); if(!img) return;
-   img.src = _tileColorUrl(card.dataset.typeid,color) || card.dataset.defimg || img.src; }}
+   img.src = _tileColorUrl(card.dataset.gid,color) || card.dataset.defimg || img.src; }}
  function resetTileColor(card){{
    var img=card.querySelector('.appimg');
    if(img && card.dataset.defimg) img.src=card.dataset.defimg; }}
@@ -3938,7 +3950,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const _mg=document.getElementById('mgarment');
    let _mock=null;
    if(IS_APPAREL){{
-     const _u=_tileColorUrl(_garmentType(),(CURFMT.split(' - ')[1]||''));
+     const _u=_tileColorUrl((APPGID[CURGARMENT]||''),(CURFMT.split(' - ')[1]||''));
      if(_u){{ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }}
    }}
    if(_mock){{

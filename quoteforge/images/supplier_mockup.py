@@ -119,9 +119,6 @@ def apparel_tile_images(*, refresh: bool = False) -> dict:
     except Exception:  # noqa: BLE001
         return out
     for g in APPAREL_CATALOG:
-        t = g.garment_type
-        if t in out or getattr(g, "tier", "Classic") != "Classic":
-            continue
         if not (g.sizes and g.colors):
             continue
         sku = apparel_sku_for(g.garment_id, g.sizes[0], g.colors[0])
@@ -129,15 +126,15 @@ def apparel_tile_images(*, refresh: bool = False) -> dict:
             continue
         url = gelato_blank_image(sku, refresh=refresh)
         if url:
-            out[t] = url
+            out[g.garment_id] = url             # PER GARMENT (tier/gender-exact)
     return out
 
 
 def apparel_tile_color_images(*, refresh: bool = False) -> dict:
-    """Map garment_type -> {colour -> real product image URL}, so the storefront
-    can swap a tile's photo to the picked colour. One representative SKU per
-    (type, colour) on the Classic tier. Only entries that resolve to a real image
-    are included; empty in TEST_MODE / no key (the tile keeps its default photo)."""
+    """Map garment_id -> {colour -> real product image URL}, so each tile/editor
+    shows the EXACT product for that garment (tier + gender) in the picked colour.
+    One representative SKU per (garment, colour). Empty in TEST_MODE / no key (the
+    tile keeps its default photo)."""
     out: dict = {}
     try:
         from quoteforge.config import TEST_MODE
@@ -148,9 +145,6 @@ def apparel_tile_color_images(*, refresh: bool = False) -> dict:
     except Exception:  # noqa: BLE001
         return out
     for g in APPAREL_CATALOG:
-        t = g.garment_type
-        if t in out or getattr(g, "tier", "Classic") != "Classic":
-            continue
         if not (g.sizes and g.colors):
             continue
         per_color: dict = {}
@@ -161,7 +155,7 @@ def apparel_tile_color_images(*, refresh: bool = False) -> dict:
                 if url:
                     per_color[color] = url
         if per_color:
-            out[t] = per_color
+            out[g.garment_id] = per_color        # PER GARMENT (tier/gender-exact)
     return out
 
 
