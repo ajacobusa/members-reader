@@ -750,6 +750,27 @@ def _cmd_gelato_mockups(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_families(args: list[str]) -> int:
+    """Go-live coverage via the product-family map: mapping ~21 (garment_type,
+    tier) families covers all ~3,120 variant SKUs (the dynamic resolver finds each
+    variant at order time). Shows which families are mapped + the SKU coverage."""
+    from quoteforge.automation.gelato_variant_resolver import _family_map
+    from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, verify_apparel_mappings
+    fm = _family_map()
+    fams = sorted({f"{g.garment_type}:{g.tier}" for g in APPAREL_CATALOG})
+    real = lambda v: bool(v) and not str(v).upper().startswith("GEL-")
+    mapped = [k for k in fams if real(fm.get(k))]
+    print(f"Product families mapped: {len(mapped)}/{len(fams)}  "
+          "(GELATO_PRODUCT_FAMILY_MAP / _FILE)")
+    for k in fams:
+        v = fm.get(k, "")
+        print(f"  {'OK ' if real(v) else '-- '}{k:22s} {v or '(unmapped)'}")
+    m = verify_apparel_mappings()
+    print(f"\nSKU coverage: {m['configured']}/{m['total']} variants go-live ready "
+          f"({m['placeholder_count']} still need a family or a specific UID)")
+    return 0
+
+
 def _cmd_delight(args: list[str]) -> int:
     """Post-delivery review + referral touches (the delight loop)."""
     from quoteforge.etsy.delight_loop import (
@@ -2375,6 +2396,7 @@ COMMANDS = {
     "check-photo": _cmd_check_photo,
     "enhance-photo": _cmd_enhance_photo,
     "gelato-mockups": _cmd_gelato_mockups,
+    "gelato-families": _cmd_gelato_families,
     "custom-copy": _cmd_custom_copy,
     "remind": _cmd_remind,
     "briefing": _cmd_briefing,
