@@ -779,6 +779,39 @@ _APPAREL_TILE = {
 }
 
 
+# Occasion-first entry points for apparel: pick the moment -> the editor opens
+# pre-loaded with a fitting quote (key matches OCCASION_QUOTES). Gift intent is
+# what sells a personalized shop, so this leads the apparel department.
+_APPAREL_OCCASIONS = [
+    ("birthday", "Birthday", "🎂"), ("anniversary", "Anniversary", "💍"),
+    ("mother's day", "For Mom", "🌷"), ("father's day", "For Dad", "🧢"),
+    ("wedding", "Wedding", "💒"), ("new baby", "New Baby", "🍼"),
+    ("graduation", "Graduation", "🎓"), ("memorial", "Memorial", "🕊️"),
+    ("just because", "Just Because", "💛"),
+]
+
+
+def _apparel_occasions() -> str:
+    """The 'Shop by occasion' strip for apparel - each chip opens the design
+    editor pre-loaded with that occasion's quote, ready to personalize."""
+    chips = []
+    for key, disp, emoji in _APPAREL_OCCASIONS:
+        pool = OCCASION_QUOTES.get(key) or OCCASION_QUOTES["just because"]
+        qjs = pool[0].replace("\\", "\\\\").replace("'", "\\'")
+        chips.append(
+            f'<button class="appocc" type="button" '
+            f'onclick="shopApparelOccasion(\'{qjs}\')" '
+            f'aria-label="Design a {disp} garment">'
+            f'<span class="appoccem">{emoji}</span>'
+            f'<span class="appocclbl">{disp}</span></button>')
+    return (
+        '<div class="appoccrow">'
+        '<h3 class="appocch">🎁 Shop by occasion</h3>'
+        '<p class="appoccsub">Pick the moment - your design starts with the perfect '
+        'words, ready to make your own.</p>'
+        f'<div class="appoccchips">{"".join(chips)}</div></div>')
+
+
 def _apparel_section(photos: dict | None = None) -> str:
     """Visible top-level Apparel department, split into Men's and Women's
     sub-sections like a department store. Real product PHOTO per garment TYPE when
@@ -902,7 +935,7 @@ def _apparel_section(photos: dict | None = None) -> str:
         '<p class="apsub">Put your name, words or photo on a tee, hoodie, tank, '
         'sweatshirt and more - the same easy editor, made to order. Filter to find '
         'your garment, then pick one to start designing.</p>'
-        f'{filterbar}{"".join(groups)}{nomatch}</section>')
+        f'{_apparel_occasions()}{filterbar}{"".join(groups)}{nomatch}</section>')
 
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
@@ -1414,6 +1447,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apptier{{color:var(--gold-d);font-size:12px;font-weight:600;letter-spacing:.02em}}
  .appfrom{{color:#7a7466;font-size:13px}}
  .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
+ .appoccrow{{margin:2px 0 22px;text-align:center}}
+ .appocch{{margin:0 0 4px;color:var(--green);font-size:19px}}
+ .appoccsub{{margin:0 auto 14px;max-width:560px;color:#5b6b62;font-size:14px}}
+ .appoccchips{{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}}
+ .appocc{{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:86px;
+   padding:11px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;
+   cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}}
+ .appocc:hover{{transform:translateY(-3px);box-shadow:0 10px 22px rgba(16,61,46,.12);
+   border-color:var(--gold)}}
+ .appoccem{{font-size:25px;line-height:1}}
+ .appocclbl{{font-size:13px;font-weight:600;color:var(--green)}}
  .appsw{{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:2px 0 1px}}
  .swdot{{width:15px;height:15px;border-radius:50%;border:1px solid rgba(0,0,0,.22);
    cursor:pointer;transition:transform .12s,box-shadow .12s}}
@@ -2851,6 +2895,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var col=color||_afVal('afColor');  // a clicked swatch, else the active filter colour
    setProductType('apparel');      // scopes the pills to that garment's colours
    if(col) selectApparelColor(col);   // open the live preview in that colour
+ }}
+ // Occasion-first entry: open the editor pre-loaded with the occasion's quote,
+ // ready for the buyer to personalize (they can edit/replace it).
+ function shopApparelOccasion(quote){{
+   shopApparel("Men's T-Shirt","");
+   var t=document.getElementById('mtext'); if(t) t.value=quote||'';
+   var cc=document.getElementById('mcc'); if(cc) cc.textContent=(quote||'').length+' / '+MAXCHARS;
+   CURQUOTE=quote||CURQUOTE; drawArt();
  }}
  // Preselect a garment colour in the editor so the preview renders in it -
  // applies the colour WITHOUT auto-advancing the step (unlike a chip click).
