@@ -1420,6 +1420,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    text-transform:uppercase;letter-spacing:.06em}}
  .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
  @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
+ .hiw{{max-width:1000px;margin:42px auto 8px;padding:0 16px;text-align:center}}
+ .hiw h2{{color:var(--green);font-size:25px;margin:0 0 6px}}
+ .hiwsub{{color:#5b6b62;max-width:640px;margin:0 auto 26px;font-size:15px}}
+ .hiwsteps{{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}}
+ @media(max-width:720px){{.hiwsteps{{grid-template-columns:1fr}}}}
+ .hiwstep{{position:relative;background:#fff;border:1px solid var(--line);border-radius:18px;
+   padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:7px;
+   box-shadow:0 3px 16px rgba(16,61,46,.05)}}
+ .hiwnum{{position:absolute;top:-15px;left:50%;transform:translateX(-50%);width:31px;height:31px;
+   border-radius:50%;background:var(--green);color:#fff;font-weight:700;display:flex;
+   align-items:center;justify-content:center;font-size:15px}}
+ .hiwemoji{{font-size:34px;line-height:1;margin-top:4px}}
+ .hiwt{{font-weight:700;color:var(--green);font-size:17px}}
+ .hiwd{{color:#5b6b62;font-size:14px;line-height:1.5}}
  .deptcard{{display:flex;flex-direction:column;text-decoration:none;
    border-radius:18px;overflow:hidden;border:1px solid #e6e0d2;background:#fff;
    box-shadow:0 2px 10px rgba(0,0,0,.05);transition:transform .14s,box-shadow .14s}}
@@ -2311,6 +2325,25 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="deptgo">Browse Apparel →</span>
        </div>
      </a>
+   </div>
+ </section>
+ <section class="hiw" aria-label="How it works">
+   <h2>How it works</h2>
+   <p class="hiwsub">Made to order, with a FREE proof before anything prints - so you
+     get exactly what you pictured, every time.</p>
+   <div class="hiwsteps">
+     <div class="hiwstep"><span class="hiwnum">1</span><span class="hiwemoji">🎨</span>
+       <span class="hiwt">Personalize it</span>
+       <span class="hiwd">Add the name, the occasion and your own words or photo -
+         preview it live as you type.</span></div>
+     <div class="hiwstep"><span class="hiwnum">2</span><span class="hiwemoji">✅</span>
+       <span class="hiwt">Approve a free proof</span>
+       <span class="hiwd">We design your artwork and send a free digital proof - you
+         approve exactly what prints before we make it.</span></div>
+     <div class="hiwstep"><span class="hiwnum">3</span><span class="hiwemoji">📦</span>
+       <span class="hiwt">We print &amp; ship</span>
+       <span class="hiwd">Made to order on premium materials and shipped worldwide
+         with tracking.</span></div>
    </div>
  </section>
  {sproof_html}
