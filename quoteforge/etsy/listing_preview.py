@@ -2656,7 +2656,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="fonts" id="mfonts"></div>
          <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span></div>
          <div class="tsizerow">
-           <input type="range" id="mtsize" min="0" max="22" value="0" step="1"
+           <input type="range" id="mtsize" min="0" max="40" value="0" step="1"
              oninput="setTextSize(this.value)">
            <button type="button" class="tposreset" onclick="resetTextPos()">Reset</button>
          </div>
@@ -3843,12 +3843,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _placeBound(x,y,w,h){{
    if(APPLACEMENT==='leftchest') return {{x:x+w*0.52,y:y+h*0.30,w:w*0.16,h:h*0.15}};
    if(APPLACEMENT==='sleeve')    return {{x:x+w*0.085,y:y+h*0.17,w:w*0.13,h:h*0.13}};
-   return {{x:x+w*0.30,y:y+h*0.28,w:w*0.40,h:h*0.40}};   // front + back
+   return {{x:x+w*0.22,y:y+h*0.22,w:w*0.56,h:h*0.50}};   // front + back (generous)
  }}
  function _placeBoundMock(W,H){{
    if(APPLACEMENT==='leftchest') return {{x:W*0.52,y:H*0.32,w:W*0.13,h:H*0.12}};
    if(APPLACEMENT==='sleeve')    return {{x:W*0.18,y:H*0.27,w:W*0.10,h:H*0.10}};
-   return {{x:W*0.34,y:H*0.30,w:W*0.32,h:H*0.30}};
+   // Front/back: a GENEROUS, realistic torso print area (≈ a 12x16in DTG zone) so
+   // the buyer has room to move + resize the wording and photo across the garment,
+   // not just a tiny centred box.
+   return {{x:W*0.26,y:H*0.23,w:W*0.48,h:H*0.44}};
  }}
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={{x:0.5, y:0.5}}, TSIZE=0, TROT=0, ART={{x:0,y:0,w:1,h:1}}, DRAGMODE='text';

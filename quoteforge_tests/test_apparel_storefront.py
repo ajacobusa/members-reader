@@ -234,6 +234,15 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
     assert "assets/tile-m_tshirt.jpg" in he and "assets/tile-m_tshirt-back.jpg" in he
 
 
+def test_apparel_print_area_is_generous_for_placement(tmp_path):
+    # REGRESSION: the apparel print area (where the buyer moves+resizes the wording
+    # and photo) is a GENEROUS torso zone, not a tiny centred box - so the design
+    # can be placed across the garment. The text also has a wide size range.
+    h = _page(tmp_path)
+    assert "x:W*0.26,y:H*0.23,w:W*0.48,h:H*0.44" in h     # generous mockup print area
+    assert 'id="mtsize" min="0" max="40"' in h            # wide text-size range
+
+
 def test_apparel_photo_can_shrink_and_move(tmp_path):
     # REGRESSION: on apparel the uploaded photo is a PLACEABLE element - the buyer
     # can SHRINK it (down to 0.2x, not locked to fill) and MOVE it anywhere in the
