@@ -236,11 +236,15 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
 
 def test_apparel_print_area_is_generous_for_placement(tmp_path):
     # REGRESSION: the apparel print area (where the buyer moves+resizes the wording
-    # and photo) is a GENEROUS torso zone, not a tiny centred box - so the design
-    # can be placed across the garment. The text also has a wide size range.
+    # and photo) is a generous zone POSITIONED on the garment's chest/torso (not a
+    # tiny centred box, and not so tall it spills onto the lower body). Text has a
+    # wide size range but is CAPPED to the print area so it never overflows the
+    # garment, and has explicit Move controls (not just drag).
     h = _page(tmp_path)
-    assert "x:W*0.26,y:H*0.23,w:W*0.48,h:H*0.44" in h     # generous mockup print area
+    assert "x:W*0.29,y:H*0.19,w:W*0.42,h:H*0.32" in h     # torso-positioned print area
     assert 'id="mtsize" min="0" max="40"' in h            # wide text-size range
+    assert "stackDim*0.96" in h                           # manual size capped to the box
+    assert "function nudgeText" in h and "Move text" in h  # explicit text move controls
 
 
 def test_apparel_photo_can_shrink_and_move(tmp_path):
