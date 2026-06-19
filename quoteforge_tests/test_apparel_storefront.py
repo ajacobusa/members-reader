@@ -234,6 +234,16 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
     assert "assets/tile-m_tshirt.jpg" in he and "assets/tile-m_tshirt-back.jpg" in he
 
 
+def test_apparel_proof_shows_garment_not_just_art(tmp_path):
+    # REGRESSION: the final-design proof composites the GARMENT photo (the #mgarment
+    # layer behind the transparent canvas) WITH the design on top - so the buyer
+    # sees the whole piece, not just the wording on a white print area.
+    h = _page(tmp_path)
+    assert "function _composedProofURL" in h
+    assert "_du=_composedProofURL()" in h               # proof uses the composite
+    assert "tx.drawImage(mg," in h and "tx.drawImage(cv,0,0)" in h   # garment, then design
+
+
 def test_apparel_tile_uses_supplier_color_image_when_live(tmp_path, monkeypatch):
     # REGRESSION: at go-live the per-colour map is embedded so the tile can swap.
     import quoteforge.images.supplier_mockup as sm
