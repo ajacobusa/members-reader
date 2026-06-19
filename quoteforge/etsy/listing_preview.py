@@ -3930,8 +3930,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Apparel: decide by WHERE you grab - the bottom-right handle resizes the frame,
  // the wording or photo moves that element, anywhere else moves the whole frame.
  function _hitTarget(px){{
-   const b=APPAREL_BOUND;
-   if(b && Math.abs(px.x-(b.x+b.w))<26 && Math.abs(px.y-(b.y+b.h))<26) return 'resize';
+   const b=APPAREL_BOUND, near=function(hx,hy){{ return Math.abs(px.x-hx)<26 && Math.abs(px.y-hy)<26; }};
+   // PHOTO resize handle (bottom-right of the photo) wins, then the FRAME handle
+   // (bottom-left). Then the wording, the photo body (move), else the frame.
+   if(PHOTO && PHOTO_RECT && near(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h)) return 'photoresize';
+   if(b && near(b.x, b.y+b.h)) return 'resize';
    const fx=(px.x-ART.x)/ART.w, fy=(px.y-ART.y)/ART.h;
    const typed=((document.getElementById('mtext')||{{}}).value||'').trim();
    if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
@@ -3954,10 +3957,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const cv=document.getElementById('mcanvas'), W=cv.width, H=cv.height;
    if(DRAGTARGET==='frame'){{                                   // drag the whole design
      if(DRAGPX){{ BOX.x+=(px.x-DRAGPX.x)/W; BOX.y+=(px.y-DRAGPX.y)/H; _clampBox(); }}
-   }} else if(DRAGTARGET==='resize'){{                           // drag the corner to resize
+   }} else if(DRAGTARGET==='resize'){{                           // drag the corner to resize the FRAME
      const cx=BOX.x*W, cy=BOX.y*H;
      BOX.s=Math.max(2*Math.abs(px.x-cx)/(0.42*W), 2*Math.abs(px.y-cy)/(0.32*H));
      _clampBox();
+   }} else if(DRAGTARGET==='photoresize'){{                       // drag the corner to resize the PHOTO
+     if(PHOTO_RECT && PHOTO_RECT.w>2 && PHOTO_RECT.h>2){{
+       const pcx=PHOTO_RECT.x+PHOTO_RECT.w/2, pcy=PHOTO_RECT.y+PHOTO_RECT.h/2;
+       const r=Math.max(Math.abs(px.x-pcx)/(PHOTO_RECT.w/2), Math.abs(px.y-pcy)/(PHOTO_RECT.h/2));
+       PHOTO_ZOOM=Math.max(0.2, Math.min(3, PHOTO_ZOOM*r));
+       const z=document.getElementById('mphotozoom'); if(z) z.value=PHOTO_ZOOM;
+     }}
    }} else if(DRAGTARGET==='photo'){{
      if(IS_APPAREL){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
      else if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
@@ -4299,11 +4309,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(IS_APPAREL && APPAREL_BOUND){{ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
-     // Bottom-right RESIZE handle (drag it to size the whole design).
-     const hx=b.x+b.w, hy=b.y+b.h, hs=9;
-     ctx.fillStyle='#15643c';
-     ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2);
-     ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2);
+     const hs=9;
+     function _handle(cx,cy,col){{ ctx.fillStyle=col; ctx.fillRect(cx-hs,cy-hs,hs*2,hs*2);
+       ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(cx-hs,cy-hs,hs*2,hs*2); }}
+     // FRAME resize handle (green, bottom-LEFT) - sizes the whole design.
+     _handle(b.x, b.y+b.h, '#15643c');
+     // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
+     if(PHOTO && PHOTO_RECT){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
      ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · corner to resize',
        b.x+b.w/2, b.y-7); ctx.restore(); }}

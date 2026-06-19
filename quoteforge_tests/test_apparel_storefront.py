@@ -249,8 +249,13 @@ def test_apparel_design_frame_is_movable_and_resizable(tmp_path):
     # MOUSE: drag the frame to move, drag the corner handle to resize
     assert "function _hitTarget" in h                        # grab decides move/resize/element
     assert "DRAGTARGET==='frame'" in h and "DRAGTARGET==='resize'" in h
-    assert "BOX.s=Math.max(2*Math.abs(px.x-cx)" in h         # corner-drag resizes
+    assert "BOX.s=Math.max(2*Math.abs(px.x-cx)" in h         # corner-drag resizes the frame
     assert "corner to resize" in h                           # visible resize handle + hint
+    # the PHOTO has its OWN mouse drag + corner resize handle (separate from frame)
+    assert "return 'photoresize'" in h                       # photo corner hit-tested
+    assert "DRAGTARGET==='photoresize'" in h                 # photo corner-drag resizes photo
+    assert "PHOTO_ZOOM=Math.max(0.2, Math.min(3, PHOTO_ZOOM*r))" in h
+    assert "_handle(PHOTO_RECT.x+PHOTO_RECT.w" in h          # photo's own resize handle drawn
 
 
 def test_apparel_print_area_is_generous_for_placement(tmp_path):
