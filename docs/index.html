@@ -1175,14 +1175,12 @@
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Tap a side &mdash; or <b>drag the shirt</b> to spin it (front &#8596; back)</div>
-         <div class="dseg" role="group" aria-label="Print placement">
+         <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
+         <div class="dseg" role="group" aria-label="Choose side">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
-           <button type="button" class="plbtn" data-p="leftchest" onclick="setPlacement('leftchest')">Left chest</button>
            <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
-           <button type="button" class="plbtn" data-p="sleeve" id="plsleeve" onclick="setPlacement('sleeve')">Sleeve</button>
          </div>
-         <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add your photo or wording and it prints here.</div>
+         <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <div class="dragbar" id="mframebar" style="display:none">
@@ -1718,11 +1716,10 @@
    renderBg();                         // Shirt-colour swatches (apparel) / Background
    if(IS_APPAREL){
      autoContrastText((CURFMT.split(' - ')[1]||''));
-     APPLACEMENT='front';              // default placement; Sleeve only for sleeved garments
+     APPLACEMENT='front';              // start on the front side
+     SIDES={front:null,back:null};   // clear both sides' designs for the new garment
      document.querySelectorAll('#mplacement .plbtn').forEach(function(b){
        b.classList.toggle('sel', b.dataset.p==='front'); });
-     var _sl=document.getElementById('plsleeve');
-     if(_sl) _sl.style.display=(_garmentType()==='tank')?'none':'';
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
@@ -1848,8 +1845,14 @@
    }
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{}).value||'1');
    const title=(DATA[CUR]||{}).title||'';
+   // Capture the side being viewed, then record which sides carry a design so the
+   // order knows the front AND back content (each side is independent).
+   if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();
+   const _has=function(s){ return !!(s && (((s.quote||'').trim()) || s.photoSrc)); };
+   const _sides = IS_APPAREL ? {front:_has(SIDES.front), back:_has(SIDES.back)} : null;
    CART.push({fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
+     sides:_sides,
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -2470,15 +2473,46 @@
  function moveFrame(dx,dy){ BOX.x+=dx; BOX.y+=dy; _clampBox(); drawArt(); }
  function resetFrame(){ BOX={x:0.50,y:0.35,s:1.0};
    var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }
- const _PLACE_LBL={front:'Front',leftchest:'Left chest',back:'Back',sleeve:'Sleeve'};
+ const _PLACE_LBL={front:'Front',back:'Back'};
+ // Front and back hold INDEPENDENT designs (different wording + photo + frame).
+ // Snapshot the current side before flipping, then restore the other side's design.
+ let SIDES={front:null,back:null};
+ function _captureSide(){
+   const ta=document.getElementById('mtext');
+   return { quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
+     pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{x:TPOS.x,y:TPOS.y},
+     tsize:TSIZE, trot:TROT, box:{x:BOX.x,y:BOX.y,s:BOX.s}, font:SELFONT, txt:SELTXT };
+ }
+ function _restoreSide(s){
+   const ta=document.getElementById('mtext');
+   if(s){
+     if(ta) ta.value=s.quote||''; CURQUOTE=s.cq||'';
+     PHOTO_ZOOM=s.pz; PHOTO_FX=s.pfx; PHOTO_FY=s.pfy;
+     TPOS={x:s.tpos.x,y:s.tpos.y}; TSIZE=s.tsize; TROT=s.trot;
+     BOX={x:s.box.x,y:s.box.y,s:s.box.s};
+     if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
+     if(s.photoSrc){ var im=new Image(); im.onload=function(){drawArt();}; im.src=s.photoSrc;
+       PHOTO=im; _showPhotoCtl(true); }
+     else { PHOTO=null; _showPhotoCtl(false); }
+   } else {                                    // a fresh, empty side
+     if(ta) ta.value=''; CURQUOTE='';
+     PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+     TPOS={x:0.5,y:0.5}; TSIZE=0; TROT=0; BOX={x:0.50,y:0.35,s:1.0}; _showPhotoCtl(false);
+   }
+   const _sync=function(id,v){ var e=document.getElementById(id); if(e) e.value=v; };
+   _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
+   var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
+ }
  function setPlacement(p){
+   if(p!=='back') p='front';
+   const prev=APPLACEMENT;
+   if(IS_APPAREL && p!==prev) SIDES[prev]=_captureSide();   // save the side we're leaving
    APPLACEMENT=p;
    document.querySelectorAll('#mplacement .plbtn').forEach(function(b){
      b.classList.toggle('sel', b.dataset.p===p); });
-   // Flipping to Back shows the garment's back; tell the buyer they're now
-   // designing that side so the editor doesn't feel "stuck" on the front.
    const _bh=document.getElementById('mbackhint');
    if(_bh) _bh.style.display=(p==='back')?'block':'none';
+   if(IS_APPAREL && p!==prev) _restoreSide(SIDES[p]);       // load the side we moved to
    drawArt();
  }
  // Toggle the shop-logo overlay (added to BOTH the front and the back).
@@ -2487,17 +2521,12 @@
    LOGO_ON=!!(cb&&cb.checked);
    drawArt();
  }
- // Print-safe boundary for the current placement (silhouette mode: relative to the
- // garment box; mockup mode: relative to the whole canvas). Front/Back = large
- // centred chest; Left chest = small upper-left; Sleeve = narrow on the sleeve.
+ // Print-safe boundary = the movable design FRAME (front or back). Silhouette mode
+ // is relative to the garment box; mockup mode is relative to the whole canvas.
  function _placeBound(x,y,w,h){
-   if(APPLACEMENT==='leftchest') return {x:x+w*0.52,y:y+h*0.30,w:w*0.16,h:h*0.15};
-   if(APPLACEMENT==='sleeve')    return {x:x+w*0.085,y:y+h*0.17,w:w*0.13,h:h*0.13};
    return {x:x+w*0.22,y:y+h*0.22,w:w*0.56,h:h*0.50};   // front + back (generous)
  }
  function _placeBoundMock(W,H){
-   if(APPLACEMENT==='leftchest') return {x:W*0.52,y:H*0.32,w:W*0.13,h:H*0.12};
-   if(APPLACEMENT==='sleeve')    return {x:W*0.18,y:H*0.27,w:W*0.10,h:H*0.10};
    // Front/back: the design FRAME the buyer can move + resize. Base size 0.42x0.32
    // of the canvas x BOX.s, centred at (BOX.x,BOX.y), then clamped so the frame
    // stays on the garment's torso (never onto the collar or the lower body).

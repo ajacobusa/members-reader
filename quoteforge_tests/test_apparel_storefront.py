@@ -423,31 +423,34 @@ def test_apparel_sizes_in_sizemap(tmp_path):
 
 # ── Design-your-own: the editor is reused with a print-safe boundary ──
 
-def test_apparel_print_placements_multiple_views(tmp_path):
-    # REGRESSION: customers choose the print placement / view - Front, Left chest,
-    # Back, Sleeve - which moves+resizes the print area and is saved on the order.
-    # Sleeve is only offered on sleeved garments (hidden for tanks).
+def test_apparel_front_back_sides_are_independent(tmp_path):
+    # REGRESSION: the customer designs the FRONT and the BACK as TWO independent
+    # designs - each side keeps its own wording + photo + frame. Placement collapsed
+    # to Front/Back (the movable frame replaces left-chest/sleeve). Flipping a side
+    # snapshots the one you leave and restores the one you open; both sides are
+    # recorded on the cart line.
     h = _page(tmp_path)
-    assert 'id="mplacement"' in h                         # the placement bar (apparel-only)
-    assert h.count('class="plbtn') == 4                   # four placements
+    assert 'id="mplacement"' in h                         # the side picker (apparel-only)
+    assert h.count('class="plbtn') == 2                   # exactly Front + Back
+    assert "setPlacement('front')" in h and "setPlacement('back')" in h
+    assert "leftchest" not in h and ">Sleeve</button>" not in h
     assert "function setPlacement" in h
     assert "function _placeBound" in h and "function _placeBoundMock" in h
-    for p in ("setPlacement('front')", "setPlacement('leftchest')",
-              "setPlacement('back')", "setPlacement('sleeve')"):
-        assert p in h, p
-    for label in ("Front", "Left chest", "Back", "Sleeve"):
-        assert f">{label}</button>" in h, label
-    # Sleeve hidden for tanks; placement persisted on the cart line
-    assert "_garmentType()==='tank'" in h.replace(" ", "")
+    # per-side capture/restore on flip
+    assert "let SIDES={front:null,back:null}" in h
+    assert "function _captureSide" in h and "function _restoreSide" in h
+    assert "SIDES[prev]=_captureSide()" in h and "_restoreSide(SIDES[p])" in h
+    # the cart records which sides carry a design, plus placement + the print label
+    assert "sides:_sides" in h
     assert "placement:(IS_APPAREL" in h.replace(" ", "")
-    # the print-here label reflects the chosen placement
     assert "_PLACE_LBL[APPLACEMENT]" in h
 
 
 def test_apparel_renders_garment_with_print_boundary(tmp_path):
     h = _page(tmp_path)
     assert "function drawGarment" in h             # apparel preview branch
-    assert "prints here" in h.lower()              # the print-safe boundary label
+    assert "drag to move" in h                     # the movable print-frame label
+    assert "APPAREL_BOUND" in h                    # the print-safe boundary is drawn
     assert "drawArt" in h                          # same editor canvas reused
 
 
