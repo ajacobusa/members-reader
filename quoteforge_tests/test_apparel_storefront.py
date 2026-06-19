@@ -234,6 +234,18 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
     assert "assets/tile-m_tshirt.jpg" in he and "assets/tile-m_tshirt-back.jpg" in he
 
 
+def test_apparel_photo_can_shrink_and_move(tmp_path):
+    # REGRESSION: on apparel the uploaded photo is a PLACEABLE element - the buyer
+    # can SHRINK it (down to 0.2x, not locked to fill) and MOVE it anywhere in the
+    # print area. Wall art keeps the framed fill (cover) model untouched.
+    h = _page(tmp_path)
+    assert "const fit=Math.min(w/iw, h/ih)*PHOTO_ZOOM" in h     # contain-fit x size
+    assert "PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1)" in h   # drag = move
+    assert 'min="0.2"' in h                                     # slider can shrink it
+    assert "IS_APPAREL)?0.2:1" in h                             # size floor by type
+    assert "const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM" in h     # wall art fill kept
+
+
 def test_apparel_proof_shows_garment_not_just_art(tmp_path):
     # REGRESSION: the final-design proof composites the GARMENT photo (the #mgarment
     # layer behind the transparent canvas) WITH the design on top - so the buyer

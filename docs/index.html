@@ -1194,12 +1194,12 @@
          <div class="dbhint">Select one, then drag it on the preview.</div>
        </div>
            <div id="mphotoctl" style="display:none">
-             <div class="pctitle">🖼️ Fit your photo in the frame</div>
+             <div class="pctitle">🖼️ Resize &amp; place your photo</div>
              <div class="photorow">
-               <span class="plbl">Zoom</span>
+               <span class="plbl">Size</span>
                <span class="zico" aria-hidden="true">−</span>
-               <input type="range" id="mphotozoom" min="1" max="3" step="0.05" value="1"
-                 oninput="setPhotoZoom(this.value)" aria-label="Photo zoom">
+               <input type="range" id="mphotozoom" min="0.2" max="3" step="0.05" value="1"
+                 oninput="setPhotoZoom(this.value)" aria-label="Photo size">
                <span class="zico" aria-hidden="true">+</span>
              </div>
              <div class="photorow">
@@ -2359,11 +2359,14 @@
      ?'✓ Saved - watch your inbox for the proof.'
      :'✓ Saved on this device - please also tap "Email us your order now" above so we receive it.';
  }
- let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5;
+ let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5, PHOTO_RECT=null;
  function _showPhotoCtl(on){
    var c=document.getElementById('mphotoctl'); if(c)c.style.display=on?'block':'none';
  }
- function setPhotoZoom(v){ PHOTO_ZOOM=Math.max(1,parseFloat(v)||1); drawArt(); }
+ // Apparel can SHRINK the photo (size 0.2x); wall art fills the frame (min 1x).
+ function setPhotoZoom(v){
+   const lo=(typeof IS_APPAREL!=='undefined' && IS_APPAREL)?0.2:1;
+   PHOTO_ZOOM=Math.max(lo, parseFloat(v)||1); drawArt(); }
  function nudgePhoto(dx,dy){ PHOTO_FX=Math.min(1,Math.max(0,PHOTO_FX+dx));
    PHOTO_FY=Math.min(1,Math.max(0,PHOTO_FY+dy)); drawArt(); }
  function resetPhoto(){ PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
@@ -2485,8 +2488,11 @@
    ev.preventDefault&&ev.preventDefault(); }
  function _moveDrag(ev){ if(!DRAGGING) return;
    const f=_frac(ev);
-   if(DRAGTARGET==='photo'){                                   // pan the photo
-     if(DRAGLAST){ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
+   if(DRAGTARGET==='photo'){
+     if(IS_APPAREL){                                           // MOVE the photo (place it)
+       PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1);
+     } else if(DRAGLAST){                                      // pan within the framed print
+       PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
        PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }
    } else {                                                    // move the text
      TPOS.x=_clamp(f.x,0.04,0.96); TPOS.y=_clamp(f.y,0.04,0.96);
@@ -2758,17 +2764,26 @@
    if(!IS_APPAREL){ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }  // art background (print only)
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
-     // small bleed (1.06) so there's always room to drag/reposition the photo
-     const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM;        // fill + bleed + zoom (room to reposition)
-     const dw=iw*cover, dh=ih*cover;
-     // place so the focal point (PHOTO_FX,PHOTO_FY of the image) sits at frame center
-     let dx=(x+w/2)-PHOTO_FX*dw, dy=(y+h/2)-PHOTO_FY*dh;
-     dx=Math.min(x, Math.max(x+w-dw, dx));                    // keep frame covered
-     dy=Math.min(y, Math.max(y+h-dh, dy));
      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
-     ctx.drawImage(PHOTO,dx,dy,dw,dh);
-     // scrim so overlaid wording stays legible over any photo
-     ctx.fillStyle="rgba(0,0,0,.32)"; ctx.fillRect(x,y,w,h);
+     if(IS_APPAREL){
+       // APPAREL: the photo is a PLACEABLE element - CONTAIN-fit x size, centred at
+       // a free position, so the buyer can SHRINK it (PHOTO_ZOOM 0.2..3) and MOVE it
+       // anywhere in the print area instead of it always filling the garment.
+       const fit=Math.min(w/iw, h/ih)*PHOTO_ZOOM;
+       const dw=iw*fit, dh=ih*fit;
+       const cxp=x+_clamp(PHOTO_FX,0,1)*w, cyp=y+_clamp(PHOTO_FY,0,1)*h;
+       ctx.drawImage(PHOTO, cxp-dw/2, cyp-dh/2, dw, dh);
+       PHOTO_RECT={x:cxp-dw/2,y:cyp-dh/2,w:dw,h:dh};
+     } else {
+       // WALL ART: a framed print FILLS the frame (cover + bleed + zoom-in pan).
+       const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM;
+       const dw=iw*cover, dh=ih*cover;
+       let dx=(x+w/2)-PHOTO_FX*dw, dy=(y+h/2)-PHOTO_FY*dh;
+       dx=Math.min(x, Math.max(x+w-dw, dx));                  // keep frame covered
+       dy=Math.min(y, Math.max(y+h-dh, dy));
+       ctx.drawImage(PHOTO,dx,dy,dw,dh);
+       ctx.fillStyle="rgba(0,0,0,.32)"; ctx.fillRect(x,y,w,h);  // scrim for wording
+     }
      ctx.restore();
    }
    ART={x:x,y:y,w:w,h:h};                                    // for drag hit-testing
