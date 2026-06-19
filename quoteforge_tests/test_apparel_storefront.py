@@ -68,25 +68,29 @@ def test_apparel_department_has_mens_and_womens_sections(tmp_path):
 
 
 def test_apparel_cards_use_photos_with_svg_fallback(tmp_path):
-    # REGRESSION: full gendered + 3-tier range (13 garments x 3 tiers = 39 tiles).
-    # Every garment TYPE now ships a real product PHOTO (brand/tile-<type>.jpg),
-    # so all 39 tiles are photos and the SVG fallback is unused on the live page.
+    # REGRESSION: the 3 brand tiers collapse into ONE tile per (gender, garment
+    # type) = 13 tiles (7 men's incl. polo + 6 women's). Every tile ships a real,
+    # GENDER-correct product photo (brand/tile-<garment_id>.jpg), so all 13 are
+    # photos and the SVG fallback is unused on the live page.
     h = _page(tmp_path)
-    assert h.count('class="apptile') == 39        # 13 garments x 3 brand tiers
-    assert h.count('class="appimg"') == 39        # a photo for every tile
-    assert h.count('class="apptile apptilephoto"') == 39
+    assert h.count('class="apptile') == 13        # one tile per gender+type
+    assert h.count('class="appimg"') == 13        # a photo for every tile
+    assert h.count('class="apptile apptilephoto"') == 13
     assert h.count('class="appsvg"') == 0         # no tile falls back to SVG
     assert "appemoji" not in h                     # old emoji tiles gone
 
 
 def test_apparel_brand_tiers_present(tmp_path):
-    # REGRESSION: each garment is offered in 3 brand tiers (Value/Classic/Premium)
-    # with the Gelato brand shown - never Bella+Canvas/Gildan.
+    # REGRESSION: every garment is still offered in 3 brand tiers
+    # (Value/Classic/Premium) - now collapsed onto one tile each (13 tiles), the
+    # tiers reachable from the in-editor Quality picker (APPAREL_TIERS). Real
+    # Gelato brands show in the facet; never Bella+Canvas/Gildan.
     h = _page(tmp_path)
-    assert h.count('class="apptier"') == 39
+    assert h.count('class="apptier"') == 13                 # one tier cue per tile
     for tier in ("Value", "Classic", "Premium"):
-        assert tier in h
-    assert "Comfort Colors" in h and "Lane Seven" in h     # real Gelato brands shown
+        assert tier in h                                    # all three still offered
+    assert "const APPAREL_TIERS =" in h                     # tier-picker data embedded
+    assert "Comfort Colors" in h and "Lane Seven" in h      # real Gelato brands shown
     assert "bella" not in h.lower() and "gildan" not in h.lower()
 
 
@@ -126,7 +130,7 @@ def test_apparel_filter_bar(tmp_path):
     assert h.count('class="appfilter"') == 5          # five facet dropdowns
     assert "function applyApparelFilters" in h and "function clearApparelFilters" in h
     # every tile carries the facets the filter reads
-    assert h.count("data-type=") == 39 and h.count("data-colors=") == 39
+    assert h.count("data-type=") == 13 and h.count("data-colors=") == 13
     for attr in ("data-gender=", "data-brand=", "data-sizes="):
         assert attr in h, attr
     # the two departments are wrapped so a whole group can hide
@@ -149,8 +153,8 @@ def test_apparel_color_swatches_and_carry_through(tmp_path):
     # so the live preview recolors. Also fixes pickFmt (was indexing wall-art
     # formats), so apparel colour selection actually changes the garment.
     h = _page(tmp_path)
-    assert h.count('class="appsw"') == 39          # a swatch row per tile
-    assert h.count("data-garment=") == 39          # garment name for swatch clicks
+    assert h.count('class="appsw"') == 13          # a swatch row per tile
+    assert h.count("data-garment=") == 13          # garment name for swatch clicks
     assert "function initApparelSwatches" in h     # paints the dots on load
     assert "APPARELCOLOR[cn]" in h                 # dot colour from the shared map
     assert "function selectApparelColor" in h      # preselect colour in editor
@@ -173,9 +177,36 @@ def test_apparel_percolor_tile_swap_wired(tmp_path):
     assert "card.dataset.defimg" in h                # default photo remembered for reset
     # the swap lookup key is the GARMENT_ID (matches APPAREL_COLOR_IMG keys), so
     # each tier/gender maps to its exact product - not the display type_name
-    assert h.count("data-gid=") == 39
+    assert h.count("data-gid=") == 13
     assert 'data-gid="m_tshirt"' in h and 'data-gid="m_hoodie"' in h
     assert "_tileColorUrl(card.dataset.gid" in h
+
+
+def test_apparel_tiers_collapse_to_one_gendered_tile(tmp_path):
+    # REGRESSION: the 3 brand tiers collapse to ONE tile per (gender, garment type)
+    # = 13 tiles (7 men's + 6 women's; no women's polo). Every visible card is the
+    # CLASSIC tier and carries a GENDER-correct photo; Value/Premium stay reachable
+    # from the in-editor Quality picker. This is what fixed "only men, shown twice".
+    import re
+    h = _page(tmp_path)
+    sec = h[h.find('id="apparel"'):]
+    assert h.count('data-gid="') == 13                  # one tile per gender+type
+    assert set(re.findall(r'data-tier="(\w+)"', sec)) == {"Classic"}   # Classic only
+    for gid in ("m_tshirt", "w_tshirt", "m_polo", "w_hoodie", "w_sweatshirt"):
+        assert f'data-gid="{gid}"' in h, gid
+    assert 'data-gid="w_polo"' not in h                 # polo is men's-only
+
+    def _img(gid):                                      # the photo a tile renders
+        m = re.search(r'data-gid="%s".*?<img[^>]*src="([^"]+)"' % gid, sec, re.S)
+        return m.group(1) if m else None
+    # men's tee and women's tee tiles use DIFFERENT photos (gender-correct), not the
+    # same male shot repeated.
+    assert _img("m_tshirt") and _img("w_tshirt")
+    assert _img("m_tshirt") != _img("w_tshirt")
+    # the in-editor Quality picker keeps all three tiers reachable
+    assert 'id="mtierrow"' in h and "function setApparelTier" in h
+    assert "function renderTierRow" in h and "const APPAREL_TIERS =" in h
+    assert "Men's T-Shirt (Value)" in h                 # Value tier still offered
 
 
 def test_apparel_tile_uses_supplier_color_image_when_live(tmp_path, monkeypatch):

@@ -112,11 +112,12 @@ def _all_skus():
 # ── Storefront wiring ────────────────────────────────────────────
 
 def test_storefront_uses_supplier_image_when_present(tmp_path, monkeypatch):
-    # REGRESSION: when a real supplier image resolves for a garment type, the tile
-    # <img src> uses it (overriding the AI tile). Patch at the source module so the
-    # in-function import in build_shop_home picks it up.
+    # REGRESSION: when a real supplier image resolves for a garment, the tile
+    # <img src> uses it (overriding the local tile). Keyed PER GARMENT_ID (the
+    # gendered, tier-exact key) - so the men's Classic tee (m_tshirt) swaps. Patch
+    # at the source module so the in-function import in build_shop_home picks it up.
     monkeypatch.setattr(gm, "apparel_tile_images",
-                        lambda *a, **k: {"tshirt": "https://cdn/partner-tee.png"})
+                        lambda *a, **k: {"m_tshirt": "https://cdn/partner-tee.png"})
     from PIL import Image
     from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
     l = LAUNCH_PACK_20[0]

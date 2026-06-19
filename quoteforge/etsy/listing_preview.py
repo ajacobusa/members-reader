@@ -828,6 +828,17 @@ def _apparel_section(photos: dict | None = None) -> str:
         frm[v.garment_id] = min(frm.get(v.garment_id, 1e9), v.price)
     if not frm:
         return ""
+    # Collapse the three brand tiers (Value/Classic/Premium) into ONE tile per
+    # (gender, garment type): the Classic garment is the visible card, the buyer
+    # picks the quality tier inside the editor. "from" shows the cheapest tier.
+    _group_from: dict = {}     # (gender, type) -> min price across its tiers
+    _group_tiers: dict = {}    # (gender, type) -> set of tier names present
+    for g in APPAREL_CATALOG:
+        if frm.get(g.garment_id) is None:
+            continue
+        k = (g.gender, g.garment_type)
+        _group_from[k] = min(_group_from.get(k, 1e9), frm[g.garment_id])
+        _group_tiers.setdefault(k, set()).add(g.tier)
 
     def _brand_disp(g) -> str:
         """Brand label without the trailing style code (e.g. 'Lane Seven')."""
@@ -837,7 +848,7 @@ def _apparel_section(photos: dict | None = None) -> str:
         """Render one garment tile (product photo, else shaded SVG fallback).
         Carries data-* facets (gender/type/brand/colours/sizes) the filter bar
         reads to show or hide the tile."""
-        low = frm.get(g.garment_id)
+        low = _group_from.get((g.gender, g.garment_type))
         if low is None:
             return ""
         # Prefer the EXACT per-garment product image (tier/gender), else the
@@ -853,8 +864,11 @@ def _apparel_section(photos: dict | None = None) -> str:
                     f'{art}</svg></span>')
         name_js = g.name.replace("\\", "\\\\").replace("'", "\\'")
         brand_disp = _brand_disp(g)
-        tier_line = (f'<span class="apptier">{g.tier} · {brand_disp}</span>'
-                     if g.tier and brand_disp else "")
+        _ntiers = len(_group_tiers.get((g.gender, g.garment_type), {g.tier}))
+        tier_line = ('<span class="apptier">Value · Classic · Premium</span>'
+                     if _ntiers > 1 else
+                     (f'<span class="apptier">{g.tier} · {brand_disp}</span>'
+                      if g.tier and brand_disp else ""))
         return (
             f'<button class="appcard" type="button" '
             f'data-gender="{g.gender}" data-type="{g.type_name}" '
@@ -870,7 +884,8 @@ def _apparel_section(photos: dict | None = None) -> str:
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours →</span></button>')
 
-    shown = [g for g in APPAREL_CATALOG if frm.get(g.garment_id) is not None]
+    shown = [g for g in APPAREL_CATALOG
+             if g.tier == "Classic" and frm.get(g.garment_id) is not None]
     if not shown:
         return ""
 
@@ -1158,11 +1173,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # price ONLY - never the supplier SKU or cost - so no fulfilment name can
     # reach the customer page.
     apparel_formats: list = []
+    apparel_tiers: dict = {}            # Classic name -> [{tier,name,from}] picker
     if frame_picker:
         try:
             from quoteforge.etsy.apparel_catalog import (
                 build_apparel_variations, APPAREL_CATALOG)
             _ap_from: dict = {}
+            _gid_from: dict = {}        # garment_id -> cheapest variant price
             _size_order = ["S", "M", "L", "XL", "2XL", "3XL"]
             # Canonical colour order (light-forward, White first) so each garment's
             # pills/swatches/default open on White - not alphabetical "Black".
@@ -1173,6 +1190,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 sizemap.setdefault(key, []).append(
                     {"size": av.size, "price": av.price})
                 _ap_from[key] = min(_ap_from.get(key, 1e9), av.price)
+                _gid_from[av.garment_id] = min(
+                    _gid_from.get(av.garment_id, 1e9), av.price)
             for key in _ap_from:                      # sort each garment by size
                 seen = {r["size"]: r for r in sizemap[key]}
                 sizemap[key] = sorted(
@@ -1185,9 +1204,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 return (g, _corder.get(c, 99), c)
             apparel_formats = [{"name": k, "img": "", "price": round(p, 2)}
                                for k, p in sorted(_ap_from.items(), key=_ap_sort)]
+            # Tier groups for the in-editor quality picker: the Classic garment
+            # name maps to every tier (Value/Classic/Premium) of that gender+type,
+            # each with its cheapest "from" price - so a collapsed tile still lets
+            # the buyer reach Value and Premium.
+            _trank = {"Value": 0, "Classic": 1, "Premium": 2}
+            _cls_name = {(g.gender, g.garment_type): g.name
+                         for g in APPAREL_CATALOG if g.tier == "Classic"}
+            _grp: dict = {}
+            for g in APPAREL_CATALOG:
+                if g.garment_id in _gid_from:
+                    _grp.setdefault((g.gender, g.garment_type), []).append(g)
+            for _k, _gs in _grp.items():
+                _cname = _cls_name.get(_k)
+                if not _cname:
+                    continue
+                apparel_tiers[_cname] = [
+                    {"tier": g.tier, "name": g.name,
+                     "from": round(_gid_from[g.garment_id], 2)}
+                    for g in sorted(_gs, key=lambda x: _trank.get(x.tier, 9))]
         except Exception:  # noqa: BLE001
             apparel_formats = []
+            apparel_tiers = {}
     apparel_formats_json = json.dumps(apparel_formats)
+    apparel_tiers_json = json.dumps(apparel_tiers)
     # Per-colour supplier product photos {garment_id:{colour:url}} - swaps the tile
     # photo to the picked colour at go-live; empty (no swap) in TEST_MODE.
     try:
@@ -1245,11 +1285,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     _dept_app_img = next((p for p in (brand / "dept-apparel.jpg",
                                       brand / "dept-apparel.png") if p.exists()), None)
     dept_app_src = _emit(_dept_app_img, "dept-apparel.jpg") if _dept_app_img else ""
-    # Per-garment product photos for the apparel tiles (brand/tile-<garment>.jpg);
-    # fall back to the shaded SVG tile when a photo is absent.
+    # Per-garment product photos for the apparel tiles, keyed by garment_id so each
+    # GENDER shows its OWN model photo (brand/tile-<garment_id>.jpg, e.g.
+    # tile-m_tshirt.jpg / tile-w_tshirt.jpg). Falls back to the shaded SVG tile when
+    # a photo is absent. Only the Classic tier is tiled - the three brand tiers
+    # collapse into one card and the buyer picks the tier inside the editor.
     _garment_photos: dict = {}
-    for _gid in ("tshirt", "tank", "longsleeve", "raglan", "polo",
-                 "hoodie", "sweatshirt"):
+    try:
+        from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG as _AC_ph
+        _photo_gids = [g.garment_id for g in _AC_ph if g.tier == "Classic"]
+    except Exception:  # noqa: BLE001
+        _photo_gids = []
+    for _gid in _photo_gids:
         _gp = next((brand / f"tile-{_gid}.{e}" for e in ("jpg", "png")
                     if (brand / f"tile-{_gid}.{e}").exists()), None)
         if _gp:
@@ -2627,6 +2674,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="lbl">🛒 Build your order (mix sizes &amp; quantities)<span class="stepbadge">👉 Next step</span></div>
          <div id="sizeprompt" class="sizeprompt" style="display:none">👇 Pick
            your <b>size</b> &amp; <b>quantity</b>, then tap <b>Add to basket</b></div>
+         <div class="orow" id="mtierrow" style="display:none">
+           <label>Quality <select id="mtier" onchange="setApparelTier(this.value)"></select></label>
+         </div>
          <div class="orow">
            <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
            <label>Qty <select id="mqty"></select></label>
@@ -2881,7 +2931,39 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
  const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
- let IS_APPAREL=false, CURGARMENT="";
+ // Quality tiers per garment: Classic name -> [{{tier,name,from}}]. A collapsed
+ // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
+ const APPAREL_TIERS = {apparel_tiers_json};
+ let IS_APPAREL=false, CURGARMENT="", CURBASE="";
+ // Strip a tier suffix ("Men's T-Shirt (Value)" -> "Men's T-Shirt") to find the
+ // Classic base name that keys APPAREL_TIERS.
+ function _baseName(n){{ return (n||'').replace(/ \\((?:Value|Premium)\\)$/,''); }}
+ // Populate + show the Quality picker for the current garment (apparel only, and
+ // only when more than one tier exists). Hidden for wall art / single-tier items.
+ function renderTierRow(){{
+   var row=document.getElementById('mtierrow'), sel=document.getElementById('mtier');
+   if(!row||!sel) return;
+   var tiers=(typeof APPAREL_TIERS!=='undefined' && APPAREL_TIERS[CURBASE])||[];
+   if(!IS_APPAREL || tiers.length<2){{ row.style.display='none'; sel.innerHTML=''; return; }}
+   row.style.display='';
+   sel.innerHTML=tiers.map(function(t){{
+     var lab=t.tier+(t.from!=null?(' — from $'+Number(t.from).toFixed(2)):'');
+     return '<option value="'+t.name+'"'+(t.name===CURGARMENT?' selected':'')+'>'+lab+'</option>';
+   }}).join('');
+ }}
+ // Switch the editor to the chosen quality tier, keeping the picked colour when the
+ // tier offers it (else the tier's first colour). Refreshes swatches + price + size.
+ function setApparelTier(name){{
+   if(!name) return;
+   var col=(CURFMT.split(' - ')[1])||_afVal('afColor')||'';
+   CURGARMENT=name;                         // the tier's full garment name
+   var fmts=apparelFormatsFor(), want=name+' - '+col, j=-1;
+   for(var k=0;k<fmts.length;k++){{ if(fmts[k].name===want){{ j=k; break; }} }}
+   if(j<0 && fmts.length){{ col=(fmts[0].name.split(' - ')[1])||''; }}
+   renderBg();                              // colour swatches scoped to this tier
+   if(col) selectApparelColor(col);
+   fillSizes(); updateReview();
+ }}
  // Apparel pills are scoped to the SELECTED garment (CURGARMENT) so the editor
  // shows just that garment's colours, not every garment in the catalogue.
  function apparelFormatsFor(){{
@@ -2942,6 +3024,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    TXT_USER_SET=false;                 // re-auto-contrast text for the new context
    if(IS_APPAREL && !CURGARMENT && APPAREL_FORMATS.length)
      CURGARMENT=APPAREL_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
+   if(IS_APPAREL && !CURBASE) CURBASE=_baseName(CURGARMENT);
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
    if(wb&&ab){{wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}}
    const an=document.getElementById('mapparelnote'); if(an)an.style.display=IS_APPAREL?'block':'none';
@@ -2964,6 +3047,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var _sl=document.getElementById('plsleeve');
      if(_sl) _sl.style.display=(_garmentType()==='tank')?'none':'';
    }}
+   renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
  }}
  // Entry point from the homepage Apparel category: open the editor straight into
@@ -2972,9 +3056,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!DATA.length) return;
    openM(0);                       // openM clears CURGARMENT; set it AFTER
    CURGARMENT=garment||"";         // the full garment name, e.g. "Men's T-Shirt"
+   CURBASE=garment||"";            // the Classic base name keys the tier picker
    var col=color||_afVal('afColor');  // a clicked swatch, else the active filter colour
    setProductType('apparel');      // scopes the pills to that garment's colours
    if(col) selectApparelColor(col);   // open the live preview in that colour
+   renderTierRow();                   // offer Value/Classic/Premium for this garment
  }}
  // Occasion-first entry: open the editor pre-loaded with the occasion's quote,
  // ready for the buyer to personalize (they can edit/replace it).
