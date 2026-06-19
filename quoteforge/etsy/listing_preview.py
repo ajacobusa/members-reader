@@ -1311,6 +1311,41 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 _garment_photos[_gidk] = _url    # garment_id key (preferred in _card)
     except Exception:  # noqa: BLE001 — never break the build on the supplier API
         pass
+    # Front + BACK garment photos for the editor's front/back FLIP, so a buyer can
+    # see and design the BACK too. garment_id -> {front, back}; back is the matching
+    # print-partner back-view tile (brand/tile-<gid>-back.jpg), or the front if none.
+    _apparel_side_img: dict = {}
+    for _gid, _front in _garment_photos.items():
+        if not _front:
+            continue
+        _bk = next((brand / f"tile-{_gid}-back.{e}" for e in ("jpg", "png")
+                    if (brand / f"tile-{_gid}-back.{e}").exists()), None)
+        _apparel_side_img[_gid] = {
+            "front": _front,
+            "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else _front}
+    apparel_side_img_json = json.dumps(_apparel_side_img)
+
+    # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
+    # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
+    # in white).
+    def _emit_png(src: Path, fname: str, max_dim: int = 260) -> str:
+        """Emit a transparency-preserving PNG (asset file, or a data URI inline)."""
+        from PIL import Image
+        im = Image.open(src).convert("RGBA")
+        im.thumbnail((max_dim, max_dim))
+        if external_assets:
+            assets.mkdir(parents=True, exist_ok=True)
+            im.save(assets / fname)
+            return f"assets/{fname}"
+        import base64
+        import io
+        buf = io.BytesIO()
+        im.save(buf, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    _glogo = next((brand / n for n in ("joffiels_logo.png",
+                   "joffiels_logo_green_gold.png") if (brand / n).exists()), None)
+    garment_logo_src = _emit_png(_glogo, "garment-logo.png") if _glogo else ""
+
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
     # Order-by gift-deadline banner (urgency) + verified reviews summary.
@@ -2050,6 +2085,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .dmbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
    font-size:12px;cursor:pointer;color:var(--green)}}
  .dmbtn.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .mlogorow{{display:flex;align-items:center;gap:8px;margin:8px 0 2px;font-size:13px;
+   font-weight:700;color:var(--green);cursor:pointer}}
+ .mlogorow input{{width:17px;height:17px;accent-color:var(--green);cursor:pointer}}
  /* Photo-fit tool card: same gold-cream system as the wordbox/dragbar. */
  #mphotoctl{{background:#fffdf4;border:1.5px solid var(--gold);
    border-radius:12px;padding:12px 14px;margin:0 0 10px}}
@@ -2534,13 +2572,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Where does it print?</div>
+         <div class="dbq">&#128085; Design the front or the back &mdash; tap a side</div>
          <div class="dseg" role="group" aria-label="Print placement">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
            <button type="button" class="plbtn" data-p="leftchest" onclick="setPlacement('leftchest')">Left chest</button>
            <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
            <button type="button" class="plbtn" data-p="sleeve" id="plsleeve" onclick="setPlacement('sleeve')">Sleeve</button>
          </div>
+         <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add your photo or wording and it prints here.</div>
+         <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <div class="dragbar">
          <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
@@ -2930,6 +2970,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
+ // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
+ // and the buyer can design the back too: {{garment_id:{{front,back}}}}.
+ const APPAREL_SIDE_IMG = {apparel_side_img_json};
+ const GARMENT_LOGO_SRC = "{garment_logo_src}";   // optional logo overlay (both sides)
  const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
  // Quality tiers per garment: Classic name -> [{{tier,name,from}}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
@@ -3046,6 +3090,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        b.classList.toggle('sel', b.dataset.p==='front'); }});
      var _sl=document.getElementById('plsleeve');
      if(_sl) _sl.style.display=(_garmentType()==='tank')?'none':'';
+     LOGO_ON=false;                    // reset the logo toggle + back hint per open
+     var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
+     var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
    }}
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
@@ -3167,7 +3214,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
    const title=(DATA[CUR]||{{}}).title||'';
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
-     placement:(IS_APPAREL?APPLACEMENT:'')}}); renderCart();
+     placement:(IS_APPAREL?APPLACEMENT:''),
+     logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
    // In a guided bundle: advance to the next selected design to personalize.
@@ -3746,11 +3794,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // print placement: front | leftchest | back | sleeve
+ let LOGO_ON=false;        // optional shop-logo overlay on front & back
  const _PLACE_LBL={{front:'Front',leftchest:'Left chest',back:'Back',sleeve:'Sleeve'}};
  function setPlacement(p){{
    APPLACEMENT=p;
    document.querySelectorAll('#mplacement .plbtn').forEach(function(b){{
      b.classList.toggle('sel', b.dataset.p===p); }});
+   // Flipping to Back shows the garment's back; tell the buyer they're now
+   // designing that side so the editor doesn't feel "stuck" on the front.
+   const _bh=document.getElementById('mbackhint');
+   if(_bh) _bh.style.display=(p==='back')?'block':'none';
+   drawArt();
+ }}
+ // Toggle the shop-logo overlay (added to BOTH the front and the back).
+ function toggleLogo(){{
+   const cb=document.getElementById('mlogo');
+   LOGO_ON=!!(cb&&cb.checked);
    drawArt();
  }}
  // Print-safe boundary for the current placement (silhouette mode: relative to the
@@ -4036,7 +4095,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const _mg=document.getElementById('mgarment');
    let _mock=null;
    if(IS_APPAREL){{
-     const _u=_tileColorUrl((APPGID[CURGARMENT]||''),(CURFMT.split(' - ')[1]||''));
+     const _gid=APPGID[CURGARMENT]||'';
+     const _bgid=_gid.replace(/_(value|premium)$/,'');   // tiers share the Classic photo
+     const _side=(APPLACEMENT==='back')?'back':'front';
+     // Go-live per-colour photo wins for the FRONT; otherwise show the local
+     // front/back tile so the buyer sees the real garment side and can design the
+     // BACK as well as the front.
+     let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
+     if(!_u){{ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }}
      if(_u){{ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }}
    }}
    if(_mock){{
@@ -4111,6 +4177,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.strokeStyle = _isLight(SELTXT) ? 'rgba(0,0,0,.78)' : 'rgba(255,255,255,.92)'; }}
    for(const ln of lines){{ if(overPhoto) ctx.strokeText(ln,0,ty); ctx.fillText(ln,0,ty); ty+=lh; }}
    ctx.restore();
+   // Optional shop-logo overlay (front & back) - a small brand mark below the
+   // design. Drawn on whichever side is in view, since the toggle adds it to both.
+   if(IS_APPAREL && LOGO_ON && GARMENT_LOGO_SRC){{
+     const _lg=_mockupImg(GARMENT_LOGO_SRC);
+     if(_lg&&_lg.complete&&_lg.naturalWidth){{
+       const _lw=W*0.12, _lh=_lw*(_lg.naturalHeight/_lg.naturalWidth);
+       ctx.save(); ctx.globalAlpha=0.96;
+       ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
+     }}
+   }}
    if(IS_APPAREL && APPAREL_BOUND){{ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);

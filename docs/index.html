@@ -670,6 +670,9 @@
  .dmbtn{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
    font-size:12px;cursor:pointer;color:var(--green)}
  .dmbtn.sel{background:var(--green);color:#fff;border-color:var(--green)}
+ .mlogorow{display:flex;align-items:center;gap:8px;margin:8px 0 2px;font-size:13px;
+   font-weight:700;color:var(--green);cursor:pointer}
+ .mlogorow input{width:17px;height:17px;accent-color:var(--green);cursor:pointer}
  /* Photo-fit tool card: same gold-cream system as the wordbox/dragbar. */
  #mphotoctl{background:#fffdf4;border:1.5px solid var(--gold);
    border-radius:12px;padding:12px 14px;margin:0 0 10px}
@@ -1054,7 +1057,7 @@
    </div>
  </section>
  
- <div class="cutoff">⏰ Only 7 days left - order by Jun 25 to get it in time for Independence Day.</div>
+ <div class="cutoff">⏰ Only 6 days left - order by Jun 25 to get it in time for Independence Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div class="intro" id="wallart">
    <h2>🖼️ Wall Art — gifts they'll keep forever</h2>
@@ -1172,13 +1175,15 @@
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Where does it print?</div>
+         <div class="dbq">&#128085; Design the front or the back &mdash; tap a side</div>
          <div class="dseg" role="group" aria-label="Print placement">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
            <button type="button" class="plbtn" data-p="leftchest" onclick="setPlacement('leftchest')">Left chest</button>
            <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
            <button type="button" class="plbtn" data-p="sleeve" id="plsleeve" onclick="setPlacement('sleeve')">Sleeve</button>
          </div>
+         <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add your photo or wording and it prints here.</div>
+         <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <div class="dragbar">
          <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
@@ -1568,6 +1573,10 @@
  // Real per-colour supplier photos {type:{colour:url}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {};
+ // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
+ // and the buyer can design the back too: {garment_id:{front,back}}.
+ const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg"}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg"}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg"}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg"}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg"}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg"}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg"}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg"}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg"}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg"}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg"}};
+ const GARMENT_LOGO_SRC = "assets/garment-logo.png";   // optional logo overlay (both sides)
  const APPGID = {"Men's T-Shirt": "m_tshirt", "Men's T-Shirt (Value)": "m_tshirt_value", "Men's T-Shirt (Premium)": "m_tshirt_premium", "Women's T-Shirt": "w_tshirt", "Women's T-Shirt (Value)": "w_tshirt_value", "Women's T-Shirt (Premium)": "w_tshirt_premium", "Men's Tank Top": "m_tank", "Men's Tank Top (Value)": "m_tank_value", "Men's Tank Top (Premium)": "m_tank_premium", "Women's Tank Top": "w_tank", "Women's Tank Top (Value)": "w_tank_value", "Women's Tank Top (Premium)": "w_tank_premium", "Men's Long Sleeve Shirt": "m_longsleeve", "Men's Long Sleeve Shirt (Value)": "m_longsleeve_value", "Men's Long Sleeve Shirt (Premium)": "m_longsleeve_premium", "Women's Long Sleeve Shirt": "w_longsleeve", "Women's Long Sleeve Shirt (Value)": "w_longsleeve_value", "Women's Long Sleeve Shirt (Premium)": "w_longsleeve_premium", "Men's 3/4 Sleeve Shirt": "m_raglan", "Men's 3/4 Sleeve Shirt (Value)": "m_raglan_value", "Men's 3/4 Sleeve Shirt (Premium)": "m_raglan_premium", "Women's 3/4 Sleeve Shirt": "w_raglan", "Women's 3/4 Sleeve Shirt (Value)": "w_raglan_value", "Women's 3/4 Sleeve Shirt (Premium)": "w_raglan_premium", "Men's Polo Shirt": "m_polo", "Men's Polo Shirt (Value)": "m_polo_value", "Men's Polo Shirt (Premium)": "m_polo_premium", "Men's Hoodie": "m_hoodie", "Men's Hoodie (Value)": "m_hoodie_value", "Men's Hoodie (Premium)": "m_hoodie_premium", "Women's Hoodie": "w_hoodie", "Women's Hoodie (Value)": "w_hoodie_value", "Women's Hoodie (Premium)": "w_hoodie_premium", "Men's Sweatshirt": "m_sweatshirt", "Men's Sweatshirt (Value)": "m_sweatshirt_value", "Men's Sweatshirt (Premium)": "m_sweatshirt_premium", "Women's Sweatshirt": "w_sweatshirt", "Women's Sweatshirt (Value)": "w_sweatshirt_value", "Women's Sweatshirt (Premium)": "w_sweatshirt_premium"};            // garment name -> garment_id (editor lookup)
  // Quality tiers per garment: Classic name -> [{tier,name,from}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
@@ -1684,6 +1693,9 @@
        b.classList.toggle('sel', b.dataset.p==='front'); });
      var _sl=document.getElementById('plsleeve');
      if(_sl) _sl.style.display=(_garmentType()==='tank')?'none':'';
+     LOGO_ON=false;                    // reset the logo toggle + back hint per open
+     var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
+     var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
    }
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
@@ -1805,7 +1817,8 @@
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{}).value||'1');
    const title=(DATA[CUR]||{}).title||'';
    CART.push({fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
-     placement:(IS_APPAREL?APPLACEMENT:'')}); renderCart();
+     placement:(IS_APPAREL?APPLACEMENT:''),
+     logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
    clearDraft(); if(typeof abConvert==='function') abConvert();
    // In a guided bundle: advance to the next selected design to personalize.
@@ -2384,11 +2397,22 @@
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // print placement: front | leftchest | back | sleeve
+ let LOGO_ON=false;        // optional shop-logo overlay on front & back
  const _PLACE_LBL={front:'Front',leftchest:'Left chest',back:'Back',sleeve:'Sleeve'};
  function setPlacement(p){
    APPLACEMENT=p;
    document.querySelectorAll('#mplacement .plbtn').forEach(function(b){
      b.classList.toggle('sel', b.dataset.p===p); });
+   // Flipping to Back shows the garment's back; tell the buyer they're now
+   // designing that side so the editor doesn't feel "stuck" on the front.
+   const _bh=document.getElementById('mbackhint');
+   if(_bh) _bh.style.display=(p==='back')?'block':'none';
+   drawArt();
+ }
+ // Toggle the shop-logo overlay (added to BOTH the front and the back).
+ function toggleLogo(){
+   const cb=document.getElementById('mlogo');
+   LOGO_ON=!!(cb&&cb.checked);
    drawArt();
  }
  // Print-safe boundary for the current placement (silhouette mode: relative to the
@@ -2674,7 +2698,14 @@
    const _mg=document.getElementById('mgarment');
    let _mock=null;
    if(IS_APPAREL){
-     const _u=_tileColorUrl((APPGID[CURGARMENT]||''),(CURFMT.split(' - ')[1]||''));
+     const _gid=APPGID[CURGARMENT]||'';
+     const _bgid=_gid.replace(/_(value|premium)$/,'');   // tiers share the Classic photo
+     const _side=(APPLACEMENT==='back')?'back':'front';
+     // Go-live per-colour photo wins for the FRONT; otherwise show the local
+     // front/back tile so the buyer sees the real garment side and can design the
+     // BACK as well as the front.
+     let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
+     if(!_u){ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }
      if(_u){ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }
    }
    if(_mock){
@@ -2749,6 +2780,16 @@
      ctx.strokeStyle = _isLight(SELTXT) ? 'rgba(0,0,0,.78)' : 'rgba(255,255,255,.92)'; }
    for(const ln of lines){ if(overPhoto) ctx.strokeText(ln,0,ty); ctx.fillText(ln,0,ty); ty+=lh; }
    ctx.restore();
+   // Optional shop-logo overlay (front & back) - a small brand mark below the
+   // design. Drawn on whichever side is in view, since the toggle adds it to both.
+   if(IS_APPAREL && LOGO_ON && GARMENT_LOGO_SRC){
+     const _lg=_mockupImg(GARMENT_LOGO_SRC);
+     if(_lg&&_lg.complete&&_lg.naturalWidth){
+       const _lw=W*0.12, _lh=_lw*(_lg.naturalHeight/_lg.naturalWidth);
+       ctx.save(); ctx.globalAlpha=0.96;
+       ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
+     }
+   }
    if(IS_APPAREL && APPAREL_BOUND){ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);

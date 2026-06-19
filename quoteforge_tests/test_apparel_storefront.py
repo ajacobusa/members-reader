@@ -209,6 +209,31 @@ def test_apparel_tiers_collapse_to_one_gendered_tile(tmp_path):
     assert "Men's T-Shirt (Value)" in h                 # Value tier still offered
 
 
+def test_apparel_editor_front_back_flip_and_logo(tmp_path):
+    # REGRESSION: the editor can FLIP the garment to its BACK so a buyer can SEE and
+    # design the back (add a photo/wording there), and offers an optional shop logo
+    # on front + back. Fixes "I do not see the back to add a picture or wording".
+    h = _page(tmp_path)
+    assert "const APPAREL_SIDE_IMG =" in h               # front+back image per garment
+    assert '"front":' in h and '"back":' in h
+    # picking Back drives drawArt to the back image (tiers share the Classic photo)
+    assert "APPLACEMENT==='back')?'back':'front'" in h
+    assert "APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]" in h
+    # the Back control + a hint that you're now designing the back
+    assert 'data-p="back"' in h and 'id="mbackhint"' in h
+    # optional logo on both sides, wired + carried into the cart line
+    assert 'id="mlogo"' in h and "function toggleLogo" in h
+    assert "const GARMENT_LOGO_SRC" in h
+    assert "logo:(IS_APPAREL&&LOGO_ON)" in h
+    # with external assets the front/back tiles are DISTINCT real files (true back)
+    from quoteforge.etsy.listing_preview import build_shop_home
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    out = build_shop_home(numbers=[LAUNCH_PACK_20[0].n], kit_dir=tmp_path,
+                          out_path=tmp_path / "e.html", external_assets=True)
+    he = out.read_text(encoding="utf-8")
+    assert "assets/tile-m_tshirt.jpg" in he and "assets/tile-m_tshirt-back.jpg" in he
+
+
 def test_apparel_tile_uses_supplier_color_image_when_live(tmp_path, monkeypatch):
     # REGRESSION: at go-live the per-colour map is embedded so the tile can swap.
     import quoteforge.images.supplier_mockup as sm
@@ -359,7 +384,8 @@ def test_editor_uses_real_product_mockup_when_available(tmp_path):
     h = _page(tmp_path)
     assert 'class="mcanvaswrap"' in h and 'id="mgarment"' in h   # image layer behind canvas
     assert "function _mockupImg" in h                            # cached mockup loader
-    assert "_tileColorUrl((APPGID[CURGARMENT]" in h              # per GARMENT+colour lookup
+    assert "const _gid=APPGID[CURGARMENT]" in h                  # per GARMENT lookup
+    assert "_tileColorUrl(_gid," in h                            # per garment+colour photo
     assert "ctx.clearRect(0,0,W,H)" in h                         # transparent over the mockup
     assert "_garmentShape" in h                                  # silhouette fallback retained
     # the canvas inside the wrap is transparent so the mockup image shows through
