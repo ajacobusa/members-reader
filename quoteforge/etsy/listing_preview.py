@@ -3472,6 +3472,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return USED_PHOTOS.indexOf(k)>=0
      ? "<br>&#8505;&#65039; Heads up: this looks like the <b>same photo</b> used in another basket item - totally fine if intentional."
      : ""; }}
+ // Proof image = the GARMENT photo (the #mgarment layer behind the transparent
+ // canvas) WITH the design composited on top - so the proof shows the whole piece,
+ // not just the wording on white. Falls back to the canvas alone for wall art (no
+ // garment layer) or a cross-origin mockup that would taint the canvas.
+ function _composedProofURL(){{
+   const cv=document.getElementById('mcanvas'); if(!cv) return '';
+   const mg=document.getElementById('mgarment');
+   if(!mg || mg.style.display==='none' || !mg.complete || !mg.naturalWidth){{
+     try{{ return cv.toDataURL('image/png'); }}catch(e){{ return ''; }}
+   }}
+   const tc=document.createElement('canvas'); tc.width=cv.width; tc.height=cv.height;
+   const tx=tc.getContext('2d');
+   tx.fillStyle='#ffffff'; tx.fillRect(0,0,tc.width,tc.height);
+   // object-fit:contain mapping of the garment image into the canvas box
+   const ir=mg.naturalWidth/mg.naturalHeight, cr=tc.width/tc.height;
+   let dw,dh; if(ir>cr){{ dw=tc.width; dh=dw/ir; }} else {{ dh=tc.height; dw=dh*ir; }}
+   tx.drawImage(mg,(tc.width-dw)/2,(tc.height-dh)/2,dw,dh);
+   tx.drawImage(cv,0,0);                  // the design (transparent canvas) on top
+   try{{ return tc.toDataURL('image/png'); }}
+   catch(e){{ try{{ return cv.toDataURL('image/png'); }}catch(e2){{ return ''; }} }}
+ }}
  function showFinalProof(mode){{
    PROOFMODE=(mode==='final')?'final':'item';
    setStep(PROOFMODE==='final'?3:2);
@@ -3487,7 +3508,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      _loadContact(); finalStep(1);
    }} else {{
      REVIEWED=true; guide();              // review opened: that task is done
-     if(cv&&img){{ try{{ img.src=cv.toDataURL('image/png'); img.style.display='block'; }}catch(e){{}} }}
+     if(cv&&img){{ const _du=_composedProofURL();      // garment + design, not just art
+       if(_du){{ img.src=_du; img.style.display='block'; }} }}
      if(title)title.textContent='Your final design';
      if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
      if(sum)sum.innerHTML=_currentDesignSummary().replace(/\\n/g,'<br>');
