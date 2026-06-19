@@ -1185,6 +1185,25 @@
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add your photo or wording and it prints here.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
+       <div class="dragbar" id="mframebar" style="display:none">
+         <div class="dbq">&#128208; Move &amp; resize your whole design (the dashed frame)</div>
+         <div class="photorow">
+           <span class="plbl">Size</span>
+           <span class="zico" aria-hidden="true">&minus;</span>
+           <input type="range" id="mframesize" min="0.45" max="1.7" step="0.05" value="1"
+             oninput="setFrameSize(this.value)" aria-label="Design frame size">
+           <span class="zico" aria-hidden="true">+</span>
+         </div>
+         <div class="photorow">
+           <span class="plbl">Move</span>
+           <button type="button" aria-label="Move design left" onclick="moveFrame(-0.04,0)">&larr;</button>
+           <button type="button" aria-label="Move design right" onclick="moveFrame(0.04,0)">&rarr;</button>
+           <button type="button" aria-label="Move design up" onclick="moveFrame(0,-0.04)">&uarr;</button>
+           <button type="button" aria-label="Move design down" onclick="moveFrame(0,0.04)">&darr;</button>
+           <button type="button" class="tposreset" onclick="resetFrame()">Reset</button>
+         </div>
+         <div class="dbhint">Move the whole design (wording + photo) anywhere on the garment and size it up or down.</div>
+       </div>
        <div class="dragbar">
          <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
          <div class="dseg" role="group" aria-label="Select what to move">
@@ -1671,9 +1690,11 @@
    // Heading: apparel buyers must NEVER see the wall-art listing title.
    const mt=document.getElementById('mtitle');
    if(mt) mt.textContent = IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent);
-   // Print-placement bar is apparel-only.
+   // Print-placement bar + design-frame controls are apparel-only.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
+   const fb=document.getElementById('mframebar');
+   if(fb) fb.style.display = IS_APPAREL ? 'block' : 'none';
  }
  function setProductType(t){
    IS_APPAREL=(t==='apparel');
@@ -1705,6 +1726,8 @@
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
+     BOX={x:0.50,y:0.35,s:1.0};      // reset the design frame position + size
+     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=1;
    }
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
@@ -2432,6 +2455,15 @@
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // print placement: front | leftchest | back | sleeve
  let LOGO_ON=false;        // optional shop-logo overlay on front & back
+ // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
+ // dashed print area. centre (x,y as a fraction of the canvas) + scale.
+ let BOX={x:0.50,y:0.35,s:1.0};
+ function _clampBox(){ BOX.x=Math.min(0.84,Math.max(0.16,BOX.x));
+   BOX.y=Math.min(0.62,Math.max(0.18,BOX.y)); BOX.s=Math.min(1.7,Math.max(0.45,BOX.s)); }
+ function setFrameSize(v){ BOX.s=parseFloat(v)||1; _clampBox(); drawArt(); }
+ function moveFrame(dx,dy){ BOX.x+=dx; BOX.y+=dy; _clampBox(); drawArt(); }
+ function resetFrame(){ BOX={x:0.50,y:0.35,s:1.0};
+   var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }
  const _PLACE_LBL={front:'Front',leftchest:'Left chest',back:'Back',sleeve:'Sleeve'};
  function setPlacement(p){
    APPLACEMENT=p;
@@ -2460,10 +2492,14 @@
  function _placeBoundMock(W,H){
    if(APPLACEMENT==='leftchest') return {x:W*0.52,y:H*0.32,w:W*0.13,h:H*0.12};
    if(APPLACEMENT==='sleeve')    return {x:W*0.18,y:H*0.27,w:W*0.10,h:H*0.10};
-   // Front/back: a generous print area sized + POSITIONED to the garment's chest/
-   // torso on the on-model photo (not so tall it spills onto the lower body). Room
-   // to move + resize the wording and photo, while staying on the shirt.
-   return {x:W*0.29,y:H*0.19,w:W*0.42,h:H*0.32};
+   // Front/back: the design FRAME the buyer can move + resize. Base size 0.42x0.32
+   // of the canvas x BOX.s, centred at (BOX.x,BOX.y), then clamped so the frame
+   // stays on the garment's torso (never onto the collar or the lower body).
+   const bw=W*0.42*BOX.s, bh=H*0.32*BOX.s;
+   let bx=W*BOX.x-bw/2, by=H*BOX.y-bh/2;
+   bx=Math.min(Math.max(bx,W*0.06),W*0.94-bw);
+   by=Math.min(Math.max(by,H*0.07),H*0.66-bh);
+   return {x:bx,y:by,w:bw,h:bh};
  }
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={x:0.5, y:0.5}, TSIZE=0, TROT=0, ART={x:0,y:0,w:1,h:1}, DRAGMODE='text';
@@ -2489,34 +2525,52 @@
    return {x:(t.clientX-r.left)*(cv.width/r.width),
             y:(t.clientY-r.top)*(cv.height/r.height)};
  }
- let DRAGGING=false, DRAGLAST=null;
+ let DRAGGING=false, DRAGLAST=null, DRAGPX=null;
  function _frac(ev){ const p=_canvasPt(ev);
    return {x:(p.x-ART.x)/ART.w, y:(p.y-ART.y)/ART.h}; }
  function _clamp(v,a,b){ return Math.min(b,Math.max(a,v)); }
  let DRAGTARGET='text';   // what THIS gesture moves (decided at pointer-down)
- function _startDrag(ev){ DRAGGING=true; DRAGLAST=_frac(ev);
-   // SMART GRAB: pressing on (or near) the wording always moves the wording,
-   // even in Photo mode - grabbing the words should move the words. Anywhere
-   // else follows the toggle (pan the photo in Photo mode).
-   const nearText = Math.abs(DRAGLAST.x-TPOS.x)<0.22 && Math.abs(DRAGLAST.y-TPOS.y)<0.16;
-   DRAGTARGET = (DRAGMODE==='photo' && PHOTO && !nearText) ? 'photo' : 'text';
-   if(DRAGTARGET==='text'){ TPOS.x=_clamp(DRAGLAST.x,0.04,0.96);
-     TPOS.y=_clamp(DRAGLAST.y,0.04,0.96); drawArt(); }
+ // Apparel: decide by WHERE you grab - the bottom-right handle resizes the frame,
+ // the wording or photo moves that element, anywhere else moves the whole frame.
+ function _hitTarget(px){
+   const b=APPAREL_BOUND;
+   if(b && Math.abs(px.x-(b.x+b.w))<26 && Math.abs(px.y-(b.y+b.h))<26) return 'resize';
+   const fx=(px.x-ART.x)/ART.w, fy=(px.y-ART.y)/ART.h;
+   const typed=((document.getElementById('mtext')||{}).value||'').trim();
+   if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
+   if(PHOTO && PHOTO_RECT && px.x>=PHOTO_RECT.x && px.x<=PHOTO_RECT.x+PHOTO_RECT.w
+      && px.y>=PHOTO_RECT.y && px.y<=PHOTO_RECT.y+PHOTO_RECT.h) return 'photo';
+   return 'frame';
+ }
+ function _startDrag(ev){ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
+   if(IS_APPAREL){ DRAGTARGET=_hitTarget(DRAGPX); }
+   else {
+     // wall art: smart-grab the wording, else follow the Photo toggle (pan).
+     const nearText = Math.abs(DRAGLAST.x-TPOS.x)<0.22 && Math.abs(DRAGLAST.y-TPOS.y)<0.16;
+     DRAGTARGET = (DRAGMODE==='photo' && PHOTO && !nearText) ? 'photo' : 'text';
+     if(DRAGTARGET==='text'){ TPOS.x=_clamp(DRAGLAST.x,0.04,0.96);
+       TPOS.y=_clamp(DRAGLAST.y,0.04,0.96); drawArt(); }
+   }
    ev.preventDefault&&ev.preventDefault(); }
  function _moveDrag(ev){ if(!DRAGGING) return;
-   const f=_frac(ev);
-   if(DRAGTARGET==='photo'){
-     if(IS_APPAREL){                                           // MOVE the photo (place it)
-       PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1);
-     } else if(DRAGLAST){                                      // pan within the framed print
-       PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
+   const px=_canvasPt(ev), f=_frac(ev);
+   const cv=document.getElementById('mcanvas'), W=cv.width, H=cv.height;
+   if(DRAGTARGET==='frame'){                                   // drag the whole design
+     if(DRAGPX){ BOX.x+=(px.x-DRAGPX.x)/W; BOX.y+=(px.y-DRAGPX.y)/H; _clampBox(); }
+   } else if(DRAGTARGET==='resize'){                           // drag the corner to resize
+     const cx=BOX.x*W, cy=BOX.y*H;
+     BOX.s=Math.max(2*Math.abs(px.x-cx)/(0.42*W), 2*Math.abs(px.y-cy)/(0.32*H));
+     _clampBox();
+   } else if(DRAGTARGET==='photo'){
+     if(IS_APPAREL){ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }
+     else if(DRAGLAST){ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
        PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }
-   } else {                                                    // move the text
+   } else {                                                    // move the wording
      TPOS.x=_clamp(f.x,0.04,0.96); TPOS.y=_clamp(f.y,0.04,0.96);
    }
-   DRAGLAST=f; drawArt(); ev.preventDefault&&ev.preventDefault();
+   DRAGLAST=f; DRAGPX=px; drawArt(); ev.preventDefault&&ev.preventDefault();
  }
- function _endDrag(){ DRAGGING=false; DRAGLAST=null; }
+ function _endDrag(){ DRAGGING=false; DRAGLAST=null; DRAGPX=null; }
  function initTextDrag(){
    const cv=document.getElementById('mcanvas'); if(!cv||cv.dataset.drag) return;
    cv.dataset.drag='1'; cv.style.cursor='move';
@@ -2846,10 +2900,15 @@
      }
    }
    if(IS_APPAREL && APPAREL_BOUND){ const b=APPAREL_BOUND;
-     ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1.5;
+     ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
+     // Bottom-right RESIZE handle (drag it to size the whole design).
+     const hx=b.x+b.w, hy=b.y+b.h, hs=9;
+     ctx.fillStyle='#15643c';
+     ctx.fillRect(hx-hs,hy-hs,hs*2,hs*2);
+     ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(hx-hs,hy-hs,hs*2,hs*2);
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
-     ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - prints here',
+     ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · corner to resize',
        b.x+b.w/2, b.y-7); ctx.restore(); }
    const crop=document.getElementById('mcrop');
    if(crop){ const sv=((document.getElementById('msize')||{}).value||'').split('|')[0];

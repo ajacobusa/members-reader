@@ -234,6 +234,25 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
     assert "assets/tile-m_tshirt.jpg" in he and "assets/tile-m_tshirt-back.jpg" in he
 
 
+def test_apparel_design_frame_is_movable_and_resizable(tmp_path):
+    # REGRESSION: the whole design FRAME (the dashed print area) can be MOVED
+    # anywhere on the garment and RESIZED - not locked to the chest. The wording +
+    # photo live inside it and move/scale with it. (The buyer asked to "move the
+    # frame anywhere and resize it".)
+    h = _page(tmp_path)
+    assert "let BOX={x:0.50,y:0.35,s:1.0}" in h               # frame centre + scale state
+    assert "const bw=W*0.42*BOX.s, bh=H*0.32*BOX.s" in h      # bound derived from the frame
+    assert "function setFrameSize" in h and "function moveFrame" in h
+    assert 'id="mframebar"' in h and 'id="mframesize"' in h   # frame controls in the UI
+    assert "moveFrame(-0.04,0)" in h                          # explicit move buttons
+    assert "getElementById('mframebar')" in h                # shown only for apparel
+    # MOUSE: drag the frame to move, drag the corner handle to resize
+    assert "function _hitTarget" in h                        # grab decides move/resize/element
+    assert "DRAGTARGET==='frame'" in h and "DRAGTARGET==='resize'" in h
+    assert "BOX.s=Math.max(2*Math.abs(px.x-cx)" in h         # corner-drag resizes
+    assert "corner to resize" in h                           # visible resize handle + hint
+
+
 def test_apparel_print_area_is_generous_for_placement(tmp_path):
     # REGRESSION: the apparel print area (where the buyer moves+resizes the wording
     # and photo) is a generous zone POSITIONED on the garment's chest/torso (not a
@@ -241,7 +260,7 @@ def test_apparel_print_area_is_generous_for_placement(tmp_path):
     # wide size range but is CAPPED to the print area so it never overflows the
     # garment, and has explicit Move controls (not just drag).
     h = _page(tmp_path)
-    assert "x:W*0.29,y:H*0.19,w:W*0.42,h:H*0.32" in h     # torso-positioned print area
+    assert "const bw=W*0.42*BOX.s, bh=H*0.32*BOX.s" in h  # generous frame (base 0.42x0.32)
     assert 'id="mtsize" min="0" max="40"' in h            # wide text-size range
     assert "stackDim*0.96" in h                           # manual size capped to the box
     assert "function nudgeText" in h and "Move text" in h  # explicit text move controls
