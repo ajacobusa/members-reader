@@ -2660,6 +2660,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
              oninput="setTextSize(this.value)">
            <button type="button" class="tposreset" onclick="resetTextPos()">Reset</button>
          </div>
+         <div class="photorow">
+           <span class="plbl">Move text</span>
+           <button type="button" aria-label="Move wording left" onclick="nudgeText(-0.05,0)">&larr;</button>
+           <button type="button" aria-label="Move wording right" onclick="nudgeText(0.05,0)">&rarr;</button>
+           <button type="button" aria-label="Move wording up" onclick="nudgeText(0,-0.05)">&uarr;</button>
+           <button type="button" aria-label="Move wording down" onclick="nudgeText(0,0.05)">&darr;</button>
+           <button type="button" class="pcenter" onclick="centerText()">🎯 Center</button>
+           <span class="tposhint">or drag it on the preview</span>
+         </div>
          <div class="swrow">Rotate text <span id="mtrotlbl" style="color:#9aa49c;font-weight:400">0°</span>
            <span class="tposhint">drag the wording on the preview to move it (Text mode)</span></div>
          <div class="tsizerow">
@@ -3848,10 +3857,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _placeBoundMock(W,H){{
    if(APPLACEMENT==='leftchest') return {{x:W*0.52,y:H*0.32,w:W*0.13,h:H*0.12}};
    if(APPLACEMENT==='sleeve')    return {{x:W*0.18,y:H*0.27,w:W*0.10,h:H*0.10}};
-   // Front/back: a GENEROUS, realistic torso print area (≈ a 12x16in DTG zone) so
-   // the buyer has room to move + resize the wording and photo across the garment,
-   // not just a tiny centred box.
-   return {{x:W*0.26,y:H*0.23,w:W*0.48,h:H*0.44}};
+   // Front/back: a generous print area sized + POSITIONED to the garment's chest/
+   // torso on the on-model photo (not so tall it spills onto the lower body). Room
+   // to move + resize the wording and photo, while staying on the shirt.
+   return {{x:W*0.29,y:H*0.19,w:W*0.42,h:H*0.32}};
  }}
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={{x:0.5, y:0.5}}, TSIZE=0, TROT=0, ART={{x:0,y:0,w:1,h:1}}, DRAGMODE='text';
@@ -3860,6 +3869,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function setRot(deg){{ const s=document.getElementById('mtrot'); if(s)s.value=deg; setTextRot(deg); }}
  function setDragMode(m){{ DRAGMODE=m;
    document.querySelectorAll('.dmbtn').forEach(b=>b.classList.toggle('sel',b.dataset.m===m)); }}
+ // Explicit MOVE controls for the wording (besides dragging it on the preview), so
+ // placement is obvious and works on any device.
+ function nudgeText(dx,dy){{ TPOS.x=_clamp(TPOS.x+dx,0.04,0.96);
+   TPOS.y=_clamp(TPOS.y+dy,0.04,0.96); drawArt(); }}
+ function centerText(){{ TPOS.x=0.5; TPOS.y=0.5; drawArt(); }}
  function setTextSize(v){{ TSIZE=parseInt(v)||0;
    const lbl=document.getElementById('mtsizelbl');
    if(lbl) lbl.textContent = TSIZE===0 ? 'Auto' : TSIZE+'%'; drawArt(); }}
@@ -4202,7 +4216,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        if(ctx.measureText(tt).width<=maxW){{cur=tt;}}else{{lines.push(cur);cur=wd;}}}}
      if(cur)lines.push(cur); return lines;}}
    let fs, lines;
-   if(TSIZE>0){{ fs=Math.max(9, Math.round(h*TSIZE/100)); lines=wrap(fs); }}  // manual
+   if(TSIZE>0){{ fs=Math.max(9, Math.round(stackDim*TSIZE/100)); lines=wrap(fs);  // manual...
+     while((lines.length*fs*1.32)>stackDim*0.96 && fs>9){{fs-=1; lines=wrap(fs);}} }}  // ...but capped to the print area
    else {{ fs=Math.round(stackDim*0.10); lines=wrap(fs);                      // auto-fit
      while((lines.length*fs*1.32)>stackDim*0.82 && fs>9){{fs-=1; lines=wrap(fs);}} }}
    const lh=fs*1.34; const block=lines.length*lh;
