@@ -283,6 +283,22 @@ def test_apparel_photo_can_shrink_and_move(tmp_path):
     assert "const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM" in h     # wall art fill kept
 
 
+def test_apparel_editor_rotate_and_clean_proof(tmp_path):
+    # REGRESSION: (1) dragging the bare garment (outside the design frame) SPINS it
+    # front<->back with the mouse; (2) the final proof renders WITHOUT the editor
+    # chrome (dashed frame, resize handles, hints) - the buyer's "final design"
+    # must look clean, not like the editor.
+    h = _page(tmp_path)
+    # drag-to-spin
+    assert "function _flipSide" in h
+    assert "return 'rotate'" in h and "DRAGTARGET==='rotate'" in h
+    assert "drag the shirt" in h                             # spin hint in the UI
+    # clean proof: chrome is gated behind !_CLEAN and the proof redraws clean
+    assert "let _CLEAN=false" in h
+    assert "IS_APPAREL && APPAREL_BOUND && !_CLEAN" in h      # chrome skipped when clean
+    assert "_CLEAN=true; drawArt()" in h                     # proof composites the clean canvas
+
+
 def test_apparel_proof_shows_garment_not_just_art(tmp_path):
     # REGRESSION: the final-design proof composites the GARMENT photo (the #mgarment
     # layer behind the transparent canvas) WITH the design on top - so the buyer

@@ -2572,7 +2572,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Design the front or the back &mdash; tap a side</div>
+         <div class="dbq">&#128085; Tap a side &mdash; or <b>drag the shirt</b> to spin it (front &#8596; back)</div>
          <div class="dseg" role="group" aria-label="Print placement">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
            <button type="button" class="plbtn" data-p="leftchest" onclick="setPlacement('leftchest')">Left chest</button>
@@ -3508,22 +3508,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // canvas) WITH the design composited on top - so the proof shows the whole piece,
  // not just the wording on white. Falls back to the canvas alone for wall art (no
  // garment layer) or a cross-origin mockup that would taint the canvas.
+ let _CLEAN=false;   // when true, drawArt omits the editor chrome (frame/handles)
  function _composedProofURL(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return '';
    const mg=document.getElementById('mgarment');
+   _CLEAN=true; drawArt();               // redraw the design WITHOUT the editor chrome
+   let url='';
    if(!mg || mg.style.display==='none' || !mg.complete || !mg.naturalWidth){{
-     try{{ return cv.toDataURL('image/png'); }}catch(e){{ return ''; }}
+     try{{ url=cv.toDataURL('image/png'); }}catch(e){{ url=''; }}
+   }} else {{
+     const tc=document.createElement('canvas'); tc.width=cv.width; tc.height=cv.height;
+     const tx=tc.getContext('2d');
+     tx.fillStyle='#ffffff'; tx.fillRect(0,0,tc.width,tc.height);
+     // object-fit:contain mapping of the garment image into the canvas box
+     const ir=mg.naturalWidth/mg.naturalHeight, cr=tc.width/tc.height;
+     let dw,dh; if(ir>cr){{ dw=tc.width; dh=dw/ir; }} else {{ dh=tc.height; dw=dh*ir; }}
+     tx.drawImage(mg,(tc.width-dw)/2,(tc.height-dh)/2,dw,dh);
+     tx.drawImage(cv,0,0);               // the design (transparent canvas) on top
+     try{{ url=tc.toDataURL('image/png'); }}
+     catch(e){{ try{{ url=cv.toDataURL('image/png'); }}catch(e2){{ url=''; }} }}
    }}
-   const tc=document.createElement('canvas'); tc.width=cv.width; tc.height=cv.height;
-   const tx=tc.getContext('2d');
-   tx.fillStyle='#ffffff'; tx.fillRect(0,0,tc.width,tc.height);
-   // object-fit:contain mapping of the garment image into the canvas box
-   const ir=mg.naturalWidth/mg.naturalHeight, cr=tc.width/tc.height;
-   let dw,dh; if(ir>cr){{ dw=tc.width; dh=dw/ir; }} else {{ dh=tc.height; dw=dh*ir; }}
-   tx.drawImage(mg,(tc.width-dw)/2,(tc.height-dh)/2,dw,dh);
-   tx.drawImage(cv,0,0);                  // the design (transparent canvas) on top
-   try{{ return tc.toDataURL('image/png'); }}
-   catch(e){{ try{{ return cv.toDataURL('image/png'); }}catch(e2){{ return ''; }} }}
+   _CLEAN=false; drawArt();              // restore the editor view (chrome back)
+   return url;
  }}
  function showFinalProof(mode){{
    PROOFMODE=(mode==='final')?'final':'item';
@@ -3922,19 +3928,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return {{x:(t.clientX-r.left)*(cv.width/r.width),
             y:(t.clientY-r.top)*(cv.height/r.height)}};
  }}
- let DRAGGING=false, DRAGLAST=null, DRAGPX=null;
+ let DRAGGING=false, DRAGLAST=null, DRAGPX=null, ROT_ACC=0;
  function _frac(ev){{ const p=_canvasPt(ev);
    return {{x:(p.x-ART.x)/ART.w, y:(p.y-ART.y)/ART.h}}; }}
  function _clamp(v,a,b){{ return Math.min(b,Math.max(a,v)); }}
  let DRAGTARGET='text';   // what THIS gesture moves (decided at pointer-down)
- // Apparel: decide by WHERE you grab - the bottom-right handle resizes the frame,
- // the wording or photo moves that element, anywhere else moves the whole frame.
+ // Spin the garment between its front and back (it only has those two real views).
+ function _flipSide(){{ setPlacement(APPLACEMENT==='back'?'front':'back'); }}
+ // Apparel: decide by WHERE you grab - a corner handle resizes, the wording/photo
+ // moves that element, INSIDE the frame moves the frame, OUTSIDE it (on the bare
+ // garment) spins the shirt front<->back.
  function _hitTarget(px){{
    const b=APPAREL_BOUND, near=function(hx,hy){{ return Math.abs(px.x-hx)<26 && Math.abs(px.y-hy)<26; }};
-   // PHOTO resize handle (bottom-right of the photo) wins, then the FRAME handle
-   // (bottom-left). Then the wording, the photo body (move), else the frame.
    if(PHOTO && PHOTO_RECT && near(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h)) return 'photoresize';
    if(b && near(b.x, b.y+b.h)) return 'resize';
+   if(b && (px.x<b.x-8 || px.x>b.x+b.w+8 || px.y<b.y-8 || px.y>b.y+b.h+8)) return 'rotate';
    const fx=(px.x-ART.x)/ART.w, fy=(px.y-ART.y)/ART.h;
    const typed=((document.getElementById('mtext')||{{}}).value||'').trim();
    if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
@@ -3955,7 +3963,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _moveDrag(ev){{ if(!DRAGGING) return;
    const px=_canvasPt(ev), f=_frac(ev);
    const cv=document.getElementById('mcanvas'), W=cv.width, H=cv.height;
-   if(DRAGTARGET==='frame'){{                                   // drag the whole design
+   if(DRAGTARGET==='rotate'){{                                  // spin the garment front<->back
+     if(DRAGPX){{ ROT_ACC+=(px.x-DRAGPX.x);
+       if(Math.abs(ROT_ACC)>60){{ _flipSide(); ROT_ACC=0; }} }}
+     DRAGPX=px; ev.preventDefault&&ev.preventDefault(); return;
+   }} else if(DRAGTARGET==='frame'){{                            // drag the whole design
      if(DRAGPX){{ BOX.x+=(px.x-DRAGPX.x)/W; BOX.y+=(px.y-DRAGPX.y)/H; _clampBox(); }}
    }} else if(DRAGTARGET==='resize'){{                           // drag the corner to resize the FRAME
      const cx=BOX.x*W, cy=BOX.y*H;
@@ -3977,7 +3989,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    DRAGLAST=f; DRAGPX=px; drawArt(); ev.preventDefault&&ev.preventDefault();
  }}
- function _endDrag(){{ DRAGGING=false; DRAGLAST=null; DRAGPX=null; }}
+ function _endDrag(){{ DRAGGING=false; DRAGLAST=null; DRAGPX=null; ROT_ACC=0; }}
  function initTextDrag(){{
    const cv=document.getElementById('mcanvas'); if(!cv||cv.dataset.drag) return;
    cv.dataset.drag='1'; cv.style.cursor='move';
@@ -4306,7 +4318,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
      }}
    }}
-   if(IS_APPAREL && APPAREL_BOUND){{ const b=APPAREL_BOUND;
+   if(IS_APPAREL && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
      const hs=9;
