@@ -2250,6 +2250,32 @@ def _cmd_gelato_sync(args: list[str]) -> int:
     return 0
 
 
+def _cmd_catalog_sync(args: list[str]) -> int:
+    """Nightly catalog sync: rebuild the local product DB from Gelato, validate
+    images, diff vs the last snapshot, and emit the daily audit. `catalog-sync`
+    [email] [refresh-images]. TEST_MODE-safe (local rebuild, no Gelato call)."""
+    from quoteforge.automation.catalog_sync import (
+        sync_catalog_full, format_catalog_audit, persist_audit)
+    refresh = "refresh-images" in args or "refresh" in args
+    r = sync_catalog_full(refresh_images=refresh)
+    text = format_catalog_audit(r)
+    print(text)
+    path = persist_audit(text)
+    print(f"\nAudit saved: {path}")
+    if "email" in args:
+        _alert("📦 Catalog sync — daily audit", "<pre>" + text + "</pre>",
+               what="catalog-sync")
+    # When live, a broken/wrong image is a real customer-facing defect: flag red so
+    # the daily job surfaces it (TEST_MODE stays green - nothing was fetched).
+    if r.get("live") and r.get("image_failures"):
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE:
+            _alert("🚨 Catalog sync — image validation failures",
+                   "<pre>" + text + "</pre>", what="catalog-image-fail")
+            return 1
+    return 0
+
+
 def _cmd_rebuild_site(args: list[str]) -> int:
     """Rebuild the public GitHub Pages shop-home page (docs/index.html) with the
     latest listings + analytics tags. Run by backup-all's push, fully hands-free."""
@@ -2351,6 +2377,7 @@ COMMANDS = {
     "gift-note": _cmd_gift_note,
     "gift-addon-listing": _cmd_gift_addon_listing,
     "gelato-sync": _cmd_gelato_sync,
+    "catalog-sync": _cmd_catalog_sync,
     "pinterest": _cmd_pinterest,
     "pinterest-publish": _cmd_pinterest_publish,
     "rebuild-site": _cmd_rebuild_site,

@@ -122,11 +122,12 @@ services:
   - type: cron
     name: daily-ops
     runtime: python
-    schedule: "20 7 * * *"        # 07:20 daily: briefing + ledger + health + UID guard
+    schedule: "20 7 * * *"        # 07:20 daily: briefing + ledger + health + catalog sync
     buildCommand: pip install -r requirements.txt -r requirements-server.txt
     # `;` (not `&&`) so an alert/guard non-zero exit still lets the rest run.
     # healthcheck emails on DB/storage/job problems; gelato-sync is the loud
-    # placeholder-UID guard (orders for placeholder UIDs would fail to route).
-    startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync"
+    # placeholder-UID guard; catalog-sync rebuilds the local product DB (men's/
+    # women's/new/best views), validates images and emails the daily audit.
+    startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync ; python -m quoteforge.admin catalog-sync email"
     envVars:
       - fromGroup: joffiels-env
