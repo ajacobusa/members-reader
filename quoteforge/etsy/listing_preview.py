@@ -1933,6 +1933,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .grabsq{{width:12px;height:12px;border-radius:2px;background:#15643c;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #15643c;flex:none}}
  .grabtip-blue{{background:#e6eff8;color:#1763b8;border-color:#bcd2ec}}
  .grabsq-blue{{background:#1763b8;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #1763b8}}
+ .gridmorewrap{{text-align:center;margin:4px 0 10px}}
+ .gridmore{{background:#fff;border:1.5px solid var(--gold);color:var(--green);border-radius:24px;
+   padding:11px 26px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;
+   box-shadow:0 3px 14px rgba(16,61,46,.08);transition:transform .14s,box-shadow .14s}}
+ .gridmore:hover{{transform:translateY(-2px);box-shadow:0 10px 22px rgba(201,168,76,.25);background:#fffdf6}}
  .dseg{{display:inline-flex;border:1.5px solid var(--green);border-radius:22px;overflow:hidden}}
  .dseg .dmbtn{{border:none;border-radius:0;margin:0;padding:9px 16px;background:#fff;
    color:var(--green);font-weight:700;cursor:pointer;font-family:inherit}}
@@ -2635,6 +2640,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div id="quickjump" class="quickjump" role="navigation" aria-label="Jump to a design"></div></details>
  <div id="occnote" class="occnote"></div>
  <div class="grid" id="grid"></div>
+ <div id="gridmorewrap" class="gridmorewrap" style="display:none">
+   <button type="button" class="gridmore" onclick="expandGrid()">Show all occasions &#8595;</button>
+ </div>
  <div id="occbottom" class="occbottom" style="display:none"></div>
  <div class="bundle" id="bundleSec">
    <div class="bundlehdr">
@@ -2988,28 +2996,52 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mfb').href = fbLink(DATA[CUR].title);
  }}
  let CUR = 0;
+ // First impression stays curated: show a few designs (Editor's picks first), with
+ // a "Show all occasions" reveal. These are all the SAME customizable product with
+ // different default wording, so an exhaustive wall reads as choice-overload.
+ let GRID_COLLAPSED = true;
+ const GRID_CAP = 6;
+ const _isPick = d => EDITOR_PICKS.some(k=>((d.title||'')+' '+(d.occ||'')).toLowerCase().indexOf(k)>=0);
  function render(){{
    const g = document.getElementById('grid');
    var gc=document.getElementById('gridcount');
-   if(gc) gc.textContent = DATA.length+' personalized designs - one for every occasion';
+   if(gc) gc.textContent = DATA.length+' personalized designs - each a starting point you make your own';
    // Thumbnail quick-jump: tap any design to open its page instantly.
    var qj=document.getElementById('quickjump');
    if(qj) qj.innerHTML = DATA.map((d,i)=>`<button class="qjt" onclick="openM(${{i}})" `+
      `title="${{d.title}}" aria-label="Open ${{d.title}}">`+
      `<img src="${{d.imgs[0]}}" loading="lazy" alt="${{d.title}}">`+
      `<span>${{(d.occ||'').replace("'s day",'')}}</span></button>`).join('');
-   g.innerHTML = DATA.map((d,i) => `
+   // Lead with the owner-curated Editor's picks (stable sort keeps the rest in order).
+   const _order = DATA.map((d,i)=>i).sort((a,b)=>(_isPick(DATA[a])?0:1)-(_isPick(DATA[b])?0:1));
+   g.innerHTML = _order.map(i => {{ const d=DATA[i]; return `
      <div class="card" role="button" tabindex="0" aria-label="Personalize ${{d.title}}"
        data-title="${{((d.full_title||d.title)||'').toLowerCase()}}" data-occ="${{d.occ||''}}" onclick="openM(${{i}})"
        onkeydown="if(event.key==='Enter'||event.key===' '){{event.preventDefault();openM(${{i}});}}">
-       ${{EDITOR_PICKS.some(k=>((d.title||'')+' '+(d.occ||'')).toLowerCase().indexOf(k)>=0)?'<span class="epick">&#10022; Editor&#39;s pick</span>':''}}
+       ${{_isPick(d)?'<span class="epick">&#10022; Editor&#39;s pick</span>':''}}
        <img class="hero" loading="lazy" src="${{d.imgs[0]}}" alt="${{d.title}} - personalized wall art preview">
        <div class="cap"><div class="ttl">${{d.title}}</div>
          <div class="pr">Starting at $${{d.price}}</div>
          <div class="prsub">${{MAT_SHORT}} &middot; ${{OPT_COUNT}} options to $${{PRICE_HI}}</div>
          <span class="fb">&#127912; Personalize now &#8594;</span><span class="cardtrust">&#10003; Free proof before printing &nbsp;&middot;&nbsp; &#10003; Happiness guarantee</span>
        </div>
-     </div>`).join('') +'';
+     </div>`; }}).join('') +'';
+   _capGrid();
+ }}
+ // Default view: show only the first GRID_CAP cards; reveal the rest on demand.
+ function _capGrid(){{
+   if(!GRID_COLLAPSED) return;
+   const cards=document.querySelectorAll('#grid .card:not(.occallcard)');
+   cards.forEach((c,idx)=>{{ c.style.display = idx<GRID_CAP ? '' : 'none'; }});
+   const w=document.getElementById('gridmorewrap');
+   if(w) w.style.display = cards.length>GRID_CAP ? '' : 'none';
+ }}
+ function expandGrid(){{
+   GRID_COLLAPSED=false;
+   document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>c.style.display='');
+   const w=document.getElementById('gridmorewrap'); if(w) w.style.display='none';
+   const note=document.getElementById('occnote');
+   if(note && !note.innerHTML) note.innerHTML='Showing all '+DATA.length+' designs - tap any to make it yours.';
  }}
  // Filter the product grid by occasion (Shop by occasion chips).
  // Occasion -> matching keywords (so chips match real product titles).
@@ -3029,6 +3061,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "christmas":["christmas","holiday","noel"]
  }};
  function shopByOccasion(occ, el){{
+   // Filtering reveals everything matching - the first-impression cap no longer applies.
+   GRID_COLLAPSED=false; var _gw=document.getElementById('gridmorewrap'); if(_gw)_gw.style.display='none';
    const q=(occ||'').toLowerCase();
    let shown=0;
    document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>{{
@@ -3065,6 +3099,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(s) s.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function showAllDesigns(){{
+   GRID_COLLAPSED=false; var _gw2=document.getElementById('gridmorewrap'); if(_gw2)_gw2.style.display='none';
    document.querySelectorAll('#grid .card:not(.occallcard)').forEach(c=>c.style.display='');
    const ac=document.getElementById('occallcard'); if(ac) ac.style.display='none';
    const bottom=document.getElementById('occbottom'); if(bottom){{ bottom.innerHTML=''; bottom.style.display='none'; }}
