@@ -1629,7 +1629,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    justify-content:center;align-items:flex-start;z-index:2}}
  .apheroeyebrow{{font-size:11px;letter-spacing:.2em;text-transform:uppercase;
    color:#e9d9a6;font-weight:700;margin-bottom:8px}}
- .apheroh{{color:#fff;font-size:28px;margin:0 0 8px;line-height:1.12}}
+ .aphero .apheroh{{color:#fff;font-size:28px;margin:0 0 8px;line-height:1.12}}
  .apherosub{{color:#d6e3da;font-size:14px;line-height:1.55;margin:0 0 16px;max-width:440px}}
  .apherocta{{background:var(--gold);color:var(--green);border:none;border-radius:24px;
    padding:11px 22px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;
@@ -1642,7 +1642,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  @media(max-width:720px){{.aphero{{flex-direction:column}}
    .apheromedia{{min-height:160px;order:-1}}
    .apheromedia::before{{background:linear-gradient(0deg,#103d2e 0%,transparent 62%)}}
-   .apherobody{{padding:24px 22px}}.apheroh{{font-size:24px}}}}
+   .apherobody{{padding:24px 22px}}.aphero .apheroh{{font-size:24px}}}}
  .appghead{{margin:22px 0 12px;color:var(--green);font-size:18px;text-align:left;
    text-transform:uppercase;letter-spacing:.05em}}
  .appgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
