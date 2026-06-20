@@ -14,9 +14,9 @@ EXPERIMENTS = {
         "label": "Hero headline",
         "target": "hero_h1",
         "variants": {
-            "A": "Personalized wall art for life's most meaningful moments",
-            "B": "Turn your words into art they'll treasure forever",
-            "C": "Custom keepsake art - made to order, just for them",
+            "A": "Personalized gifts for life's most meaningful moments",
+            "B": "Turn your words into a gift they'll treasure forever",
+            "C": "Custom wall art & apparel - made to order, just for them",
         },
     },
 }

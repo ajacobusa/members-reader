@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Personalized Wall Art Gifts for Any Occasion | Joffiels</title>
-<meta name="description" content="Personalized wall art for life's moments - custom wording, your photo, 6 frame styles. FREE digital proof before printing &amp; a happiness guarantee. Made to order, shipped worldwide.">
+<meta name="description" content="Personalized gifts made to order - custom wall art &amp; apparel with your wording, names &amp; photo. Free proof you approve before printing, happiness guarantee, shipped worldwide.">
 <meta name="theme-color" content="#103d2e">
 <link rel="canonical" href="https://joffiels.com/">
 <meta property="og:type" content="website">
@@ -101,7 +101,7 @@
  .navham{display:none;background:none;border:1px solid var(--line);border-radius:10px;
    padding:5px 11px;font-size:19px;line-height:1;color:var(--green);cursor:pointer}
  /* anchored sections clear the sticky header when jumped to */
- #grid,#wallart,#occasions,#apparel,#why,#faq{scroll-margin-top:74px}
+ #depts,#grid,#wallart,#occasions,#apparel,#why,#faq{scroll-margin-top:74px}
  .depts{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}
  .deptshead{margin:0 0 14px;color:var(--green);font-size:20px;
    text-transform:uppercase;letter-spacing:.06em}
@@ -1076,10 +1076,10 @@
  <div class="hero">
    <img class="hero-banner" src="assets/hero.jpg" alt="Personalized wall art styled in a cozy living room" fetchpriority="high" decoding="async">
    <div class="hero-overlay">
-     <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
-     <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
+     <h1 data-ab="hero_h1">Personalized gifts for life's most meaningful moments</h1>
+     <p>Wall art &amp; custom apparel - your names, dates &amp; own words, made to order.</p>
      <div class="herocta">
-       <a class="btn-shop" href="#grid">Shop the collection</a>
+       <a class="btn-shop" href="#depts">Shop by department</a>
        <button class="btn-find" onclick="openQuiz()">🎁 Find the perfect gift</button>
      </div>
      <p class="heroprice">From <b>$18.99</b> &middot; a free proof you approve before you buy</p>
@@ -1091,7 +1091,7 @@
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
- <section class="depts" aria-label="Shop by department">
+ <section class="depts" id="depts" aria-label="Shop by department">
    <h2 class="deptshead">Shop by department</h2>
    <div class="deptgrid">
      <a class="deptcard deptwall" href="#wallart">
@@ -3383,7 +3383,7 @@
    }).catch(function(){ if(note)note.textContent=''; });
  }
  // ── Automated A/B testing ──
- const AB_EXPERIMENTS = {"hero_headline": {"target": "hero_h1", "variants": {"A": "Personalized wall art for life's most meaningful moments", "B": "Turn your words into art they'll treasure forever", "C": "Custom keepsake art - made to order, just for them"}}};
+ const AB_EXPERIMENTS = {"hero_headline": {"target": "hero_h1", "variants": {"A": "Personalized gifts for life's most meaningful moments", "B": "Turn your words into a gift they'll treasure forever", "C": "Custom wall art & apparel - made to order, just for them"}}};
  const AB_API = ANGE_API ? ANGE_API.replace(/\/ask$/,'/ab') : "";
  function _visitorId(){ try{let v=localStorage.getItem('jf_vid');
    if(!v){v='v'+Math.abs((Date.now()^(performance.now()*1000|0))).toString(36);
