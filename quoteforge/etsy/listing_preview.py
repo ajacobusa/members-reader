@@ -1495,7 +1495,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {robots_meta}<title>Personalized Wall Art Gifts for Any Occasion | {SHOP_NAME}</title>
-<meta name="description" content="Personalized wall art for life's moments - custom wording, your photo, 6 frame styles. FREE digital proof before printing &amp; a happiness guarantee. Made to order, shipped worldwide.">
+<meta name="description" content="Personalized gifts made to order - custom wall art &amp; apparel with your wording, names &amp; photo. Free proof you approve before printing, happiness guarantee, shipped worldwide.">
 <meta name="theme-color" content="#103d2e">
 <link rel="canonical" href="https://joffiels.com/">
 <meta property="og:type" content="website">
@@ -1594,7 +1594,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .navham{{display:none;background:none;border:1px solid var(--line);border-radius:10px;
    padding:5px 11px;font-size:19px;line-height:1;color:var(--green);cursor:pointer}}
  /* anchored sections clear the sticky header when jumped to */
- #grid,#wallart,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
+ #depts,#grid,#wallart,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
  .depts{{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}}
  .deptshead{{margin:0 0 14px;color:var(--green);font-size:20px;
    text-transform:uppercase;letter-spacing:.06em}}
@@ -2547,10 +2547,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="hero">
    {f'<img class="hero-banner" src="{banner_src}" alt="Personalized wall art styled in a cozy living room" fetchpriority="high" decoding="async">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
    <div class="hero-overlay">
-     <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
-     <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
+     <h1 data-ab="hero_h1">Personalized gifts for life's most meaningful moments</h1>
+     <p>Wall art &amp; custom apparel - your names, dates &amp; own words, made to order.</p>
      <div class="herocta">
-       <a class="btn-shop" href="#grid">Shop the collection</a>
+       <a class="btn-shop" href="#depts">Shop by department</a>
        <button class="btn-find" onclick="openQuiz()">🎁 Find the perfect gift</button>
      </div>
      <p class="heroprice">From <b>$18.99</b> &middot; a free proof you approve before you buy</p>
@@ -2562,7 +2562,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
  </div>
- <section class="depts" aria-label="Shop by department">
+ <section class="depts" id="depts" aria-label="Shop by department">
    <h2 class="deptshead">Shop by department</h2>
    <div class="deptgrid">
      <a class="deptcard deptwall" href="#wallart">
