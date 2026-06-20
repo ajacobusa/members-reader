@@ -792,21 +792,87 @@ _APPAREL_OCCASIONS = [
 ]
 
 
+# Per-occasion line icon (inline SVG) + soft colour-coded circle, replacing the
+# flat emoji with a premium, consistent visual cue (the page has no icon webfont).
+_APPAREL_OCC_ICON = {
+    "birthday": ('<path d="M5 21h14v-8H5z"/><path d="M5 13c1.6 0 1.6-1.6 3.5-1.6S10 13 12 13'
+                 's1.6-1.6 3.5-1.6S17 13 19 13"/><path d="M8 8.5v3M12 7.5v4M16 8.5v3"/>',
+                 "#fbeaf0", "#b03a5f"),
+    "anniversary": ('<path d="M5 9l3-4h8l3 4-7 10z"/><path d="M5 9h14M9 5l3 4 3-4M9 9l3 10 3-10"/>',
+                    "#f1ecfb", "#6b4ea3"),
+    "mother's day": ('<circle cx="12" cy="8" r="2"/><circle cx="8.6" cy="10.4" r="2"/>'
+                     '<circle cx="15.4" cy="10.4" r="2"/><circle cx="9.9" cy="13.8" r="2"/>'
+                     '<circle cx="14.1" cy="13.8" r="2"/><path d="M12 16v5"/>',
+                     "#fdeae6", "#c2562f"),
+    "father's day": ('<path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 5.5H6a2 2 0 0 0 2.3 2'
+                     'M16 5.5h2a2 2 0 0 1-2.3 2"/><path d="M12 12v3M9 19h6M10 19c0-1 .5-2 2-2'
+                     's2 1 2 2"/>', "#e8f1fb", "#2b6da5"),
+    "wedding": ('<circle cx="9.5" cy="14" r="3.8"/><circle cx="14.5" cy="14" r="3.8"/>'
+                '<path d="M8 9l1.5 2M16 9l-1.5 2M12 7l1 2"/>', "#faf0d8", "#b3902f"),
+    "new baby": ('<path d="M17 13a5.2 5.2 0 1 1-5.6-5.2A4 4 0 0 0 17 13z"/>'
+                 '<path d="M17.5 5l.5 1.3 1.3.5-1.3.6-.5 1.4-.6-1.4-1.3-.6 1.4-.5z"/>',
+                 "#e1f5ee", "#0f6e56"),
+    "graduation": ('<path d="M12 6 2.5 9.5 12 13l9.5-3.5z"/><path d="M6 11.2V15c0 1.2 2.7 2.2 6 2.2'
+                   's6-1 6-2.2v-3.8"/><path d="M21.5 9.5V15"/>', "#eaf3de", "#3b6d11"),
+    "memorial": ('<path d="M4 20c8 0 14-6 14-14 0 0-9.5 1-11.5 7C5.2 16 4 20 4 20z"/>'
+                 '<path d="M9 15c3-1 5-3 6.5-5.5"/>', "#eef1f0", "#5f6e66"),
+    "just because": ('<path d="M12 20S4.5 15.3 4.5 9.9A3.6 3.6 0 0 1 12 7a3.6 3.6 0 0 1 7.5 2.9'
+                     'C19.5 15.3 12 20 12 20z"/>', "#faeeda", "#b3902f"),
+}
+
+
+def _apparel_hero() -> str:
+    """The apparel department hero: a deep-green banner with an editorial
+    lifestyle photo (when bundled at brand/apparel-hero.jpg) and the CTA. Falls
+    back to the gradient-only banner when no photo is present."""
+    from quoteforge.config import OUTPUT_DIR
+    img = ""
+    for p in (Path(__file__).resolve().parents[2] / "brand" / "apparel-hero.jpg",
+              Path(OUTPUT_DIR) / "apparel-hero.jpg"):
+        try:
+            if p.exists():
+                img = (f'<img class="apheroimg" src="{_web_img(p, 1200, 80)}" '
+                       f'alt="People wearing custom apparel" loading="lazy">')
+                break
+        except Exception:  # noqa: BLE001
+            img = ""
+    return (
+        '<div class="aphero">'
+        '<div class="apherobody">'
+        '<span class="apheroeyebrow">Personalized &middot; made to order</span>'
+        '<h2 class="apheroh">Custom Apparel</h2>'
+        '<p class="apherosub">Put your name, words or photo on a tee, hoodie, tank '
+        'or sweatshirt - the same easy editor, and a free proof you approve on '
+        'screen before anything prints.</p>'
+        '<button type="button" class="apherocta" onclick="'
+        "document.querySelector('.appoccchips')."
+        "scrollIntoView({behavior:'smooth',block:'center'})"
+        '">Start designing &rarr;</button>'
+        '</div>'
+        f'<div class="apheromedia">{img}</div>'
+        '</div>')
+
+
 def _apparel_occasions() -> str:
     """The 'Shop by occasion' strip for apparel - each chip opens the design
     editor pre-loaded with that occasion's quote, ready to personalize."""
     chips = []
-    for key, disp, emoji in _APPAREL_OCCASIONS:
+    for key, disp, _emoji in _APPAREL_OCCASIONS:
         pool = OCCASION_QUOTES.get(key) or OCCASION_QUOTES["just because"]
         qjs = pool[0].replace("\\", "\\\\").replace("'", "\\'")
+        svg, bg, fg = _APPAREL_OCC_ICON.get(
+            key, _APPAREL_OCC_ICON["just because"])
         chips.append(
             f'<button class="appocc" type="button" '
             f'onclick="shopApparelOccasion(\'{qjs}\')" '
             f'aria-label="Design a {disp} garment">'
-            f'<span class="appoccem">{emoji}</span>'
+            f'<span class="appoccic" style="background:{bg}">'
+            f'<svg viewBox="0 0 24 24" style="stroke:{fg}" aria-hidden="true">{svg}</svg>'
+            f'</span>'
             f'<span class="appocclbl">{disp}</span></button>')
     return (
         '<div class="appoccrow">'
+        '<span class="appocceyebrow">Start with the moment</span>'
         '<h3 class="appocch">🎁 Shop by occasion</h3>'
         '<p class="appoccsub">Pick the moment - your design starts with the perfect '
         'words, ready to make your own.</p>'
@@ -949,10 +1015,7 @@ def _apparel_section(photos: dict | None = None) -> str:
         'onclick="clearApparelFilters()">Clear filters</button></p>')
     return (
         '<section class="apparel-sec" id="apparel">'
-        '<h2>👕 Custom Apparel</h2>'
-        '<p class="apsub">Put your name, words or photo on a tee, hoodie, tank, '
-        'sweatshirt and more - the same easy editor, made to order. Filter to find '
-        'your garment, then pick one to start designing.</p>'
+        f'{_apparel_hero()}'
         f'{_apparel_occasions()}{filterbar}{"".join(groups)}{nomatch}</section>')
 
 
@@ -1559,6 +1622,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
  .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
  .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
+ .aphero{{position:relative;display:flex;align-items:stretch;border-radius:20px;
+   overflow:hidden;margin:6px 0 26px;text-align:left;box-shadow:0 8px 30px rgba(16,61,46,.16);
+   background:linear-gradient(105deg,#103d2e 0%,#16523c 52%,#1d6347 100%)}}
+ .apherobody{{flex:1 1 52%;padding:34px 30px;display:flex;flex-direction:column;
+   justify-content:center;align-items:flex-start;z-index:2}}
+ .apheroeyebrow{{font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+   color:#e9d9a6;font-weight:700;margin-bottom:8px}}
+ .apheroh{{color:#fff;font-size:28px;margin:0 0 8px;line-height:1.12}}
+ .apherosub{{color:#d6e3da;font-size:14px;line-height:1.55;margin:0 0 16px;max-width:440px}}
+ .apherocta{{background:var(--gold);color:var(--green);border:none;border-radius:24px;
+   padding:11px 22px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;
+   transition:transform .14s,box-shadow .14s}}
+ .apherocta:hover{{transform:translateY(-2px);box-shadow:0 10px 22px rgba(201,168,76,.4)}}
+ .apheromedia{{flex:1 1 48%;position:relative;min-height:240px}}
+ .apheroimg{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}}
+ .apheromedia::before{{content:"";position:absolute;inset:0;z-index:1;
+   background:linear-gradient(90deg,#103d2e 0%,rgba(16,61,46,.4) 24%,transparent 58%)}}
+ @media(max-width:720px){{.aphero{{flex-direction:column}}
+   .apheromedia{{min-height:160px;order:-1}}
+   .apheromedia::before{{background:linear-gradient(0deg,#103d2e 0%,transparent 62%)}}
+   .apherobody{{padding:24px 22px}}.apheroh{{font-size:24px}}}}
  .appghead{{margin:22px 0 12px;color:var(--green);font-size:18px;text-align:left;
    text-transform:uppercase;letter-spacing:.05em}}
  .appgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
@@ -1581,16 +1665,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .appfrom{{color:#7a7466;font-size:13px}}
  .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
  .appoccrow{{margin:2px 0 22px;text-align:center}}
- .appocch{{margin:0 0 4px;color:var(--green);font-size:19px}}
- .appoccsub{{margin:0 auto 14px;max-width:560px;color:#5b6b62;font-size:14px}}
+ .appocceyebrow{{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+   color:var(--gold-d);font-weight:700;margin-bottom:6px}}
+ .appocch{{margin:0 0 4px;color:var(--green);font-size:20px}}
+ .appoccsub{{margin:0 auto 16px;max-width:560px;color:#5b6b62;font-size:14px}}
  .appoccchips{{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}}
- .appocc{{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:86px;
-   padding:11px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;
+ .appocc{{display:flex;flex-direction:column;align-items:center;gap:8px;width:102px;
+   padding:15px 8px 13px;border:1px solid var(--line);border-radius:16px;background:#fff;
    cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}}
- .appocc:hover{{transform:translateY(-3px);box-shadow:0 10px 22px rgba(16,61,46,.12);
+ .appocc:hover{{transform:translateY(-3px);box-shadow:0 12px 24px rgba(16,61,46,.13);
    border-color:var(--gold)}}
- .appoccem{{font-size:25px;line-height:1}}
- .appocclbl{{font-size:13px;font-weight:600;color:var(--green)}}
+ .appoccic{{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;
+   justify-content:center}}
+ .appoccic svg{{width:23px;height:23px;fill:none;stroke-width:1.7;stroke-linecap:round;
+   stroke-linejoin:round}}
+ .appocclbl{{font-size:12.5px;font-weight:600;color:var(--green);text-align:center}}
+ @media(max-width:640px){{.appocc{{width:30%;min-width:92px}}}}
  .appsw{{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:2px 0 1px}}
  .swdot{{width:15px;height:15px;border-radius:50%;border:1px solid rgba(0,0,0,.22);
    cursor:pointer;transition:transform .12s,box-shadow .12s}}
