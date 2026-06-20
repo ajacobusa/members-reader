@@ -89,18 +89,23 @@ def test_titles_and_key_inputs_are_bold(tmp_path):
     """All headings are bold (700) and important labels/inputs carry weight
     so the hierarchy reads instantly."""
     h = _page(tmp_path)
-    assert "h1,h2,h3,.serif{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700" in h
+    # Headings/titles stay in the Cormorant serif and are bold (700).
+    assert "font-family:'Cormorant Garamond',Georgia,serif" in h
+    assert "h1,h2,h3,.serif{font-weight:700" in h
     assert ".perso input,.perso textarea" in h and "font-weight:600" in h
     assert ".swrow{font-size" in h          # label rule exists...
     sw = h.split(".perso .swrow{", 1)[1].split("}", 1)[0]
     assert "font-weight:700" in sw          # ...and is bold
 
 
-def test_brand_serif_font_is_global(tmp_path):
-    """The Cormorant Garamond brand font applies to the WHOLE page (body
-    root + inheritance), not just headings."""
+def test_readable_sans_body_with_serif_headings(tmp_path):
+    """Readability pairing (REGRESSION): body + UI text uses a legible sans
+    (Montserrat); the Cormorant Garamond serif is reserved for headings/titles
+    - the display serif was hard to read as body copy."""
     h = _page(tmp_path)
-    assert "body{font-family:'Cormorant Garamond'" in h
+    assert "body{font-family:'Montserrat'" in h            # readable sans body
+    assert "h1,h2,h3,h4,.serif" in h                        # serif heading rule
+    assert "font-family:'Cormorant Garamond',Georgia,serif" in h
 
 
 def test_no_native_alerts_in_purchase_flow(tmp_path):
