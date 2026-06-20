@@ -156,7 +156,7 @@ def size_chart(poster_path: Path, out: Path) -> Path:
 
 _STEPS = [
     ("1", "Personalize", "Add the name, occasion & story at checkout"),
-    ("2", "We Design", "We craft your piece & email a proof - exactly what prints"),
+    ("2", "Approve a proof", "Approve your free proof on screen - exactly what prints"),
     ("3", "We Ship", "Printed on premium stock and shipped with tracking"),
 ]
 
@@ -189,7 +189,7 @@ def how_it_works(out: Path) -> Path:
 
 _INCLUDED = [
     "Personalized just for your recipient",
-    "Free digital proof before we print",
+    "Free proof you approve on screen",
     "Premium paper, framed & canvas options",
     "Made to order with care",
     "Ships directly to you with tracking",

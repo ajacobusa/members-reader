@@ -1,13 +1,13 @@
-"""Customer proof-approval workflow.
+"""Owner proof-review / release helper (manual fail-safe).
 
-When an order reaches the proof stage, this prepares everything you need to
-get the BUYER's approval before printing:
-  1. a ready-to-send proof message (personalized)
-  2. the proof image path to attach in the Etsy conversation
+The customer approves their design on screen at checkout - that on-screen
+approval is the final, binding sign-off and is recorded as ``proof_approved``
+when the order is created. There is NO emailed proof round.
 
-Printing is blocked until you record the customer's approval. Etsy has no API
-to auto-send a proof and auto-detect the reply, so the send/receive happens in
-Etsy's normal messaging — this module does everything around that.
+This module is the manual fail-safe: for any order that reaches the proof stage
+WITHOUT an on-screen approval on record, the owner reviews the proof here and
+releases it to print (recording the approval via ``record_customer_approval``).
+Printing stays blocked until that approval is recorded.
 """
 from pathlib import Path
 from typing import Optional
@@ -30,14 +30,12 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
     from quoteforge.config import SHOP_NAME
 
     message = (
-        f"Hi! Thank you so much for your order from {SHOP_NAME}. Here's the "
-        f"proof of your personalized {occasion} print for {recipient} — this "
-        f"is exactly what will print.\n\n"
-        f"Please check the name, spelling, wording, and overall design. Spot "
-        f"anything you'd like changed? Just reply within 24 hours and I'll fix "
-        f"it free before printing. If it's perfect, you don't need to do a "
-        f"thing — it heads to print right away.\n\n"
-        f"With gratitude,\nThe {SHOP_NAME} team"
+        f"Owner proof review - order {order_id}: {occasion} for {recipient}.\n\n"
+        f"Check the name, spelling, wording, and overall design against the "
+        f"order. If everything is correct, release it to print; if not, fix the "
+        f"design before releasing. (Customers approve their design on screen at "
+        f"checkout - this manual review is the fail-safe for any order that has "
+        f"no on-screen approval on record.)"
     )
 
     # Optional production preview: a real mockup of the design ON the garment, as
@@ -51,17 +49,15 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
     except Exception:  # noqa: BLE001
         product_mockup = None
     if product_mockup:
-        message += ("\n\nP.S. I've also attached a preview of how your design looks "
-                    "on the garment itself - the wording/photo is what you confirm "
-                    "above.")
+        message += ("\n\nA preview of how the design looks on the garment is "
+                    "attached as a visual aid for the review.")
 
-    # Persist the proof message (so it's logged against the order)
-    save_customer_message(order_id, "Proof Ready", message, sent=False)
-
-    # Mark the order as waiting on the customer (printing is blocked here)
+    # Mark the order as held pending approval (printing is blocked here). The
+    # status token is legacy; with the emailed proof round retired it now means
+    # "held for owner review" - released via record_customer_approval.
     update_order(order_id, status="awaiting_customer_approval", proof_sent=1)
     log_pipeline_stage(order_id, "proof", "awaiting_customer",
-                       "Proof prepared — awaiting customer approval via Etsy")
+                       "Proof prepared - held for owner review")
 
     return {
         "order_id": order_id,
@@ -70,10 +66,8 @@ def prepare_customer_proof(order_id: str, artwork_path: Optional[str] = None) ->
         "artwork_path": artwork_path or order.get("artwork_url", ""),
         "product_mockup": product_mockup,   # visual aid only; None when unavailable
         "instructions": (
-            "Send the proof_message to the buyer in the Etsy order conversation "
-            "and attach the artwork image. If no change request arrives within "
-            "the 24h window (or they confirm it's perfect), run: "
-            f"python -m quoteforge.admin customer-approved {order_id}"
+            "Review the proof against the order. If it's correct, release it to "
+            f"print with: python -m quoteforge.admin customer-approved {order_id}"
         ),
     }
 

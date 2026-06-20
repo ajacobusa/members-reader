@@ -248,7 +248,7 @@ def _competitive_sections() -> str:
     from quoteforge.config import SHOP_NAME
     rows = [
         ("Designed by a real person for your story", "Templated, mass-produced"),
-        ("FREE digital proof emailed - see exactly what prints", "What you upload is what prints"),
+        ("Approve your free proof on screen - exactly what prints", "What you upload is what prints"),
         ("Made to order, museum-quality materials", "Bulk factory runs"),
         ("Custom wording, colors &amp; frame - you preview it live", "Limited presets"),
         ("Personal note + gift e-card included free", "Add-on fees"),
@@ -261,19 +261,20 @@ def _competitive_sections() -> str:
          "Poster, canvas, acrylic and metal ship without a frame. Choose a "
          "\"Framed\" option to add a real wood frame (6 styles)."),
         ("Can I use my own photo or exact wording?",
-         "Yes! Upload a high-resolution photo and type your own words - we "
-         "auto-check quality and send a free proof before printing."),
+         "Yes! Upload a high-resolution photo and type your own words - you "
+         "preview your free proof on screen and approve exactly what prints "
+         "before you buy."),
         ("How fast will it arrive?",
-         "We email your proof within ~24h and double-check every file, then "
-         "print and ship with tracking, typically within 3-5 business days. "
-         "Spot something on the proof? Reply right away and we fix it first."),
+         "You approve your proof on screen at checkout, so there's no waiting on "
+         "a proof email. We double-check every file, then print and ship with "
+         "tracking, typically within 3-5 business days."),
         ("What if I don't love it?",
-         "Every order includes a free proof that shows exactly what will print - "
-         "check the wording, names, and design, and reply right away if anything "
-         "is off so we can fix it fast. Because each piece is personalized and "
+         "Your on-screen proof shows exactly what will print, so please check the "
+         "wording, names, and design carefully and approve it before you buy. "
+         "Because each piece is personalized and "
          "made to order, your order is final once you confirm it at checkout: we "
          "can't offer returns, refunds, or remakes for a change of mind or for "
-         "the wording, spelling, design, sizing, or photo you submitted. You're "
+         "the wording, spelling, design, sizing, or photo you approved. You're "
          "still fully covered if your order arrives damaged or defective, is the "
          "wrong item, or doesn't arrive - message us within 7 days of delivery "
          "(with a photo for damage or defects) and we'll remake and reship it "
@@ -1513,20 +1514,36 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    text-transform:uppercase;letter-spacing:.06em}}
  .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
  @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
- .hiw{{max-width:1000px;margin:42px auto 8px;padding:0 16px;text-align:center}}
- .hiw h2{{color:var(--green);font-size:25px;margin:0 0 6px}}
- .hiwsub{{color:#5b6b62;max-width:640px;margin:0 auto 26px;font-size:15px}}
- .hiwsteps{{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}}
- @media(max-width:720px){{.hiwsteps{{grid-template-columns:1fr}}}}
- .hiwstep{{position:relative;background:#fff;border:1px solid var(--line);border-radius:18px;
-   padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:7px;
-   box-shadow:0 3px 16px rgba(16,61,46,.05)}}
- .hiwnum{{position:absolute;top:-15px;left:50%;transform:translateX(-50%);width:31px;height:31px;
-   border-radius:50%;background:var(--green);color:#fff;font-weight:700;display:flex;
-   align-items:center;justify-content:center;font-size:15px}}
- .hiwemoji{{font-size:34px;line-height:1;margin-top:4px}}
+ .hiw{{max-width:1040px;margin:42px auto 8px;padding:0 16px;text-align:center}}
+ .hiweyebrow{{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-d);
+   font-weight:700;margin:0 0 8px}}
+ .hiw h2{{color:var(--green);font-size:26px;margin:0 0 8px}}
+ .hiwsub{{color:#5b6b62;max-width:560px;margin:0 auto 30px;font-size:15px}}
+ .hiwsub b{{color:var(--gold-d);font-weight:700}}
+ .hiwsteps{{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;position:relative}}
+ .hiwsteps::before{{content:"";position:absolute;top:63px;left:18%;right:18%;height:2px;z-index:0;
+   background:repeating-linear-gradient(90deg,#d9cba0 0 8px,transparent 8px 16px)}}
+ @media(max-width:720px){{.hiwsteps{{grid-template-columns:1fr}}.hiwsteps::before{{display:none}}}}
+ .hiwstep{{position:relative;z-index:1;background:#fff;border:1px solid var(--line);border-radius:18px;
+   padding:34px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:7px;
+   box-shadow:0 3px 16px rgba(16,61,46,.05);transition:transform .14s,box-shadow .14s}}
+ .hiwstep:hover{{transform:translateY(-4px);box-shadow:0 14px 32px rgba(16,61,46,.12)}}
+ .hiwstep::before{{content:"";position:absolute;top:0;left:26px;right:26px;height:3px;
+   background:var(--gold);border-radius:0 0 3px 3px}}
+ .hiwmed{{position:relative;width:58px;height:58px;border-radius:50%;background:var(--green);
+   border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 6px}}
+ .hiwmed svg{{width:27px;height:27px;stroke:#fff;fill:none;stroke-width:1.7;
+   stroke-linecap:round;stroke-linejoin:round}}
+ .hiwnum{{position:absolute;bottom:-7px;right:-7px;width:23px;height:23px;border-radius:50%;
+   background:var(--gold);color:var(--green);font-weight:700;display:flex;align-items:center;
+   justify-content:center;font-size:12px;border:2px solid #fff}}
  .hiwt{{font-weight:700;color:var(--green);font-size:17px}}
  .hiwd{{color:#5b6b62;font-size:14px;line-height:1.5}}
+ .hiwtrust{{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin:24px auto 0;
+   color:#5b6b62;font-size:12.5px}}
+ .hiwtrust span{{display:inline-flex;align-items:center;gap:6px}}
+ .hiwtrust svg{{width:15px;height:15px;stroke:var(--gold-d);fill:none;stroke-width:1.7;
+   stroke-linecap:round;stroke-linejoin:round;flex:none}}
  .deptcard{{display:flex;flex-direction:column;text-decoration:none;
    border-radius:18px;overflow:hidden;border:1px solid #e6e0d2;background:#fff;
    box-shadow:0 2px 10px rgba(0,0,0,.05);transition:transform .14s,box-shadow .14s}}
@@ -2404,7 +2421,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    </div>
  </div>
  <div class="trust">
-   <span>✦ <b>Free digital proof</b> before printing</span>
+   <span>✦ <b>Free proof</b> you approve on screen</span>
    <span>✦ <b>Made to order</b>, just for you</span>
    <span>✦ <b>Premium</b> museum-quality materials</span>
    <span>✦ <b>Worldwide</b> tracked shipping</span>
@@ -2431,22 +2448,38 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    </div>
  </section>
  <section class="hiw" aria-label="How it works">
+   <p class="hiweyebrow">Simple &middot; transparent &middot; risk-free</p>
    <h2>How it works</h2>
-   <p class="hiwsub">Made to order, with a FREE proof before anything prints - so you
+   <p class="hiwsub">Made to order, with a <b>free proof</b> before anything prints &mdash; so you
      get exactly what you pictured, every time.</p>
    <div class="hiwsteps">
-     <div class="hiwstep"><span class="hiwnum">1</span><span class="hiwemoji">🎨</span>
+     <div class="hiwstep">
+       <span class="hiwmed" aria-hidden="true">
+         <svg viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></svg>
+         <span class="hiwnum">1</span></span>
        <span class="hiwt">Personalize it</span>
        <span class="hiwd">Add the name, the occasion and your own words or photo -
          preview it live as you type.</span></div>
-     <div class="hiwstep"><span class="hiwnum">2</span><span class="hiwemoji">✅</span>
+     <div class="hiwstep">
+       <span class="hiwmed" aria-hidden="true">
+         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>
+         <span class="hiwnum">2</span></span>
        <span class="hiwt">Approve a free proof</span>
-       <span class="hiwd">We design your artwork and send a free digital proof - you
-         approve exactly what prints before we make it.</span></div>
-     <div class="hiwstep"><span class="hiwnum">3</span><span class="hiwemoji">📦</span>
+       <span class="hiwd">Your free proof appears on screen instantly &mdash; approve it and
+         that's exactly what we print. This is your final sign-off, so it's locked in
+         once you submit.</span></div>
+     <div class="hiwstep">
+       <span class="hiwmed" aria-hidden="true">
+         <svg viewBox="0 0 24 24"><path d="M3 7h10v8H3z"/><path d="M13 10h4l3 3v2h-7z"/><circle cx="7" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg>
+         <span class="hiwnum">3</span></span>
        <span class="hiwt">We print &amp; ship</span>
        <span class="hiwd">Made to order on premium materials and shipped worldwide
          with tracking.</span></div>
+   </div>
+   <div class="hiwtrust">
+     <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z"/><path d="M9 12l2 2 4-4"/></svg>Happiness guarantee</span>
+     <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>See it before it prints</span>
+     <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg>Worldwide shipping</span>
    </div>
  </section>
  {sproof_html}
@@ -2460,7 +2493,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <h2>🖼️ Wall Art — gifts they'll keep forever</h2>
    <p>Every piece is custom-made for your recipient - a name, an occasion, their
      story. Choose poster, framed, canvas, acrylic or metal when you personalize;
-     a free digital proof is sent before anything is printed.</p>
+     you approve your free proof on screen before anything prints.</p>
  </div>
  {_occasion_showcase(kit_dir, external_assets, assets)}
  <div id="gridcount" class="gridcount"></div>
@@ -2527,8 +2560,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   <div class="proofbox">
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeProof()">&times;</span>
     <h2 id="proofTitle">Your final design</h2>
-    <p class="qsub" id="proofSub">This is how your piece will look. Happy with it?
-      Add it to your basket - a FREE proof is emailed so you see exactly what prints.</p>
+    <p class="qsub" id="proofSub">This is how your piece will look - exactly what prints.
+      Add it to your basket; you'll approve it at checkout before anything is made.</p>
     <img id="proofImg" class="proofimg" alt="Your design preview">
     <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
@@ -2572,14 +2605,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Tap a side &mdash; or <b>drag the shirt</b> to spin it (front &#8596; back)</div>
-         <div class="dseg" role="group" aria-label="Print placement">
+         <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
+         <div class="dseg" role="group" aria-label="Choose side">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
-           <button type="button" class="plbtn" data-p="leftchest" onclick="setPlacement('leftchest')">Left chest</button>
            <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
-           <button type="button" class="plbtn" data-p="sleeve" id="plsleeve" onclick="setPlacement('sleeve')">Sleeve</button>
          </div>
-         <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add your photo or wording and it prints here.</div>
+         <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <div class="dragbar" id="mframebar" style="display:none">
@@ -3056,9 +3087,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Hoodie or Sweatshirt</b> - '
    +'pick your garment, colour &amp; size next. Made to order, printed on the front.';
  const APPAREL_DESC_HTML='<b>A personalized garment, made to order just for you.</b><br>'
-   +'1. Add the recipient name, occasion and a short story at checkout.<br>'
-   +'2. We design your artwork and email a FREE digital proof so you see exactly '
-   +'what prints.<br>'
+   +'1. Personalize it live - add the recipient name, occasion and your own words or '
+   +'photo, and preview it on screen.<br>'
+   +'2. Approve your free proof on screen - this is your final sign-off, locked in once '
+   +'you submit.<br>'
    +'3. Printed on a premium tee, hoodie or sweatshirt and shipped with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
    +'printing, and your chosen garment, colour &amp; size. Sizing is final - please '
@@ -3115,11 +3147,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    renderBg();                         // Shirt-colour swatches (apparel) / Background
    if(IS_APPAREL){{
      autoContrastText((CURFMT.split(' - ')[1]||''));
-     APPLACEMENT='front';              // default placement; Sleeve only for sleeved garments
+     APPLACEMENT='front';              // start on the front side
+     SIDES={{front:null,back:null}};   // clear both sides' designs for the new garment
      document.querySelectorAll('#mplacement .plbtn').forEach(function(b){{
        b.classList.toggle('sel', b.dataset.p==='front'); }});
-     var _sl=document.getElementById('plsleeve');
-     if(_sl) _sl.style.display=(_garmentType()==='tank')?'none':'';
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
@@ -3245,8 +3276,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    const p=sv.split('|'); const qty=parseInt((document.getElementById('mqty')||{{}}).value||'1');
    const title=(DATA[CUR]||{{}}).title||'';
+   // Capture the side being viewed, then record which sides carry a design so the
+   // order knows the front AND back content (each side is independent).
+   if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();
+   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc)); }};
+   const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back)}} : null;
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
+     sides:_sides,
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -3743,8 +3780,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            '📧 Email us your order now</a>'+
            '<div class="note">One tap opens an email with your full order - '+
            'send it and we take it from there.</div>'))+
-         (em?`We\\'ll email <b>${{em}}</b>.`
-           :'<div class="pfemail"><label for="pfemail">Where should we send your order confirmation &amp; payment link?</label> '+
+         (em?`We\\'ll send your secure payment link to <b>${{em}}</b>.`
+           :'<div class="pfemail"><label for="pfemail">Where should we send your secure payment link?</label> '+
             '<input id="pfemail" type="email" placeholder="you@email.com"> '+
             '<button type="button" onclick="saveProofEmail()">Save</button> '+
             '<span id="pfemailok" role="status" aria-live="polite"></span></div>')+
@@ -3766,8 +3803,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          unit:l.unit,qty:l.qty}})) }};
      fetch(CONFIRM_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
        body:JSON.stringify({{email:email, summary:summary, design:dsn,
-         design_id:'cart-'+Date.now()}})}})
-       .then(r=>r.json()).then(d=>done(d&&d.emailed)).catch(()=>done(false));
+         design_id:'cart-'+Date.now(), proof:_composedProofURL()}})}})
+       .then(r=>r.json()).then(d=>done(d&&d.ok)).catch(()=>done(false));
    }} else {{ done(false); }}
  }}
  // Prefilled order email to the owner - the always-works completion channel.
@@ -3856,7 +3893,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    img.src=URL.createObjectURL(f);}}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
- let APPLACEMENT='front';  // print placement: front | leftchest | back | sleeve
+ let APPLACEMENT='front';  // which side is being designed: front | back
  let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
@@ -3867,15 +3904,46 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function moveFrame(dx,dy){{ BOX.x+=dx; BOX.y+=dy; _clampBox(); drawArt(); }}
  function resetFrame(){{ BOX={{x:0.50,y:0.35,s:1.0}};
    var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }}
- const _PLACE_LBL={{front:'Front',leftchest:'Left chest',back:'Back',sleeve:'Sleeve'}};
+ const _PLACE_LBL={{front:'Front',back:'Back'}};
+ // Front and back hold INDEPENDENT designs (different wording + photo + frame).
+ // Snapshot the current side before flipping, then restore the other side's design.
+ let SIDES={{front:null,back:null}};
+ function _captureSide(){{
+   const ta=document.getElementById('mtext');
+   return {{ quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
+     pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
+     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT }};
+ }}
+ function _restoreSide(s){{
+   const ta=document.getElementById('mtext');
+   if(s){{
+     if(ta) ta.value=s.quote||''; CURQUOTE=s.cq||'';
+     PHOTO_ZOOM=s.pz; PHOTO_FX=s.pfx; PHOTO_FY=s.pfy;
+     TPOS={{x:s.tpos.x,y:s.tpos.y}}; TSIZE=s.tsize; TROT=s.trot;
+     BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
+     if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
+     if(s.photoSrc){{ var im=new Image(); im.onload=function(){{drawArt();}}; im.src=s.photoSrc;
+       PHOTO=im; _showPhotoCtl(true); }}
+     else {{ PHOTO=null; _showPhotoCtl(false); }}
+   }} else {{                                    // a fresh, empty side
+     if(ta) ta.value=''; CURQUOTE='';
+     PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+     TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
+   }}
+   const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
+   _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
+   var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
+ }}
  function setPlacement(p){{
+   if(p!=='back') p='front';
+   const prev=APPLACEMENT;
+   if(IS_APPAREL && p!==prev) SIDES[prev]=_captureSide();   // save the side we're leaving
    APPLACEMENT=p;
    document.querySelectorAll('#mplacement .plbtn').forEach(function(b){{
      b.classList.toggle('sel', b.dataset.p===p); }});
-   // Flipping to Back shows the garment's back; tell the buyer they're now
-   // designing that side so the editor doesn't feel "stuck" on the front.
    const _bh=document.getElementById('mbackhint');
    if(_bh) _bh.style.display=(p==='back')?'block':'none';
+   if(IS_APPAREL && p!==prev) _restoreSide(SIDES[p]);       // load the side we moved to
    drawArt();
  }}
  // Toggle the shop-logo overlay (added to BOTH the front and the back).
@@ -3884,17 +3952,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    LOGO_ON=!!(cb&&cb.checked);
    drawArt();
  }}
- // Print-safe boundary for the current placement (silhouette mode: relative to the
- // garment box; mockup mode: relative to the whole canvas). Front/Back = large
- // centred chest; Left chest = small upper-left; Sleeve = narrow on the sleeve.
+ // Print-safe boundary = the movable design FRAME (front or back). Silhouette mode
+ // is relative to the garment box; mockup mode is relative to the whole canvas.
  function _placeBound(x,y,w,h){{
-   if(APPLACEMENT==='leftchest') return {{x:x+w*0.52,y:y+h*0.30,w:w*0.16,h:h*0.15}};
-   if(APPLACEMENT==='sleeve')    return {{x:x+w*0.085,y:y+h*0.17,w:w*0.13,h:h*0.13}};
    return {{x:x+w*0.22,y:y+h*0.22,w:w*0.56,h:h*0.50}};   // front + back (generous)
  }}
  function _placeBoundMock(W,H){{
-   if(APPLACEMENT==='leftchest') return {{x:W*0.52,y:H*0.32,w:W*0.13,h:H*0.12}};
-   if(APPLACEMENT==='sleeve')    return {{x:W*0.18,y:H*0.27,w:W*0.10,h:H*0.10}};
    // Front/back: the design FRAME the buyer can move + resize. Base size 0.42x0.32
    // of the canvas x BOX.s, centred at (BOX.x,BOX.y), then clamped so the frame
    // stays on the garment's torso (never onto the collar or the lower body).
@@ -4786,7 +4849,7 @@ def build_preview(n: int = 1, kit_dir=None, out_path=None) -> Path:
      <textarea placeholder="Recipient name, occasion, relationship, a short story, and (optional) your own exact wording..."></textarea>
    </div>
    <button class="btn">Add to cart</button>
-   <div class="note">Free digital proof emailed before printing - see exactly what prints.</div>
+   <div class="note">Approve your free proof on screen before printing.</div>
    <div class="tags">{tags}</div>
    <div class="desc">{desc}</div>
  </div>

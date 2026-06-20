@@ -45,7 +45,7 @@ def build_subscription_listing() -> dict:
         "MEMBERSHIP OPTIONS\n" + rows + "\n\n"
         "HOW IT WORKS\n"
         "1. Choose a plan and tell us who it's for.\n"
-        "2. We design + send a free proof for each delivery before printing.\n"
+        "2. You approve a free proof for each delivery before it prints.\n"
         "3. A fresh personalized piece ships on your cadence.\n\n"
         "Perfect for grandparents, long-distance family, new homes, and anyone "
         "who loves a thoughtful surprise. Cancel or pause anytime - just message us.")
@@ -84,7 +84,7 @@ def start_subscription_from_order(payload: dict) -> dict:
         name = payload.get("customer_name") or "there"
         fallback = (f"Hi {name},\n\nWelcome to the {SHOP_NAME} membership! Your "
                     f"{plan.name} is active through {end}. We'll design each piece "
-                    f"and send a free proof before printing. Reply anytime with who "
+                    f"and you approve a free proof before it prints. Reply anytime with who "
                     f"it's for and any details. So glad you're here!")
         body = ai_text(
             f"Write a warm 70-100 word welcome email for a new {SHOP_NAME} art "

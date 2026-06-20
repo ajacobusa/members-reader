@@ -43,18 +43,20 @@ KB = [
      "for a better version before anything prints."),
     (["proof", "approve", "see before", "preview"],
      "Do I see it before it prints?",
-     "Always. The live preview shows exactly what prints, and we email a FREE "
-     "digital proof too - spot anything off, reply right away and we fix it "
-     "before printing."),
+     "Always - you design it live and the on-screen proof shows exactly what "
+     "prints. You approve it yourself before you buy, and that's your final "
+     "sign-off at checkout. We keep a PDF of your approved proof on file as the "
+     "record of exactly what you approved."),
     (["ship", "shipping", "delivery", "how long", "arrive", "turnaround", "fast"],
      "How long does it take?",
-     "We email your proof within about a day and double-check every file, then "
-     "it's printed and shipped with tracking - typically 3-6 business days. "
-     "Watch for the \"order by\" date near big holidays."),
+     "You approve your proof on screen at checkout, so there's no waiting on a "
+     "proof email. We double-check every file, then it's printed and shipped "
+     "with tracking - typically 3-6 business days. Watch for the \"order by\" "
+     "date near big holidays."),
     (["return", "refund", "guarantee", "not happy", "wrong", "cancel"],
      "What if I'm not happy?",
-     "Your free proof shows exactly what will print - reply right away if "
-     "anything is off and we'll fix it fast. Because each piece is personalized "
+     "Your on-screen proof shows exactly what will print, and you approve it "
+     "before you buy - so please check it carefully. Because each piece is personalized "
      "and made to order, your order is final once you confirm it at checkout "
      "(we can't refund, remake, or cancel for a change of mind or for the design "
      "you submitted). If your order arrives damaged or defective, is the wrong "
@@ -82,11 +84,13 @@ KB = [
     (["pet", "dog", "cat", "memorial", "remembrance", "loss"],
      "Can you make a pet or memorial piece?",
      "Yes - pet portraits and memorial keepsakes are some of our most loved "
-     "pieces. Upload a clear photo and add your words; we'll send a free proof."),
+     "pieces. Upload a clear photo and add your words, and preview your free "
+     "proof on screen before you buy."),
     (["color", "colour", "background", "font", "change colors"],
      "Can I choose colors and fonts?",
      "Yes! On each product you can preview different background colors, text "
-     "colors and fonts live, and we confirm everything on your free proof."),
+     "colors and fonts live, and you approve your free proof on screen before "
+     "you buy."),
     (["subscription", "membership", "monthly", "club"],
      "Do you offer a subscription?",
      "We do - a membership delivers a fresh personalized piece on a schedule "
@@ -111,7 +115,7 @@ KB = [
     (["when", "in time", "deadline", "order by", "before christmas", "rush",
       "how soon"],
      "Will it arrive in time?",
-     "We send your proof within ~1 day; after you approve, it prints and ships "
+     "You approve your proof on screen at checkout, then it prints and ships "
      "(typically 3-6 business days). Near big holidays, watch the 'order by' "
      "date on the site, and message us if it's urgent - we'll do our best."),
     (["what size", "which size", "how big should", "wall", "room", "recommend size"],
@@ -126,9 +130,9 @@ KB = [
      "site."),
     (["how long", "processing", "make time", "production"],
      "How long does it take to make?",
-     "Because each piece is personalized and made to order: proof within ~1 day, "
-     "then production + tracked shipping, usually 3-6 business days after you "
-     "approve the proof."),
+     "Because each piece is personalized and made to order: you approve your "
+     "proof on screen at checkout, then production + tracked shipping, usually "
+     "3-6 business days."),
 ]
 
 FALLBACK = ("Great question! I'm Ange, the {shop} assistant. For anything "

@@ -10,15 +10,14 @@ from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 # ── Base templates (direct from Customer_Message_Templates.docx) ─
 BASE_TEMPLATES: dict[str, str] = {
     "Order Received": (
-        "Thank you for your order! I am creating your personalized design now. "
-        "I will send you a proof within 24 hours. "
+        "Thank you for your order! Your design is confirmed exactly as you "
+        "approved it on screen, and it is heading into production now. "
         "Please feel free to message me if you have any questions!"
     ),
     "Proof Ready": (
-        "Your design proof is ready for review! "
-        "Please take a look and let me know if you would like any changes to the wording, "
-        "layout, or colors before I send it into production. "
-        "I am happy to make adjustments until it is perfect for you."
+        "Here is a copy of your approved proof for your records - this is "
+        "exactly what we are printing, just as you approved it on screen. "
+        "No action needed; your order is already on its way to production. Thank you!"
     ),
     "In Production": (
         "Great news! Your personalized design has been approved and sent to production. "

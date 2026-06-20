@@ -26,8 +26,8 @@ Usage:
   python -m quoteforge.admin tco [listings] [orders/mo]  # total cost of ownership breakdown
   python -m quoteforge.admin launch [scale N]  # the 20 starter listings; or next batch to add
   python -m quoteforge.admin reconcile [YYYY-MM]  # monthly bookkeeping Excel
-  python -m quoteforge.admin show-proof ID    # show the proof message to send the buyer
-  python -m quoteforge.admin customer-approved ID  # buyer approved -> release to print (logs audit trail)
+  python -m quoteforge.admin show-proof ID    # owner review: show the proof for a held order
+  python -m quoteforge.admin customer-approved ID  # owner releases a held order -> print (logs audit trail)
   python -m quoteforge.admin resolve <issue> [ID]  # decide a return/refund issue + draft the reply
   python -m quoteforge.admin costs [today|week|month] [email]  # detailed API spend report
   python -m quoteforge.admin sample-batch [N]      # review quote quality across categories
@@ -290,13 +290,13 @@ def _cmd_show_proof(args: list[str]) -> int:
         return 1
     pkg = prepare_customer_proof(oid)
     print("=" * 56)
-    print(f"PROOF TO SEND TO BUYER — order {oid}")
+    print(f"PROOF FOR OWNER REVIEW — order {oid}")
     print("=" * 56)
-    print(f"\nAttach this image in the Etsy conversation:\n  {pkg['artwork_path']}\n")
-    print("Message to send:\n")
+    print(f"\nProof image:\n  {pkg['artwork_path']}\n")
+    print("Review notes:\n")
     print(pkg["proof_message"])
     print("\n" + "-" * 56)
-    print(f"When the buyer replies APPROVED, run:")
+    print(f"If this order is correct and ready to print, release it with:")
     print(f"  python -m quoteforge.admin customer-approved {oid}")
     return 0
 
@@ -315,7 +315,7 @@ def _cmd_customer_approved(args: list[str]) -> int:
         return 1
     result = record_customer_approval(oid)
     status = result.get("status", "")
-    print(f"Customer approval recorded for {oid}.")
+    print(f"Approval recorded for {oid} — released to print.")
     if status == "in_production":
         print("  Order sent to Gelato for printing.")
     else:
