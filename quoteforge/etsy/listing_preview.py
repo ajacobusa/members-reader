@@ -1477,9 +1477,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 </script>"""
 
     site_style = "display:none" if password else "display:block"
+    # A password-gated preview must never be indexed - the gate is client-side
+    # only (all content is in the DOM), so without this a crawler can index the
+    # unfinished page. Dropped automatically when the gate is removed for launch.
+    robots_meta = ('<meta name="robots" content="noindex,nofollow">\n'
+                   if password else '')
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personalized Wall Art Gifts for Any Occasion | {SHOP_NAME}</title>
+{robots_meta}<title>Personalized Wall Art Gifts for Any Occasion | {SHOP_NAME}</title>
 <meta name="description" content="Personalized wall art for life's moments - custom wording, your photo, 6 frame styles. FREE digital proof before printing &amp; a happiness guarantee. Made to order, shipped worldwide.">
 <meta name="theme-color" content="#103d2e">
 <link rel="canonical" href="https://joffiels.com/">
@@ -1514,8 +1519,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet"></noscript>
 <style>
  :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
+   --gold-ink:#8a6d1f;
    --cream:#f7f4ee;--ink:#23302b;--muted:#6b7a72;--line:#e7e1d6}}
  *{{box-sizing:border-box}}
+ @media(prefers-reduced-motion:reduce){{*,*::before,*::after{{
+   animation-duration:.001ms!important;animation-iteration-count:1!important;
+   transition-duration:.001ms!important;scroll-behavior:auto!important}}}}
  /* Brand serif everywhere: Cormorant Garamond is the ONE site font (weight
     500+ and a slightly larger base size keep it readable at small sizes). */
  body{{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;margin:0;
@@ -1570,6 +1579,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    padding:9px 4px;display:inline-flex;align-items:center;min-height:34px;
    border-bottom:2px solid transparent}}
  .navlinks a:hover{{border-bottom-color:var(--gold)}}
+ .navham{{display:none;background:none;border:1px solid var(--line);border-radius:10px;
+   padding:5px 11px;font-size:19px;line-height:1;color:var(--green);cursor:pointer}}
  /* anchored sections clear the sticky header when jumped to */
  #grid,#wallart,#occasions,#apparel,#why,#faq{{scroll-margin-top:74px}}
  .depts{{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}}
@@ -1578,7 +1589,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
  @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
  .hiw{{max-width:1040px;margin:42px auto 8px;padding:0 16px;text-align:center}}
- .hiweyebrow{{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-d);
+ .hiweyebrow{{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-ink);
    font-weight:700;margin:0 0 8px}}
  .hiw h2{{color:var(--green);font-size:26px;margin:0 0 8px}}
  .hiwsub{{color:#5b6b62;max-width:560px;margin:0 auto 30px;font-size:15px}}
@@ -1618,7 +1629,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .depticon{{font-size:46px;line-height:1;padding:34px 0 0}}
  .depttitle{{font-weight:800;color:var(--green);font-size:24px}}
  .deptsub{{color:#5b5b52;font-size:14px;max-width:300px}}
- .deptgo{{margin-top:6px;font-weight:700;color:var(--gold);font-size:15px}}
+ .deptgo{{margin-top:6px;font-weight:700;color:var(--gold-ink);font-size:15px}}
  .apparel-sec{{max-width:1080px;margin:34px auto;padding:0 16px;text-align:center}}
  .apparel-sec h2{{margin:0 0 6px;color:var(--green)}}
  .apparel-sec .apsub{{margin:0 auto 18px;max-width:620px;color:#5b5b52;font-size:15px}}
@@ -1661,12 +1672,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .appimg{{width:100%;height:100%;object-fit:cover;display:block;border-radius:13px}}
  .appsvg{{width:118px;height:118px}}
  .appname{{font-weight:700;color:var(--green);font-size:18px;letter-spacing:.01em}}
- .apptier{{color:var(--gold-d);font-size:12px;font-weight:600;letter-spacing:.02em}}
+ .apptier{{color:var(--gold-ink);font-size:12px;font-weight:600;letter-spacing:.02em}}
  .appfrom{{color:#7a7466;font-size:13px}}
- .appcta{{margin-top:3px;font-weight:700;color:var(--gold);font-size:14px}}
+ .appcta{{margin-top:3px;font-weight:700;color:var(--gold-ink);font-size:14px}}
  .appoccrow{{margin:2px 0 22px;text-align:center}}
  .appocceyebrow{{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
-   color:var(--gold-d);font-weight:700;margin-bottom:6px}}
+   color:var(--gold-ink);font-weight:700;margin-bottom:6px}}
  .appocch{{margin:0 0 4px;color:var(--green);font-size:20px}}
  .appoccsub{{margin:0 auto 16px;max-width:560px;color:#5b6b62;font-size:14px}}
  .appoccchips{{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}}
@@ -1814,7 +1825,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .hero-fallback h1{{font-size:44px;margin:0;color:#fff}}
  .hero-overlay{{position:absolute;inset:0;display:flex;flex-direction:column;
    align-items:center;justify-content:center;text-align:center;
-   background:linear-gradient(rgba(8,30,22,.18),rgba(8,30,22,.45));color:#fff;padding:20px}}
+   background:linear-gradient(180deg,rgba(8,30,22,.34) 0%,rgba(8,30,22,.5) 48%,rgba(8,30,22,.56) 100%);color:#fff;padding:20px}}
  .hero-overlay h1{{font-size:clamp(30px,5vw,52px);margin:0;color:#fff;
    text-shadow:0 2px 18px rgba(0,0,0,.4)}}
  .hero-overlay p{{font-size:clamp(14px,2vw,19px);margin:10px 0 0;max-width:620px;
@@ -2469,7 +2480,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  @media(max-width:560px){{
    .mbody{{padding:16px}} .nav .bn{{font-size:20px}}
    .nav{{flex-wrap:nowrap;gap:7px;padding:10px 8px}} .navquiz,.navbasket{{margin-left:0}}
-   .navlinks{{display:none}}  /* jump links are desktop-only; mobile keeps one row */
+   .navham{{display:inline-flex;align-items:center;margin-left:auto}}
+   .navquiz{{margin-left:6px}}
+   .navlinks{{position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:0;
+     background:rgba(247,244,238,.99);border-bottom:1px solid var(--line);
+     box-shadow:0 12px 26px rgba(16,61,46,.14);padding:6px 16px;display:none;z-index:60;margin:0}}
+   .navlinks.open{{display:flex}}
+   .navlinks a{{width:100%;padding:13px 2px;min-height:46px;border-bottom:1px solid var(--line)}}
+   .navlinks a:last-child{{border-bottom:none}}
    .navquiz,.navbasket{{padding:7px 11px;font-size:13px}}
    .ocgrid{{grid-template-columns:repeat(2,1fr);gap:11px}}
    .ocimg{{height:104px}} .octitle{{font-size:17px}}
@@ -2489,7 +2507,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="nav">
    {f'<img src="{logo_src}" alt="{SHOP_NAME}">' if logo_src else ''}
    <span class="bn">{SHOP_NAME}</span>
-   <nav class="navlinks" aria-label="Sections">
+   <button class="navham" aria-label="Open menu" aria-expanded="false" aria-controls="navMenu" onclick="toggleNav()">&#9776;</button>
+   <nav class="navlinks" id="navMenu" aria-label="Sections" onclick="closeNav()">
      <a href="#wallart">🖼️ Wall Art</a>
      <a href="#apparel">👕 Apparel</a>
      <a href="#occasions">Occasions</a>
@@ -3415,6 +3434,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const CHECKOUT_URL = "{etsy_shop_url}";
  const PAY_LINK = "{payment_link_url}";
  const EST_TAX_PCT = {est_tax_pct};   // 0 = tax calculated at checkout
+ function toggleNav(){{const m=document.getElementById('navMenu');
+   const b=document.querySelector('.navham');if(!m)return;
+   const open=m.classList.toggle('open');
+   if(b)b.setAttribute('aria-expanded',open?'true':'false');}}
+ function closeNav(){{const m=document.getElementById('navMenu');
+   const b=document.querySelector('.navham');if(m)m.classList.remove('open');
+   if(b)b.setAttribute('aria-expanded','false');}}
  function toggleBasket(){{const p=document.getElementById('basketPanel');
    const open=p.style.display!=='flex'; renderBasket(); p.style.display=open?'flex':'none';}}
  function clearBasket(){{ if(CART.length && !confirm('Empty your basket?')) return;
