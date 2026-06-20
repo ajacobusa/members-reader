@@ -853,6 +853,39 @@ def _apparel_hero() -> str:
         '</div>')
 
 
+def _wallart_hero() -> str:
+    """The wall-art department hero - mirrors the apparel hero for a consistent,
+    premium department look. Uses brand/wallart-hero.jpg (else the room hero)."""
+    from quoteforge.config import OUTPUT_DIR
+    img = ""
+    for p in (Path(__file__).resolve().parents[2] / "brand" / "wallart-hero.jpg",
+              Path(__file__).resolve().parents[2] / "brand" / "hero.jpg",
+              Path(OUTPUT_DIR) / "wallart-hero.jpg"):
+        try:
+            if p.exists():
+                img = (f'<img class="apheroimg" src="{_web_img(p, 1200, 80)}" '
+                       f'alt="Personalized framed wall art styled in a cozy room" '
+                       f'loading="lazy">')
+                break
+        except Exception:  # noqa: BLE001
+            img = ""
+    return (
+        '<div class="aphero" id="wallart">'
+        '<div class="apherobody">'
+        '<span class="apheroeyebrow">Made to order &middot; museum quality</span>'
+        '<h2 class="apheroh">Wall Art</h2>'
+        '<p class="apherosub">Your names, dates &amp; own words on poster, framed, '
+        'canvas, acrylic or metal - hand-designed, with a free proof you approve on '
+        'screen before anything prints.</p>'
+        '<button type="button" class="apherocta" onclick="'
+        "(document.getElementById('occasions')||document.getElementById('grid'))"
+        ".scrollIntoView({behavior:'smooth',block:'start'})"
+        '">Browse designs &rarr;</button>'
+        '</div>'
+        f'<div class="apheromedia">{img}</div>'
+        '</div>')
+
+
 def _apparel_occasions() -> str:
     """The 'Shop by occasion' strip for apparel - each chip opens the design
     editor pre-loaded with that occasion's quote, ready to personalize."""
@@ -2639,12 +2672,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
  </div>
  <div id="deptWall" class="deptpane" style="display:none">
- <div class="intro" id="wallart">
-   <h2>🖼️ Wall Art — gifts they'll keep forever</h2>
-   <p>Every piece is custom-made for your recipient - a name, an occasion, their
-     story. Choose poster, framed, canvas, acrylic or metal when you personalize;
-     you approve your free proof on screen before anything prints.</p>
- </div>
+ {_wallart_hero()}
  {_occasion_showcase(kit_dir, external_assets, assets)}
  <div id="gridcount" class="gridcount"></div>
  <p class="quiznudge">Not sure which one? <a href="#" onclick="openQuiz();return false">&#127873; Take the 30-second Gift Finder</a></p>
