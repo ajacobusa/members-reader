@@ -1851,6 +1851,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-weight:600;font-size:16px;padding:12px 24px;border-radius:26px;cursor:pointer;
    font-family:inherit;backdrop-filter:blur(2px)}}
  .btn-find:hover{{background:rgba(255,255,255,.28)}}
+ .heroprice{{margin:13px 0 0;font-size:14px;color:#efe6cf;text-shadow:0 1px 8px rgba(0,0,0,.5)}}
+ .heroprice b{{color:#fff}}
+ .orderreassure{{margin:8px 0 2px;font-size:12.5px;color:var(--muted);text-align:center}}
  /* trust bar */
  .trust{{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 30px;
    background:var(--green);color:#eadfb9;padding:13px 16px;font-size:13px;
@@ -2539,6 +2542,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <a class="btn-shop" href="#grid">Shop the collection</a>
        <button class="btn-find" onclick="openQuiz()">🎁 Find the perfect gift</button>
      </div>
+     <p class="heroprice">From <b>$18.99</b> &middot; a free proof you approve before you buy</p>
    </div>
  </div>
  <div class="trust">
@@ -2907,6 +2911,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <button type="button" class="savebtn" id="mreviewbtn" onclick="showFinalProof('item')">👁️ Review this design</button>
            <button type="button" class="addbasketbtn" id="maddbtn" onclick="addToBasket()">🛒 Add to basket</button>
          </div>
+         <div class="orderreassure">&#10003; Free proof you approve on screen &middot; made to order &middot; happiness guarantee</div>
          <div id="mbasketbar" class="mbasketbar" onclick="openBasketFromModal()"></div>
          <!-- After adding to basket: clear next-step choices, so the buyer never
               has to hunt for the X and scroll back up. -->
