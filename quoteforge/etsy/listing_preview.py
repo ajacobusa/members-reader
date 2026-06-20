@@ -1927,6 +1927,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .seefinal:hover{{background:var(--green);color:#fff}}
  .dbq{{display:block;margin-bottom:7px;font-weight:700}}
  .dbq small{{color:var(--muted);font-weight:400}}
+ .grabtip{{display:inline-flex;align-items:center;gap:6px;background:#e7f1ea;color:#15643c;
+   border:1px solid #bcd9c8;border-radius:20px;padding:3px 11px;font-weight:600;font-size:13px;
+   white-space:nowrap}}
+ .grabsq{{width:12px;height:12px;border-radius:2px;background:#15643c;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #15643c;flex:none}}
  .dseg{{display:inline-flex;border:1.5px solid var(--green);border-radius:22px;overflow:hidden}}
  .dseg .dmbtn{{border:none;border-radius:0;margin:0;padding:9px 16px;background:#fff;
    color:var(--green);font-weight:700;cursor:pointer;font-family:inherit}}
@@ -2739,7 +2743,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <div class="dragbar" id="mframebar" style="display:none">
-         <div class="dbq">&#128208; Move &amp; resize your whole design (the dashed frame)</div>
+         <div class="dbq">&#128208; <b>Move &amp; resize your design</b> &mdash; drag the dashed box to move it, or
+           <span class="grabtip"><span class="grabsq"></span> drag the green corner with your mouse to resize</span>.</div>
          <div class="photorow">
            <span class="plbl">Size</span>
            <span class="zico" aria-hidden="true">&minus;</span>
@@ -4525,7 +4530,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
      if(PHOTO && PHOTO_RECT){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
-     ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · corner to resize',
+     ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize',
        b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
