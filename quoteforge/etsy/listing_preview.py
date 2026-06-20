@@ -1938,6 +1938,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    padding:11px 26px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;
    box-shadow:0 3px 14px rgba(16,61,46,.08);transition:transform .14s,box-shadow .14s}}
  .gridmore:hover{{transform:translateY(-2px);box-shadow:0 10px 22px rgba(201,168,76,.25);background:#fffdf6}}
+ .deptswitch{{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;
+   max-width:1080px;margin:18px auto 2px;padding:0 16px}}
+ .deptswitch button{{background:#fff;border:1.5px solid var(--line);border-radius:22px;
+   padding:9px 20px;font:inherit;font-weight:600;font-size:14px;color:var(--green);cursor:pointer;
+   transition:background .14s,color .14s,border-color .14s}}
+ .deptswitch button.on{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .deptswitch .dsall{{border-style:dashed;color:var(--muted)}}
+ .deptswitch .dsall:hover{{color:var(--ink);border-color:var(--gold)}}
  .dseg{{display:inline-flex;border:1.5px solid var(--green);border-radius:22px;overflow:hidden}}
  .dseg .dmbtn{{border:none;border-radius:0;margin:0;padding:9px 16px;background:#fff;
    color:var(--green);font-weight:700;cursor:pointer;font-family:inherit}}
@@ -2535,9 +2543,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <span class="bn">{SHOP_NAME}</span>
    <button class="navham" aria-label="Open menu" aria-expanded="false" aria-controls="navMenu" onclick="toggleNav()">&#9776;</button>
    <nav class="navlinks" id="navMenu" aria-label="Sections" onclick="closeNav()">
-     <a href="#wallart">🖼️ Wall Art</a>
-     <a href="#apparel">👕 Apparel</a>
-     <a href="#occasions">Occasions</a>
+     <a href="#wallart" onclick="selectDept('wall');return false;">🖼️ Wall Art</a>
+     <a href="#apparel" onclick="selectDept('apparel');return false;">👕 Apparel</a>
+     <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
    </nav>
@@ -2565,7 +2573,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <section class="depts" id="depts" aria-label="Shop by department">
    <h2 class="deptshead">Shop by department</h2>
    <div class="deptgrid">
-     <a class="deptcard deptwall" href="#wallart">
+     <a class="deptcard deptwall" href="#wallart" onclick="selectDept('wall');return false;">
        {f'<img class="deptimg" loading="lazy" src="{dept_wall_src}" alt="Personalized wall art styled in a room">' if dept_wall_src else '<span class="depticon">🖼️</span>'}
        <div class="deptbody">
          <span class="depttitle">Wall Art</span>
@@ -2573,7 +2581,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="deptgo">Browse Wall Art →</span>
        </div>
      </a>
-     <a class="deptcard deptapp" href="#apparel">
+     <a class="deptcard deptapp" href="#apparel" onclick="selectDept('apparel');return false;">
        {f'<img class="deptimg" loading="lazy" src="{dept_app_src}" alt="People wearing custom personalized apparel">' if dept_app_src else '<span class="depticon">👕</span>'}
        <div class="deptbody">
          <span class="depttitle">Apparel</span>
@@ -2625,6 +2633,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
   "tap <b>feedback</b>. "
   "<a href='mailto:" + owner + "?subject=Joffiels%20overall%20feedback'>"
   "Send overall feedback</a></div>" if uat else ""}
+ <div id="deptswitch" class="deptswitch" style="display:none">
+   <button type="button" class="dswall" onclick="selectDept('wall')">🖼️ Wall Art</button>
+   <button type="button" class="dsapp" onclick="selectDept('apparel')">👕 Apparel</button>
+   <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
+ </div>
+ <div id="deptWall" class="deptpane" style="display:none">
  <div class="intro" id="wallart">
    <h2>🖼️ Wall Art — gifts they'll keep forever</h2>
    <p>Every piece is custom-made for your recipient - a name, an occasion, their
@@ -2659,7 +2673,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <div class="btot" id="btot">Select 2 or more to see your set price.</div>
    </div>
  </div>
- {_apparel_section(_garment_photos)}
+ </div>
+ <div id="deptApparel" class="deptpane" style="display:none">{_apparel_section(_garment_photos)}</div>
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
@@ -3501,6 +3516,29 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function closeNav(){{const m=document.getElementById('navMenu');
    const b=document.querySelector('.navham');if(m)m.classList.remove('open');
    if(b)b.setAttribute('aria-expanded','false');}}
+ // Department-gated view: products live UNDER their category. The default page
+ // shows only the department cards; choosing one reveals that department's pane.
+ let DEPT=null;
+ function selectDept(d){{
+   DEPT=d;
+   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel');
+   var sw=document.getElementById('deptswitch');
+   if(w) w.style.display = d==='wall' ? '' : 'none';
+   if(a) a.style.display = d==='apparel' ? '' : 'none';
+   if(sw){{ sw.style.display='flex';
+     var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp');
+     if(bw) bw.classList.toggle('on', d==='wall');
+     if(ba) ba.classList.toggle('on', d==='apparel'); }}
+   var pane = d==='wall' ? w : a;
+   if(pane) pane.scrollIntoView({{behavior:'smooth',block:'start'}});
+ }}
+ function showAllDepartments(){{
+   DEPT=null;
+   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel');
+   var sw=document.getElementById('deptswitch');
+   if(w) w.style.display='none'; if(a) a.style.display='none'; if(sw) sw.style.display='none';
+   var d=document.getElementById('depts'); if(d) d.scrollIntoView({{behavior:'smooth',block:'start'}});
+ }}
  function toggleBasket(){{const p=document.getElementById('basketPanel');
    const open=p.style.display!=='flex'; renderBasket(); p.style.display=open?'flex':'none';}}
  function clearBasket(){{ if(CART.length && !confirm('Empty your basket?')) return;
