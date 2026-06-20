@@ -13,32 +13,6 @@ import hashlib
 import json
 
 
-def _email_body(email: str, summary: str) -> str:
-    """Customer confirmation email body - AI-personalized when available,
-    deterministic template otherwise."""
-    try:
-        from quoteforge.ai.assistant import ai_text
-        txt = ai_text(
-            "Write a short, warm confirmation email body (3-4 sentences, no subject) "
-            "to a customer who just gave final, binding approval on their "
-            "personalized wall-art order. Thank them, confirm the design they "
-            "approved on screen is locked in exactly as shown and moving to "
-            "production, and that because it is made to order it is now final. "
-            "Invite them to reply only with a question or a delivery issue - do "
-            "NOT invite design changes. Do not invent "
-            f"prices or dates. Their order:\n{summary}", "design_confirmation",
-            max_tokens=200)
-        if txt and txt.strip():
-            return txt.strip()
-    except Exception:  # noqa: BLE001
-        pass
-    return ("Thank you - your order is confirmed! Here's what you approved on "
-            "screen:\n\n"
-            f"{summary}\n\n"
-            "This is exactly what we'll print. Because each piece is made to "
-            "order, your approval is final and it's now moving into production. "
-            "Questions or a delivery issue? Just reply to this email and we're "
-            "happy to help.")
 
 
 def _parse_design(design_json: str) -> dict:
@@ -143,10 +117,14 @@ def _save_proof_pdf(order_id: str, email: str, summary: str,
                     proof_image: str) -> str:
     """Render the on-screen approved proof to a PDF stored under the order id -
     the final approval evidence (stored, never emailed). Returns the path, or ''
-    on any failure (evidence is best-effort and must never block confirmation)."""
+    on any failure (evidence is best-effort and must never block confirmation).
+    The proof image is size-capped and downscaled before embedding so a hostile
+    or oversized data URL can't bloat memory or the stored file; the PDF is
+    rendered in memory and only written on success (no orphaned partial file)."""
     try:
         import base64
         import io
+        import re
         from datetime import datetime as _dt
         from pathlib import Path
         from quoteforge.config import OUTPUT_DIR
@@ -155,11 +133,9 @@ def _save_proof_pdf(order_id: str, email: str, summary: str,
         from reportlab.lib.utils import ImageReader
         from reportlab.pdfgen import canvas as _rl_canvas
 
-        out_dir = Path(OUTPUT_DIR) / "proofs"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        pdf_path = out_dir / f"{order_id}_approved.pdf"
+        out = io.BytesIO()
         _w, height = letter
-        c = _rl_canvas.Canvas(str(pdf_path), pagesize=letter)
+        c = _rl_canvas.Canvas(out, pagesize=letter)
         c.setFont("Helvetica-Bold", 15)
         c.drawString(inch, height - inch, "Approved proof - final approval record")
         c.setFont("Helvetica", 10)
@@ -173,15 +149,28 @@ def _save_proof_pdf(order_id: str, email: str, summary: str,
             y -= 0.18 * inch
         if isinstance(proof_image, str) and proof_image.startswith("data:image") \
                 and "," in proof_image:
-            raw = base64.b64decode(proof_image.split(",", 1)[1])
-            img = ImageReader(io.BytesIO(raw))
-            iw, ih = img.getSize()
-            scale = min(1.0, (6.0 * inch) / iw) if iw else 1.0
-            dw, dh = iw * scale, ih * scale
-            c.drawImage(img, inch, max(0.8 * inch, (y - 0.2 * inch) - dh), dw, dh,
-                        preserveAspectRatio=True, mask="auto")
+            b64 = proof_image.split(",", 1)[1]
+            if len(b64) <= 24_000_000:                # ~18 MB image; bigger = abuse
+                from PIL import Image
+                im = Image.open(io.BytesIO(base64.b64decode(b64, validate=True)))
+                im = im.convert("RGB")
+                im.thumbnail((1200, 1200), Image.LANCZOS)    # downscale to embed
+                jpg = io.BytesIO()
+                im.save(jpg, "JPEG", quality=85)
+                jpg.seek(0)
+                img = ImageReader(jpg)
+                iw, ih = img.getSize()
+                scale = min(1.0, (6.0 * inch) / iw) if iw else 1.0
+                dw, dh = iw * scale, ih * scale
+                c.drawImage(img, inch, max(0.8 * inch, (y - 0.2 * inch) - dh),
+                            dw, dh, preserveAspectRatio=True)
         c.showPage()
         c.save()
+        out_dir = Path(OUTPUT_DIR) / "proofs"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        safe_id = re.sub(r"[^A-Za-z0-9_-]", "", order_id) or "order"
+        pdf_path = out_dir / f"{safe_id}_approved.pdf"
+        pdf_path.write_bytes(out.getvalue())          # write only after success
         return str(pdf_path)
     except Exception:  # noqa: BLE001
         return ""

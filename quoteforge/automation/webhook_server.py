@@ -44,6 +44,10 @@ app = Flask(__name__) if FLASK_AVAILABLE else None
 
 # Upload cap: a poster-quality JPG is well under this; bigger is abuse/error.
 MAX_UPLOAD_MB = 25
+# Hard body-size cap for EVERY route (covers /confirm's proof data URL, uploads,
+# etc.) so an oversized POST is rejected (413) before it is parsed into memory.
+if app is not None:
+    app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 WEBHOOK_LOG = OUTPUT_DIR / "webhook_log.json"
 
@@ -606,6 +610,7 @@ if FLASK_AVAILABLE and app:
             logger.warning(f"confirm_design failed: {exc}")
             result = {"ok": False, "emailed": False}
         resp = jsonify({"status": "ok" if result.get("ok") else "error",
+                        "ok": bool(result.get("ok")),
                         "emailed": result.get("emailed", False)})
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if result.get("ok") else 400)
