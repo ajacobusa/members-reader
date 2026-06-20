@@ -56,8 +56,8 @@ def _recovery_message(item: dict) -> str:
     bits = f" ({material})" if material else ""
     extra = f' Your words “{wording[:60]}” are saved.' if wording else ""
     return (f"Your custom artwork{bits} is still waiting. Pick up right where you "
-            f"left off on {listing} - and remember, we send a free digital proof "
-            f"before anything is printed.{extra}")
+            f"left off on {listing} - and remember, you approve your free proof on "
+            f"screen before anything is printed.{extra}")
 
 
 def pending_recoveries(older_than_minutes: int = ABANDON_AFTER_MINUTES,

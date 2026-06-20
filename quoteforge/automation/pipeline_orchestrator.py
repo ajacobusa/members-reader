@@ -417,29 +417,26 @@ def run_full_pipeline(
             _log(order_id, "preflight", "pass",
                  "Final QC passed - safe to send proof")
 
-        # ── Stage 5: Proof ───────────────────────────────────────
-        if not skip_proof and not PIPELINE_AUTO_APPROVE_PROOF:
-            if CUSTOMER_PROOF_APPROVAL:
-                # Prepare a proof package for the BUYER to approve. Printing is
-                # blocked until you record their approval.
-                _notify("proof", "Proof prepared — awaiting CUSTOMER approval")
-                from quoteforge.automation.customer_proof import prepare_customer_proof
-                prepare_customer_proof(
-                    order_id,
-                    artwork_path=str(png_path) if png_path else artwork_url,
-                )
-            else:
-                _notify("proof", "Proof stage — owner review required")
-                update_order(order_id, proof_sent=1)
-                _log(order_id, "proof", "pending",
-                     "Awaiting owner approval before Gelato order")
+        # ── Stage 5: Proof — on-screen approval is the final sign-off ─
+        # The customer approves their design on screen at checkout; that IS the
+        # final, binding sign-off and is recorded as proof_approved when the
+        # order is created. There is NO emailed proof round. As a print-safety
+        # fail-safe, any order NOT already approved holds for OWNER review here
+        # (proof_sent + the admin `customer-approved` release) - it is never
+        # auto-printed and never triggers a customer proof email.
+        _already_approved = bool((get_order(order_id) or {}).get("proof_approved"))
+        if not skip_proof and not PIPELINE_AUTO_APPROVE_PROOF and not _already_approved:
+            _notify("proof", "Proof stage — owner review required (no approval on record)")
+            update_order(order_id, proof_sent=1)
+            _log(order_id, "proof", "pending",
+                 "No on-screen approval on record - awaiting owner approval before Gelato order")
             return get_order(order_id) or {}
         else:
-            # Proof bypassed (auto-approve or skip) — still log for the audit trail
-            _notify("proof", "Proof auto-approved (skip_proof / auto-approve)")
+            # Already approved on screen, or an explicit auto-approve/skip bypass.
+            _notify("proof", "Proof approved — proceeding to fulfillment")
             update_order(order_id, proof_sent=1, proof_approved=1)
-            log_pipeline_stage(order_id, "proof", "auto_approved",
-                               "Proof skipped per configuration")
+            log_pipeline_stage(order_id, "proof", "approved",
+                               "Proof approved (on-screen sign-off or configured bypass)")
 
         # (QC now runs at Stage 4.9, before the proof is ever sent.)
 

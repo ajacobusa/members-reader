@@ -583,7 +583,8 @@ if FLASK_AVAILABLE and app:
     @app.route("/confirm", methods=["POST", "OPTIONS"])
     def confirm_design_route():
         """Customer accepted the final proof. POST {email, summary, design,
-        design_id}. Records acceptance + emails a confirmation."""
+        design_id, proof}. Records acceptance + stores the approved proof as a
+        PDF evidence file. No customer email is sent."""
         if request.method == "OPTIONS":
             resp = jsonify({})
             resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -599,7 +600,8 @@ if FLASK_AVAILABLE and app:
                 design = _json.dumps(design)
             result = confirm_design(email, summary=d.get("summary", ""),
                                     design_json=design or "",
-                                    design_id=d.get("design_id", "default"))
+                                    design_id=d.get("design_id", "default"),
+                                    proof_image=d.get("proof", ""))
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"confirm_design failed: {exc}")
             result = {"ok": False, "emailed": False}

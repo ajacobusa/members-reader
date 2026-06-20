@@ -29,15 +29,38 @@ def test_accept_design(fresh_db):
     assert db.get_designs("a@b.com")[0]["accepted"] == 1
 
 
-def test_confirm_design_records_and_emails(fresh_db, monkeypatch):
-    sent = {}
+def test_confirm_design_records_without_customer_email(fresh_db, monkeypatch):
+    # REGRESSION: the on-screen approval is the record - NO customer email is
+    # sent from the confirm flow (the customer is never emailed a proof/receipt).
+    sent = []
     def fake_send(subj, html, to=None, **k):
-        sent["to"] = to; sent["subj"] = subj; return True
+        sent.append(to); return True
     monkeypatch.setattr("quoteforge.automation.emailer._send_email", fake_send)
     from quoteforge.automation.design_confirm import confirm_design
     r = confirm_design("c@d.com", summary="Canvas 8x10", design_id="d1")
-    assert r["ok"] and r["emailed"] and sent["to"] == "c@d.com"
+    assert r["ok"] and r["emailed"] is False
+    assert "c@d.com" not in sent          # customer is never emailed
     assert fresh_db.get_designs("c@d.com")[0]["accepted"] == 1
+
+
+def test_confirm_saves_proof_pdf_evidence(fresh_db, tmp_path, monkeypatch):
+    # REGRESSION: on-screen approval stores a PDF evidence file under the order
+    # id (the final approval evidence; stored, never emailed).
+    import base64
+    import io
+    from pathlib import Path
+    from PIL import Image
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    buf = io.BytesIO(); Image.new("RGB", (8, 8), (20, 80, 60)).save(buf, "PNG")
+    proof = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    design = ('{"contact": {"name": "Dana", "addr": "1 Main St", '
+              '"country": "US", "state": "CA"}}')
+    from quoteforge.automation.design_confirm import confirm_design
+    r = confirm_design("dana@x.com", summary="Canvas 8x10", design_json=design,
+                       design_id="d1", proof_image=proof)
+    assert r["ok"] and r["order_id"]
+    assert r["proof_pdf"].endswith(".pdf") and Path(r["proof_pdf"]).exists()
+    assert fresh_db.get_order(r["order_id"])["proof_pdf"] == r["proof_pdf"]
 
 
 def test_confirm_bad_email(fresh_db):

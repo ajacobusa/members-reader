@@ -135,7 +135,7 @@ def build_pin_pack(numbers=None, kit_dir=None, out_dir=None) -> list[Pin]:
             img_path = out_dir / f"{b.listing_n:02d}_{suffix}.png"
             make_pin_image(src, img_path, caption, SHOP_NAME)
             desc = (f"{caption}. {short} - personalized just for them. "
-                    f"Free digital proof before printing. {_hashtags(b.tags)}")
+                    f"Free proof you approve before printing. {_hashtags(b.tags)}")
             pins.append(Pin(
                 listing_n=b.listing_n,
                 image=str(img_path.relative_to(out_dir)),

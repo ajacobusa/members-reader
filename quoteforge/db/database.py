@@ -423,6 +423,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # proving the approved proof IS the file sent to production.
     if "proof_file_hash" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN proof_file_hash TEXT")
+    # Path to the saved PDF of the on-screen approved proof - the final approval
+    # evidence, stored under the order id and NEVER emailed to the customer.
+    if "proof_pdf" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN proof_pdf TEXT")
     # The basket as recorded at checkout: structured line items (JSON) + the
     # total item count, so the order's COUNT and PRICE can be reconciled
     # against fulfillment and the ledger (a multi-line basket is no longer

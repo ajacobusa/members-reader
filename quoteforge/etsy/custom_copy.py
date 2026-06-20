@@ -22,9 +22,9 @@ DESCRIPTION_BLOCK = """\
 MAKE IT YOURS
 - Your own words: prefer your exact wording? Type it in the personalization box
   and we'll print it exactly as written.
-- Add a photo (select the photo option): after ordering, send us your photo via
-  Etsy Messages and we'll create your proof.
-- Free digital proof: nothing prints until you approve it.
+- Add a photo (select the photo option): upload your photo in the editor and
+  see it on your proof as you design.
+- Free proof: you approve it on screen and nothing prints until you do.
 """
 
 # The photo-requirements block — must match the pipeline's quality gate.
@@ -49,12 +49,12 @@ FAQ = [
      "Yes! Type your exact words in the personalization box and we'll print them "
      "word-for-word. Leave it blank and we'll craft a personalized message."),
     ("Can I add my own photo?",
-     "Yes. Choose the photo option, then send your photo via Etsy Messages after "
-     "ordering. Please send the original full-size image so it prints sharply - "
+     "Yes. Choose the photo option, then upload your photo in the editor as you "
+     "design. Please use the original full-size image so it prints sharply - "
      "if it's too low-resolution we'll ask for a better one before printing."),
     ("Will I see it before it prints?",
-     "Always. We send a free digital proof for your approval - nothing is printed "
-     "until you're happy."),
+     "Always - you preview your free proof on screen and approve exactly what "
+     "prints. Nothing is printed until you approve it."),
 ]
 
 
