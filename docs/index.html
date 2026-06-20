@@ -1179,7 +1179,7 @@
  </div>
 </div>
 
-<div id="quiz" onclick="if(event.target.id==='quiz')closeQuiz()">
+<div id="quiz" role="dialog" aria-modal="true" aria-label="Gift finder" onclick="if(event.target.id==='quiz')closeQuiz()">
   <div class="qbox">
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeQuiz()">&times;</span>
     <h2>🎁 Find the perfect gift</h2>
@@ -1200,7 +1200,7 @@
 </div>
 
 
-<div id="proofPop" onclick="if(event.target.id==='proofPop')closeProof()">
+<div id="proofPop" role="dialog" aria-modal="true" aria-label="Your design proof" onclick="if(event.target.id==='proofPop')closeProof()">
   <div class="proofbox">
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeProof()">&times;</span>
     <h2 id="proofTitle">Your final design</h2>
@@ -1216,7 +1216,7 @@
   </div>
 </div>
 
-<div id="exitpop" onclick="if(event.target.id==='exitpop')closeExit()">
+<div id="exitpop" role="dialog" aria-modal="true" aria-label="A note before you go" onclick="if(event.target.id==='exitpop')closeExit()">
   <div class="xbox">
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeExit()">&times;</span>
     <h2>Wait - here's 10% off your first piece</h2>
@@ -1232,7 +1232,7 @@
   </div>
 </div>
 
-<div id="modal" onclick="if(event.target.id==='modal')closeM()">
+<div id="modal" role="dialog" aria-modal="true" aria-label="Personalize your design" onclick="if(event.target.id==='modal')closeM()">
  <div class="mbox">
    <span class="closex" role="button" tabindex="0" aria-label="Close" onclick="closeM()" onkeydown="if(event.key=='Enter')closeM()">&times;</span>
    <ol id="mstepper" aria-label="Order progress">
@@ -1720,7 +1720,7 @@
  function curFormats(i){ return IS_APPAREL?apparelFormatsFor():fmtsFor(i); }
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){ return fmts.map((f,j)=>
-   `<span class="fchip${j===0?' sel':''}" id="fc${j}" onclick="pickFmt(${i},${j})">${swatchDot(f.name)}${f.name}${f.price?` - $${f.price}`:''}</span>`).join(''); }
+   `<span class="fchip${j===0?' sel':''}" id="fc${j}" tabindex="0" role="button" aria-label="${f.name}" onclick="pickFmt(${i},${j})">${swatchDot(f.name)}${f.name}${f.price?` - $${f.price}`:''}</span>`).join(''); }
  let WALLART_AVAIL="", WALLART_DESC="", WALLART_TITLE="";
  // The modal heading in Apparel mode - garment-aware, never wall-art copy.
  function apparelTitle(){
@@ -2715,7 +2715,7 @@
  }
  function renderFonts(){
    document.getElementById('mfonts').innerHTML = FONTS.map((f,k)=>
-     `<span class="fchip ${f[1]===SELFONT?'sel':''}" style="font-family:${f[1]}" onclick="pickFont(${k})">${f[0]}</span>`).join('');
+     `<span class="fchip ${f[1]===SELFONT?'sel':''}" tabindex="0" role="button" aria-label="${f[0]} font" style="font-family:${f[1]}" onclick="pickFont(${k})">${f[0]}</span>`).join('');
  }
  function pickFont(k){ SELFONT=FONTS[k][1];
    document.querySelectorAll('#mfonts .fchip').forEach((e,m)=>e.classList.toggle('sel',m===k)); drawArt(); }
@@ -3141,6 +3141,17 @@
    try{ closeExit(); }catch(_e){}
    try{ closeM(); }catch(_e){}
  });
+ // Keyboard-operate role=button spans (close x, fchips, step links) with Enter/Space.
+ document.addEventListener('keydown', function(e){
+   if(e.key!=='Enter' && e.key!==' ' && e.key!=='Spacebar') return;
+   var el=document.activeElement;
+   if(!el) return;
+   var tag=el.tagName;
+   if(tag==='BUTTON'||tag==='A'||tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+   if(el.classList.contains('fchip') || el.getAttribute('role')==='button'){
+     e.preventDefault(); el.click();
+   }
+ });
  function closeM(){document.getElementById('modal').style.display='none';
    BFLOW=null; var bb=document.getElementById('bundlebanner'); if(bb)bb.style.display='none';}
  document.querySelectorAll('#mstars span').forEach(function(el){
@@ -3252,7 +3263,7 @@
  }
 </script>
 
-<div id="basketPanel" onclick="if(event.target.id==='basketPanel')toggleBasket()">
+<div id="basketPanel" role="dialog" aria-modal="true" aria-label="Your basket" onclick="if(event.target.id==='basketPanel')toggleBasket()">
   <div class="bpbox">
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="toggleBasket()">&times;</span>
     <h2>🛒 Your basket</h2>
