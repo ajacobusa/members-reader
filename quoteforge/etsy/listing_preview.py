@@ -1931,6 +1931,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border:1px solid #bcd9c8;border-radius:20px;padding:3px 11px;font-weight:600;font-size:13px;
    white-space:nowrap}}
  .grabsq{{width:12px;height:12px;border-radius:2px;background:#15643c;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #15643c;flex:none}}
+ .grabtip-blue{{background:#e6eff8;color:#1763b8;border-color:#bcd2ec}}
+ .grabsq-blue{{background:#1763b8;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #1763b8}}
  .dseg{{display:inline-flex;border:1.5px solid var(--green);border-radius:22px;overflow:hidden}}
  .dseg .dmbtn{{border:none;border-radius:0;margin:0;padding:9px 16px;background:#fff;
    color:var(--green);font-weight:700;cursor:pointer;font-family:inherit}}
@@ -2788,7 +2790,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                <button type="button" class="pcenter" onclick="autoCenterPhoto()">🎯 Center</button>
                <button type="button" class="tposreset" onclick="resetPhoto()">Reset</button>
              </div>
-             <div class="dbhint">✋ Or just drag the photo on the preview.
+             <div class="dbhint">✋ Drag the photo on the preview to move it, or
+               <span class="grabtip grabtip-blue"><span class="grabsq grabsq-blue"></span> drag the blue corner with your mouse to resize just the photo</span>.
                AI auto-centered your subject on upload.</div>
              <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
            </div>
