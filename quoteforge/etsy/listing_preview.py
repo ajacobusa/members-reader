@@ -1341,8 +1341,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     else:
         hero_img = next((p for p in (brand / "hero.jpg", brand / "hero.png",
                                      brand / "hero.jpeg") if p.exists()), None)
-    banner_src = _web_img(hero_img, 1600) if hero_img else (
-        _web_img(banner, 1400) if banner.exists() else "")
+    # The hero is the LCP. Externalize it (cacheable, parallel-fetched file)
+    # instead of ~180KB of parse-blocking base64 in the critical HTML; inline
+    # only for a self-contained build (external_assets off, e.g. unit tests).
+    _hero_pick = hero_img if hero_img else (banner if banner.exists() else None)
+    _hero_dim = 1600 if hero_img else 1400
+    if _hero_pick and external_assets:
+        _save_web_jpg(_hero_pick, assets / "hero.jpg", _hero_dim, 82)
+        banner_src = "assets/hero.jpg"
+    elif _hero_pick:
+        banner_src = _web_img(_hero_pick, _hero_dim)
+    else:
+        banner_src = ""
     # Department-card lifestyle photos: Wall Art reuses the hero room shot; Apparel
     # uses a dedicated lifestyle photo. Emoji fallback if a photo is missing.
     dept_wall_src = _emit(hero_img, "dept-wallart.jpg") if hero_img else ""
@@ -1493,9 +1503,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <meta property="og:title" content="Personalized Wall Art Gifts | {SHOP_NAME}">
 <meta property="og:description" content="Custom wording &amp; your photo on museum-quality prints. FREE proof before printing, happiness guarantee.">
 <meta property="og:url" content="https://joffiels.com/">
+<meta property="og:image" content="https://joffiels.com/assets/hero.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Personalized Wall Art Gifts | {SHOP_NAME}">
 <meta name="twitter:description" content="Custom wording &amp; your photo, FREE proof before printing.">
+<meta name="twitter:image" content="https://joffiels.com/assets/hero.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23103d2e'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23e8d8a8' font-family='Georgia,serif'%3EJ%3C/text%3E%3C/svg%3E">
 <script type="application/ld+json">
 {{"@context":"https://schema.org","@graph":[
@@ -2519,7 +2531,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <button class="navbasket" id="basketBtnNav" onclick="toggleBasket()">🛒 Basket <span id="basketCountNav">0</span></button>
  </div>
  <div class="hero">
-   {f'<img class="hero-banner" src="{banner_src}" alt="Personalized wall art styled in a cozy living room">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
+   {f'<img class="hero-banner" src="{banner_src}" alt="Personalized wall art styled in a cozy living room" fetchpriority="high" decoding="async">' if banner_src else '<div class="hero-fallback"><h1>'+SHOP_NAME+'</h1></div>'}
    <div class="hero-overlay">
      <h1 data-ab="hero_h1">Personalized wall art for life's most meaningful moments</h1>
      <p>Custom names, dates &amp; your own words - hand-designed and made to order.</p>
