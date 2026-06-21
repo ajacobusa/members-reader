@@ -606,3 +606,15 @@ def test_no_supplier_name_in_apparel_storefront(tmp_path):
     h = _page(tmp_path).lower()
     for banned in ("gelato", "printify", "printful"):
         assert banned not in h
+
+
+# ── Apparel Layout Studio (logo + wording preset layouts) ──────────────
+
+def test_layout_studio_display_fonts_loaded(tmp_path):
+    # REGRESSION: Layout Studio needs bold display fonts (Bebas Neue for
+    # streetwear/athletic, Oswald weights) loaded and offered in the font picker.
+    h = _page(tmp_path)
+    assert "Bebas+Neue" in h                      # loaded via Google Fonts
+    assert "Oswald:wght@500;600;700" in h
+    assert "'Bebas Neue'" in h                     # present in the FONTS picker list
+    assert "Oswald" in h

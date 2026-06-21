@@ -1560,7 +1560,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
 <!-- Personalization-editor preview fonts load async (non-render-blocking); ready by
      the time a buyer opens the editor, but they never delay first paint. -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet"></noscript>
 <style>
  :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
@@ -3246,7 +3246,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const FONTS = [["Cormorant","'Cormorant Garamond',serif"],
    ["Playfair","'Playfair Display',serif"],["Montserrat","'Montserrat',sans-serif"],
    ["Lora","'Lora',serif"],["Script","'Dancing Script',cursive"],
-   ["Oswald","'Oswald',sans-serif"]];
+   ["Oswald","'Oswald',sans-serif"],["Bebas","'Bebas Neue',sans-serif"]];
  const MAXCHARS = 250;
  const SIZEMAP = {sizemap_json};
  const EDITOR_PICKS = {editor_picks_json};
