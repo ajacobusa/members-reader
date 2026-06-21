@@ -3527,11 +3527,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Capture the side being viewed, then record which sides carry a design so the
    // order knows the front AND back content (each side is independent).
    if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();
-   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc)); }};
+   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc || _slotsFilled(s.slots))); }};
    const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back)}} : null;
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
-     sides:_sides,
+     sides:_sides, wording:_slotWording(), layout:(IS_APPAREL?CURLAYOUT:''),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -3767,7 +3767,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // ── Design state, Save, and final-proof Accept ──
  function _designState(){{
    return {{listing:(DATA[CUR]||{{}}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
-     font:SELFONT, wall:SELWALL, wording:((document.getElementById('mtext')||{{}}).value||''),
+     font:SELFONT, wall:SELWALL, wording:_slotWording(),
+     layout:(IS_APPAREL?CURLAYOUT:''), slots:(IS_APPAREL?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
      photo:{{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}}}};
@@ -4214,6 +4215,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let CURLAYOUT='freeform';
  let SLOTS={{headline:'',secondary:'',arcTop:'',arcBottom:'',tagline:'',monogram:''}};
  function _slot(k){{ return (SLOTS&&SLOTS[k])||''; }}
+ function _emptySlots(){{ return {{headline:'',secondary:'',arcTop:'',arcBottom:'',tagline:'',monogram:''}}; }}
+ function _slotsFilled(sl){{ if(!sl) return false; for(var k in sl) if((sl[k]||'').trim()) return true; return false; }}
+ // Readable wording from the active layout's slots (for the summary + the order).
+ function _slotWording(){{
+   if(CURLAYOUT==='freeform') return ((document.getElementById('mtext')||{{}}).value||'');
+   var L=_layout(CURLAYOUT), seen={{}}, out=[];
+   (L.slots||[]).forEach(function(s){{ var v=_slot(s.slot);
+     if(v && !seen[s.slot]){{ seen[s.slot]=1; out.push(v); }} }});
+   return out.join(' / ');
+ }}
  let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
@@ -4232,7 +4243,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const ta=document.getElementById('mtext');
    return {{ quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
      pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
-     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT }};
+     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT,
+     layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)) }};
  }}
  function _restoreSide(s){{
    const ta=document.getElementById('mtext');
@@ -4242,6 +4254,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      TPOS={{x:s.tpos.x,y:s.tpos.y}}; TSIZE=s.tsize; TROT=s.trot;
      BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
      if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
+     CURLAYOUT=s.layout||'freeform'; SLOTS=s.slots?JSON.parse(JSON.stringify(s.slots)):_emptySlots();
      if(s.photoSrc){{ var im=new Image(); im.onload=function(){{drawArt();}}; im.src=s.photoSrc;
        PHOTO=im; _showPhotoCtl(true); }}
      else {{ PHOTO=null; _showPhotoCtl(false); }}
@@ -4249,10 +4262,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
+     CURLAYOUT='freeform'; SLOTS=_emptySlots();
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
    _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
    var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
+   renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }}
  function setPlacement(p){{
    if(p!=='back') p='front';

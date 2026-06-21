@@ -687,3 +687,15 @@ def test_layout_studio_gallery_ui(tmp_path):
     assert "LAYOUTS.map" in h                          # a thumbnail generated per layout
     assert "layoutthumb" in h                          # gallery tile class
     assert "SLOT_LABELS" in h                          # friendly slot labels
+
+
+def test_layout_studio_persists_and_payload(tmp_path):
+    # REGRESSION: layout + slots persist per side and reach the order payload;
+    # `wording` is a readable concat of the active slots; a slots-only badge (no
+    # headline) still counts as a designed side.
+    h = _page(tmp_path)
+    assert "layout:CURLAYOUT" in h                      # captured per side + on the item
+    assert "slots:" in h                                # slot text snapshot
+    assert "function _slotWording" in h                # readable concat
+    assert "_slotWording(" in h                        # used in payload/summary
+    assert "_slotsFilled(" in h                        # slots-only side counts as designed
