@@ -119,6 +119,11 @@ DYNAMIC_MAX_UPLIFT_PCT: float = float(os.getenv("DYNAMIC_MAX_UPLIFT_PCT", "15"))
 # Welcome / first-order promo (exit-intent capture). Set the code in your Etsy
 # shop coupons; these just drive the on-site copy. Empty code hides the offer.
 ETSY_SHOP_URL: str = os.getenv("ETSY_SHOP_URL", "").strip().rstrip("/")
+# The CURRENT live storefront URL that marketing (Pinterest pins, etc.) links to.
+# Today the store runs on the marketplace, so this is unset and falls back to the
+# Etsy shop. When the DIRECT store goes live, set STORE_URL=https://joffiels.com
+# to flip every marketing link to the new site in one switch.
+STORE_URL: str = os.getenv("STORE_URL", "").strip().rstrip("/")
 # Same-flow payment: a hosted checkout link (Stripe Payment Link / PayPal /
 # Square). When set, completing an order opens it IMMEDIATELY - the customer
 # pays in the same visit instead of waiting for an emailed link. Takes
