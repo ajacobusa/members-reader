@@ -40,6 +40,14 @@ def test_enrich_branded_order_merges_fields_or_empty():
     assert enrich_branded_order({"material": "Framed - Oak"}) == {}
 
 
+def test_pipeline_and_webhook_call_branded_enrich():
+    import quoteforge.automation.pipeline_orchestrator as po
+    import quoteforge.automation.webhook_server as ws
+    import inspect
+    assert "enrich_branded_order" in inspect.getsource(po)
+    assert "enrich_branded_order" in inspect.getsource(ws)
+
+
 def test_verify_branded_mappings_reports_placeholders():
     from quoteforge.etsy.branded_catalog import verify_branded_mappings
     rep = verify_branded_mappings()
