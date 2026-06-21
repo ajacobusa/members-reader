@@ -1224,6 +1224,165 @@ def _branded_hero(external_assets: bool = False, assets=None) -> str:
         '</div>')
 
 
+def _mug_section(photos: dict | None = None, external_assets: bool = False,
+                 assets=None) -> str:
+    """Visible Custom Mugs department - a department-store grid of mug lines
+    (classic/large/colour-interior/accent/enamel/travel). Real product PHOTO per
+    product when `photos` (product_id -> src) is supplied, else a neutral SVG
+    fallback. Mirrors `_branded_section` exactly: hero band, faceted filter bar,
+    one tile per product with a from-price and accent-colour swatch dots. Tiles
+    carry `appcard mugcard` so they inherit the apparel tile CSS. Emits ONLY
+    customer-safe facets (name/category/type/colour/size/price) - never the
+    supplier brand or any SKU/cost."""
+    photos = photos or {}
+    try:
+        from quoteforge.etsy.mug_catalog import (
+            MUG_CATALOG, build_mug_variations)
+    except Exception:  # noqa: BLE001
+        return ""
+    frm: dict = {}
+    for v in build_mug_variations():
+        frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
+    if not frm:
+        return ""
+    shown = [p for p in MUG_CATALOG if frm.get(p.product_id) is not None]
+    if not shown:
+        return ""
+
+    def _swatches(colors) -> str:
+        """Static accent-colour swatch dots painted from the customer-safe hex map."""
+        dots = []
+        for cn in colors:
+            hexv = _BRANDED_SWATCH_HEX.get(cn, "#bbbbbb")
+            ring = (";box-shadow:inset 0 0 0 1px #cfcabb"
+                    if cn in ("White", "Sand", "Natural", "Cream", "Silver",
+                              "Light Blue", "Heather Grey") else "")
+            dots.append(f'<i class="swdot" title="{cn}" data-color="{cn}" '
+                        f'style="background:{hexv}{ring}"></i>')
+        return "".join(dots)
+
+    def _card(p) -> str:
+        """Render one mug product tile (product photo, else neutral SVG)."""
+        low = frm.get(p.product_id)
+        if low is None:
+            return ""
+        src = photos.get(p.product_id)
+        if src:
+            tile = (f'<span class="apptile apptilephoto"><img class="appimg" '
+                    f'loading="lazy" src="{src}" alt="Custom {p.name}"></span>')
+        else:
+            tile = ('<span class="apptile" '
+                    'style="background:linear-gradient(135deg,#eef1ee,#dfe5df)">'
+                    '<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
+                    '<rect x="30" y="30" width="60" height="60" rx="8" '
+                    'fill="none" stroke="#9aa79a" stroke-width="4"/>'
+                    '<circle cx="60" cy="60" r="14" fill="#9aa79a" '
+                    'opacity="0.5"/></svg></span>')
+        name_js = p.name.replace("\\", "\\\\").replace("'", "\\'")
+        color0 = (p.colors[0] if p.colors else "").replace("\\", "\\\\").replace("'", "\\'")
+        return (
+            f'<button class="appcard mugcard" type="button" '
+            f'data-mpid="{p.product_id}" data-cat="{p.category}" '
+            f'data-type="{p.type_name}" data-product="{p.name}" '
+            f'data-colors="{",".join(p.colors)}" data-sizes="{",".join(p.sizes)}" '
+            f'onclick="shopMug(\'{name_js}\',\'{color0}\')" '
+            f'aria-label="Design a custom {p.name}">'
+            f'{tile}'
+            f'<span class="appname">{p.type_name}</span>'
+            f'<span class="appsw" aria-label="Available colours">'
+            f'{_swatches(p.colors)}</span>'
+            f'<span class="appfrom">from ${low:.2f}</span>'
+            f'<span class="appcta">Design yours &rarr;</span></button>')
+
+    cards = [c for c in (_card(p) for p in shown) if c]
+    if not cards:
+        return ""
+
+    # ── Faceted filter bar (Category / Type / Colour / Size) ──
+    def _distinct(seq) -> list:
+        """Distinct truthy values from seq, preserving first-seen order."""
+        out: list = []
+        for x in seq:
+            if x and x not in out:
+                out.append(x)
+        return out
+    cats_f = _distinct(p.category for p in shown)
+    types_f = _distinct(p.type_name for p in shown)
+    colors_f = _distinct(c for p in shown for c in p.colors)
+    sizes_f = _distinct(s for p in shown for s in p.sizes)
+
+    def _opts(vals) -> str:
+        """Render a list of values as <option> tags for a filter <select>."""
+        return "".join(f'<option value="{v}">{v}</option>' for v in vals)
+
+    def _sel(sid, label, all_label, opts) -> str:
+        """Render one labelled filter <select> with an 'all' default + options."""
+        return (f'<select class="appfilter" id="{sid}" aria-label="{label}" '
+                f'onchange="applyMugFilters()">'
+                f'<option value="">{all_label}</option>{opts}</select>')
+    filterbar = (
+        '<div class="appfilters mugfilter" role="group" '
+        'aria-label="Filter mugs">'
+        + '<span class="appfilterlbl">Refine</span>'
+        + _sel("mgCat", "Category", "All categories", _opts(cats_f))
+        + _sel("mgType", "Type", "All types", _opts(types_f))
+        + _sel("mgColor", "Colour", "All colours", _opts(colors_f))
+        + _sel("mgSize", "Size", "All sizes", _opts(sizes_f))
+        + '<button type="button" class="appfilterclear" '
+          'onclick="clearMugFilters()">Clear</button>'
+        + f'<span class="appfiltercount" id="mgCount">{len(cards)} products</span>'
+        + '</div>')
+    nomatch = (
+        '<p class="apnomatch" id="mgNoMatch" style="display:none">'
+        'No mugs match those filters. '
+        '<button type="button" class="appfilterclear" '
+        'onclick="clearMugFilters()">Clear filters</button></p>')
+    return (
+        '<section class="apparel-sec mug-sec" id="mugs">'
+        f'{_mug_hero(external_assets, assets)}{filterbar}'
+        f'<div class="appgroup"><div class="appgrid">{"".join(cards)}</div></div>'
+        f'{nomatch}</section>')
+
+
+def _mug_hero(external_assets: bool = False, assets=None) -> str:
+    """The mugs department hero - mirrors the apparel/branded hero markup and
+    classes for a consistent department look. Generic copy (no supplier or
+    marketplace names). Uses brand/mugs-hero.jpg when bundled. In external_assets
+    mode the hero photo is written to the assets folder and referenced by URL
+    (lazy-loaded) instead of inlined as a parse-blocking data-URI."""
+    from quoteforge.config import OUTPUT_DIR
+    img = ""
+    for p in (Path(__file__).resolve().parents[2] / "brand" / "mugs-hero.jpg",
+              Path(OUTPUT_DIR) / "mugs-hero.jpg"):
+        try:
+            if p.exists():
+                if external_assets and assets is not None:
+                    _save_web_jpg(p, assets / "mugs-hero.jpg", 1200, 80)
+                    src = "assets/mugs-hero.jpg"
+                else:
+                    src = _web_img(p, 1200, 80)
+                img = (f'<img class="apheroimg" src="{src}" '
+                       f'alt="Custom mugs" loading="lazy">')
+                break
+        except Exception:  # noqa: BLE001
+            img = ""
+    return (
+        '<div class="aphero" id="mugshero">'
+        '<div class="apherobody">'
+        '<span class="apheroeyebrow">Personalized &middot; made to order</span>'
+        '<h2 class="apheroh">Custom Mugs</h2>'
+        '<p class="apherosub">Put your name, words or photo on classic, enamel, '
+        'travel &amp; colour-accent mugs - the same easy editor, and a free proof '
+        'you approve on screen before anything prints.</p>'
+        '<button type="button" class="apherocta" onclick="'
+        "(document.querySelector('.mugfilter')||document.getElementById('mugs'))"
+        ".scrollIntoView({behavior:'smooth',block:'center'})"
+        '">Start designing &rarr;</button>'
+        '</div>'
+        f'<div class="apheromedia">{img}</div>'
+        '</div>')
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -1667,6 +1826,43 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         branded_formats_json = "[]"
         branded_dims_json = "{}"
         branded_pid_json = "{}"
+
+    # Per-product tile photos for the Custom Mugs grid, keyed by product_id
+    # (brand/tile-<product_id>.jpg, e.g. tile-classic_mug.jpg). Falls back to the
+    # section's neutral SVG tile when a photo is absent - mirrors the branded grid.
+    # Customer-safe only (no supplier data).
+    _mug_photos: dict = {}
+    mug_formats_json = "[]"
+    mug_dims_json = "{}"
+    mug_pid_json = "{}"
+    try:
+        from quoteforge.etsy.mug_catalog import (
+            MUG_CATALOG as _MC, build_mug_variations as _bmv)
+        for _p in _MC:
+            _mp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
+                        if (brand / f"tile-{_p.product_id}.{e}").exists()), None)
+            if _mp:
+                _mug_photos[_p.product_id] = _emit(_mp, f"tile-{_p.product_id}.jpg")
+        # Cheapest price per (product, accent-colour) for the editor's mug picker.
+        _mc_from: dict = {}
+        for _v in _bmv():
+            _key = (_v.product_id, _v.color)
+            _mc_from[_key] = min(_mc_from.get(_key, 1e9), _v.price)
+        _mname = {_p.product_id: _p.name for _p in _MC}
+        mug_formats = [
+            {"name": f"{_mname[_pid]} - {_col}", "price": round(_pr, 2)}
+            for (_pid, _col), _pr in _mc_from.items() if _pid in _mname]
+        mug_formats_json = json.dumps(mug_formats)
+        mug_dims_json = json.dumps(
+            {_p.product_id: [_p.width_px, _p.height_px] for _p in _MC})
+        # Editor maps the picked product NAME (what shopMug carries) back to a
+        # product_id so it can look up MUG_DIMS (which is keyed by product_id).
+        mug_pid_json = json.dumps({_p.name: _p.product_id for _p in _MC})
+    except Exception:  # noqa: BLE001 — never break the build on the mug catalog
+        _mug_photos = {}
+        mug_formats_json = "[]"
+        mug_dims_json = "{}"
+        mug_pid_json = "{}"
 
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
@@ -2969,6 +3165,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  </div>
  <div id="deptApparel" class="deptpane" style="display:none">{_apparel_section(_garment_photos)}</div>
  <div id="deptBranded" class="deptpane" style="display:none">{_branded_section(_branded_photos, external_assets, assets)}</div>
+ <div id="deptMug" class="deptpane" style="display:none">{_mug_section(_mug_photos, external_assets, assets)}</div>
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
@@ -3525,6 +3722,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Branded product NAME -> product_id, so the editor can resolve BRANDED_DIMS
  // (keyed by product_id) from the name shopBranded carries.
  const BRANDED_PID = {branded_pid_json};
+ // ── Custom Mugs: a parallel product family sharing this editor ──
+ // MUG_FORMATS: one entry per product x accent-colour ("{{name}} - {{colour}}" + from-price).
+ // MUG_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
+ const MUG_FORMATS = {mug_formats_json};
+ const MUG_DIMS = {mug_dims_json};
+ // Mug product NAME -> product_id, so the editor can resolve MUG_DIMS (keyed by
+ // product_id) from the name shopMug carries.
+ const MUG_PID = {mug_pid_json};
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
