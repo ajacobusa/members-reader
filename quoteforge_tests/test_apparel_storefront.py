@@ -670,3 +670,20 @@ def test_layout_studio_all_twelve_layouts(tmp_path):
     for k in ("badge", "emblem", "minimal", "street", "vstack", "hbanner", "chest",
               "backprint", "wrap", "collage", "adventure", "monogram"):
         assert "'" + k + "'" in h, k
+
+
+def test_layout_studio_gallery_ui(tmp_path):
+    # REGRESSION: the editor exposes a Layout gallery (built from LAYOUTS) and
+    # swaps the visible text-slot inputs when a layout is chosen. The gallery is
+    # rendered client-side from LAYOUTS, so assert the generator + wiring, not a
+    # static thumbnail count.
+    h = _page(tmp_path)
+    assert 'id="mlayouts"' in h                       # gallery container
+    assert "function renderLayoutGallery" in h
+    assert "function pickLayout" in h
+    assert "function renderSlotInputs" in h            # swaps inputs per layout
+    assert "onSlot(" in h                              # slot input handler
+    assert "renderLayoutGallery()" in h                # invoked when apparel controls show
+    assert "LAYOUTS.map" in h                          # a thumbnail generated per layout
+    assert "layoutthumb" in h                          # gallery tile class
+    assert "SLOT_LABELS" in h                          # friendly slot labels

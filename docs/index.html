@@ -798,6 +798,13 @@
  .dragbar .plbtn{flex:1;border:0;border-radius:0;margin:0;padding:10px 4px;
    background:transparent;font-size:13px;font-weight:700;cursor:pointer;color:var(--green)}
  .dragbar .plbtn.sel{background:var(--green);color:#fff}
+ .layoutgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px;margin:6px 0}
+ .layoutthumb{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}
+ .layoutthumb.sel{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+ .layoutthumb svg{width:100%;height:auto;display:block}
+ .layoutthumb span{display:block;font-size:9px;line-height:1.15;text-align:center;color:#5b6b62;margin-top:2px}
+ .slotinputs label{display:block;font-size:12px;font-weight:600;margin:7px 0 2px;color:#3a4a42}
+ .slotinputs input{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px}
  .dbhint{font-size:12.5px;color:var(--muted);font-weight:500;
    text-align:center;margin-top:7px}
  .orderbox{margin-top:14px;background:#fff;border:1px solid var(--line);
@@ -1306,6 +1313,11 @@
          </div>
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
+       </div>
+       <div class="dragbar" id="mlayoutbar" style="display:none">
+         <div class="dbq">&#127912; Pick a <b>layout</b> &mdash; we arrange your logo &amp; words professionally. Tweak anything after.</div>
+         <div id="mlayouts" class="layoutgrid"></div>
+         <div id="mslots" class="slotinputs"></div>
        </div>
        <div class="dragbar" id="mframebar" style="display:none">
          <div class="dbq">&#128208; <b>Move &amp; resize your design</b> &mdash; drag the dashed box to move it, or
@@ -1848,6 +1860,10 @@
    if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = IS_APPAREL ? 'block' : 'none';
+   // Layout Studio panel is apparel-only; (re)build the gallery + slot inputs.
+   const lb=document.getElementById('mlayoutbar');
+   if(lb) lb.style.display = IS_APPAREL ? 'block' : 'none';
+   if(IS_APPAREL){ renderLayoutGallery(); renderSlotInputs(); }
  }
  function setProductType(t){
    IS_APPAREL=(t==='apparel');
@@ -3004,6 +3020,38 @@
            {slot:'headline',kind:'line',x:0.5,y:0.74,weight:0.05,caps:true}]}
  ];
  function _layout(k){ for(var i=0;i<LAYOUTS.length;i++) if(LAYOUTS[i].key===k) return LAYOUTS[i]; return LAYOUTS[0]; }
+ // Layout gallery: a thumbnail per LAYOUTS entry; picking one swaps the visible
+ // text-slot inputs and redraws. Customer-facing slot labels (no design jargon).
+ const SLOT_LABELS={headline:'Main words',secondary:'Second line',arcTop:'Top curved line',
+   arcBottom:'Bottom curved line',tagline:'Small line (date / place)',monogram:'Initials'};
+ function _thumbSVG(L){
+   if(L.key==='freeform') return '<svg viewBox="0 0 60 60"><rect x="6" y="22" width="48" height="6" rx="2" fill="#c9d6cd"/><rect x="14" y="32" width="32" height="5" rx="2" fill="#dfe6e1"/></svg>';
+   var arcs=(L.slots||[]).some(function(s){return s.kind==='arc';});
+   var emb='<path d="M22,38 L30,24 L34,31 L40,21 L46,38 Z" fill="#1c1c1e"/>';
+   var top=arcs?('<path id="th_'+L.key+'" d="M14,30 A16,16 0 0 1 46,30" fill="none"/>'+
+     '<text font-size="7" fill="#1c1c1e"><textPath href="#th_'+L.key+'" startOffset="50%" text-anchor="middle">ABC</textPath></text>'):'';
+   return '<svg viewBox="0 0 60 60">'+top+emb+'</svg>';
+ }
+ function renderLayoutGallery(){
+   var box=document.getElementById('mlayouts'); if(!box) return;
+   box.innerHTML=LAYOUTS.map(L=>
+     `<div class="layoutthumb${L.key===CURLAYOUT?' sel':''}" role="button" tabindex="0" title="${L.name}" `+
+     `onclick="pickLayout('${L.key}')" onkeydown="if(event.key==='Enter')pickLayout('${L.key}')">`+
+     `${_thumbSVG(L)}<span>${L.name}</span></div>`).join('');
+ }
+ function renderSlotInputs(){
+   var box=document.getElementById('mslots'); if(!box) return;
+   var L=_layout(CURLAYOUT);
+   var keys=(L.slots||[]).map(s=>s.slot);
+   var uniq=keys.filter((k,i)=>keys.indexOf(k)===i);
+   box.innerHTML=uniq.map(k=>
+     `<label>${SLOT_LABELS[k]}</label>`+
+     `<input id="slot_${k}" maxlength="40" value="${_slot(k).replace(/"/g,'&quot;')}" oninput="onSlot('${k}',this.value)">`).join('');
+   // Freeform uses the existing wording box; a layout hides it (slots replace it).
+   var wb=document.getElementById('mwordbox'); if(wb) wb.style.display=(CURLAYOUT==='freeform')?'':'none';
+ }
+ function onSlot(k,v){ SLOTS[k]=v; if(k==='headline'){ var ta=document.getElementById('mtext'); if(ta) ta.value=v; } drawArt(); }
+ function pickLayout(k){ CURLAYOUT=k; renderLayoutGallery(); renderSlotInputs(); drawArt(); }
  function swatchDot(name){
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
