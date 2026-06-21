@@ -647,3 +647,13 @@ def test_layout_studio_drawart_branch(tmp_path):
     assert "function _drawLayout" in h
     assert "_drawLayout(" in h                       # layout renderer invoked
     assert "CURLAYOUT!=='freeform'" in h             # gated; freeform unchanged
+
+
+def test_layout_studio_decor_helpers(tmp_path):
+    # REGRESSION: decorative elements layouts can drop in (ring, banner, waves,
+    # shield/hexagon, rule, stars, monogram frame, collage frames).
+    h = _page(tmp_path)
+    assert "function _decor" in h
+    for d in ("ring", "doublering", "banner", "waves", "shield", "hexagon",
+              "rule", "stars", "monogram", "collage"):
+        assert "'" + d + "'" in h, d

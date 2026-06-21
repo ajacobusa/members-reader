@@ -1168,7 +1168,7 @@
    </div>
  </section>
  
- <div class="cutoff">⏰ Only 5 days left - order by Jun 25 to get it in time for Independence Day.</div>
+ <div class="cutoff">⏰ Only 4 days left - order by Jun 25 to get it in time for Independence Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div id="deptswitch" class="deptswitch" style="display:none">
    <button type="button" class="dswall" onclick="selectDept('wall')">🖼️ Wall Art</button>
@@ -3116,7 +3116,41 @@
      }
    });
  }
- function _decor(ctx,kind,b,ink){}   // real decorations added in a later step
+ // Decorations drawn in the ink colour inside the print bound b. Kept simple and
+ // print-safe (everything stays within b).
+ function _decor(ctx,kind,b,ink){
+   const cx=b.x+b.w/2, cy=b.y+b.h/2, R=Math.min(b.w,b.h);
+   ctx.save(); ctx.strokeStyle=ink; ctx.fillStyle=ink; ctx.lineWidth=Math.max(2,R*0.012);
+   if(kind==='ring'){ ctx.beginPath(); ctx.arc(cx,cy,R*0.47,0,7); ctx.stroke(); }
+   else if(kind==='doublering'){ ctx.beginPath(); ctx.arc(cx,cy,R*0.47,0,7); ctx.stroke();
+     ctx.lineWidth=Math.max(1,R*0.006); ctx.beginPath(); ctx.arc(cx,cy,R*0.42,0,7); ctx.stroke(); }
+   else if(kind==='border'){ ctx.strokeRect(b.x+b.w*0.06,b.y+b.h*0.06,b.w*0.88,b.h*0.88); }
+   else if(kind==='rule'){ ctx.beginPath(); ctx.moveTo(b.x+b.w*0.3,cy); ctx.lineTo(b.x+b.w*0.7,cy); ctx.stroke(); }
+   else if(kind==='waves'){ ctx.lineWidth=Math.max(2,R*0.01);
+     for(var k=0;k<2;k++){ var yy=cy+R*(0.14+k*0.07); ctx.beginPath();
+       for(var wx=b.x+b.w*0.30;wx<=b.x+b.w*0.70;wx+=2){ var yo=Math.sin((wx-b.x)/(b.w*0.05))*R*0.02;
+         (wx===b.x+b.w*0.30)?ctx.moveTo(wx,yy+yo):ctx.lineTo(wx,yy+yo); } ctx.stroke(); } }
+   else if(kind==='banner'){ var bw=b.w*0.5,bh=b.h*0.12,bx=cx-bw/2,by=cy+R*0.18;
+     ctx.fillRect(bx,by,bw,bh); }
+   else if(kind==='shield'){ ctx.beginPath();
+     ctx.moveTo(cx,b.y+b.h*0.12); ctx.lineTo(b.x+b.w*0.82,b.y+b.h*0.30);
+     ctx.lineTo(b.x+b.w*0.82,b.y+b.h*0.62); ctx.lineTo(cx,b.y+b.h*0.88);
+     ctx.lineTo(b.x+b.w*0.18,b.y+b.h*0.62); ctx.lineTo(b.x+b.w*0.18,b.y+b.h*0.30);
+     ctx.closePath(); ctx.stroke(); }
+   else if(kind==='hexagon'){ ctx.beginPath();
+     for(var i=0;i<6;i++){ var ah=Math.PI/180*(60*i-90), hx=cx+Math.cos(ah)*R*0.46, hy=cy+Math.sin(ah)*R*0.46;
+       i?ctx.lineTo(hx,hy):ctx.moveTo(hx,hy); } ctx.closePath(); ctx.stroke(); }
+   else if(kind==='stars'){ for(var s=-1;s<=1;s++){ _star(ctx,cx+s*R*0.16,cy+R*0.30,R*0.03,ink); } }
+   else if(kind==='monogram'){ ctx.beginPath(); ctx.arc(cx,cy,R*0.34,0,7); ctx.stroke(); }
+   else if(kind==='collage'){ var g=R*0.02;
+     [[0,0],[1,0],[0,1],[1,1]].forEach(function(p){ ctx.strokeRect(
+       (p[0]?cx+g:b.x+b.w*0.10), (p[1]?cy+g:b.y+b.h*0.10), b.w*0.40-g, b.h*0.40-g); }); }
+   ctx.restore();
+ }
+ function _star(ctx,cx,cy,r,ink){ ctx.save(); ctx.fillStyle=ink; ctx.beginPath();
+   for(var i=0;i<10;i++){ var rr=i%2?r*0.45:r, a=Math.PI/180*(36*i-90);
+     var x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+   ctx.closePath(); ctx.fill(); ctx.restore(); }
  // Cache loaded product-mockup images; redraw once a new one finishes loading.
  let _MOCKUP_IMG={};
  function _mockupImg(url){
