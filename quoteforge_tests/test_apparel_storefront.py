@@ -201,6 +201,28 @@ def test_apparel_editor_recolors_when_no_percolor_photos(tmp_path):
     assert "function drawGarment" in h and "APPARELCOLOR[cn]||" in h
 
 
+def test_apparel_final_proof_rotates_front_back(tmp_path):
+    # REGRESSION: the final-preview modal must let the buyer spin the garment
+    # front<->back (button + drag) so they review BOTH sides before approving -
+    # reusing the editor's per-side designs via setPlacement, then recomposing the
+    # proof image. Apparel only (wall art has a single face); hidden in the final
+    # checkout-wizard mode where the image is replaced by the basket summary.
+    h = _page(tmp_path)
+    assert 'id="proofFlip"' in h and 'id="proofFlipLbl"' in h     # the flip control + label
+    assert "function proofFlip" in h                              # toggle handler
+    assert "function _proofRenderSide" in h                       # switch side + recompose
+    assert "setPlacement(side)" in h                              # reuses the editor's side swap
+    assert "_composedProofURL()" in h                             # recomposes garment+design
+    # drag-to-spin wired onto the proof image (mouse + touch)
+    assert "_proofDown(event)" in h and "function _proofMove" in h
+    # apparel-only + hidden in final wizard mode
+    assert "IS_APPAREL?'flex':'none'" in h
+    assert "img.classList.toggle('spinnable',IS_APPAREL)" in h
+    # discoverable, supplier-safe copy
+    assert "See the back" in h and "drag the shirt to spin front" in h
+    assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
 def test_apparel_tiers_collapse_to_one_gendered_tile(tmp_path):
     # REGRESSION: the 3 brand tiers collapse to ONE tile per (gender, garment type)
     # = 13 tiles (7 men's + 6 women's; no women's polo). Every visible card is the

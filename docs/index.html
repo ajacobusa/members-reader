@@ -735,6 +735,15 @@
  .proofbox h2{color:var(--green);margin:0 0 4px;font-size:22px}
  .proofimg{width:100%;max-width:300px;border-radius:8px;border:1px solid var(--line);
    margin:10px auto;display:block}
+ .proofimg.spinnable{cursor:grab;touch-action:pan-y}
+ .proofimg.spinnable:active{cursor:grabbing}
+ .proofflip{display:none;align-items:center;justify-content:center;gap:10px;
+   flex-wrap:wrap;margin:-2px 0 10px}
+ .proofflipbtn{display:inline-flex;align-items:center;gap:7px;background:var(--green);
+   color:#fff;border:none;border-radius:20px;padding:8px 16px;font-size:13px;
+   font-weight:700;cursor:pointer}
+ .proofflipbtn:hover{background:#0c3327}
+ .prooffliphint{font-size:12px;color:#6b7b72}
  .proofsum{background:#f6f2e7;border-radius:10px;padding:10px;font-size:13px;
    color:#3a4a42;white-space:pre-line;text-align:left;margin-bottom:8px}
  .proofstatus{color:var(--green);font-weight:600;font-size:14px;margin-bottom:8px}
@@ -1239,7 +1248,15 @@
     <h2 id="proofTitle">Your final design</h2>
     <p class="qsub" id="proofSub">This is how your piece will look - exactly what prints.
       Add it to your basket; you'll approve it at checkout before anything is made.</p>
-    <img id="proofImg" class="proofimg" alt="Your design preview">
+    <img id="proofImg" class="proofimg" alt="Your design preview"
+         onmousedown="_proofDown(event)" onmousemove="_proofMove(event)"
+         onmouseup="_proofUp()" onmouseleave="_proofUp()"
+         ontouchstart="_proofDown(event)" ontouchmove="_proofMove(event)" ontouchend="_proofUp()">
+    <div id="proofFlip" class="proofflip">
+      <button type="button" class="proofflipbtn" onclick="proofFlip()" aria-label="Rotate the garment to see the other side">
+        &#128260; <span id="proofFlipLbl">See the back</span></button>
+      <span class="prooffliphint">or drag the shirt to spin front &harr; back</span>
+    </div>
     <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
     <div class="proofactions">
@@ -2305,6 +2322,36 @@
    _CLEAN=false; drawArt();              // restore the editor view (chrome back)
    return url;
  }
+ // ── Final preview: rotate the garment front<->back so the buyer reviews BOTH
+ // sides before approving. Reuses the editor's per-side designs (setPlacement
+ // swaps in each side's own wording + photo) and recomposes the proof image.
+ // Apparel only - wall art has a single face.
+ function _syncProofFlip(){
+   var l=document.getElementById('proofFlipLbl');
+   if(l) l.textContent=(APPLACEMENT==='back')?'See the front':'See the back';
+ }
+ function _proofRenderSide(side){
+   if(!IS_APPAREL) return;
+   setPlacement(side);                        // swap the editor to that side's design
+   var img=document.getElementById('proofImg');
+   var paint=function(){ var du=_composedProofURL(); if(du&&img){ img.src=du; } };
+   paint();                                   // show now (blank back if photo still loading)
+   if(PHOTO && PHOTO.src && !PHOTO.complete){ // repaint once the side's photo arrives
+     PHOTO.addEventListener('load',paint,{once:true});
+     PHOTO.addEventListener('error',paint,{once:true}); }
+   _syncProofFlip();
+ }
+ function proofFlip(){ _proofRenderSide(APPLACEMENT==='back'?'front':'back'); }
+ // Drag the proof image sideways to spin it (mirrors the editor's garment spin).
+ let _PROOFDRAG=null;
+ function _proofDown(ev){ if(!IS_APPAREL||PROOFMODE!=='item') return;
+   var x=(ev.touches&&ev.touches[0])?ev.touches[0].clientX:ev.clientX;
+   _PROOFDRAG={last:x,acc:0}; }
+ function _proofMove(ev){ if(!_PROOFDRAG) return;
+   var x=(ev.touches&&ev.touches[0])?ev.touches[0].clientX:ev.clientX;
+   _PROOFDRAG.acc+=Math.abs(x-_PROOFDRAG.last); _PROOFDRAG.last=x;
+   if(_PROOFDRAG.acc>55){ proofFlip(); _PROOFDRAG=null; } }
+ function _proofUp(){ _PROOFDRAG=null; }
  function showFinalProof(mode){
    PROOFMODE=(mode==='final')?'final':'item';
    setStep(PROOFMODE==='final'?3:2);
@@ -2315,13 +2362,19 @@
    ACCEPTED=false;
    const edit=document.querySelector('#proofPop .pedit'); if(edit)edit.style.display='';
    if(acc){ acc.disabled=false; acc.onclick=proofAccept; }
+   const _fl=document.getElementById('proofFlip');
    if(PROOFMODE==='final'){
      if(img)img.style.display='none';
+     if(_fl)_fl.style.display='none';
      _loadContact(); finalStep(1);
    } else {
      REVIEWED=true; guide();              // review opened: that task is done
      if(cv&&img){ const _du=_composedProofURL();      // garment + design, not just art
        if(_du){ img.src=_du; img.style.display='block'; } }
+     // Apparel: let the buyer spin the garment to review the BACK too before approving.
+     if(_fl)_fl.style.display=IS_APPAREL?'flex':'none';
+     if(img)img.classList.toggle('spinnable',IS_APPAREL);
+     _syncProofFlip();
      if(title)title.textContent='Your final design';
      if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
      if(sum)sum.innerHTML=_currentDesignSummary().replace(/\n/g,'<br>');
