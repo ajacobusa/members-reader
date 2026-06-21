@@ -4604,6 +4604,27 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    ctx.restore();
  }}
+ // Render the selected layout inside the print bound b={{x,y,w,h}}: decorations,
+ // then each text slot (arc via drawArcText, else a centred/aligned line) sized by
+ // the slot weight. The logo (PHOTO) is already composited by drawArt above.
+ function _drawLayout(ctx,b){{
+   if(!b) return; const L=_layout(CURLAYOUT); if(!L||L.key==='freeform') return;
+   const R=Math.min(b.w,b.h), ink=SELTXT||'#1c1c1e', font=L.defaultFont||SELFONT;
+   (L.decor||[]).forEach(function(d){{ _decor(ctx,d,b,ink); }});
+   (L.slots||[]).forEach(function(s){{
+     var txt=_slot(s.slot); if(!txt) return;
+     var size=Math.max(11, R*(s.weight||0.07));
+     var t=s.caps?txt.toUpperCase():txt;
+     if(s.kind==='arc'){{
+       drawArcText(ctx,t, b.x+b.w*s.cx, b.y+b.h*s.cy, R*s.r, s.midAngle, s.sweep, font, size, ink, size*0.06);
+     }} else {{
+       ctx.save(); ctx.fillStyle=ink; ctx.font='700 '+size+'px '+font;
+       ctx.textAlign=s.align||'center'; ctx.textBaseline='middle';
+       ctx.fillText(t, b.x+b.w*(s.x==null?0.5:s.x), b.y+b.h*s.y); ctx.restore();
+     }}
+   }});
+ }}
+ function _decor(ctx,kind,b,ink){{}}   // real decorations added in a later step
  // Cache loaded product-mockup images; redraw once a new one finishes loading.
  let _MOCKUP_IMG={{}};
  function _mockupImg(url){{
@@ -4685,6 +4706,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.restore();
    }}
    ART={{x:x,y:y,w:w,h:h}};                                    // for drag hit-testing
+   // Layout Studio: a chosen preset arranges the slots; freeform keeps the single block.
+   if(IS_APPAREL && CURLAYOUT!=='freeform'){{ _drawLayout(ctx,APPAREL_BOUND); }} else {{
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
@@ -4716,6 +4739,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.strokeStyle = _isLight(SELTXT) ? 'rgba(0,0,0,.78)' : 'rgba(255,255,255,.92)'; }}
    for(const ln of lines){{ if(overPhoto) ctx.strokeText(ln,0,ty); ctx.fillText(ln,0,ty); ty+=lh; }}
    ctx.restore();
+   }}
    // Optional shop-logo overlay (front & back) - a small brand mark below the
    // design. Drawn on whichever side is in view, since the toggle adds it to both.
    if(IS_APPAREL && LOGO_ON && GARMENT_LOGO_SRC){{

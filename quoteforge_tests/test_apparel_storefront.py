@@ -638,3 +638,12 @@ def test_layout_studio_state_and_first_layouts(tmp_path):
     for slot in ("headline", "secondary", "arcTop", "arcBottom", "tagline", "monogram"):
         assert slot in h, slot
     assert "Circular Badge" in h                              # hero layout present
+
+
+def test_layout_studio_drawart_branch(tmp_path):
+    # REGRESSION: drawArt renders a chosen layout (decor -> logo -> slots) instead
+    # of the single text block; freeform keeps today's path.
+    h = _page(tmp_path)
+    assert "function _drawLayout" in h
+    assert "_drawLayout(" in h                       # layout renderer invoked
+    assert "CURLAYOUT!=='freeform'" in h             # gated; freeform unchanged
