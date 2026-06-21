@@ -73,10 +73,13 @@ def test_apparel_cards_use_photos_with_svg_fallback(tmp_path):
     # GENDER-correct product photo (brand/tile-<garment_id>.jpg), so all 13 are
     # photos and the SVG fallback is unused on the live page.
     h = _page(tmp_path)
-    assert h.count('class="apptile') == 13        # one tile per gender+type
-    assert h.count('class="appimg"') == 13        # a photo for every tile
-    assert h.count('class="apptile apptilephoto"') == 13
-    assert h.count('class="appsvg"') == 0         # no tile falls back to SVG
+    # Count within the APPAREL pane only - the Branded department reuses the same
+    # tile CSS classes (appcard/apptile/appsvg), so page-wide counts would inflate.
+    ap = h[h.find('id="deptApparel"'):h.find('id="deptBranded"')]
+    assert ap.count('class="apptile') == 13        # one tile per gender+type
+    assert ap.count('class="appimg"') == 13        # a photo for every tile
+    assert ap.count('class="apptile apptilephoto"') == 13
+    assert ap.count('class="appsvg"') == 0         # no apparel tile falls back to SVG
     assert "appemoji" not in h                     # old emoji tiles gone
 
 
@@ -123,18 +126,19 @@ def test_apparel_filter_bar(tmp_path):
     # Department / Type / Brand / Colour / Size across both Men's and Women's, with
     # client-side show/hide driven by per-tile data-* attributes.
     h = _page(tmp_path)
+    ap = h[h.find('id="deptApparel"'):h.find('id="deptBranded"')]   # apparel pane only
     assert 'class="appfilters"' in h
     for sid in ('id="afDept"', 'id="afType"', 'id="afBrand"',
                 'id="afColor"', 'id="afSize"'):
         assert sid in h, sid
-    assert h.count('class="appfilter"') == 5          # five facet dropdowns
+    assert ap.count('class="appfilter"') == 5          # five facet dropdowns
     assert "function applyApparelFilters" in h and "function clearApparelFilters" in h
     # every tile carries the facets the filter reads
-    assert h.count("data-type=") == 13 and h.count("data-colors=") == 13
+    assert ap.count("data-type=") == 13 and ap.count("data-colors=") == 13
     for attr in ("data-gender=", "data-brand=", "data-sizes="):
         assert attr in h, attr
-    # the two departments are wrapped so a whole group can hide
-    assert h.count('class="appgroup"') == 2
+    # the two apparel sub-sections (Men's/Women's) are wrapped so a group can hide
+    assert ap.count('class="appgroup"') == 2
     # real facet option values are populated from the catalogue
     assert '<option value="Hoodie">' in h and '<option value="Tank Top">' in h
     assert '<option value="Comfort Colors">' in h     # brand facet
@@ -153,8 +157,9 @@ def test_apparel_color_swatches_and_carry_through(tmp_path):
     # so the live preview recolors. Also fixes pickFmt (was indexing wall-art
     # formats), so apparel colour selection actually changes the garment.
     h = _page(tmp_path)
-    assert h.count('class="appsw"') == 13          # a swatch row per tile
-    assert h.count("data-garment=") == 13          # garment name for swatch clicks
+    ap = h[h.find('id="deptApparel"'):h.find('id="deptBranded"')]   # apparel pane only
+    assert ap.count('class="appsw"') == 13          # a swatch row per tile
+    assert ap.count("data-garment=") == 13          # garment name for swatch clicks
     assert "function initApparelSwatches" in h     # paints the dots on load
     assert "APPARELCOLOR[cn]" in h                 # dot colour from the shared map
     assert "function selectApparelColor" in h      # preselect colour in editor
@@ -320,7 +325,7 @@ def test_apparel_photo_can_shrink_and_move(tmp_path):
     assert "const fit=Math.min(w/iw, h/ih)*PHOTO_ZOOM" in h     # contain-fit x size
     assert "PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1)" in h   # drag = move
     assert 'min="0.2"' in h                                     # slider can shrink it
-    assert "IS_APPAREL)?0.2:1" in h                             # size floor by type
+    assert "(IS_APPAREL||IS_BRANDED))?0.2:1" in h               # size floor by type (apparel + branded)
     assert "const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM" in h     # wall art fill kept
 
 
@@ -336,7 +341,7 @@ def test_apparel_editor_rotate_and_clean_proof(tmp_path):
     assert "drag the shirt" in h                             # spin hint in the UI
     # clean proof: chrome is gated behind !_CLEAN and the proof redraws clean
     assert "let _CLEAN=false" in h
-    assert "IS_APPAREL && APPAREL_BOUND && !_CLEAN" in h      # chrome skipped when clean
+    assert "IS_BRANDED) && APPAREL_BOUND && !_CLEAN" in h     # chrome skipped when clean (apparel + branded)
     assert "_CLEAN=true; drawArt()" in h                     # proof composites the clean canvas
 
 
@@ -436,8 +441,10 @@ def test_apparel_native_step1_shirt_colour(tmp_path):
     assert "function autoContrastText" in h               # text auto-contrast
     assert "TXT_USER_SET" in h                            # respects an explicit text pick
     assert "renderBg" in h and "apparelFormatsFor()" in h  # shirt swatches from garment
-    # Step-3 colour/frame picker is hidden in apparel (colour moved to Step 1)
-    assert "IS_APPAREL ? 'none' : (fmts.length" in h
+    # Step-3 colour/frame picker is hidden in apparel (colour moved to Step 1);
+    # the print modes (apparel + branded) both hide it via _PRINT.
+    assert "const _PRINT=IS_APPAREL||IS_BRANDED" in h
+    assert "_PRINT ? 'none' : (fmts.length" in h
 
 
 def test_product_type_toggle_present(tmp_path):
@@ -550,9 +557,10 @@ def test_apparel_sizing_is_final_note_present(tmp_path):
 
 def test_apparel_size_option_has_no_inches_suffix(tmp_path):
     # REGRESSION: garment sizes are S/M/L, not inches - the " in" suffix is
-    # suppressed for apparel so the option reads "M - $.." not "M in - $..".
+    # suppressed for apparel (and branded) so the option reads "M - $.." not
+    # "M in - $..".
     h = _page(tmp_path)
-    assert "IS_APPAREL?'':' in'" in h
+    assert "(IS_APPAREL||IS_BRANDED)?'':' in'" in h
 
 
 def test_apparel_colour_swatches(tmp_path):

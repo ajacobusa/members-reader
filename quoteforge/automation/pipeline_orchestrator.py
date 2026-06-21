@@ -189,6 +189,8 @@ def run_full_pipeline(
     # the same fields) and a no-op for wall art, so it never disturbs prints.
     from quoteforge.etsy.apparel_catalog import enrich_apparel_order
     order_data = {**order_data, **enrich_apparel_order(order_data)}
+    from quoteforge.etsy.branded_catalog import enrich_branded_order
+    order_data = {**order_data, **enrich_branded_order(order_data)}
 
     # ── Stage 1: Order Intake ────────────────────────────────────
     _notify("order_intake", "Storing order in database...")

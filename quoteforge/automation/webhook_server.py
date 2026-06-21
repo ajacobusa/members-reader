@@ -131,6 +131,8 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
     # so the working print flow is completely unaffected.
     from quoteforge.etsy.apparel_catalog import enrich_apparel_order
     data.update(enrich_apparel_order(data))
+    from quoteforge.etsy.branded_catalog import enrich_branded_order
+    data.update(enrich_branded_order(data))
     return data
 
 
