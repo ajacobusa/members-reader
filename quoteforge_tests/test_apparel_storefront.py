@@ -657,3 +657,16 @@ def test_layout_studio_decor_helpers(tmp_path):
     for d in ("ring", "doublering", "banner", "waves", "shield", "hexagon",
               "rule", "stars", "monogram", "collage"):
         assert "'" + d + "'" in h, d
+
+
+def test_layout_studio_all_twelve_layouts(tmp_path):
+    # REGRESSION: all 12 named layouts present (+ freeform).
+    h = _page(tmp_path)
+    names = ["Circular Badge", "Vintage Emblem", "Modern Minimalist", "Oversized Streetwear",
+             "Vertical Stack", "Horizontal Banner", "Left-Chest Logo", "Back Print",
+             "Wraparound", "Photo Collage", "Adventure Badge", "Luxury Monogram"]
+    for n in names:
+        assert n in h, n
+    for k in ("badge", "emblem", "minimal", "street", "vstack", "hbanner", "chest",
+              "backprint", "wrap", "collage", "adventure", "monogram"):
+        assert "'" + k + "'" in h, k

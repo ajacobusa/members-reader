@@ -2959,6 +2959,49 @@
      {slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:-90,sweep:1,weight:0.085,caps:true},
      {slot:'arcBottom',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:90,sweep:-1,weight:0.06,caps:true}
     ]}
+  ,{key:'emblem',name:'Vintage Emblem',logo:{cx:0.5,cy:0.46,scale:0.34,frame:'border'},
+    decor:['border','banner'],defaultFont:"'Cormorant Garamond',serif",
+    slots:[{slot:'headline',kind:'line',x:0.5,y:0.16,weight:0.10,caps:true},
+           {slot:'secondary',kind:'line',x:0.5,y:0.535,weight:0.045,caps:true},
+           {slot:'tagline',kind:'line',x:0.5,y:0.88,weight:0.04,caps:true}]}
+  ,{key:'minimal',name:'Modern Minimalist',logo:{cx:0.5,cy:0.36,scale:0.24,frame:'none'},
+    decor:['rule'],defaultFont:"'Montserrat',sans-serif",
+    slots:[{slot:'headline',kind:'line',x:0.5,y:0.60,weight:0.08,caps:true},
+           {slot:'tagline',kind:'line',x:0.5,y:0.74,weight:0.035,caps:true}]}
+  ,{key:'street',name:'Oversized Streetwear',logo:{cx:0.5,cy:0.40,scale:0.62,frame:'none'},
+    decor:[],defaultFont:"'Bebas Neue',sans-serif",
+    slots:[{slot:'headline',kind:'line',x:0.5,y:0.62,weight:0.20,caps:true},
+           {slot:'secondary',kind:'line',x:0.5,y:0.82,weight:0.07,caps:true}]}
+  ,{key:'vstack',name:'Vertical Stack',logo:{cx:0.5,cy:0.5,scale:0.34,frame:'none'},
+    decor:['rule'],defaultFont:"'Bebas Neue',sans-serif",
+    slots:[{slot:'headline',kind:'line',x:0.5,y:0.18,weight:0.12,caps:true},
+           {slot:'secondary',kind:'line',x:0.5,y:0.80,weight:0.06,caps:true},
+           {slot:'tagline',kind:'line',x:0.5,y:0.90,weight:0.04,caps:true}]}
+  ,{key:'hbanner',name:'Horizontal Banner',logo:{cx:0.28,cy:0.5,scale:0.30,frame:'none'},
+    decor:[],defaultFont:"'Oswald',sans-serif",
+    slots:[{slot:'headline',kind:'line',x:0.62,y:0.44,weight:0.10,caps:true},
+           {slot:'secondary',kind:'line',x:0.62,y:0.58,weight:0.05,caps:true}]}
+  ,{key:'chest',name:'Left-Chest Logo',logo:{cx:0.32,cy:0.34,scale:0.18,frame:'none'},
+    decor:[],defaultFont:"'Oswald',sans-serif",
+    slots:[{slot:'headline',kind:'line',x:0.32,y:0.47,weight:0.04,caps:true}]}
+  ,{key:'backprint',name:'Back Print',logo:{cx:0.5,cy:0.55,scale:0.5,frame:'none'},
+    decor:[],defaultFont:"'Bebas Neue',sans-serif",
+    slots:[{slot:'arcTop',kind:'arc',cx:0.5,cy:0.40,r:0.34,midAngle:-90,sweep:1,weight:0.07,caps:true},
+           {slot:'tagline',kind:'line',x:0.5,y:0.88,weight:0.07,caps:true}]}
+  ,{key:'wrap',name:'Wraparound',logo:{cx:0.5,cy:0.5,scale:0.46,frame:'none'},
+    decor:[],defaultFont:"'Oswald',sans-serif",
+    slots:[{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.46,midAngle:-90,sweep:1,weight:0.055,caps:true}]}
+  ,{key:'collage',name:'Photo Collage',logo:{cx:0.5,cy:0.46,scale:0.22,frame:'none'},
+    decor:['collage'],defaultFont:"'Oswald',sans-serif",
+    slots:[{slot:'headline',kind:'line',x:0.5,y:0.92,weight:0.06,caps:true}]}
+  ,{key:'adventure',name:'Adventure Badge',logo:{cx:0.5,cy:0.5,scale:0.30,frame:'shield'},
+    decor:['shield'],defaultFont:"'Oswald',sans-serif",
+    slots:[{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.33,midAngle:-90,sweep:1,weight:0.06,caps:true},
+           {slot:'arcBottom',kind:'arc',cx:0.5,cy:0.5,r:0.33,midAngle:90,sweep:-1,weight:0.05,caps:true}]}
+  ,{key:'monogram',name:'Luxury Monogram',logo:{cx:0.5,cy:0.42,scale:0.0,frame:'monogram'},
+    decor:['monogram'],defaultFont:"'Cormorant Garamond',serif",
+    slots:[{slot:'monogram',kind:'line',x:0.5,y:0.42,weight:0.26,caps:true},
+           {slot:'headline',kind:'line',x:0.5,y:0.74,weight:0.05,caps:true}]}
  ];
  function _layout(k){ for(var i=0;i<LAYOUTS.length;i++) if(LAYOUTS[i].key===k) return LAYOUTS[i]; return LAYOUTS[0]; }
  function swatchDot(name){
