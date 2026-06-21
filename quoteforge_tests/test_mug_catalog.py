@@ -51,3 +51,8 @@ def test_pipeline_and_webhook_call_mug_enrich():
     import quoteforge.automation.pipeline_orchestrator as po, quoteforge.automation.webhook_server as ws, inspect
     assert "enrich_mug_order" in inspect.getsource(po)
     assert "enrich_mug_order" in inspect.getsource(ws)
+
+
+def test_margin_guard_includes_mugs():
+    from quoteforge.etsy.margin_guard import audit_catalog
+    assert any(r.get("kind") == "mug" for r in audit_catalog()["rows"])
