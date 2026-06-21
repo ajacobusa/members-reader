@@ -1052,6 +1052,167 @@ def _apparel_section(photos: dict | None = None) -> str:
         f'{_apparel_occasions()}{filterbar}{"".join(groups)}{nomatch}</section>')
 
 
+# Customer-safe colour-name -> hex map for branded tile swatch dots. Mirrors the
+# JS APPARELCOLOR map (the single source of truth on the client) so the tiles
+# paint identically server-side. Never carries supplier data.
+_BRANDED_SWATCH_HEX = {
+    "White": "#f4f3ef", "Sand": "#d8c9a8", "Heather Grey": "#b9bdc2",
+    "Light Blue": "#a7c7e7", "Black": "#1c1c1e", "Charcoal": "#3a3f43",
+    "Navy": "#26324a", "Royal Blue": "#2f4ba0", "Red": "#b3322c",
+    "Maroon": "#5e2a32", "Forest Green": "#2e4a39", "Sage": "#7f9b78",
+    "Mustard": "#cda434", "Purple": "#5b4b8a", "Dusty Rose": "#c98a9a",
+    "Brown": "#5a4334", "Natural": "#e7ddc7", "Cream": "#f3ecd9",
+    "Silver": "#c9ccce",
+}
+
+
+def _branded_section(photos: dict | None = None) -> str:
+    """Visible Custom Branded Products department - a department-store grid of
+    merch lines (totes, bottles, notebooks, ...). Real product PHOTO per product
+    when `photos` (product_id -> src) is supplied, else a neutral SVG fallback.
+    Modeled closely on `_apparel_section`: hero band, faceted filter bar, one
+    tile per product with a from-price and colour swatch dots. Emits ONLY
+    customer-safe facets (name/category/type/colour/size/price) - never the
+    supplier brand or any SKU/cost."""
+    photos = photos or {}
+    try:
+        from quoteforge.etsy.branded_catalog import (
+            BRANDED_CATALOG, build_branded_variations)
+    except Exception:  # noqa: BLE001
+        return ""
+    frm: dict = {}
+    for v in build_branded_variations():
+        frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
+    if not frm:
+        return ""
+    shown = [p for p in BRANDED_CATALOG if frm.get(p.product_id) is not None]
+    if not shown:
+        return ""
+
+    def _swatches(colors) -> str:
+        """Static colour swatch dots painted from the customer-safe hex map."""
+        dots = []
+        for cn in colors:
+            hexv = _BRANDED_SWATCH_HEX.get(cn, "#bbbbbb")
+            ring = (";box-shadow:inset 0 0 0 1px #cfcabb"
+                    if cn in ("White", "Sand", "Natural", "Cream", "Silver",
+                              "Light Blue", "Heather Grey") else "")
+            dots.append(f'<i class="swdot" title="{cn}" data-color="{cn}" '
+                        f'style="background:{hexv}{ring}"></i>')
+        return "".join(dots)
+
+    def _card(p) -> str:
+        """Render one branded product tile (product photo, else neutral SVG)."""
+        low = frm.get(p.product_id)
+        if low is None:
+            return ""
+        src = photos.get(p.product_id)
+        if src:
+            tile = (f'<span class="apptile apptilephoto"><img class="appimg" '
+                    f'loading="lazy" src="{src}" alt="Custom {p.name}"></span>')
+        else:
+            tile = ('<span class="apptile" '
+                    'style="background:linear-gradient(135deg,#eef1ee,#dfe5df)">'
+                    '<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
+                    '<rect x="30" y="30" width="60" height="60" rx="8" '
+                    'fill="none" stroke="#9aa79a" stroke-width="4"/>'
+                    '<circle cx="60" cy="60" r="14" fill="#9aa79a" '
+                    'opacity="0.5"/></svg></span>')
+        name_js = p.name.replace("\\", "\\\\").replace("'", "\\'")
+        color0 = (p.colors[0] if p.colors else "").replace("\\", "\\\\").replace("'", "\\'")
+        return (
+            f'<button class="brandcard" type="button" '
+            f'data-bpid="{p.product_id}" data-cat="{p.category}" '
+            f'data-type="{p.type_name}" data-product="{p.name}" '
+            f'data-colors="{",".join(p.colors)}" data-sizes="{",".join(p.sizes)}" '
+            f'onclick="shopBranded(\'{name_js}\',\'{color0}\')" '
+            f'aria-label="Design a custom {p.name}">'
+            f'{tile}'
+            f'<span class="appname">{p.type_name}</span>'
+            f'<span class="appsw" aria-label="Available colours">'
+            f'{_swatches(p.colors)}</span>'
+            f'<span class="appfrom">from ${low:.2f}</span>'
+            f'<span class="appcta">Design yours &rarr;</span></button>')
+
+    cards = [c for c in (_card(p) for p in shown) if c]
+    if not cards:
+        return ""
+
+    # ── Faceted filter bar (Category / Type / Colour / Size) ──
+    def _distinct(seq) -> list:
+        out: list = []
+        for x in seq:
+            if x and x not in out:
+                out.append(x)
+        return out
+    cats_f = _distinct(p.category for p in shown)
+    types_f = _distinct(p.type_name for p in shown)
+    colors_f = _distinct(c for p in shown for c in p.colors)
+    sizes_f = _distinct(s for p in shown for s in p.sizes)
+
+    def _opts(vals) -> str:
+        return "".join(f'<option value="{v}">{v}</option>' for v in vals)
+
+    def _sel(sid, label, all_label, opts) -> str:
+        return (f'<select class="appfilter" id="{sid}" aria-label="{label}" '
+                f'onchange="applyBrandedFilters()">'
+                f'<option value="">{all_label}</option>{opts}</select>')
+    filterbar = (
+        '<div class="brandfilter" role="group" '
+        'aria-label="Filter branded products">'
+        + '<span class="appfilterlbl">Refine</span>'
+        + _sel("bfCat", "Category", "All categories", _opts(cats_f))
+        + _sel("bfType", "Type", "All types", _opts(types_f))
+        + _sel("bfColor", "Colour", "All colours", _opts(colors_f))
+        + _sel("bfSize", "Size", "All sizes", _opts(sizes_f))
+        + '<button type="button" class="appfilterclear" '
+          'onclick="clearBrandedFilters()">Clear</button>'
+        + f'<span class="appfiltercount" id="bfCount">{len(cards)} products</span>'
+        + '</div>')
+    nomatch = (
+        '<p class="apnomatch" id="bfNoMatch" style="display:none">'
+        'No products match those filters. '
+        '<button type="button" class="appfilterclear" '
+        'onclick="clearBrandedFilters()">Clear filters</button></p>')
+    return (
+        '<section class="apparel-sec branded-sec" id="branded">'
+        f'{_branded_hero()}{filterbar}'
+        f'<div class="appgroup"><div class="appgrid">{"".join(cards)}</div></div>'
+        f'{nomatch}</section>')
+
+
+def _branded_hero() -> str:
+    """The branded-products department hero - mirrors the apparel hero markup and
+    classes for a consistent department look. Generic copy (no supplier or
+    marketplace names). Uses brand/branded-hero.jpg when bundled."""
+    from quoteforge.config import OUTPUT_DIR
+    img = ""
+    for p in (Path(__file__).resolve().parents[2] / "brand" / "branded-hero.jpg",
+              Path(OUTPUT_DIR) / "branded-hero.jpg"):
+        try:
+            if p.exists():
+                img = (f'<img class="apheroimg" src="{_web_img(p, 1200, 80)}" '
+                       f'alt="Custom branded products" loading="lazy">')
+                break
+        except Exception:  # noqa: BLE001
+            img = ""
+    return (
+        '<div class="aphero" id="brandedhero">'
+        '<div class="apherobody">'
+        '<span class="apheroeyebrow">Personalized &middot; made to order</span>'
+        '<h2 class="apheroh">Custom Branded Products</h2>'
+        '<p class="apherosub">Put your name, words or photo on totes, bottles, '
+        'tumblers, notebooks, stickers &amp; more - the same easy editor, and a '
+        'free proof you approve on screen before anything prints.</p>'
+        '<button type="button" class="apherocta" onclick="'
+        "(document.querySelector('.brandfilter')||document.getElementById('branded'))"
+        ".scrollIntoView({behavior:'smooth',block:'center'})"
+        '">Start designing &rarr;</button>'
+        '</div>'
+        f'<div class="apheromedia">{img}</div>'
+        '</div>')
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -1432,6 +1593,38 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else _front}
     apparel_side_img_json = json.dumps(_apparel_side_img)
 
+    # Per-product tile photos for the Custom Branded Products grid, keyed by
+    # product_id (brand/tile-<product_id>.jpg, e.g. tile-tote.jpg). Falls back to
+    # the section's neutral SVG tile when a photo is absent - mirrors how the
+    # apparel _garment_photos are built. Customer-safe only (no supplier data).
+    _branded_photos: dict = {}
+    branded_formats_json = "[]"
+    branded_dims_json = "{}"
+    try:
+        from quoteforge.etsy.branded_catalog import (
+            BRANDED_CATALOG as _BC, build_branded_variations as _bbv)
+        for _p in _BC:
+            _bp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
+                        if (brand / f"tile-{_p.product_id}.{e}").exists()), None)
+            if _bp:
+                _branded_photos[_p.product_id] = _emit(_bp, f"tile-{_p.product_id}.jpg")
+        # Cheapest price per (product, colour) for the editor's branded picker.
+        _bc_from: dict = {}
+        for _v in _bbv():
+            _key = (_v.product_id, _v.color)
+            _bc_from[_key] = min(_bc_from.get(_key, 1e9), _v.price)
+        _bname = {_p.product_id: _p.name for _p in _BC}
+        branded_formats = [
+            {"name": f"{_bname[_pid]} - {_col}", "price": round(_pr, 2)}
+            for (_pid, _col), _pr in _bc_from.items() if _pid in _bname]
+        branded_formats_json = json.dumps(branded_formats)
+        branded_dims_json = json.dumps(
+            {_p.product_id: [_p.width_px, _p.height_px] for _p in _BC})
+    except Exception:  # noqa: BLE001 — never break the build on the branded catalog
+        _branded_photos = {}
+        branded_formats_json = "[]"
+        branded_dims_json = "{}"
+
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
     # in white).
@@ -1707,12 +1900,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .appgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
    gap:16px;margin-bottom:6px}}
  @media(max-width:640px){{.appgrid{{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}}}
- .appcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
+ .appcard,.brandcard{{display:flex;flex-direction:column;align-items:center;gap:6px;
    padding:12px 12px 18px;border:1px solid #ece7da;border-radius:16px;background:#fff;
    box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer;
    transition:transform .14s,box-shadow .14s,border-color .14s}}
- .appcard:hover{{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.13);
-   border-color:var(--gold)}}
+ .appcard:hover,.brandcard:hover{{transform:translateY(-4px);
+   box-shadow:0 14px 30px rgba(0,0,0,.13);border-color:var(--gold)}}
  .apptile{{display:flex;align-items:center;justify-content:center;width:100%;
    height:172px;border-radius:13px;margin-bottom:6px;
    box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}}
@@ -1745,7 +1938,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    cursor:pointer;transition:transform .12s,box-shadow .12s}}
  .swdot:hover{{transform:scale(1.18)}}
  .swdot.seldot{{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold-d);transform:scale(1.12)}}
- .appfilters{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+ .appfilters,.brandfilter{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
    margin:6px 0 24px;padding:13px 16px;background:#fff;border:1px solid var(--line);
    border-radius:16px;box-shadow:0 3px 16px rgba(16,61,46,.05)}}
  .appfilterlbl{{font-weight:700;color:var(--green);font-size:12px;letter-spacing:.09em;
@@ -1763,7 +1956,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .appfiltercount{{margin-left:auto;color:var(--green);font-weight:600;font-size:13px;
    white-space:nowrap;background:var(--cream);border-radius:20px;padding:6px 13px}}
  @media(max-width:640px){{.appfilters{{padding:12px;gap:8px}}.appfilterlbl{{flex-basis:100%}}}}
- .appgroup.hide,.appcard.hide{{display:none}}
+ .appgroup.hide,.appcard.hide,.brandcard.hide{{display:none}}
  .apnomatch{{text-align:center;color:var(--muted);padding:22px 0;font-size:15px}}
  @media(max-width:640px){{.appfilter,.appfilterclear{{flex:1 1 42%}}
    .appfiltercount{{flex-basis:100%;margin:4px 0 0;text-align:center}}}}
@@ -2722,6 +2915,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  </div>
  </div>
  <div id="deptApparel" class="deptpane" style="display:none">{_apparel_section(_garment_photos)}</div>
+ <div id="deptBranded" class="deptpane" style="display:none">{_branded_section(_branded_photos)}</div>
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
@@ -3270,6 +3464,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function fmtsFor(i){{ const f=DATA[i].formats; return (f&&f.length)?f:ALL_FORMATS; }}
  // ── Apparel: a parallel product type sharing this picker + design editor ──
  const APPAREL_FORMATS = {apparel_formats_json};
+ // ── Custom Branded Products: a parallel product family sharing this editor ──
+ // BRANDED_FORMATS: one entry per product x colour ("{{name}} - {{colour}}" + from-price).
+ // BRANDED_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
+ const BRANDED_FORMATS = {branded_formats_json};
+ const BRANDED_DIMS = {branded_dims_json};
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};

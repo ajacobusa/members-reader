@@ -19,3 +19,15 @@ def test_branded_base_colours_have_swatches(tmp_path):
     h = _page(tmp_path)
     for c in ('"Natural"', '"Cream"', '"Silver"'):
         assert c in h, c
+
+
+def test_branded_section_renders_products_and_facets(tmp_path):
+    h = _page(tmp_path)
+    assert 'id="deptBranded"' in h
+    assert 'class="brandcard"' in h
+    assert h.count('data-bpid="') >= 9
+    assert 'data-bpid="tote"' in h and 'data-bpid="bottle"' in h
+    assert 'class="brandfilter"' in h
+    assert 'shopBranded(' in h
+    assert 'BRANDED_FORMATS' in h and 'BRANDED_DIMS' in h
+    assert "gelato" not in h.lower() and "printify" not in h.lower()
