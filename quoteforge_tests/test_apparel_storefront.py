@@ -320,7 +320,7 @@ def test_apparel_photo_can_shrink_and_move(tmp_path):
     assert "const fit=Math.min(w/iw, h/ih)*PHOTO_ZOOM" in h     # contain-fit x size
     assert "PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1)" in h   # drag = move
     assert 'min="0.2"' in h                                     # slider can shrink it
-    assert "IS_APPAREL)?0.2:1" in h                             # size floor by type
+    assert "(IS_APPAREL||IS_BRANDED))?0.2:1" in h               # size floor by type (apparel + branded)
     assert "const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM" in h     # wall art fill kept
 
 
@@ -336,7 +336,7 @@ def test_apparel_editor_rotate_and_clean_proof(tmp_path):
     assert "drag the shirt" in h                             # spin hint in the UI
     # clean proof: chrome is gated behind !_CLEAN and the proof redraws clean
     assert "let _CLEAN=false" in h
-    assert "IS_APPAREL && APPAREL_BOUND && !_CLEAN" in h      # chrome skipped when clean
+    assert "IS_BRANDED) && APPAREL_BOUND && !_CLEAN" in h     # chrome skipped when clean (apparel + branded)
     assert "_CLEAN=true; drawArt()" in h                     # proof composites the clean canvas
 
 
@@ -436,8 +436,10 @@ def test_apparel_native_step1_shirt_colour(tmp_path):
     assert "function autoContrastText" in h               # text auto-contrast
     assert "TXT_USER_SET" in h                            # respects an explicit text pick
     assert "renderBg" in h and "apparelFormatsFor()" in h  # shirt swatches from garment
-    # Step-3 colour/frame picker is hidden in apparel (colour moved to Step 1)
-    assert "IS_APPAREL ? 'none' : (fmts.length" in h
+    # Step-3 colour/frame picker is hidden in apparel (colour moved to Step 1);
+    # the print modes (apparel + branded) both hide it via _PRINT.
+    assert "const _PRINT=IS_APPAREL||IS_BRANDED" in h
+    assert "_PRINT ? 'none' : (fmts.length" in h
 
 
 def test_product_type_toggle_present(tmp_path):
@@ -550,9 +552,10 @@ def test_apparel_sizing_is_final_note_present(tmp_path):
 
 def test_apparel_size_option_has_no_inches_suffix(tmp_path):
     # REGRESSION: garment sizes are S/M/L, not inches - the " in" suffix is
-    # suppressed for apparel so the option reads "M - $.." not "M in - $..".
+    # suppressed for apparel (and branded) so the option reads "M - $.." not
+    # "M in - $..".
     h = _page(tmp_path)
-    assert "IS_APPAREL?'':' in'" in h
+    assert "(IS_APPAREL||IS_BRANDED)?'':' in'" in h
 
 
 def test_apparel_colour_swatches(tmp_path):

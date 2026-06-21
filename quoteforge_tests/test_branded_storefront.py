@@ -41,3 +41,12 @@ def test_branded_is_a_third_department(tmp_path):
     assert "selectDept('branded')" in h
     assert h.count("selectDept(") >= 3
     assert "function applyBrandedFilters" in h and "function clearBrandedFilters" in h
+
+
+def test_branded_editor_mode_wired(tmp_path):
+    h = _page(tmp_path)
+    assert "let IS_BRANDED" in h
+    assert "function shopBranded" in h
+    assert "BRANDED_FORMATS" in h and "BRANDED_DIMS" in h
+    assert "function _drawBrandedField" in h
+    assert ("IS_APPAREL||IS_BRANDED" in h) or ("IS_APPAREL || IS_BRANDED" in h)

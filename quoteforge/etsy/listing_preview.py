@@ -1502,6 +1502,29 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         appgid = {}
     appgid_json = json.dumps(appgid)
+    # Branded products REUSE the shared SIZEMAP + size picker. Each product+colour
+    # is a "format" ("{name} - {colour}") whose sizes/prices live in SIZEMAP under
+    # that key - same shape as apparel. Emitted from name/colour/size/price ONLY
+    # (never the supplier SKU or cost). Done here so it lands before sizemap_json.
+    if frame_picker:
+        try:
+            from quoteforge.etsy.branded_catalog import (
+                BRANDED_CATALOG as _BCs, build_branded_variations as _bbvs)
+            _bn = {p.product_id: p.name for p in _BCs}
+            _bkeys: set = set()
+            for _v in _bbvs():
+                if _v.product_id not in _bn:
+                    continue
+                _bkey = f"{_bn[_v.product_id]} - {_v.color}"
+                _bkeys.add(_bkey)
+                sizemap.setdefault(_bkey, []).append(
+                    {"size": _v.size, "price": round(_v.price, 2)})
+            for _bkey in _bkeys:                  # de-dup sizes per branded key only
+                _seen = {r["size"]: r for r in sizemap[_bkey]}
+                sizemap[_bkey] = sorted(
+                    _seen.values(), key=lambda r: r["price"])
+        except Exception:  # noqa: BLE001 — never break the build on the branded catalog
+            pass
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
     editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
@@ -1604,6 +1627,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     _branded_photos: dict = {}
     branded_formats_json = "[]"
     branded_dims_json = "{}"
+    branded_pid_json = "{}"
     try:
         from quoteforge.etsy.branded_catalog import (
             BRANDED_CATALOG as _BC, build_branded_variations as _bbv)
@@ -1624,10 +1648,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         branded_formats_json = json.dumps(branded_formats)
         branded_dims_json = json.dumps(
             {_p.product_id: [_p.width_px, _p.height_px] for _p in _BC})
+        # Editor maps the picked product NAME (what shopBranded carries) back to a
+        # product_id so it can look up BRANDED_DIMS (which is keyed by product_id).
+        branded_pid_json = json.dumps({_p.name: _p.product_id for _p in _BC})
     except Exception:  # noqa: BLE001 — never break the build on the branded catalog
         _branded_photos = {}
         branded_formats_json = "[]"
         branded_dims_json = "{}"
+        branded_pid_json = "{}"
 
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
@@ -3416,7 +3444,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    // Every design opens in WALL-ART mode; the buyer can switch to Apparel.
-   IS_APPAREL=false; CURGARMENT="";
+   IS_APPAREL=false; IS_BRANDED=false; CURGARMENT="";
    {{const _w=document.getElementById('ptwall'),_a=document.getElementById('ptapp');
      if(_w&&_a){{_w.classList.add('ptsel');_a.classList.remove('ptsel');}}}}
    const _l=document.getElementById('mfpicklbl');
@@ -3483,6 +3511,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // BRANDED_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
  const BRANDED_FORMATS = {branded_formats_json};
  const BRANDED_DIMS = {branded_dims_json};
+ // Branded product NAME -> product_id, so the editor can resolve BRANDED_DIMS
+ // (keyed by product_id) from the name shopBranded carries.
+ const BRANDED_PID = {branded_pid_json};
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
@@ -3495,6 +3526,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
  const APPAREL_TIERS = {apparel_tiers_json};
  let IS_APPAREL=false, CURGARMENT="", CURBASE="";
+ // Branded mode reuses the WHOLE apparel editor (print frame, Layout Studio,
+ // colour swatches) but draws onto a flat product field, not a garment.
+ let IS_BRANDED=false;
  // Strip a tier suffix ("Men's T-Shirt (Value)" -> "Men's T-Shirt") to find the
  // Classic base name that keys APPAREL_TIERS.
  function _baseName(n){{ return (n||'').replace(/ \\((?:Value|Premium)\\)$/,''); }}
@@ -3530,7 +3564,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return CURGARMENT
      ? APPAREL_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
      : APPAREL_FORMATS; }}
- function curFormats(i){{ return IS_APPAREL?apparelFormatsFor():fmtsFor(i); }}
+ // Branded pills are scoped to the SELECTED product (CURGARMENT holds the product
+ // name) - mirrors apparelFormatsFor but over BRANDED_FORMATS.
+ function brandedFormatsFor(){{
+   return CURGARMENT
+     ? BRANDED_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
+     : BRANDED_FORMATS; }}
+ function curFormats(i){{ return IS_BRANDED?brandedFormatsFor():(IS_APPAREL?apparelFormatsFor():fmtsFor(i)); }}
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){{ return fmts.map((f,j)=>
    `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" tabindex="0" role="button" aria-label="${{f.name}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join(''); }}
@@ -3556,41 +3596,70 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // (room-wall colours + tip) and switch the "available as" line, the "about"
  // description, the step label and the price so an apparel buyer never sees
  // poster/frame copy.
+ // Branded chrome copy (no supplier / marketplace names). The product name keys
+ // the heading; a generic "personalize it" flow mirrors the apparel about-text.
+ function brandedTitle(){{
+   return CURGARMENT
+     ? ('Personalized '+CURGARMENT+' - Custom Printed, You Personalize It')
+     : 'Personalized Custom Products - You Personalize It';
+ }}
+ const BRANDED_AVAIL_HTML='A <b>custom printed product</b> - pick your colour '
+   +'&amp; size next. Made to order, personalized just for you.';
+ const BRANDED_DESC_HTML='<b>A personalized product, made to order just for you.</b><br>'
+   +'1. Personalize it live - add your name, occasion and your own words or photo, '
+   +'and preview it on screen.<br>'
+   +'2. Approve your free proof on screen - this is your final sign-off, locked in '
+   +'once you submit.<br>'
+   +'3. Printed and shipped with tracking.<br>'
+   +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
+   +'printing, and your chosen colour &amp; size. Sizing is final - please check the '
+   +'size before ordering.';
  function applyProductChrome(fmts){{
+   // The shared print editor (movable frame + Layout Studio) is on for apparel
+   // AND branded; only wall art keeps the legacy framed-print chrome.
+   const PRINT=IS_APPAREL||IS_BRANDED;
    ['mwallrow','mwalltip'].forEach(id=>{{const e=document.getElementById(id);
-     if(e) e.style.display = IS_APPAREL ? 'none' : '';}});
+     if(e) e.style.display = PRINT ? 'none' : '';}});
    const av=document.getElementById('mavail');
-   if(av){{ if(!WALLART_AVAIL && !IS_APPAREL) WALLART_AVAIL=av.innerHTML;
-     av.innerHTML = IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML); }}
+   if(av){{ if(!WALLART_AVAIL && !PRINT) WALLART_AVAIL=av.innerHTML;
+     av.innerHTML = IS_BRANDED ? BRANDED_AVAIL_HTML
+       : (IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML)); }}
    const md=document.getElementById('mdesc');
-   if(md){{ if(!WALLART_DESC && !IS_APPAREL) WALLART_DESC=md.innerHTML;
-     md.innerHTML = IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML); }}
+   if(md){{ if(!WALLART_DESC && !PRINT) WALLART_DESC=md.innerHTML;
+     md.innerHTML = IS_BRANDED ? BRANDED_DESC_HTML
+       : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML)); }}
    const e3=document.getElementById('e3lbl');
-   if(e3) e3.textContent = IS_APPAREL ? '3. Size' : '3. Frame & size';
-   // Step 1 colour row is the SHIRT colour in apparel mode (the wall-art
-   // "Background" fill is not printed on a garment).
+   if(e3) e3.textContent = PRINT ? '3. Size' : '3. Frame & size';
+   // Step 1 colour row is the SHIRT colour in apparel mode / product colour in
+   // branded mode (the wall-art "Background" fill is not printed on a product).
    const bl=document.getElementById('mbglbl');
-   if(bl) bl.textContent = IS_APPAREL ? '👕 Shirt colour' : 'Background';
+   if(bl) bl.textContent = IS_BRANDED ? '🎁 Colour'
+     : (IS_APPAREL ? '👕 Shirt colour' : 'Background');
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
-   // Heading: apparel buyers must NEVER see the wall-art listing title.
+   // Heading: apparel/branded buyers must NEVER see the wall-art listing title.
    const mt=document.getElementById('mtitle');
-   if(mt) mt.textContent = IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent);
-   // Print-placement bar + design-frame controls are apparel-only.
+   if(mt) mt.textContent = IS_BRANDED ? brandedTitle()
+     : (IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent));
+   // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
+   // Movable design-frame controls run for apparel AND branded.
    const fb=document.getElementById('mframebar');
-   if(fb) fb.style.display = IS_APPAREL ? 'block' : 'none';
-   // Layout Studio panel is apparel-only; (re)build the gallery + slot inputs.
+   if(fb) fb.style.display = PRINT ? 'block' : 'none';
+   // Layout Studio panel runs for apparel AND branded; (re)build it.
    const lb=document.getElementById('mlayoutbar');
-   if(lb) lb.style.display = IS_APPAREL ? 'block' : 'none';
-   if(IS_APPAREL){{ renderLayoutGallery(); renderSlotInputs(); }}
+   if(lb) lb.style.display = PRINT ? 'block' : 'none';
+   if(PRINT){{ renderLayoutGallery(); renderSlotInputs(); }}
  }}
  function setProductType(t){{
-   IS_APPAREL=(t==='apparel');
+   IS_BRANDED=(t==='branded');
+   IS_APPAREL=(t==='apparel');          // exactly one of branded/apparel is true
    TXT_USER_SET=false;                 // re-auto-contrast text for the new context
    if(IS_APPAREL && !CURGARMENT && APPAREL_FORMATS.length)
      CURGARMENT=APPAREL_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
+   if(IS_BRANDED && !CURGARMENT && BRANDED_FORMATS.length)
+     CURGARMENT=BRANDED_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
    if(IS_APPAREL && !CURBASE) CURBASE=_baseName(CURGARMENT);
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
    if(wb&&ab){{wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}}
@@ -3598,25 +3667,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const fc=document.getElementById('mfchips'), fmts=curFormats(CUR);
    if(fc&&fmts.length)fc.innerHTML=_fchips(fmts,CUR);
    CURFMT=(fmts[0]&&fmts[0].name)||"";
-   // Apparel colour lives in Step 1 now, so hide the Step-3 colour/frame picker
-   // (it stays the frame picker for wall art).
+   // Apparel/branded colour lives in Step 1 now, so hide the Step-3 colour/frame
+   // picker (it stays the frame picker for wall art).
+   const _PRINT=IS_APPAREL||IS_BRANDED;
    const fpk=document.getElementById('mfpick');
-   if(fpk) fpk.style.display = IS_APPAREL ? 'none' : (fmts.length?'block':'none');
+   if(fpk) fpk.style.display = _PRINT ? 'none' : (fmts.length?'block':'none');
    const lbl=document.getElementById('mfpicklbl');
-   if(lbl)lbl.textContent=IS_APPAREL?'':'👉 Choose your frame / material:';
+   if(lbl)lbl.textContent=_PRINT?'':'👉 Choose your frame / material:';
    applyProductChrome(fmts);
-   renderBg();                         // Shirt-colour swatches (apparel) / Background
-   if(IS_APPAREL){{
+   renderBg();                         // colour swatches (apparel/branded) / Background
+   if(_PRINT){{
      autoContrastText((CURFMT.split(' - ')[1]||''));
-     APPLACEMENT='front';              // start on the front side
+     BOX={{x:0.50,y:0.35,s:1.0}};      // reset the design frame position + size
+     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=1;
+   }}
+   if(IS_APPAREL){{
+     APPLACEMENT='front';              // start on the front side (apparel only)
      SIDES={{front:null,back:null}};   // clear both sides' designs for the new garment
      document.querySelectorAll('#mplacement .plbtn').forEach(function(b){{
        b.classList.toggle('sel', b.dataset.p==='front'); }});
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
-     BOX={{x:0.50,y:0.35,s:1.0}};      // reset the design frame position + size
-     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=1;
    }}
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
@@ -3633,6 +3705,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(col) selectApparelColor(col);   // open the live preview in that colour
    renderTierRow();                   // offer Value/Classic/Premium for this garment
  }}
+ // Entry point from a Branded Products tile: open the shared editor straight into
+ // branded mode (flat product field, no front/back), preselecting the colour.
+ // CURGARMENT holds the product NAME (BRANDED_PID maps it to a product_id).
+ function shopBranded(name,color){{
+   if(!DATA.length) return;
+   openM(0);                       // openM clears CURGARMENT; set it AFTER
+   CURGARMENT=name||"";            // the branded product name, e.g. "Tote Bag"
+   CURBASE="";                     // branded has no quality-tier picker
+   var col=color||'';             // the tile's first colour
+   setProductType('branded');      // scopes the pills to that product's colours
+   if(col) selectApparelColor(col);   // open the live preview in that colour
+ }}
  // Occasion-first entry: open the editor pre-loaded with the occasion's quote,
  // ready for the buyer to personalize (they can edit/replace it).
  function shopApparelOccasion(quote){{
@@ -3644,7 +3728,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Preselect a garment colour in the editor so the preview renders in it -
  // applies the colour WITHOUT auto-advancing the step (unlike a chip click).
  function selectApparelColor(color){{
-   var fmts=apparelFormatsFor(), target=CURGARMENT+' - '+color, j=-1;
+   var fmts=IS_BRANDED?brandedFormatsFor():apparelFormatsFor(), target=CURGARMENT+' - '+color, j=-1;
    for(var k=0;k<fmts.length;k++){{ if(fmts[k].name===target){{ j=k; break; }} }}
    if(j<0) return;
    CURFMT=fmts[j].name;
@@ -3749,7 +3833,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
-   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{IS_APPAREL?'':' in'}} - $${{r.price}}</option>`).join('');}}
+   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED)?'':' in'}} - $${{r.price}}</option>`).join('');}}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -3766,7 +3850,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back)}} : null;
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
-     sides:_sides, wording:_slotWording(), layout:(IS_APPAREL?CURLAYOUT:''),
+     sides:_sides, wording:_slotWording(),
+     layout:((IS_APPAREL||IS_BRANDED)?CURLAYOUT:''),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -4009,7 +4094,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _designState(){{
    return {{listing:(DATA[CUR]||{{}}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
      font:SELFONT, wall:SELWALL, wording:_slotWording(),
-     layout:(IS_APPAREL?CURLAYOUT:''), slots:(IS_APPAREL?JSON.parse(JSON.stringify(SLOTS)):null),
+     layout:((IS_APPAREL||IS_BRANDED)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED)?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
      photo:{{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}}}};
@@ -4393,7 +4478,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Apparel can SHRINK the photo (size 0.2x); wall art fills the frame (min 1x).
  function setPhotoZoom(v){{
-   const lo=(typeof IS_APPAREL!=='undefined' && IS_APPAREL)?0.2:1;
+   const lo=(typeof IS_APPAREL!=='undefined' && (IS_APPAREL||IS_BRANDED))?0.2:1;
    PHOTO_ZOOM=Math.max(lo, parseFloat(v)||1); drawArt(); }}
  function nudgePhoto(dx,dy){{ PHOTO_FX=Math.min(1,Math.max(0,PHOTO_FX+dx));
    PHOTO_FY=Math.min(1,Math.max(0,PHOTO_FY+dy)); drawArt(); }}
@@ -4605,7 +4690,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return 'frame';
  }}
  function _startDrag(ev){{ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
-   if(IS_APPAREL){{ DRAGTARGET=_hitTarget(DRAGPX); }}
+   if(IS_APPAREL||IS_BRANDED){{ DRAGTARGET=_hitTarget(DRAGPX);
+     // Branded has no front/back to spin - grabbing outside just moves the frame.
+     if(IS_BRANDED && DRAGTARGET==='rotate') DRAGTARGET='frame'; }}
    else {{
      // wall art: smart-grab the wording, else follow the Photo toggle (pan).
      const nearText = Math.abs(DRAGLAST.x-TPOS.x)<0.22 && Math.abs(DRAGLAST.y-TPOS.y)<0.16;
@@ -4635,7 +4722,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        const z=document.getElementById('mphotozoom'); if(z) z.value=PHOTO_ZOOM;
      }}
    }} else if(DRAGTARGET==='photo'){{
-     if(IS_APPAREL){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
+     if(IS_APPAREL||IS_BRANDED){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
      else if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
        PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }}
    }} else {{                                                    // move the wording
@@ -4689,8 +4776,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function renderBg(){{
    const box=document.getElementById('mbg'); if(!box) return;
-   if(IS_APPAREL){{                       // Step-1 row = SHIRT colour swatches
-     var fmts=apparelFormatsFor();
+   if(IS_APPAREL||IS_BRANDED){{           // Step-1 row = product/garment colour swatches
+     var fmts=IS_BRANDED?brandedFormatsFor():apparelFormatsFor();
      box.innerHTML=fmts.map(function(f){{
        var cn=(f.name.split(' - ')[1]||'');
        var hex=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#bbb';
@@ -4864,6 +4951,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return null;  // Poster / Canvas = unframed
  }}
  function _printAR(){{  // width/height ratio of the selected print size (e.g. 8x10 -> 0.8)
+   if(IS_BRANDED){{              // flat product field - aspect from the print bound dims
+     var _d=BRANDED_DIMS[BRANDED_PID[CURGARMENT]];
+     if(_d && _d[0]>0 && _d[1]>0) return _d[0]/_d[1];
+     return 1.0;                // sensible square default
+   }}
    if(IS_APPAREL) return 0.86;   // garment field aspect (shirt body in the canvas)
    const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
    const m=sv.match(/(\\d+(?:\\.\\d+)?)\\s*[xX]\\s*(\\d+(?:\\.\\d+)?)/);
@@ -4946,6 +5038,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const cn=(CURFMT.split(' - ')[1]||'Black'); const col=APPARELCOLOR[cn]||'#1c1c1e';
    _garmentShape(ctx,x,y,w,h,_garmentType(),col);
  }}
+ // Neutral flat product card for branded mode (real product mockups are a later
+ // phase). Just a soft field + hairline so the print frame reads clearly on it.
+ function _drawBrandedField(ctx,x,y,w,h){{ ctx.save(); ctx.fillStyle='#f2efe9'; ctx.fillRect(x,y,w,h); ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }}
  function _isLight(c){{ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }}
@@ -5077,14 +5172,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.clearRect(0,0,W,H);                  // transparent so the mockup image shows
    }} else {{
      if(_mg) _mg.style.display='none';
-     ctx.fillStyle = IS_APPAREL ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
+     ctx.fillStyle = (IS_APPAREL||IS_BRANDED) ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
    }}
-   const m=16, spec = IS_APPAREL ? null : frameSpec();
+   const m=16, spec = (IS_APPAREL||IS_BRANDED) ? null : frameSpec();
    const ar=_printAR(), AW=W-2*m, AH=H-2*m;
    let w,h; if(AW/AH > ar){{ h=AH; w=AH*ar; }} else {{ w=AW; h=AW/ar; }}
    let x=(W-w)/2, y=(H-h)/2;
    if(!_mock){{ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }}  // shadow (not in real-mockup mode)
-   if(IS_APPAREL){{
+   if(IS_BRANDED){{                           // flat product field + movable print frame
+     _drawBrandedField(ctx,x,y,w,h);
+     const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+   }} else if(IS_APPAREL){{
      if(_mock){{                              // design sits on the real mockup, per placement
        const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      }} else {{
@@ -5097,12 +5195,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(spec.mat){{ const mm=0.05*w; ctx.fillStyle="#f7f5ef";
        ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }}
    }}
-   if(!IS_APPAREL){{ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }}  // art background (print only)
+   if(!(IS_APPAREL||IS_BRANDED)){{ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }}  // art background (wall-art only)
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){{        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
-     if(IS_APPAREL){{
-       // APPAREL: the photo is a PLACEABLE element - CONTAIN-fit x size, centred at
+     if(IS_APPAREL||IS_BRANDED){{
+       // APPAREL/BRANDED: the photo is a PLACEABLE element - CONTAIN-fit x size, centred at
        // a free position, so the buyer can SHRINK it (PHOTO_ZOOM 0.2..3) and MOVE it
        // anywhere in the print area instead of it always filling the garment.
        const fit=Math.min(w/iw, h/ih)*PHOTO_ZOOM;
@@ -5124,7 +5222,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    ART={{x:x,y:y,w:w,h:h}};                                    // for drag hit-testing
    // Layout Studio: a chosen preset arranges the slots; freeform keeps the single block.
-   if(IS_APPAREL && CURLAYOUT!=='freeform'){{ _drawLayout(ctx,APPAREL_BOUND); }} else {{
+   if((IS_APPAREL||IS_BRANDED) && CURLAYOUT!=='freeform'){{ _drawLayout(ctx,APPAREL_BOUND); }} else {{
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
@@ -5167,7 +5265,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
      }}
    }}
-   if(IS_APPAREL && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
+   if((IS_APPAREL||IS_BRANDED) && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
      const hs=9;
@@ -5178,14 +5276,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
      if(PHOTO && PHOTO_RECT){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
-     ctx.fillText('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize',
-       b.x+b.w/2, b.y-7); ctx.restore(); }}
+     const _cap=IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
+       : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize');
+     ctx.fillText(_cap, b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
-     crop.textContent = IS_APPAREL
+     crop.textContent = IS_BRANDED
+       ? (sv?`🎁 Product preview - size ${{sv}} (your design stays inside the dashed area)`:"🎁 Product preview")
+       : (IS_APPAREL
        ? (sv?`👕 Garment preview - size ${{sv}} (your design stays inside the dashed area)`:"👕 Garment preview")
        : (sv?`📐 Final print preview - actual ${{sv}}\" crop`+(PHOTO?" (photo auto-fit to frame)":"")
-           : "📐 Final print preview"); }}
+           : "📐 Final print preview")); }}
    saveDraft(); updateReview();
  }}
  // ── Single-item review: show exactly what you're adding, before you add ──
