@@ -1093,6 +1093,7 @@
    <nav class="navlinks" id="navMenu" aria-label="Sections" onclick="closeNav()">
      <a href="#wallart" onclick="selectDept('wall');return false;">🖼️ Wall Art</a>
      <a href="#apparel" onclick="selectDept('apparel');return false;">👕 Apparel</a>
+     <a href="#branded" onclick="selectDept('branded');return false;">🎁 Branded</a>
      <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
@@ -1135,6 +1136,14 @@
          <span class="depttitle">Apparel</span>
          <span class="deptsub">T-shirts, hoodies &amp; sweatshirts</span>
          <span class="deptgo">Browse Apparel →</span>
+       </div>
+     </a>
+     <a class="deptcard deptbranded" href="#branded" onclick="selectDept('branded');return false;">
+       <span class="depticon">🎁</span>
+       <div class="deptbody">
+         <span class="depttitle">Custom Branded Products</span>
+         <span class="deptsub">Totes, bottles, tumblers, notebooks &amp; more</span>
+         <span class="deptgo">Browse Branded →</span>
        </div>
      </a>
    </div>
@@ -1180,6 +1189,7 @@
  <div id="deptswitch" class="deptswitch" style="display:none">
    <button type="button" class="dswall" onclick="selectDept('wall')">🖼️ Wall Art</button>
    <button type="button" class="dsapp" onclick="selectDept('apparel')">👕 Apparel</button>
+   <button type="button" class="dsbranded" onclick="selectDept('branded')">🎁 Branded</button>
    <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
  </div>
  <div id="deptWall" class="deptpane" style="display:none">
@@ -2005,6 +2015,28 @@
    });
    applyApparelFilters();
  }
+ function applyBrandedFilters(){
+   var cat=_afVal('bfCat'),t=_afVal('bfType'),
+       c=_afVal('bfColor'),s=_afVal('bfSize');
+   var cards=document.querySelectorAll('.brandcard'),shown=0;
+   cards.forEach(function(card){
+     var ds=card.dataset;
+     var ok=(!cat||ds.cat===cat)&&(!t||ds.type===t)
+       &&(!c||(ds.colors||'').split(',').indexOf(c)>=0)
+       &&(!s||(ds.sizes||'').split(',').indexOf(s)>=0);
+     card.classList.toggle('hide',!ok); if(ok)shown++;
+   });
+   var cnt=document.getElementById('bfCount');
+   if(cnt)cnt.textContent=shown+(shown===1?' product':' products');
+   var nm=document.getElementById('bfNoMatch');
+   if(nm)nm.style.display=shown?'none':'block';
+ }
+ function clearBrandedFilters(){
+   ['bfCat','bfType','bfColor','bfSize'].forEach(function(id){
+     var e=document.getElementById(id); if(e)e.value='';
+   });
+   applyBrandedFilters();
+ }
  let CART = [];
  const QD = [[4, 0.15], [3, 0.12], [2, 0.08], [1, 0.0]];
  function qdisc(q){let best=0; for(const t of QD){if(q>=t[0]&&t[1]>best)best=t[1];} return best;}
@@ -2083,22 +2115,28 @@
  let DEPT=null;
  function selectDept(d){
    DEPT=d;
-   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel');
+   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
+       br=document.getElementById('deptBranded');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display = d==='wall' ? '' : 'none';
    if(a) a.style.display = d==='apparel' ? '' : 'none';
+   if(br) br.style.display = d==='branded' ? '' : 'none';
    if(sw){ sw.style.display='flex';
-     var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp');
+     var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp'),
+         bb=sw.querySelector('.dsbranded');
      if(bw) bw.classList.toggle('on', d==='wall');
-     if(ba) ba.classList.toggle('on', d==='apparel'); }
-   var pane = d==='wall' ? w : a;
+     if(ba) ba.classList.toggle('on', d==='apparel');
+     if(bb) bb.classList.toggle('on', d==='branded'); }
+   var pane = d==='wall' ? w : (d==='apparel' ? a : br);
    if(pane) pane.scrollIntoView({behavior:'smooth',block:'start'});
  }
  function showAllDepartments(){
    DEPT=null;
-   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel');
+   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
+       br=document.getElementById('deptBranded');
    var sw=document.getElementById('deptswitch');
-   if(w) w.style.display='none'; if(a) a.style.display='none'; if(sw) sw.style.display='none';
+   if(w) w.style.display='none'; if(a) a.style.display='none';
+   if(br) br.style.display='none'; if(sw) sw.style.display='none';
    var d=document.getElementById('depts'); if(d) d.scrollIntoView({behavior:'smooth',block:'start'});
  }
  function toggleBasket(){const p=document.getElementById('basketPanel');

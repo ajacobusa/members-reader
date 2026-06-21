@@ -1553,6 +1553,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     _dept_app_img = next((p for p in (brand / "dept-apparel.jpg",
                                       brand / "dept-apparel.png") if p.exists()), None)
     dept_app_src = _emit(_dept_app_img, "dept-apparel.jpg") if _dept_app_img else ""
+    _dept_branded_img = next((p for p in (brand / "dept-branded.jpg",
+                                          brand / "dept-branded.png") if p.exists()), None)
+    dept_branded_src = (_emit(_dept_branded_img, "dept-branded.jpg")
+                        if _dept_branded_img else "")
     # Per-garment product photos for the apparel tiles, keyed by garment_id so each
     # GENDER shows its OWN model photo (brand/tile-<garment_id>.jpg, e.g.
     # tile-m_tshirt.jpg / tile-w_tshirt.jpg). Falls back to the shaded SVG tile when
@@ -2790,6 +2794,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <nav class="navlinks" id="navMenu" aria-label="Sections" onclick="closeNav()">
      <a href="#wallart" onclick="selectDept('wall');return false;">🖼️ Wall Art</a>
      <a href="#apparel" onclick="selectDept('apparel');return false;">👕 Apparel</a>
+     <a href="#branded" onclick="selectDept('branded');return false;">🎁 Branded</a>
      <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
@@ -2832,6 +2837,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="depttitle">Apparel</span>
          <span class="deptsub">T-shirts, hoodies &amp; sweatshirts</span>
          <span class="deptgo">Browse Apparel →</span>
+       </div>
+     </a>
+     <a class="deptcard deptbranded" href="#branded" onclick="selectDept('branded');return false;">
+       {f'<img class="deptimg" loading="lazy" src="{dept_branded_src}" alt="Custom branded products - totes, bottles &amp; more">' if dept_branded_src else '<span class="depticon">🎁</span>'}
+       <div class="deptbody">
+         <span class="depttitle">Custom Branded Products</span>
+         <span class="deptsub">Totes, bottles, tumblers, notebooks &amp; more</span>
+         <span class="deptgo">Browse Branded →</span>
        </div>
      </a>
    </div>
@@ -2881,6 +2894,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div id="deptswitch" class="deptswitch" style="display:none">
    <button type="button" class="dswall" onclick="selectDept('wall')">🖼️ Wall Art</button>
    <button type="button" class="dsapp" onclick="selectDept('apparel')">👕 Apparel</button>
+   <button type="button" class="dsbranded" onclick="selectDept('branded')">🎁 Branded</button>
    <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
  </div>
  <div id="deptWall" class="deptpane" style="display:none">
@@ -3706,6 +3720,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }});
    applyApparelFilters();
  }}
+ function applyBrandedFilters(){{
+   var cat=_afVal('bfCat'),t=_afVal('bfType'),
+       c=_afVal('bfColor'),s=_afVal('bfSize');
+   var cards=document.querySelectorAll('.brandcard'),shown=0;
+   cards.forEach(function(card){{
+     var ds=card.dataset;
+     var ok=(!cat||ds.cat===cat)&&(!t||ds.type===t)
+       &&(!c||(ds.colors||'').split(',').indexOf(c)>=0)
+       &&(!s||(ds.sizes||'').split(',').indexOf(s)>=0);
+     card.classList.toggle('hide',!ok); if(ok)shown++;
+   }});
+   var cnt=document.getElementById('bfCount');
+   if(cnt)cnt.textContent=shown+(shown===1?' product':' products');
+   var nm=document.getElementById('bfNoMatch');
+   if(nm)nm.style.display=shown?'none':'block';
+ }}
+ function clearBrandedFilters(){{
+   ['bfCat','bfType','bfColor','bfSize'].forEach(function(id){{
+     var e=document.getElementById(id); if(e)e.value='';
+   }});
+   applyBrandedFilters();
+ }}
  let CART = [];
  const QD = {qty_discount_json};
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
@@ -3784,22 +3820,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let DEPT=null;
  function selectDept(d){{
    DEPT=d;
-   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel');
+   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
+       br=document.getElementById('deptBranded');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display = d==='wall' ? '' : 'none';
    if(a) a.style.display = d==='apparel' ? '' : 'none';
+   if(br) br.style.display = d==='branded' ? '' : 'none';
    if(sw){{ sw.style.display='flex';
-     var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp');
+     var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp'),
+         bb=sw.querySelector('.dsbranded');
      if(bw) bw.classList.toggle('on', d==='wall');
-     if(ba) ba.classList.toggle('on', d==='apparel'); }}
-   var pane = d==='wall' ? w : a;
+     if(ba) ba.classList.toggle('on', d==='apparel');
+     if(bb) bb.classList.toggle('on', d==='branded'); }}
+   var pane = d==='wall' ? w : (d==='apparel' ? a : br);
    if(pane) pane.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function showAllDepartments(){{
    DEPT=null;
-   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel');
+   var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
+       br=document.getElementById('deptBranded');
    var sw=document.getElementById('deptswitch');
-   if(w) w.style.display='none'; if(a) a.style.display='none'; if(sw) sw.style.display='none';
+   if(w) w.style.display='none'; if(a) a.style.display='none';
+   if(br) br.style.display='none'; if(sw) sw.style.display='none';
    var d=document.getElementById('depts'); if(d) d.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function toggleBasket(){{const p=document.getElementById('basketPanel');

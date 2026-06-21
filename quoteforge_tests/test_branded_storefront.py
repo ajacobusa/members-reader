@@ -31,3 +31,13 @@ def test_branded_section_renders_products_and_facets(tmp_path):
     assert 'shopBranded(' in h
     assert 'BRANDED_FORMATS' in h and 'BRANDED_DIMS' in h
     assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
+def test_branded_is_a_third_department(tmp_path):
+    h = _page(tmp_path)
+    assert 'href="#branded"' in h
+    assert 'deptbranded' in h
+    assert 'id="deptBranded"' in h
+    assert "selectDept('branded')" in h
+    assert h.count("selectDept(") >= 3
+    assert "function applyBrandedFilters" in h and "function clearBrandedFilters" in h
