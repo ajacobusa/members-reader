@@ -23,3 +23,13 @@ def test_mug_section_renders_products_and_facets(tmp_path):
     assert 'shopMug(' in h
     assert 'MUG_FORMATS' in h and 'MUG_DIMS' in h
     assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
+def test_mug_is_a_department(tmp_path):
+    h = _page(tmp_path)
+    assert 'href="#mugs"' in h
+    assert 'deptmug' in h
+    assert 'id="deptMug"' in h
+    assert "selectDept('mug')" in h
+    assert h.count("selectDept(") >= 4
+    assert "function applyMugFilters" in h and "function clearMugFilters" in h

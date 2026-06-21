@@ -1750,6 +1750,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                                           brand / "dept-branded.png") if p.exists()), None)
     dept_branded_src = (_emit(_dept_branded_img, "dept-branded.jpg")
                         if _dept_branded_img else "")
+    _dept_mug_img = next((p for p in (brand / "dept-mug.jpg",
+                                      brand / "dept-mug.png") if p.exists()), None)
+    dept_mug_src = (_emit(_dept_mug_img, "dept-mug.jpg")
+                    if _dept_mug_img else "")
     # Per-garment product photos for the apparel tiles, keyed by garment_id so each
     # GENDER shows its OWN model photo (brand/tile-<garment_id>.jpg, e.g.
     # tile-m_tshirt.jpg / tile-w_tshirt.jpg). Falls back to the shaded SVG tile when
@@ -3030,6 +3034,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <a href="#wallart" onclick="selectDept('wall');return false;">🖼️ Wall Art</a>
      <a href="#apparel" onclick="selectDept('apparel');return false;">👕 Apparel</a>
      <a href="#branded" onclick="selectDept('branded');return false;">🎁 Branded</a>
+     <a href="#mugs" onclick="selectDept('mug');return false;">🍵 Mugs</a>
      <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
@@ -3082,6 +3087,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="deptgo">Browse Branded →</span>
        </div>
      </a>
+     <a class="deptcard deptmug" href="#mugs" onclick="selectDept('mug');return false;">
+       {f'<img class="deptimg" loading="lazy" src="{dept_mug_src}" alt="Custom mugs - ceramic, enamel &amp; travel">' if dept_mug_src else '<span class="depticon">🍵</span>'}
+       <div class="deptbody">
+         <span class="depttitle">Custom Mugs</span>
+         <span class="deptsub">Ceramic, enamel, travel &amp; colour-changing mugs</span>
+         <span class="deptgo">Browse Mugs →</span>
+       </div>
+     </a>
    </div>
  </section>
  <section class="hiw" aria-label="How it works">
@@ -3130,6 +3143,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <button type="button" class="dswall" onclick="selectDept('wall')">🖼️ Wall Art</button>
    <button type="button" class="dsapp" onclick="selectDept('apparel')">👕 Apparel</button>
    <button type="button" class="dsbranded" onclick="selectDept('branded')">🎁 Branded</button>
+   <button type="button" class="dsmug" onclick="selectDept('mug')">🍵 Mugs</button>
    <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
  </div>
  <div id="deptWall" class="deptpane" style="display:none">
@@ -4042,6 +4056,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }});
    applyBrandedFilters();
  }}
+ function applyMugFilters(){{
+   var cat=_afVal('mgCat'),t=_afVal('mgType'),
+       c=_afVal('mgColor'),s=_afVal('mgSize');
+   var cards=document.querySelectorAll('.mugcard'),shown=0;
+   cards.forEach(function(card){{
+     var ds=card.dataset;
+     var ok=(!cat||ds.cat===cat)&&(!t||ds.type===t)
+       &&(!c||(ds.colors||'').split(',').indexOf(c)>=0)
+       &&(!s||(ds.sizes||'').split(',').indexOf(s)>=0);
+     card.classList.toggle('hide',!ok); if(ok)shown++;
+   }});
+   var cnt=document.getElementById('mgCount');
+   if(cnt)cnt.textContent=shown+(shown===1?' product':' products');
+   var nm=document.getElementById('mgNoMatch');
+   if(nm)nm.style.display=shown?'none':'block';
+ }}
+ function clearMugFilters(){{
+   ['mgCat','mgType','mgColor','mgSize'].forEach(function(id){{
+     var e=document.getElementById(id); if(e)e.value='';
+   }});
+   applyMugFilters();
+ }}
  let CART = [];
  const QD = {qty_discount_json};
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
@@ -4122,27 +4158,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function selectDept(d){{
    DEPT=d;
    var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
-       br=document.getElementById('deptBranded');
+       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display = d==='wall' ? '' : 'none';
    if(a) a.style.display = d==='apparel' ? '' : 'none';
    if(br) br.style.display = d==='branded' ? '' : 'none';
+   if(mg) mg.style.display = d==='mug' ? '' : 'none';
    if(sw){{ sw.style.display='flex';
      var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp'),
-         bb=sw.querySelector('.dsbranded');
+         bb=sw.querySelector('.dsbranded'), bm=sw.querySelector('.dsmug');
      if(bw) bw.classList.toggle('on', d==='wall');
      if(ba) ba.classList.toggle('on', d==='apparel');
-     if(bb) bb.classList.toggle('on', d==='branded'); }}
-   var pane = d==='wall' ? w : (d==='apparel' ? a : br);
+     if(bb) bb.classList.toggle('on', d==='branded');
+     if(bm) bm.classList.toggle('on', d==='mug'); }}
+   var pane = d==='wall' ? w : (d==='apparel' ? a : (d==='branded' ? br : mg));
    if(pane) pane.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function showAllDepartments(){{
    DEPT=null;
    var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
-       br=document.getElementById('deptBranded');
+       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display='none'; if(a) a.style.display='none';
-   if(br) br.style.display='none'; if(sw) sw.style.display='none';
+   if(br) br.style.display='none'; if(mg) mg.style.display='none';
+   if(sw) sw.style.display='none';
    var d=document.getElementById('depts'); if(d) d.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function toggleBasket(){{const p=document.getElementById('basketPanel');
