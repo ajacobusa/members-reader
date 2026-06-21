@@ -1560,7 +1560,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
 <!-- Personalization-editor preview fonts load async (non-render-blocking); ready by
      the time a buyer opens the editor, but they never delay first paint. -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@400;600&family=Lora:wght@400;600&family=Dancing+Script:wght@600;700&family=Oswald:wght@500&display=swap" rel="stylesheet"></noscript>
 <style>
  :root{{--green:#103d2e;--green-d:#0b2c21;--gold:#c9a84c;--gold-d:#b3902f;
@@ -2324,6 +2324,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .dragbar .plbtn{{flex:1;border:0;border-radius:0;margin:0;padding:10px 4px;
    background:transparent;font-size:13px;font-weight:700;cursor:pointer;color:var(--green)}}
  .dragbar .plbtn.sel{{background:var(--green);color:#fff}}
+ .layoutgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px;margin:6px 0}}
+ .layoutthumb{{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}}
+ .layoutthumb.sel{{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}}
+ .layoutthumb svg{{width:100%;height:auto;display:block}}
+ .layoutthumb span{{display:block;font-size:9px;line-height:1.15;text-align:center;color:#5b6b62;margin-top:2px}}
+ .slotinputs label{{display:block;font-size:12px;font-weight:600;margin:7px 0 2px;color:#3a4a42}}
+ .slotinputs input{{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px}}
  .dbhint{{font-size:12.5px;color:var(--muted);font-weight:500;
    text-align:center;margin-top:7px}}
  .orderbox{{margin-top:14px;background:#fff;border:1px solid var(--line);
@@ -2815,6 +2822,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
+       <div class="dragbar" id="mlayoutbar" style="display:none">
+         <div class="dbq">&#127912; Pick a <b>layout</b> &mdash; we arrange your logo &amp; words professionally. Tweak anything after.</div>
+         <div id="mlayouts" class="layoutgrid"></div>
+         <div id="mslots" class="slotinputs"></div>
+       </div>
        <div class="dragbar" id="mframebar" style="display:none">
          <div class="dbq">&#128208; <b>Move &amp; resize your design</b> &mdash; drag the dashed box to move it, or
            <span class="grabtip"><span class="grabsq"></span> drag the green corner with your mouse to resize</span>.</div>
@@ -3246,7 +3258,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const FONTS = [["Cormorant","'Cormorant Garamond',serif"],
    ["Playfair","'Playfair Display',serif"],["Montserrat","'Montserrat',sans-serif"],
    ["Lora","'Lora',serif"],["Script","'Dancing Script',cursive"],
-   ["Oswald","'Oswald',sans-serif"]];
+   ["Oswald","'Oswald',sans-serif"],["Bebas","'Bebas Neue',sans-serif"]];
  const MAXCHARS = 250;
  const SIZEMAP = {sizemap_json};
  const EDITOR_PICKS = {editor_picks_json};
@@ -3356,6 +3368,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = IS_APPAREL ? 'block' : 'none';
+   // Layout Studio panel is apparel-only; (re)build the gallery + slot inputs.
+   const lb=document.getElementById('mlayoutbar');
+   if(lb) lb.style.display = IS_APPAREL ? 'block' : 'none';
+   if(IS_APPAREL){{ renderLayoutGallery(); renderSlotInputs(); }}
  }}
  function setProductType(t){{
    IS_APPAREL=(t==='apparel');
@@ -3511,11 +3527,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Capture the side being viewed, then record which sides carry a design so the
    // order knows the front AND back content (each side is independent).
    if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();
-   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc)); }};
+   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc || _slotsFilled(s.slots))); }};
    const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back)}} : null;
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
-     sides:_sides,
+     sides:_sides, wording:_slotWording(), layout:(IS_APPAREL?CURLAYOUT:''),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -3751,7 +3767,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // ── Design state, Save, and final-proof Accept ──
  function _designState(){{
    return {{listing:(DATA[CUR]||{{}}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
-     font:SELFONT, wall:SELWALL, wording:((document.getElementById('mtext')||{{}}).value||''),
+     font:SELFONT, wall:SELWALL, wording:_slotWording(),
+     layout:(IS_APPAREL?CURLAYOUT:''), slots:(IS_APPAREL?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
      photo:{{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}}}};
@@ -4192,6 +4209,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // which side is being designed: front | back
+ // Layout Studio: the selected preset layout + structured text slots. 'freeform'
+ // keeps today's single-text-block behaviour; any other key auto-arranges the
+ // logo + the slots below into a professional composition (see LAYOUTS).
+ let CURLAYOUT='freeform';
+ let SLOTS={{headline:'',secondary:'',arcTop:'',arcBottom:'',tagline:'',monogram:''}};
+ function _slot(k){{ return (SLOTS&&SLOTS[k])||''; }}
+ function _emptySlots(){{ return {{headline:'',secondary:'',arcTop:'',arcBottom:'',tagline:'',monogram:''}}; }}
+ function _slotsFilled(sl){{ if(!sl) return false; for(var k in sl) if((sl[k]||'').trim()) return true; return false; }}
+ // Readable wording from the active layout's slots (for the summary + the order).
+ function _slotWording(){{
+   if(CURLAYOUT==='freeform') return ((document.getElementById('mtext')||{{}}).value||'');
+   var L=_layout(CURLAYOUT), seen={{}}, out=[];
+   (L.slots||[]).forEach(function(s){{ var v=_slot(s.slot);
+     if(v && !seen[s.slot]){{ seen[s.slot]=1; out.push(v); }} }});
+   return out.join(' / ');
+ }}
  let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
@@ -4210,7 +4243,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const ta=document.getElementById('mtext');
    return {{ quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
      pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
-     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT }};
+     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT,
+     layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)) }};
  }}
  function _restoreSide(s){{
    const ta=document.getElementById('mtext');
@@ -4220,6 +4254,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      TPOS={{x:s.tpos.x,y:s.tpos.y}}; TSIZE=s.tsize; TROT=s.trot;
      BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
      if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
+     CURLAYOUT=s.layout||'freeform'; SLOTS=s.slots?JSON.parse(JSON.stringify(s.slots)):_emptySlots();
      if(s.photoSrc){{ var im=new Image(); im.onload=function(){{drawArt();}}; im.src=s.photoSrc;
        PHOTO=im; _showPhotoCtl(true); }}
      else {{ PHOTO=null; _showPhotoCtl(false); }}
@@ -4227,10 +4262,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
+     CURLAYOUT='freeform'; SLOTS=_emptySlots();
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
    _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
    var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
+   renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }}
  function setPlacement(p){{
    if(p!=='back') p='front';
@@ -4449,6 +4486,95 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "Royal Blue":"#2f4ba0","Red":"#b3322c","Maroon":"#5e2a32","Forest Green":"#2e4a39",
    "Sage":"#7f9b78","Mustard":"#cda434","Purple":"#5b4b8a","Dusty Rose":"#c98a9a",
    "Brown":"#5a4334"}};
+ // Data-driven apparel layouts. Each slot: kind 'arc'|'line', position as a
+ // FRACTION of the print bound b={{x,y,w,h}}, weight = font size as a fraction of
+ // min(w,h), font + caps. logo.frame names a decoration; r/midAngle/sweep drive
+ // arcs (sweep +1 top, -1 bottom). More layouts are appended in a later step.
+ const LAYOUTS=[
+  {{key:'freeform',name:'Freeform'}},
+  {{key:'badge',name:'Circular Badge',logo:{{cx:0.5,cy:0.5,scale:0.42,frame:'doublering'}},
+    decor:['doublering','waves'],defaultFont:"'Oswald',sans-serif",
+    slots:[
+     {{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:-90,sweep:1,weight:0.085,caps:true}},
+     {{slot:'arcBottom',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:90,sweep:-1,weight:0.06,caps:true}}
+    ]}}
+  ,{{key:'emblem',name:'Vintage Emblem',logo:{{cx:0.5,cy:0.46,scale:0.34,frame:'border'}},
+    decor:['border','banner'],defaultFont:"'Cormorant Garamond',serif",
+    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.16,weight:0.10,caps:true}},
+           {{slot:'secondary',kind:'line',x:0.5,y:0.535,weight:0.045,caps:true}},
+           {{slot:'tagline',kind:'line',x:0.5,y:0.88,weight:0.04,caps:true}}]}}
+  ,{{key:'minimal',name:'Modern Minimalist',logo:{{cx:0.5,cy:0.36,scale:0.24,frame:'none'}},
+    decor:['rule'],defaultFont:"'Montserrat',sans-serif",
+    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.60,weight:0.08,caps:true}},
+           {{slot:'tagline',kind:'line',x:0.5,y:0.74,weight:0.035,caps:true}}]}}
+  ,{{key:'street',name:'Oversized Streetwear',logo:{{cx:0.5,cy:0.40,scale:0.62,frame:'none'}},
+    decor:[],defaultFont:"'Bebas Neue',sans-serif",
+    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.62,weight:0.20,caps:true}},
+           {{slot:'secondary',kind:'line',x:0.5,y:0.82,weight:0.07,caps:true}}]}}
+  ,{{key:'vstack',name:'Vertical Stack',logo:{{cx:0.5,cy:0.5,scale:0.34,frame:'none'}},
+    decor:['rule'],defaultFont:"'Bebas Neue',sans-serif",
+    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.18,weight:0.12,caps:true}},
+           {{slot:'secondary',kind:'line',x:0.5,y:0.80,weight:0.06,caps:true}},
+           {{slot:'tagline',kind:'line',x:0.5,y:0.90,weight:0.04,caps:true}}]}}
+  ,{{key:'hbanner',name:'Horizontal Banner',logo:{{cx:0.28,cy:0.5,scale:0.30,frame:'none'}},
+    decor:[],defaultFont:"'Oswald',sans-serif",
+    slots:[{{slot:'headline',kind:'line',x:0.62,y:0.44,weight:0.10,caps:true}},
+           {{slot:'secondary',kind:'line',x:0.62,y:0.58,weight:0.05,caps:true}}]}}
+  ,{{key:'chest',name:'Left-Chest Logo',logo:{{cx:0.32,cy:0.34,scale:0.18,frame:'none'}},
+    decor:[],defaultFont:"'Oswald',sans-serif",
+    slots:[{{slot:'headline',kind:'line',x:0.32,y:0.47,weight:0.04,caps:true}}]}}
+  ,{{key:'backprint',name:'Back Print',logo:{{cx:0.5,cy:0.55,scale:0.5,frame:'none'}},
+    decor:[],defaultFont:"'Bebas Neue',sans-serif",
+    slots:[{{slot:'arcTop',kind:'arc',cx:0.5,cy:0.40,r:0.34,midAngle:-90,sweep:1,weight:0.07,caps:true}},
+           {{slot:'tagline',kind:'line',x:0.5,y:0.88,weight:0.07,caps:true}}]}}
+  ,{{key:'wrap',name:'Wraparound',logo:{{cx:0.5,cy:0.5,scale:0.46,frame:'none'}},
+    decor:[],defaultFont:"'Oswald',sans-serif",
+    slots:[{{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.46,midAngle:-90,sweep:1,weight:0.055,caps:true}}]}}
+  ,{{key:'collage',name:'Photo Collage',logo:{{cx:0.5,cy:0.46,scale:0.22,frame:'none'}},
+    decor:['collage'],defaultFont:"'Oswald',sans-serif",
+    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.92,weight:0.06,caps:true}}]}}
+  ,{{key:'adventure',name:'Adventure Badge',logo:{{cx:0.5,cy:0.5,scale:0.30,frame:'shield'}},
+    decor:['shield'],defaultFont:"'Oswald',sans-serif",
+    slots:[{{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.33,midAngle:-90,sweep:1,weight:0.06,caps:true}},
+           {{slot:'arcBottom',kind:'arc',cx:0.5,cy:0.5,r:0.33,midAngle:90,sweep:-1,weight:0.05,caps:true}}]}}
+  ,{{key:'monogram',name:'Luxury Monogram',logo:{{cx:0.5,cy:0.42,scale:0.0,frame:'monogram'}},
+    decor:['monogram'],defaultFont:"'Cormorant Garamond',serif",
+    slots:[{{slot:'monogram',kind:'line',x:0.5,y:0.42,weight:0.26,caps:true}},
+           {{slot:'headline',kind:'line',x:0.5,y:0.74,weight:0.05,caps:true}}]}}
+ ];
+ function _layout(k){{ for(var i=0;i<LAYOUTS.length;i++) if(LAYOUTS[i].key===k) return LAYOUTS[i]; return LAYOUTS[0]; }}
+ // Layout gallery: a thumbnail per LAYOUTS entry; picking one swaps the visible
+ // text-slot inputs and redraws. Customer-facing slot labels (no design jargon).
+ const SLOT_LABELS={{headline:'Main words',secondary:'Second line',arcTop:'Top curved line',
+   arcBottom:'Bottom curved line',tagline:'Small line (date / place)',monogram:'Initials'}};
+ function _thumbSVG(L){{
+   if(L.key==='freeform') return '<svg viewBox="0 0 60 60"><rect x="6" y="22" width="48" height="6" rx="2" fill="#c9d6cd"/><rect x="14" y="32" width="32" height="5" rx="2" fill="#dfe6e1"/></svg>';
+   var arcs=(L.slots||[]).some(function(s){{return s.kind==='arc';}});
+   var emb='<path d="M22,38 L30,24 L34,31 L40,21 L46,38 Z" fill="#1c1c1e"/>';
+   var top=arcs?('<path id="th_'+L.key+'" d="M14,30 A16,16 0 0 1 46,30" fill="none"/>'+
+     '<text font-size="7" fill="#1c1c1e"><textPath href="#th_'+L.key+'" startOffset="50%" text-anchor="middle">ABC</textPath></text>'):'';
+   return '<svg viewBox="0 0 60 60">'+top+emb+'</svg>';
+ }}
+ function renderLayoutGallery(){{
+   var box=document.getElementById('mlayouts'); if(!box) return;
+   box.innerHTML=LAYOUTS.map(L=>
+     `<div class="layoutthumb${{L.key===CURLAYOUT?' sel':''}}" role="button" tabindex="0" title="${{L.name}}" `+
+     `onclick="pickLayout('${{L.key}}')" onkeydown="if(event.key==='Enter')pickLayout('${{L.key}}')">`+
+     `${{_thumbSVG(L)}}<span>${{L.name}}</span></div>`).join('');
+ }}
+ function renderSlotInputs(){{
+   var box=document.getElementById('mslots'); if(!box) return;
+   var L=_layout(CURLAYOUT);
+   var keys=(L.slots||[]).map(s=>s.slot);
+   var uniq=keys.filter((k,i)=>keys.indexOf(k)===i);
+   box.innerHTML=uniq.map(k=>
+     `<label>${{SLOT_LABELS[k]}}</label>`+
+     `<input id="slot_${{k}}" maxlength="40" value="${{_slot(k).replace(/"/g,'&quot;')}}" oninput="onSlot('${{k}}',this.value)">`).join('');
+   // Freeform uses the existing wording box; a layout hides it (slots replace it).
+   var wb=document.getElementById('mwordbox'); if(wb) wb.style.display=(CURLAYOUT==='freeform')?'':'none';
+ }}
+ function onSlot(k,v){{ SLOTS[k]=v; if(k==='headline'){{ var ta=document.getElementById('mtext'); if(ta) ta.value=v; }} drawArt(); }}
+ function pickLayout(k){{ CURLAYOUT=k; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
@@ -4561,6 +4687,84 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _isLight(c){{ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }}
+ // Curved-text engine: draw `text` along a circle centred (cx,cy), radius r,
+ // centred on midDeg. sweep=+1 -> top arc (reads clockwise, glyphs upright
+ // outside the ring); sweep=-1 -> bottom arc (glyphs rotated 180 to read upright
+ // below). Advances the angle per glyph by its measured width. Powers the badge,
+ // wraparound, adventure and back-print layouts.
+ function drawArcText(ctx,text,cx,cy,r,midDeg,sweep,font,size,color,ls){{
+   text=(text||'').toString(); if(!text||r<=0) return; ls=ls||0;
+   ctx.save(); ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+   ctx.font='700 '+size+'px '+font;
+   var widths=[],total=0,i;
+   for(i=0;i<text.length;i++){{ var w=ctx.measureText(text[i]).width+ls; widths.push(w); total+=w; }}
+   var totalAngle=total/r;                        // radians the word subtends
+   var a=(midDeg*Math.PI/180) - sweep*totalAngle/2;
+   for(var j=0;j<text.length;j++){{
+     var aw=widths[j]/r; a+=sweep*aw/2;
+     var x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+     ctx.save(); ctx.translate(x,y);
+     ctx.rotate(a + (sweep>0?Math.PI/2:-Math.PI/2));
+     ctx.fillText(text[j],0,0); ctx.restore();
+     a+=sweep*aw/2;
+   }}
+   ctx.restore();
+ }}
+ // Render the selected layout inside the print bound b={{x,y,w,h}}: decorations,
+ // then each text slot (arc via drawArcText, else a centred/aligned line) sized by
+ // the slot weight. The logo (PHOTO) is already composited by drawArt above.
+ function _drawLayout(ctx,b){{
+   if(!b) return; const L=_layout(CURLAYOUT); if(!L||L.key==='freeform') return;
+   const R=Math.min(b.w,b.h), ink=SELTXT||'#1c1c1e', font=L.defaultFont||SELFONT;
+   (L.decor||[]).forEach(function(d){{ _decor(ctx,d,b,ink); }});
+   (L.slots||[]).forEach(function(s){{
+     var txt=_slot(s.slot); if(!txt) return;
+     var size=Math.max(11, R*(s.weight||0.07));
+     var t=s.caps?txt.toUpperCase():txt;
+     if(s.kind==='arc'){{
+       drawArcText(ctx,t, b.x+b.w*s.cx, b.y+b.h*s.cy, R*s.r, s.midAngle, s.sweep, font, size, ink, size*0.06);
+     }} else {{
+       ctx.save(); ctx.fillStyle=ink; ctx.font='700 '+size+'px '+font;
+       ctx.textAlign=s.align||'center'; ctx.textBaseline='middle';
+       ctx.fillText(t, b.x+b.w*(s.x==null?0.5:s.x), b.y+b.h*s.y); ctx.restore();
+     }}
+   }});
+ }}
+ // Decorations drawn in the ink colour inside the print bound b. Kept simple and
+ // print-safe (everything stays within b).
+ function _decor(ctx,kind,b,ink){{
+   const cx=b.x+b.w/2, cy=b.y+b.h/2, R=Math.min(b.w,b.h);
+   ctx.save(); ctx.strokeStyle=ink; ctx.fillStyle=ink; ctx.lineWidth=Math.max(2,R*0.012);
+   if(kind==='ring'){{ ctx.beginPath(); ctx.arc(cx,cy,R*0.47,0,7); ctx.stroke(); }}
+   else if(kind==='doublering'){{ ctx.beginPath(); ctx.arc(cx,cy,R*0.47,0,7); ctx.stroke();
+     ctx.lineWidth=Math.max(1,R*0.006); ctx.beginPath(); ctx.arc(cx,cy,R*0.42,0,7); ctx.stroke(); }}
+   else if(kind==='border'){{ ctx.strokeRect(b.x+b.w*0.06,b.y+b.h*0.06,b.w*0.88,b.h*0.88); }}
+   else if(kind==='rule'){{ ctx.beginPath(); ctx.moveTo(b.x+b.w*0.3,cy); ctx.lineTo(b.x+b.w*0.7,cy); ctx.stroke(); }}
+   else if(kind==='waves'){{ ctx.lineWidth=Math.max(2,R*0.01);
+     for(var k=0;k<2;k++){{ var yy=cy+R*(0.14+k*0.07); ctx.beginPath();
+       for(var wx=b.x+b.w*0.30;wx<=b.x+b.w*0.70;wx+=2){{ var yo=Math.sin((wx-b.x)/(b.w*0.05))*R*0.02;
+         (wx===b.x+b.w*0.30)?ctx.moveTo(wx,yy+yo):ctx.lineTo(wx,yy+yo); }} ctx.stroke(); }} }}
+   else if(kind==='banner'){{ var bw=b.w*0.5,bh=b.h*0.12,bx=cx-bw/2,by=cy+R*0.18;
+     ctx.fillRect(bx,by,bw,bh); }}
+   else if(kind==='shield'){{ ctx.beginPath();
+     ctx.moveTo(cx,b.y+b.h*0.12); ctx.lineTo(b.x+b.w*0.82,b.y+b.h*0.30);
+     ctx.lineTo(b.x+b.w*0.82,b.y+b.h*0.62); ctx.lineTo(cx,b.y+b.h*0.88);
+     ctx.lineTo(b.x+b.w*0.18,b.y+b.h*0.62); ctx.lineTo(b.x+b.w*0.18,b.y+b.h*0.30);
+     ctx.closePath(); ctx.stroke(); }}
+   else if(kind==='hexagon'){{ ctx.beginPath();
+     for(var i=0;i<6;i++){{ var ah=Math.PI/180*(60*i-90), hx=cx+Math.cos(ah)*R*0.46, hy=cy+Math.sin(ah)*R*0.46;
+       i?ctx.lineTo(hx,hy):ctx.moveTo(hx,hy); }} ctx.closePath(); ctx.stroke(); }}
+   else if(kind==='stars'){{ for(var s=-1;s<=1;s++){{ _star(ctx,cx+s*R*0.16,cy+R*0.30,R*0.03,ink); }} }}
+   else if(kind==='monogram'){{ ctx.beginPath(); ctx.arc(cx,cy,R*0.34,0,7); ctx.stroke(); }}
+   else if(kind==='collage'){{ var g=R*0.02;
+     [[0,0],[1,0],[0,1],[1,1]].forEach(function(p){{ ctx.strokeRect(
+       (p[0]?cx+g:b.x+b.w*0.10), (p[1]?cy+g:b.y+b.h*0.10), b.w*0.40-g, b.h*0.40-g); }}); }}
+   ctx.restore();
+ }}
+ function _star(ctx,cx,cy,r,ink){{ ctx.save(); ctx.fillStyle=ink; ctx.beginPath();
+   for(var i=0;i<10;i++){{ var rr=i%2?r*0.45:r, a=Math.PI/180*(36*i-90);
+     var x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }}
+   ctx.closePath(); ctx.fill(); ctx.restore(); }}
  // Cache loaded product-mockup images; redraw once a new one finishes loading.
  let _MOCKUP_IMG={{}};
  function _mockupImg(url){{
@@ -4642,6 +4846,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.restore();
    }}
    ART={{x:x,y:y,w:w,h:h}};                                    // for drag hit-testing
+   // Layout Studio: a chosen preset arranges the slots; freeform keeps the single block.
+   if(IS_APPAREL && CURLAYOUT!=='freeform'){{ _drawLayout(ctx,APPAREL_BOUND); }} else {{
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
@@ -4673,6 +4879,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.strokeStyle = _isLight(SELTXT) ? 'rgba(0,0,0,.78)' : 'rgba(255,255,255,.92)'; }}
    for(const ln of lines){{ if(overPhoto) ctx.strokeText(ln,0,ty); ctx.fillText(ln,0,ty); ty+=lh; }}
    ctx.restore();
+   }}
    // Optional shop-logo overlay (front & back) - a small brand mark below the
    // design. Drawn on whichever side is in view, since the toggle adds it to both.
    if(IS_APPAREL && LOGO_ON && GARMENT_LOGO_SRC){{

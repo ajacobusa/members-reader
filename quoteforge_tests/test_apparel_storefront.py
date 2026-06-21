@@ -606,3 +606,106 @@ def test_no_supplier_name_in_apparel_storefront(tmp_path):
     h = _page(tmp_path).lower()
     for banned in ("gelato", "printify", "printful"):
         assert banned not in h
+
+
+# ── Apparel Layout Studio (logo + wording preset layouts) ──────────────
+
+def test_layout_studio_display_fonts_loaded(tmp_path):
+    # REGRESSION: Layout Studio needs bold display fonts (Bebas Neue for
+    # streetwear/athletic, Oswald weights) loaded and offered in the font picker.
+    h = _page(tmp_path)
+    assert "Bebas+Neue" in h                      # loaded via Google Fonts
+    assert "Oswald:wght@500;600;700" in h
+    assert "'Bebas Neue'" in h                     # present in the FONTS picker list
+    assert "Oswald" in h
+
+
+def test_layout_studio_arc_text_engine(tmp_path):
+    # REGRESSION: the curved-text engine that arcs wording around the logo.
+    h = _page(tmp_path)
+    assert "function drawArcText" in h
+    assert "measureText" in h                      # advances angle by glyph width
+    assert "sweep" in h                            # top vs bottom arc direction
+
+
+def test_layout_studio_state_and_first_layouts(tmp_path):
+    # REGRESSION: layout state + the data-driven LAYOUTS table; Freeform default
+    # plus the hero Circular Badge with top/bottom arc slots.
+    h = _page(tmp_path)
+    assert "const LAYOUTS" in h
+    assert "let CURLAYOUT" in h and "'freeform'" in h        # freeform default
+    assert "let SLOTS" in h
+    for slot in ("headline", "secondary", "arcTop", "arcBottom", "tagline", "monogram"):
+        assert slot in h, slot
+    assert "Circular Badge" in h                              # hero layout present
+
+
+def test_layout_studio_drawart_branch(tmp_path):
+    # REGRESSION: drawArt renders a chosen layout (decor -> logo -> slots) instead
+    # of the single text block; freeform keeps today's path.
+    h = _page(tmp_path)
+    assert "function _drawLayout" in h
+    assert "_drawLayout(" in h                       # layout renderer invoked
+    assert "CURLAYOUT!=='freeform'" in h             # gated; freeform unchanged
+
+
+def test_layout_studio_decor_helpers(tmp_path):
+    # REGRESSION: decorative elements layouts can drop in (ring, banner, waves,
+    # shield/hexagon, rule, stars, monogram frame, collage frames).
+    h = _page(tmp_path)
+    assert "function _decor" in h
+    for d in ("ring", "doublering", "banner", "waves", "shield", "hexagon",
+              "rule", "stars", "monogram", "collage"):
+        assert "'" + d + "'" in h, d
+
+
+def test_layout_studio_all_twelve_layouts(tmp_path):
+    # REGRESSION: all 12 named layouts present (+ freeform).
+    h = _page(tmp_path)
+    names = ["Circular Badge", "Vintage Emblem", "Modern Minimalist", "Oversized Streetwear",
+             "Vertical Stack", "Horizontal Banner", "Left-Chest Logo", "Back Print",
+             "Wraparound", "Photo Collage", "Adventure Badge", "Luxury Monogram"]
+    for n in names:
+        assert n in h, n
+    for k in ("badge", "emblem", "minimal", "street", "vstack", "hbanner", "chest",
+              "backprint", "wrap", "collage", "adventure", "monogram"):
+        assert "'" + k + "'" in h, k
+
+
+def test_layout_studio_gallery_ui(tmp_path):
+    # REGRESSION: the editor exposes a Layout gallery (built from LAYOUTS) and
+    # swaps the visible text-slot inputs when a layout is chosen. The gallery is
+    # rendered client-side from LAYOUTS, so assert the generator + wiring, not a
+    # static thumbnail count.
+    h = _page(tmp_path)
+    assert 'id="mlayouts"' in h                       # gallery container
+    assert "function renderLayoutGallery" in h
+    assert "function pickLayout" in h
+    assert "function renderSlotInputs" in h            # swaps inputs per layout
+    assert "onSlot(" in h                              # slot input handler
+    assert "renderLayoutGallery()" in h                # invoked when apparel controls show
+    assert "LAYOUTS.map" in h                          # a thumbnail generated per layout
+    assert "layoutthumb" in h                          # gallery tile class
+    assert "SLOT_LABELS" in h                          # friendly slot labels
+
+
+def test_layout_studio_persists_and_payload(tmp_path):
+    # REGRESSION: layout + slots persist per side and reach the order payload;
+    # `wording` is a readable concat of the active slots; a slots-only badge (no
+    # headline) still counts as a designed side.
+    h = _page(tmp_path)
+    assert "layout:CURLAYOUT" in h                      # captured per side + on the item
+    assert "slots:" in h                                # slot text snapshot
+    assert "function _slotWording" in h                # readable concat
+    assert "_slotWording(" in h                        # used in payload/summary
+    assert "_slotsFilled(" in h                        # slots-only side counts as designed
+
+
+def test_layout_studio_no_supplier_leak(tmp_path):
+    # REGRESSION: layout names + help text never expose a print supplier. (The
+    # marketplace-copy rule for "Etsy" is covered by test_customer_copy_no_leak;
+    # "etsy" also appears as an incidental base64 substring, so it is not scanned
+    # here - this guard is specifically the Layout Studio's new copy.)
+    h = _page(tmp_path).lower()
+    for bad in ("gelato", "printify", "printful"):
+        assert bad not in h, bad
