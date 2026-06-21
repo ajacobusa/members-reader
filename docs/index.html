@@ -3307,7 +3307,13 @@
  }
  // Neutral flat product card for branded mode (real product mockups are a later
  // phase). Just a soft field + hairline so the print frame reads clearly on it.
- function _drawBrandedField(ctx,x,y,w,h){ ctx.save(); ctx.fillStyle='#f2efe9'; ctx.fillRect(x,y,w,h); ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }
+ // Flat product field filled with the SELECTED product colour (like the garment
+ // silhouette), so the design previews on the real product colour and the
+ // auto-contrast text (white on dark, dark on light) stays legible.
+ function _drawBrandedField(ctx,x,y,w,h){
+   var cn=(CURFMT.split(' - ')[1]||'White'); var col=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#f2efe9';
+   ctx.save(); ctx.fillStyle=col; ctx.fillRect(x,y,w,h);
+   ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }
  function _isLight(c){ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }
