@@ -4192,6 +4192,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // which side is being designed: front | back
+ // Layout Studio: the selected preset layout + structured text slots. 'freeform'
+ // keeps today's single-text-block behaviour; any other key auto-arranges the
+ // logo + the slots below into a professional composition (see LAYOUTS).
+ let CURLAYOUT='freeform';
+ let SLOTS={{headline:'',secondary:'',arcTop:'',arcBottom:'',tagline:'',monogram:''}};
+ function _slot(k){{ return (SLOTS&&SLOTS[k])||''; }}
  let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
@@ -4449,6 +4455,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "Royal Blue":"#2f4ba0","Red":"#b3322c","Maroon":"#5e2a32","Forest Green":"#2e4a39",
    "Sage":"#7f9b78","Mustard":"#cda434","Purple":"#5b4b8a","Dusty Rose":"#c98a9a",
    "Brown":"#5a4334"}};
+ // Data-driven apparel layouts. Each slot: kind 'arc'|'line', position as a
+ // FRACTION of the print bound b={{x,y,w,h}}, weight = font size as a fraction of
+ // min(w,h), font + caps. logo.frame names a decoration; r/midAngle/sweep drive
+ // arcs (sweep +1 top, -1 bottom). More layouts are appended in a later step.
+ const LAYOUTS=[
+  {{key:'freeform',name:'Freeform'}},
+  {{key:'badge',name:'Circular Badge',logo:{{cx:0.5,cy:0.5,scale:0.42,frame:'doublering'}},
+    decor:['doublering','waves'],defaultFont:"'Oswald',sans-serif",
+    slots:[
+     {{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:-90,sweep:1,weight:0.085,caps:true}},
+     {{slot:'arcBottom',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:90,sweep:-1,weight:0.06,caps:true}}
+    ]}}
+ ];
+ function _layout(k){{ for(var i=0;i<LAYOUTS.length;i++) if(LAYOUTS[i].key===k) return LAYOUTS[i]; return LAYOUTS[0]; }}
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat

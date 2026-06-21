@@ -626,3 +626,15 @@ def test_layout_studio_arc_text_engine(tmp_path):
     assert "function drawArcText" in h
     assert "measureText" in h                      # advances angle by glyph width
     assert "sweep" in h                            # top vs bottom arc direction
+
+
+def test_layout_studio_state_and_first_layouts(tmp_path):
+    # REGRESSION: layout state + the data-driven LAYOUTS table; Freeform default
+    # plus the hero Circular Badge with top/bottom arc slots.
+    h = _page(tmp_path)
+    assert "const LAYOUTS" in h
+    assert "let CURLAYOUT" in h and "'freeform'" in h        # freeform default
+    assert "let SLOTS" in h
+    for slot in ("headline", "secondary", "arcTop", "arcBottom", "tagline", "monogram"):
+        assert slot in h, slot
+    assert "Circular Badge" in h                              # hero layout present
