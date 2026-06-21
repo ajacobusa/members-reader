@@ -709,3 +709,16 @@ def test_layout_studio_no_supplier_leak(tmp_path):
     h = _page(tmp_path).lower()
     for bad in ("gelato", "printify", "printful"):
         assert bad not in h, bad
+
+
+def test_layout_studio_collage_multi_image(tmp_path):
+    # REGRESSION: Photo Collage supports up to 4 uploaded photos filling the 2x2
+    # grid; images persist per side and count the side as designed.
+    h = _page(tmp_path)
+    assert "let COLLAGE" in h                           # 4-photo state
+    assert "function collageUpload" in h               # per-slot file handler
+    assert "function _drawCollage" in h                # draws photos into quadrants
+    assert "_drawCollage(" in h                         # invoked in the collage layout
+    assert "collageUpload(" in h                        # upload inputs wired in the UI
+    assert "collage:COLLAGE.map" in h                   # persisted per side
+    assert "s.collage" in h                             # counts as a designed side
