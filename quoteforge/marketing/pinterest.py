@@ -8,8 +8,9 @@ ready to bulk-upload to Pinterest (manually or via the Pinterest API later).
 It also emits standalone *gift-guide* and *seasonal* pin rows that point at the
 shop home, so the board has evergreen + seasonal coverage, not just products.
 
-Pure-Pillow; no new dependencies. Destination links default to the shop URL
-(`ETSY_SHOP_URL`) until real per-listing URLs exist.
+Pure-Pillow; no new dependencies. Destination links point at the live store:
+the current Etsy shop today, or the direct site once `STORE_URL` is set to
+https://joffiels.com at the direct-store launch.
 """
 from __future__ import annotations
 
@@ -110,10 +111,13 @@ def build_pin_pack(numbers=None, kit_dir=None, out_dir=None) -> list[Pin]:
     """Generate the pin images + pins.csv. Returns the list of Pin rows."""
     from quoteforge.config import OUTPUT_DIR, SHOP_NAME
     try:
-        from quoteforge.config import ETSY_SHOP_URL  # may not exist
+        from quoteforge.config import STORE_URL, ETSY_SHOP_URL
     except Exception:  # noqa: BLE001
+        STORE_URL = ""
         ETSY_SHOP_URL = ""
-    shop_link = ETSY_SHOP_URL or f"https://www.etsy.com/shop/{SHOP_NAME}"
+    # Link to whichever store is live: STORE_URL (set to joffiels.com at the
+    # direct-store launch) wins; until then it falls back to the current Etsy shop.
+    shop_link = STORE_URL or ETSY_SHOP_URL or f"https://www.etsy.com/shop/{SHOP_NAME}"
     from quoteforge.etsy.listing_seo import build_launch_seo
 
     kit_dir = Path(kit_dir) if kit_dir else (OUTPUT_DIR / "launch_kit")
