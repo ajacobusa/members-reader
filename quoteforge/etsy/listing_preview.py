@@ -3527,7 +3527,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Capture the side being viewed, then record which sides carry a design so the
    // order knows the front AND back content (each side is independent).
    if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();
-   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc || _slotsFilled(s.slots))); }};
+   const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc || _slotsFilled(s.slots) || (s.collage&&s.collage.some(Boolean)))); }};
    const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back)}} : null;
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
@@ -4217,6 +4217,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _slot(k){{ return (SLOTS&&SLOTS[k])||''; }}
  function _emptySlots(){{ return {{headline:'',secondary:'',arcTop:'',arcBottom:'',tagline:'',monogram:''}}; }}
  function _slotsFilled(sl){{ if(!sl) return false; for(var k in sl) if((sl[k]||'').trim()) return true; return false; }}
+ // Photo Collage: up to 4 uploaded photos (Image objects) filling the 2x2 grid.
+ let COLLAGE=[null,null,null,null];
+ function _collageFilled(){{ return COLLAGE.some(function(im){{ return !!im; }}); }}
+ function collageUpload(i, inp){{
+   var f=inp.files&&inp.files[0]; if(!f) return;
+   if(!/(jpe?g|png)$/i.test(f.name)||f.size>MAX_UPLOAD_MB*1048576){{ inp.value=''; return; }}
+   var r=new FileReader();
+   r.onload=function(e){{ var img=new Image();
+     img.onload=function(){{ COLLAGE[i]=img; drawArt(); }}; img.src=e.target.result; }};
+   r.readAsDataURL(f);
+ }}
  // Readable wording from the active layout's slots (for the summary + the order).
  function _slotWording(){{
    if(CURLAYOUT==='freeform') return ((document.getElementById('mtext')||{{}}).value||'');
@@ -4244,7 +4255,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return {{ quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
      pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
      tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT,
-     layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)) }};
+     layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)),
+     collage:COLLAGE.map(function(im){{ return (im&&im.src)||''; }}) }};
  }}
  function _restoreSide(s){{
    const ta=document.getElementById('mtext');
@@ -4255,6 +4267,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
      if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
      CURLAYOUT=s.layout||'freeform'; SLOTS=s.slots?JSON.parse(JSON.stringify(s.slots)):_emptySlots();
+     COLLAGE=(s.collage||[]).map(function(src){{ if(!src) return null;
+       var ci=new Image(); ci.onload=function(){{drawArt();}}; ci.src=src; return ci; }});
+     while(COLLAGE.length<4) COLLAGE.push(null);
      if(s.photoSrc){{ var im=new Image(); im.onload=function(){{drawArt();}}; im.src=s.photoSrc;
        PHOTO=im; _showPhotoCtl(true); }}
      else {{ PHOTO=null; _showPhotoCtl(false); }}
@@ -4262,7 +4277,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
-     CURLAYOUT='freeform'; SLOTS=_emptySlots();
+     CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null];
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
    _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
@@ -4532,7 +4547,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     slots:[{{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.46,midAngle:-90,sweep:1,weight:0.055,caps:true}}]}}
   ,{{key:'collage',name:'Photo Collage',logo:{{cx:0.5,cy:0.46,scale:0.22,frame:'none'}},
     decor:['collage'],defaultFont:"'Oswald',sans-serif",
-    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.92,weight:0.06,caps:true}}]}}
+    slots:[{{slot:'headline',kind:'line',x:0.5,y:0.965,weight:0.055,caps:true}}]}}
   ,{{key:'adventure',name:'Adventure Badge',logo:{{cx:0.5,cy:0.5,scale:0.30,frame:'shield'}},
     decor:['shield'],defaultFont:"'Oswald',sans-serif",
     slots:[{{slot:'arcTop',kind:'arc',cx:0.5,cy:0.5,r:0.33,midAngle:-90,sweep:1,weight:0.06,caps:true}},
@@ -4570,6 +4585,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    box.innerHTML=uniq.map(k=>
      `<label>${{SLOT_LABELS[k]}}</label>`+
      `<input id="slot_${{k}}" maxlength="40" value="${{_slot(k).replace(/"/g,'&quot;')}}" oninput="onSlot('${{k}}',this.value)">`).join('');
+   // Photo Collage adds up to 4 photo uploads that fill the 2x2 grid.
+   if(CURLAYOUT==='collage'){{
+     box.innerHTML += `<label>Collage photos (up to 4)</label>`+
+       [0,1,2,3].map(i=>`<input type="file" accept="image/png,image/jpeg" class="collageup" `+
+         `aria-label="Collage photo ${{i+1}}" onchange="collageUpload(${{i}},this)">`).join('');
+   }}
    // Freeform uses the existing wording box; a layout hides it (slots replace it).
    var wb=document.getElementById('mwordbox'); if(wb) wb.style.display=(CURLAYOUT==='freeform')?'':'none';
  }}
@@ -4713,9 +4734,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Render the selected layout inside the print bound b={{x,y,w,h}}: decorations,
  // then each text slot (arc via drawArcText, else a centred/aligned line) sized by
  // the slot weight. The logo (PHOTO) is already composited by drawArt above.
+ // Photo Collage: cover-fit each uploaded photo into its quadrant of the 2x2 grid
+ // (same geometry as the 'collage' decoration frames, which overlay as borders).
+ function _drawCollage(ctx,b){{
+   const cx=b.x+b.w/2, cy=b.y+b.h/2, R=Math.min(b.w,b.h), g=R*0.02;
+   const quad=[[0,0],[1,0],[0,1],[1,1]];
+   for(var i=0;i<4;i++){{ var im=COLLAGE[i]; if(!im||!im.complete||!im.naturalWidth) continue;
+     var p=quad[i];
+     var rx=(p[0]?cx+g:b.x+b.w*0.10), ry=(p[1]?cy+g:b.y+b.h*0.10), rw=b.w*0.40-g, rh=b.h*0.40-g;
+     ctx.save(); ctx.beginPath(); ctx.rect(rx,ry,rw,rh); ctx.clip();
+     var cover=Math.max(rw/im.naturalWidth, rh/im.naturalHeight);
+     var dw=im.naturalWidth*cover, dh=im.naturalHeight*cover;
+     ctx.drawImage(im, rx+(rw-dw)/2, ry+(rh-dh)/2, dw, dh); ctx.restore();
+   }}
+ }}
  function _drawLayout(ctx,b){{
    if(!b) return; const L=_layout(CURLAYOUT); if(!L||L.key==='freeform') return;
    const R=Math.min(b.w,b.h), ink=SELTXT||'#1c1c1e', font=L.defaultFont||SELFONT;
+   if(L.key==='collage') _drawCollage(ctx,b);     // photos first; frames overlay them
    (L.decor||[]).forEach(function(d){{ _decor(ctx,d,b,ink); }});
    (L.slots||[]).forEach(function(s){{
      var txt=_slot(s.slot); if(!txt) return;
