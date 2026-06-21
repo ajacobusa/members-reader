@@ -33,3 +33,12 @@ def test_mug_is_a_department(tmp_path):
     assert "selectDept('mug')" in h
     assert h.count("selectDept(") >= 4
     assert "function applyMugFilters" in h and "function clearMugFilters" in h
+
+
+def test_mug_editor_mode_wired(tmp_path):
+    h = _page(tmp_path)
+    assert "let IS_MUG" in h
+    assert "function shopMug" in h
+    assert "MUG_FORMATS" in h and "MUG_DIMS" in h
+    assert "function _drawMugField" in h
+    assert ("IS_APPAREL||IS_BRANDED||IS_MUG" in h) or ("IS_MUG" in h and "_drawMugField" in h)
