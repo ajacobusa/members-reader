@@ -1066,7 +1066,8 @@ _BRANDED_SWATCH_HEX = {
 }
 
 
-def _branded_section(photos: dict | None = None) -> str:
+def _branded_section(photos: dict | None = None, external_assets: bool = False,
+                     assets=None) -> str:
     """Visible Custom Branded Products department - a department-store grid of
     merch lines (totes, bottles, notebooks, ...). Real product PHOTO per product
     when `photos` (product_id -> src) is supplied, else a neutral SVG fallback.
@@ -1140,6 +1141,7 @@ def _branded_section(photos: dict | None = None) -> str:
 
     # ── Faceted filter bar (Category / Type / Colour / Size) ──
     def _distinct(seq) -> list:
+        """Distinct truthy values from seq, preserving first-seen order."""
         out: list = []
         for x in seq:
             if x and x not in out:
@@ -1151,9 +1153,11 @@ def _branded_section(photos: dict | None = None) -> str:
     sizes_f = _distinct(s for p in shown for s in p.sizes)
 
     def _opts(vals) -> str:
+        """Render a list of values as <option> tags for a filter <select>."""
         return "".join(f'<option value="{v}">{v}</option>' for v in vals)
 
     def _sel(sid, label, all_label, opts) -> str:
+        """Render one labelled filter <select> with an 'all' default + options."""
         return (f'<select class="appfilter" id="{sid}" aria-label="{label}" '
                 f'onchange="applyBrandedFilters()">'
                 f'<option value="">{all_label}</option>{opts}</select>')
@@ -1176,22 +1180,29 @@ def _branded_section(photos: dict | None = None) -> str:
         'onclick="clearBrandedFilters()">Clear filters</button></p>')
     return (
         '<section class="apparel-sec branded-sec" id="branded">'
-        f'{_branded_hero()}{filterbar}'
+        f'{_branded_hero(external_assets, assets)}{filterbar}'
         f'<div class="appgroup"><div class="appgrid">{"".join(cards)}</div></div>'
         f'{nomatch}</section>')
 
 
-def _branded_hero() -> str:
+def _branded_hero(external_assets: bool = False, assets=None) -> str:
     """The branded-products department hero - mirrors the apparel hero markup and
     classes for a consistent department look. Generic copy (no supplier or
-    marketplace names). Uses brand/branded-hero.jpg when bundled."""
+    marketplace names). Uses brand/branded-hero.jpg when bundled. In external_assets
+    mode the hero photo is written to the assets folder and referenced by URL
+    (lazy-loaded) instead of inlined as a parse-blocking data-URI."""
     from quoteforge.config import OUTPUT_DIR
     img = ""
     for p in (Path(__file__).resolve().parents[2] / "brand" / "branded-hero.jpg",
               Path(OUTPUT_DIR) / "branded-hero.jpg"):
         try:
             if p.exists():
-                img = (f'<img class="apheroimg" src="{_web_img(p, 1200, 80)}" '
+                if external_assets and assets is not None:
+                    _save_web_jpg(p, assets / "branded-hero.jpg", 1200, 80)
+                    src = "assets/branded-hero.jpg"
+                else:
+                    src = _web_img(p, 1200, 80)
+                img = (f'<img class="apheroimg" src="{src}" '
                        f'alt="Custom branded products" loading="lazy">')
                 break
         except Exception:  # noqa: BLE001
@@ -2957,7 +2968,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  </div>
  </div>
  <div id="deptApparel" class="deptpane" style="display:none">{_apparel_section(_garment_photos)}</div>
- <div id="deptBranded" class="deptpane" style="display:none">{_branded_section(_branded_photos)}</div>
+ <div id="deptBranded" class="deptpane" style="display:none">{_branded_section(_branded_photos, external_assets, assets)}</div>
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}

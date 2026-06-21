@@ -62,6 +62,7 @@ _BRANDED_TYPES = [
 
 
 def _build_catalog() -> list[BrandedProduct]:
+    """Build the branded product catalog from the type spec, one line per item."""
     out: list[BrandedProduct] = []
     for pid, name, type_name, cat, sizes, colors, cost, brand, tier, w, h in _BRANDED_TYPES:
         out.append(BrandedProduct(
@@ -77,6 +78,7 @@ BRANDED_CATALOG: list[BrandedProduct] = _build_catalog()
 
 @dataclass
 class BrandedVariant:
+    """One sellable branded product/size/colour combination with cost and floor price."""
     product_id: str
     name: str
     size: str
@@ -89,21 +91,30 @@ class BrandedVariant:
 
 
 def get_product(product_id: str) -> BrandedProduct | None:
+    """Find a branded product by id (case-insensitive), or None."""
     key = (product_id or "").strip().lower()
     return next((p for p in BRANDED_CATALOG if p.product_id == key), None)
 
 
 def branded_dimensions_for(product_id: str) -> tuple[int, int]:
+    """(width_px, height_px) of the print area for a branded product, or a safe default.
+
+    The design editor reads this to bound branded art to the printable region
+    instead of the full poster canvas."""
     p = get_product(product_id)
     return (p.width_px, p.height_px) if p else DEFAULT_BRANDED_DIMS
 
 
 def _variant_sku(p: BrandedProduct, size: str, color: str) -> str:
+    """Stable per-variant SKU, e.g. GEL-TOTE-ONE-SIZE-NATURAL."""
     part = lambda s: s.upper().replace(" ", "-")
     return f"{p.sku_prefix}-{part(size)}-{part(color)}"
 
 
 def _variant_cost(p: BrandedProduct, sku: str) -> float | None:
+    """Seed base cost, with any live Gelato override applied.
+
+    Returns None when the live sync has marked the variant discontinued."""
     from quoteforge.etsy.catalog_state import sku_override
     ov = sku_override(sku)
     if ov and ov.get("available") is False:
@@ -114,6 +125,9 @@ def _variant_cost(p: BrandedProduct, sku: str) -> float | None:
 
 
 def _list_floor(floor_pct: float | None) -> float:
+    """The branded anchor margin: the LIST target, never below the 60% floor.
+    The global TARGET_MARGIN_PCT is an ABSOLUTE floor even if a lower override is
+    passed, mirroring the apparel + print variations."""
     from quoteforge.config import LIST_MARGIN_PCT, TARGET_MARGIN_PCT
     if floor_pct is not None:
         return max(floor_pct, TARGET_MARGIN_PCT)
@@ -121,6 +135,9 @@ def _list_floor(floor_pct: float | None) -> float:
 
 
 def build_branded_variations(floor_pct: float | None = None) -> list[BrandedVariant]:
+    """Every sellable branded variant (product x size x colour), each priced to
+    clear the 60% net-margin floor. Variants the Gelato sync has discontinued are
+    dropped, exactly like a discontinued frame."""
     from quoteforge.etsy.variations import min_price_for_margin, net_margin_pct
     floor = _list_floor(floor_pct)
     out: list[BrandedVariant] = []
@@ -140,6 +157,7 @@ def build_branded_variations(floor_pct: float | None = None) -> list[BrandedVari
 
 
 def branded_skus() -> list[str]:
+    """Every branded variant SKU (the fulfillment routing keys), sorted."""
     return sorted({_variant_sku(p, s, c)
                    for p in BRANDED_CATALOG for s in p.sizes for c in p.colors})
 
@@ -162,6 +180,8 @@ def parse_branded_format(fmt: str) -> tuple[str | None, str | None]:
 
 
 def branded_sku_for(product_id: str, size: str, color: str) -> str | None:
+    """The variant SKU for a (product, size, colour), or None if the combination
+    is not in the catalogue (so a bad size/colour can never route to production)."""
     p = get_product(product_id)
     if not p or size not in p.sizes or color not in p.colors:
         return None
@@ -169,6 +189,10 @@ def branded_sku_for(product_id: str, size: str, color: str) -> str | None:
 
 
 def resolve_branded_sku(fmt: str, size: str) -> str | None:
+    """Storefront basket line ("Organic Cotton Tote Bag - Natural", "One Size") ->
+    variant SKU, or None when the line is not a valid branded selection. The single
+    entry point order-ingest calls to obtain a fulfilment routing key; None means
+    'not branded / not orderable' so the caller routes to manual review."""
     pid, color = parse_branded_format(fmt)
     if not pid:
         return None
