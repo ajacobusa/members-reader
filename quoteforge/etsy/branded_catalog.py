@@ -142,3 +142,80 @@ def build_branded_variations(floor_pct: float | None = None) -> list[BrandedVari
 def branded_skus() -> list[str]:
     return sorted({_variant_sku(p, s, c)
                    for p in BRANDED_CATALOG for s in p.sizes for c in p.colors})
+
+
+# ── Fulfilment resolver: storefront cart line -> variant SKU ──────
+# Mirrors apparel_catalog.py's ingest seam. The storefront records a branded
+# choice as a format ("{product} - {colour}") plus a size; order-ingest calls
+# these pure functions to turn that basket line into the variant SKU, which maps
+# to a real Gelato UID via the SAME map mechanism wall-art and apparel SKUs use.
+# Pure + side-effect-free, so safe to call from any ingest path.
+
+def parse_branded_format(fmt: str) -> tuple[str | None, str | None]:
+    """('Organic Cotton Tote Bag - Natural') -> (product_id, colour); (None, None)
+    for anything that is not a real branded format (so apparel/wall-art are safe)."""
+    if not fmt or " - " not in fmt:
+        return (None, None)
+    name, _, color = fmt.partition(" - ")
+    p = next((x for x in BRANDED_CATALOG if x.name == name.strip()), None)
+    return (p.product_id, color.strip()) if p else (None, None)
+
+
+def branded_sku_for(product_id: str, size: str, color: str) -> str | None:
+    p = get_product(product_id)
+    if not p or size not in p.sizes or color not in p.colors:
+        return None
+    return _variant_sku(p, size, color)
+
+
+def resolve_branded_sku(fmt: str, size: str) -> str | None:
+    pid, color = parse_branded_format(fmt)
+    if not pid:
+        return None
+    return branded_sku_for(pid, size, color)
+
+
+def enrich_branded_order(order_data: dict) -> dict:
+    """Merge branded fields into an order. {} for non-branded orders. Single ingest seam."""
+    fmt = (order_data.get("material") or order_data.get("fmt")
+           or order_data.get("product_format") or order_data.get("format") or "")
+    size = (order_data.get("product_size") or order_data.get("size") or "")
+    pid, color = parse_branded_format(fmt)
+    if not pid:
+        return {}
+    sku = branded_sku_for(pid, size, color)
+    out: dict = {"product_type": "branded", "product_id": pid,
+                 "color": color, "material": fmt, "gelato_sku": sku}
+    p = get_product(pid)
+    if p and sku:
+        cost = _variant_cost(p, sku)
+        if cost is not None:
+            out["gelato_cost"] = cost
+    from quoteforge.automation.gelato_variant_resolver import resolve_variant_uid
+    uid = resolve_variant_uid(sku, pid, color, size)
+    if uid:
+        out["gelato_product_uid"] = uid
+    return out
+
+
+# ── Isolated Gelato placeholder guard (separate from print + apparel guards) ──
+
+def verify_branded_mappings() -> dict:
+    """Every branded variant GO-LIVE READY when its UID is statically mapped OR its
+    family is mapped (resolved dynamically). Independent of the print + apparel guards."""
+    from quoteforge.automation.gelato_sync import _uid_map
+    from quoteforge.automation.gelato_variant_resolver import family_covered
+    uid_map = _uid_map()
+    vs = build_branded_variations()
+    placeholders = []
+    for v in vs:
+        st = uid_map.get(v.gelato_sku)
+        if st and not str(st).upper().startswith("GEL-"):
+            continue
+        if family_covered(v.product_id):
+            continue
+        placeholders.append(v.gelato_sku)
+    total = len(vs)
+    return {"total": total, "configured": total - len(placeholders),
+            "placeholder_count": len(placeholders), "placeholders": placeholders,
+            "all_real": not placeholders}

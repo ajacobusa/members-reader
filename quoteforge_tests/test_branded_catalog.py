@@ -21,3 +21,27 @@ def test_every_variant_clears_the_margin_floor():
 def test_dimensions_lookup_falls_back_safely():
     assert branded_dimensions_for("tote")[0] > 0
     assert branded_dimensions_for("does-not-exist")[0] > 0
+
+
+def test_parse_and_resolve_sku_round_trip():
+    from quoteforge.etsy.branded_catalog import parse_branded_format, resolve_branded_sku
+    assert parse_branded_format("Organic Cotton Tote Bag - Natural") == ("tote", "Natural")
+    assert parse_branded_format("Framed - Oak") == (None, None)
+    assert resolve_branded_sku("Organic Cotton Tote Bag - Natural", "One Size") == "GEL-TOTE-ONE-SIZE-NATURAL"
+    assert resolve_branded_sku("Organic Cotton Tote Bag - Natural", "BadSize") is None
+
+
+def test_enrich_branded_order_merges_fields_or_empty():
+    from quoteforge.etsy.branded_catalog import enrich_branded_order
+    out = enrich_branded_order({"material": "Organic Cotton Tote Bag - Natural", "size": "One Size"})
+    assert out["product_type"] == "branded" and out["product_id"] == "tote"
+    assert out["color"] == "Natural" and out["gelato_sku"] == "GEL-TOTE-ONE-SIZE-NATURAL"
+    assert out["gelato_cost"] > 0
+    assert enrich_branded_order({"material": "Framed - Oak"}) == {}
+
+
+def test_verify_branded_mappings_reports_placeholders():
+    from quoteforge.etsy.branded_catalog import verify_branded_mappings
+    rep = verify_branded_mappings()
+    assert rep["total"] > 0
+    assert set(("total", "configured", "placeholder_count", "placeholders", "all_real")) <= set(rep)
