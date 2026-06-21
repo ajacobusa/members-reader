@@ -3170,6 +3170,10 @@
  // Default the text colour to contrast the shirt, unless the buyer set one.
  function autoContrastText(cn){
    if(TXT_USER_SET) return;
+   // Mugs print on a WHITE ceramic body (the chosen colour is the handle/rim/
+   // interior ACCENT, not the print field), so text must contrast the light body
+   // - always dark, regardless of the accent colour.
+   if(typeof IS_MUG!=='undefined' && IS_MUG){ SELTXT='#1b1b1f'; renderTxt(); drawArt(); return; }
    var dark={'Black':1,'Charcoal':1,'Navy':1,'Royal Blue':1,'Red':1,'Maroon':1,
      'Forest Green':1,'Purple':1,'Brown':1};
    SELTXT = dark[cn] ? '#ffffff' : '#1b1b1f';
