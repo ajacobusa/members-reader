@@ -131,6 +131,40 @@ def build_local_catalog() -> dict:
             "image": "",                   # filled by enrich_from_gelato when live
             "mockups": {},
         }
+    # Branded products (Custom Branded Products dept) — same baseline treatment.
+    try:
+        from quoteforge.etsy.branded_catalog import (
+            BRANDED_CATALOG, build_branded_variations)
+    except Exception:  # noqa: BLE001
+        return out
+    b_price_from: dict = {}
+    b_cost_from: dict = {}
+    for v in build_branded_variations():
+        if v.price is not None:
+            b_price_from[v.product_id] = min(b_price_from.get(v.product_id, 1e9), v.price)
+        if v.gelato_cost is not None:
+            b_cost_from[v.product_id] = min(b_cost_from.get(v.product_id, 1e9),
+                                            v.gelato_cost)
+    for p in BRANDED_CATALOG:
+        if p.product_id not in b_price_from:
+            continue                       # discontinued -> not sellable -> skip
+        brand = p.brand.rsplit(" ", 1)[0] if p.brand else ""   # drop style code
+        out[p.product_id] = {
+            "id": p.product_id,
+            "name": p.name,
+            "type": "branded",
+            "type_name": p.type_name,
+            "gender": "",
+            "tier": p.tier,
+            "brand": brand,
+            "colors": list(p.colors),
+            "sizes": list(p.sizes),
+            "cost": round(b_cost_from.get(p.product_id, p.base_cost), 2),
+            "price": round(b_price_from[p.product_id], 2),
+            "available": True,
+            "image": "",                   # filled by enrich_from_gelato when live
+            "mockups": {},
+        }
     return out
 
 

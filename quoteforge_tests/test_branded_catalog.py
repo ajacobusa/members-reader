@@ -53,3 +53,16 @@ def test_verify_branded_mappings_reports_placeholders():
     rep = verify_branded_mappings()
     assert rep["total"] > 0
     assert set(("total", "configured", "placeholder_count", "placeholders", "all_real")) <= set(rep)
+
+
+def test_margin_guard_includes_branded():
+    from quoteforge.etsy.margin_guard import audit_catalog
+    rows = audit_catalog()["rows"]
+    assert any(r.get("kind") == "branded" for r in rows), "branded not in margin audit"
+
+
+def test_catalog_sync_baseline_includes_branded():
+    from quoteforge.automation.catalog_sync import build_local_catalog
+    records = build_local_catalog()
+    assert any(r.get("type") == "branded" or pid in {p.product_id for p in BRANDED_CATALOG}
+               for pid, r in records.items()), "branded not in local catalog baseline"
