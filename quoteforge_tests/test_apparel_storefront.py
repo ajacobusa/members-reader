@@ -325,7 +325,7 @@ def test_apparel_photo_can_shrink_and_move(tmp_path):
     assert "const fit=Math.min(w/iw, h/ih)*PHOTO_ZOOM" in h     # contain-fit x size
     assert "PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1)" in h   # drag = move
     assert 'min="0.2"' in h                                     # slider can shrink it
-    assert "(IS_APPAREL||IS_BRANDED))?0.2:1" in h               # size floor by type (apparel + branded)
+    assert "(IS_APPAREL||IS_BRANDED||IS_MUG))?0.2:1" in h       # size floor by type (apparel + branded + mug)
     assert "const cover=Math.max(w/iw, h/ih)*1.25*PHOTO_ZOOM" in h     # wall art fill kept
 
 
@@ -341,7 +341,7 @@ def test_apparel_editor_rotate_and_clean_proof(tmp_path):
     assert "drag the shirt" in h                             # spin hint in the UI
     # clean proof: chrome is gated behind !_CLEAN and the proof redraws clean
     assert "let _CLEAN=false" in h
-    assert "IS_BRANDED) && APPAREL_BOUND && !_CLEAN" in h     # chrome skipped when clean (apparel + branded)
+    assert "IS_MUG) && APPAREL_BOUND && !_CLEAN" in h         # chrome skipped when clean (apparel + branded + mug)
     assert "_CLEAN=true; drawArt()" in h                     # proof composites the clean canvas
 
 
@@ -560,7 +560,7 @@ def test_apparel_size_option_has_no_inches_suffix(tmp_path):
     # suppressed for apparel (and branded) so the option reads "M - $.." not
     # "M in - $..".
     h = _page(tmp_path)
-    assert "(IS_APPAREL||IS_BRANDED)?'':' in'" in h
+    assert "(IS_APPAREL||IS_BRANDED||IS_MUG)?'':' in'" in h
 
 
 def test_apparel_colour_swatches(tmp_path):

@@ -165,6 +165,40 @@ def build_local_catalog() -> dict:
             "image": "",                   # filled by enrich_from_gelato when live
             "mockups": {},
         }
+    # Mugs (Custom Mugs dept) — same baseline treatment.
+    try:
+        from quoteforge.etsy.mug_catalog import (
+            MUG_CATALOG, build_mug_variations)
+    except Exception:  # noqa: BLE001
+        return out
+    m_price_from: dict = {}
+    m_cost_from: dict = {}
+    for v in build_mug_variations():
+        if v.price is not None:
+            m_price_from[v.product_id] = min(m_price_from.get(v.product_id, 1e9), v.price)
+        if v.gelato_cost is not None:
+            m_cost_from[v.product_id] = min(m_cost_from.get(v.product_id, 1e9),
+                                            v.gelato_cost)
+    for p in MUG_CATALOG:
+        if p.product_id not in m_price_from:
+            continue                       # discontinued -> not sellable -> skip
+        brand = p.brand.rsplit(" ", 1)[0] if p.brand else ""   # drop style code
+        out[p.product_id] = {
+            "id": p.product_id,
+            "name": p.name,
+            "type": "mug",
+            "type_name": p.type_name,
+            "gender": "",
+            "tier": p.tier,
+            "brand": brand,
+            "colors": list(p.colors),
+            "sizes": list(p.sizes),
+            "cost": round(m_cost_from.get(p.product_id, p.base_cost), 2),
+            "price": round(m_price_from[p.product_id], 2),
+            "available": True,
+            "image": "",                   # filled by enrich_from_gelato when live
+            "mockups": {},
+        }
     return out
 
 
