@@ -45,3 +45,9 @@ def test_verify_mug_mappings_reports_placeholders():
     rep = verify_mug_mappings()
     assert rep["total"] > 0
     assert set(("total", "configured", "placeholder_count", "placeholders", "all_real")) <= set(rep)
+
+
+def test_pipeline_and_webhook_call_mug_enrich():
+    import quoteforge.automation.pipeline_orchestrator as po, quoteforge.automation.webhook_server as ws, inspect
+    assert "enrich_mug_order" in inspect.getsource(po)
+    assert "enrich_mug_order" in inspect.getsource(ws)

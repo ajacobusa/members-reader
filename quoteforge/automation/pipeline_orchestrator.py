@@ -191,6 +191,8 @@ def run_full_pipeline(
     order_data = {**order_data, **enrich_apparel_order(order_data)}
     from quoteforge.etsy.branded_catalog import enrich_branded_order
     order_data = {**order_data, **enrich_branded_order(order_data)}
+    from quoteforge.etsy.mug_catalog import enrich_mug_order
+    order_data = {**order_data, **enrich_mug_order(order_data)}
 
     # ── Stage 1: Order Intake ────────────────────────────────────
     _notify("order_intake", "Storing order in database...")
