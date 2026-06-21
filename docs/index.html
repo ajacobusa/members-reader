@@ -3053,6 +3053,29 @@
  function _isLight(c){ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }
+ // Curved-text engine: draw `text` along a circle centred (cx,cy), radius r,
+ // centred on midDeg. sweep=+1 -> top arc (reads clockwise, glyphs upright
+ // outside the ring); sweep=-1 -> bottom arc (glyphs rotated 180 to read upright
+ // below). Advances the angle per glyph by its measured width. Powers the badge,
+ // wraparound, adventure and back-print layouts.
+ function drawArcText(ctx,text,cx,cy,r,midDeg,sweep,font,size,color,ls){
+   text=(text||'').toString(); if(!text||r<=0) return; ls=ls||0;
+   ctx.save(); ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+   ctx.font='700 '+size+'px '+font;
+   var widths=[],total=0,i;
+   for(i=0;i<text.length;i++){ var w=ctx.measureText(text[i]).width+ls; widths.push(w); total+=w; }
+   var totalAngle=total/r;                        // radians the word subtends
+   var a=(midDeg*Math.PI/180) - sweep*totalAngle/2;
+   for(var j=0;j<text.length;j++){
+     var aw=widths[j]/r; a+=sweep*aw/2;
+     var x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+     ctx.save(); ctx.translate(x,y);
+     ctx.rotate(a + (sweep>0?Math.PI/2:-Math.PI/2));
+     ctx.fillText(text[j],0,0); ctx.restore();
+     a+=sweep*aw/2;
+   }
+   ctx.restore();
+ }
  // Cache loaded product-mockup images; redraw once a new one finishes loading.
  let _MOCKUP_IMG={};
  function _mockupImg(url){

@@ -618,3 +618,11 @@ def test_layout_studio_display_fonts_loaded(tmp_path):
     assert "Oswald:wght@500;600;700" in h
     assert "'Bebas Neue'" in h                     # present in the FONTS picker list
     assert "Oswald" in h
+
+
+def test_layout_studio_arc_text_engine(tmp_path):
+    # REGRESSION: the curved-text engine that arcs wording around the logo.
+    h = _page(tmp_path)
+    assert "function drawArcText" in h
+    assert "measureText" in h                      # advances angle by glyph width
+    assert "sweep" in h                            # top vs bottom arc direction
