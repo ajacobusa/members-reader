@@ -699,3 +699,13 @@ def test_layout_studio_persists_and_payload(tmp_path):
     assert "function _slotWording" in h                # readable concat
     assert "_slotWording(" in h                        # used in payload/summary
     assert "_slotsFilled(" in h                        # slots-only side counts as designed
+
+
+def test_layout_studio_no_supplier_leak(tmp_path):
+    # REGRESSION: layout names + help text never expose a print supplier. (The
+    # marketplace-copy rule for "Etsy" is covered by test_customer_copy_no_leak;
+    # "etsy" also appears as an incidental base64 substring, so it is not scanned
+    # here - this guard is specifically the Layout Studio's new copy.)
+    h = _page(tmp_path).lower()
+    for bad in ("gelato", "printify", "printful"):
+        assert bad not in h, bad
