@@ -182,6 +182,25 @@ def test_apparel_percolor_tile_swap_wired(tmp_path):
     assert "_tileColorUrl(card.dataset.gid" in h
 
 
+def test_apparel_editor_recolors_when_no_percolor_photos(tmp_path):
+    # REGRESSION: "T-shirt colour is not changing." The single per-garment side photo
+    # (APPAREL_SIDE_IMG[gid].front) is colour-AGNOSTIC - one white studio shot - so
+    # using it as the editor's garment mockup rendered the SAME white tee for EVERY
+    # colour, and the recolouring silhouette (drawGarment, the only colour-accurate
+    # path) was never reached because the photo made _mock truthy. The side-photo
+    # fallback must be gated on real per-colour photos existing; pre-launch
+    # (APPAREL_COLOR_IMG == {}) there are none, so the editor recolours the silhouette
+    # and the colour swatch visibly changes the shirt.
+    h = _page(tmp_path)
+    assert "const APPAREL_COLOR_IMG = {}" in h            # pre-launch: no per-colour photos
+    assert "_hasColorPhotos" in h                          # the new guard exists
+    assert "Object.keys(APPAREL_COLOR_IMG[_gid]).length" in h   # guard derives from the map
+    # the colour-agnostic side photo may ONLY stand in when real per-colour photos exist
+    assert "if(!_u && _hasColorPhotos)" in h
+    # and the colour-accurate silhouette path is still wired (reached when ungated)
+    assert "function drawGarment" in h and "APPARELCOLOR[cn]||" in h
+
+
 def test_apparel_tiers_collapse_to_one_gendered_tile(tmp_path):
     # REGRESSION: the 3 brand tiers collapse to ONE tile per (gender, garment type)
     # = 13 tiles (7 men's + 6 women's; no women's polo). Every visible card is the

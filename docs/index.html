@@ -3019,11 +3019,15 @@
      const _gid=APPGID[CURGARMENT]||'';
      const _bgid=_gid.replace(/_(value|premium)$/,'');   // tiers share the Classic photo
      const _side=(APPLACEMENT==='back')?'back':'front';
-     // Go-live per-colour photo wins for the FRONT; otherwise show the local
-     // front/back tile so the buyer sees the real garment side and can design the
-     // BACK as well as the front.
+     // Go-live per-colour photo wins for the FRONT. The single per-garment side
+     // photo is colour-AGNOSTIC (one white studio shot), so it may ONLY stand in
+     // when real per-colour photos exist for this garment; otherwise it would show
+     // the same white tee for every colour. Without per-colour photos we fall
+     // through to the recolouring silhouette (drawGarment) so the colour swatch
+     // actually changes the shirt - and the buyer can still design the BACK.
+     const _hasColorPhotos=!!(APPAREL_COLOR_IMG[_gid]&&Object.keys(APPAREL_COLOR_IMG[_gid]).length);
      let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
-     if(!_u){ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }
+     if(!_u && _hasColorPhotos){ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }
      if(_u){ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }
    }
    if(_mock){
