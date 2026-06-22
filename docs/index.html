@@ -1836,6 +1836,9 @@
    fillQty(); fillSizes(); drawArt(); renderCart(); updateReview();
    var um=document.getElementById('muploadmsg'); if(um) um.textContent="";
    PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5; _showPhotoCtl(false);
+   // Clear any 12-month calendar photos from a prior design so they never carry
+   // into a different calendar/order (privacy + wrong-photo-into-production guard).
+   CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null]; FLIP_PAGE=0; _updCalCount();
    var ui=document.getElementById('mupload'); if(ui) ui.value="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
@@ -1913,7 +1916,7 @@
  let CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null];
  let CAL_YEAR=2026, FLIP_PAGE=0;
  const _MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
- const _WD=['S','M','T','W','T','F','S'];
+ const _WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
  function calPhotoUpload(i,inp){
    var f=inp.files&&inp.files[0]; if(!f) return;
    if(!/(jpe?g|png)$/i.test(f.name)||f.size>MAX_UPLOAD_MB*1048576){ inp.value=''; return; }
@@ -1963,7 +1966,9 @@
    for(var i=0;i<12;i++){ ctx.beginPath(); ctx.arc(W*(0.07+i*0.078), H*0.03, Math.max(2,W*0.008),0,7); ctx.fill(); }
    if(page===0){
      var cv=document.getElementById('mcanvas');
-     if(cv){ var s=Math.min((W*0.9)/cv.width,(H*0.82)/cv.height); var dw=cv.width*s, dh=cv.height*s; ctx.drawImage(cv,(W-dw)/2,H*0.08,dw,dh); }
+     if(cv){ _CLEAN=true; drawArt();           // strip editor chrome (frame/handles) off the cover
+       var s=Math.min((W*0.9)/cv.width,(H*0.82)/cv.height); var dw=cv.width*s, dh=cv.height*s; ctx.drawImage(cv,(W-dw)/2,H*0.08,dw,dh);
+       _CLEAN=false; drawArt(); }
    } else if(page>=1 && page<=12){
      var m=page-1, im=CAL_PHOTOS[m], px=W*0.06, py=H*0.07, pw=W*0.88, ph=H*0.50;
      if(im&&im.complete&&im.naturalWidth){

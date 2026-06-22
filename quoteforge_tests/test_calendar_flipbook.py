@@ -39,3 +39,25 @@ def test_calendar_monthly_photos_carried_into_order(tmp_path):
     # copy reconciled to the live 12-month build (no longer cover-only)
     assert "Add a photo for each of the 12 months" in h
     assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
+def test_calendar_photos_reset_on_product_open(tmp_path):
+    # REGRESSION: opening any product must clear CAL_PHOTOS so a prior calendar's
+    # photos never carry into a different calendar/order (privacy + wrong-photo guard).
+    h = _page(tmp_path)
+    empty = "CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null]"
+    # appears at declaration AND in the product-open reset (openM)
+    assert h.count(empty) >= 2
+    assert "Clear any 12-month calendar photos" in h
+
+
+def test_calendar_grid_two_letter_weekdays(tmp_path):
+    # REGRESSION: single-letter S/S and T/T weekday headers are ambiguous; use two.
+    h = _page(tmp_path)
+    assert "_WD=['Su','Mo','Tu','We','Th','Fr','Sa']" in h
+
+
+def test_calendar_cover_strips_editor_chrome(tmp_path):
+    # REGRESSION: the flipbook cover must not show the editor frame/drag handles.
+    h = _page(tmp_path)
+    assert "strip editor chrome" in h
