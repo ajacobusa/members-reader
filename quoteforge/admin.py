@@ -2313,7 +2313,28 @@ def _cmd_subscribers(args: list[str]) -> int:
     return 0
 
 
+def _cmd_go_live_readiness(args: list[str]) -> int:
+    """Print the per-department Gelato mapping go-live readiness dashboard.
+
+    Exit code 0 = every department mapped to a real Gelato product (ready),
+    1 = at least one department still on placeholders (not ready)."""
+    from quoteforge.automation.go_live_readiness import (
+        format_readiness_text, mapping_readiness)
+    print(format_readiness_text())
+    return 0 if mapping_readiness()["overall_ready"] else 1
+
+
+def _cmd_map_gelato(args: list[str]) -> int:
+    """List every product family still missing a real Gelato UID and print a
+    ready-to-paste JSON template for the GELATO_PRODUCT_FAMILY_FILE."""
+    from quoteforge.automation.go_live_readiness import format_map_template_text
+    print(format_map_template_text())
+    return 0
+
+
 COMMANDS = {
+    "go-live-readiness": _cmd_go_live_readiness,
+    "map-gelato": _cmd_map_gelato,
     "variations": _cmd_variations,
     "apparel": _cmd_apparel,
     "frame-preview": _cmd_frame_preview,
