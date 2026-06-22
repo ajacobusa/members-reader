@@ -42,3 +42,10 @@ def test_cal_editor_mode_wired(tmp_path):
     assert "CAL_FORMATS" in h and "CAL_DIMS" in h
     assert "function _drawCalField" in h
     assert ("IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL" in h) or ("IS_CAL" in h and "_drawCalField" in h)
+
+
+def test_calendar_no_supplier_leak(tmp_path):
+    # REGRESSION: calendar copy never exposes a print supplier.
+    h = _page(tmp_path).lower()
+    for bad in ("gelato", "printify", "printful"):
+        assert bad not in h, bad
