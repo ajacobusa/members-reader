@@ -697,6 +697,20 @@ def test_layout_studio_gallery_ui(tmp_path):
     assert "SLOT_LABELS" in h                          # friendly slot labels
 
 
+def test_layout_thumbnails_preview_each_layout(tmp_path):
+    # REGRESSION: each layout thumbnail must PREVIEW its real arrangement (logo spot +
+    # frame + text bars/arcs driven from the layout geometry), not show the same
+    # generic mountain icon for every layout - so the picker is self-explanatory.
+    h = _page(tmp_path)
+    assert "function _thumbSVG" in h
+    # geometry-driven: iterates the layout's own slots and draws bars/arcs from them
+    assert "(L.slots||[]).forEach" in h
+    assert "stroke-dasharray" in h                     # curved-text arcs in the preview
+    assert "lg.frame==='doublering'" in h              # frame-specific rendering
+    # the old "same generic emblem for every layout" thumbnail must be gone
+    assert "M22,38 L30,24 L34,31 L40,21 L46,38" not in h
+
+
 def test_layout_studio_persists_and_payload(tmp_path):
     # REGRESSION: layout + slots persist per side and reach the order payload;
     # `wording` is a readable concat of the active slots; a slots-only badge (no

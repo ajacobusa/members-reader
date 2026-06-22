@@ -5747,13 +5747,29 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // text-slot inputs and redraws. Customer-facing slot labels (no design jargon).
  const SLOT_LABELS={{headline:'Main words',secondary:'Second line',arcTop:'Top curved line',
    arcBottom:'Bottom curved line',tagline:'Small line (date / place)',monogram:'Initials'}};
+ // A TRUE mini-preview of each layout, drawn from its real geometry (logo spot +
+ // frame + text bars/arcs) so the gallery shows what each arrangement looks like -
+ // not the same generic icon. Mark = the logo; bars = text lines; dashed arcs =
+ // curved text.
  function _thumbSVG(L){{
-   if(L.key==='freeform') return '<svg viewBox="0 0 60 60"><rect x="6" y="22" width="48" height="6" rx="2" fill="#c9d6cd"/><rect x="14" y="32" width="32" height="5" rx="2" fill="#dfe6e1"/></svg>';
-   var arcs=(L.slots||[]).some(function(s){{return s.kind==='arc';}});
-   var emb='<path d="M22,38 L30,24 L34,31 L40,21 L46,38 Z" fill="#1c1c1e"/>';
-   var top=arcs?('<path id="th_'+L.key+'" d="M14,30 A16,16 0 0 1 46,30" fill="none"/>'+
-     '<text font-size="7" fill="#1c1c1e"><textPath href="#th_'+L.key+'" startOffset="50%" text-anchor="middle">ABC</textPath></text>'):'';
-   return '<svg viewBox="0 0 60 60">'+top+emb+'</svg>';
+   if(L.key==='freeform') return '<svg viewBox="0 0 60 60"><rect x="8" y="20" width="44" height="6" rx="2" fill="#1c1c1e"/><rect x="16" y="31" width="28" height="4" rx="2" fill="#9aa39c"/><rect x="21" y="39" width="18" height="3" rx="1.5" fill="#c2cac3"/></svg>';
+   var S=60, p='', lg=L.logo||{{cx:0.5,cy:0.5,scale:0.3,frame:'none'}};
+   var lx=lg.cx*S, ly=lg.cy*S, lr=Math.max(3,(lg.scale||0.3)*S*0.5);
+   if(lg.frame==='doublering'){{ p+='<circle cx="'+lx+'" cy="'+ly+'" r="'+(lr*1.32)+'" fill="none" stroke="#1c1c1e" stroke-width="1.3"/><circle cx="'+lx+'" cy="'+ly+'" r="'+(lr*1.08)+'" fill="none" stroke="#1c1c1e" stroke-width="0.6"/>'; }}
+   else if(lg.frame==='border'){{ p+='<rect x="'+(lx-lr*1.35)+'" y="'+(ly-lr*1.35)+'" width="'+(lr*2.7)+'" height="'+(lr*2.7)+'" fill="none" stroke="#1c1c1e" stroke-width="0.9"/>'; }}
+   else if(lg.frame==='shield'){{ var t=lr*1.25; p+='<path d="M'+(lx-t)+','+(ly-t)+' H'+(lx+t)+' V'+(ly+t*0.2)+' Q'+(lx+t)+','+(ly+t*1.1)+' '+lx+','+(ly+t*1.4)+' Q'+(lx-t)+','+(ly+t*1.1)+' '+(lx-t)+','+(ly+t*0.2)+' Z" fill="none" stroke="#1c1c1e" stroke-width="0.9"/>'; }}
+   if((L.decor||[]).indexOf('collage')>=0){{ var g=13; p+='<g fill="#cfd6d0"><rect x="'+(29-g)+'" y="'+(25-g)+'" width="'+g+'" height="'+g+'"/><rect x="31" y="'+(25-g)+'" width="'+g+'" height="'+g+'"/><rect x="'+(29-g)+'" y="27" width="'+g+'" height="'+g+'"/><rect x="31" y="27" width="'+g+'" height="'+g+'"/></g>'; }}
+   if(lg.frame!=='monogram' && (lg.scale||0)>0.02){{ var m=lr*0.78; p+='<path d="M'+(lx-m)+','+(ly+m*0.62)+' L'+(lx-m*0.28)+','+(ly-m*0.45)+' L'+(lx+m*0.12)+','+(ly+m*0.05)+' L'+(lx+m*0.5)+','+(ly-m*0.62)+' L'+(lx+m)+','+(ly+m*0.62)+' Z" fill="#1c1c1e"/>'; }}
+   (L.slots||[]).forEach(function(s){{
+     if(s.kind==='arc'){{ var cx=s.cx*S, cy=s.cy*S, r=Math.max(6,s.r*S);
+       var sw=(s.midAngle<0)?1:0, wt=(s.midAngle<0)?2:1.6;
+       p+='<path d="M'+(cx-r)+','+cy+' A'+r+','+r+' 0 0 '+sw+' '+(cx+r)+','+cy+'" fill="none" stroke="#1c1c1e" stroke-width="'+wt+'" stroke-linecap="round" stroke-dasharray="2.2 1.8"/>';
+     }} else {{ var bx=s.x*S, by=s.y*S, h=Math.max(1.8,(s.weight||0.05)*S*0.8);
+       if(s.slot==='monogram'){{ p+='<text x="'+bx+'" y="'+(by+h*0.9)+'" font-size="'+(h*1.7)+'" font-family="serif" font-weight="700" text-anchor="middle" fill="#1c1c1e">AB</text>'; }}
+       else {{ var w=Math.max(8,Math.min(S*0.72,(s.weight||0.05)*S*3.6+9)); p+='<rect x="'+(bx-w/2)+'" y="'+(by-h/2)+'" width="'+w+'" height="'+h+'" rx="1" fill="#1c1c1e"/>'; }}
+     }}
+   }});
+   return '<svg viewBox="0 0 60 60">'+p+'</svg>';
  }}
  function renderLayoutGallery(){{
    var box=document.getElementById('mlayouts'); if(!box) return;
