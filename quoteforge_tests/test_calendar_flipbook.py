@@ -21,3 +21,21 @@ def test_calendar_12month_flipbook(tmp_path):
     assert "let CAL_PHOTOS" in h and "function calPhotoUpload" in h
     assert "Preview calendar" in h and "12-month calendar" in h
     assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
+def test_calendar_monthly_photos_carried_into_order(tmp_path):
+    # REGRESSION: the 12-month intent (year + which months have a photo) must be
+    # captured into the saved design AND the basket line, so production receives
+    # the monthly photos - not just the cover.
+    h = _page(tmp_path)
+    assert "function _calMeta" in h and "function _calCount" in h
+    # carried into BOTH the design state and the cart line
+    assert h.count("cal:_calMeta()") >= 2
+    # live "X of 12 months added" counter in the editor
+    assert 'id="calcount"' in h and "of 12 months added" in h
+    assert "function _updCalCount" in h
+    # the final-proof summary shows the monthly count
+    assert "monthly photos added" in h
+    # copy reconciled to the live 12-month build (no longer cover-only)
+    assert "Add a photo for each of the 12 months" in h
+    assert "gelato" not in h.lower() and "printify" not in h.lower()

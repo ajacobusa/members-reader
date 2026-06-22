@@ -2916,6 +2916,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .calslot.filled{{border-style:solid;border-color:var(--green);background:#eef6f0;color:var(--green);font-weight:700}}
  .calslot input{{position:absolute;inset:0;opacity:0;cursor:pointer}}
  .calyear{{font-size:12px;color:#3a4a42;margin:2px 0 6px}}
+ .calcountbar{{font-size:11px;color:#7a7466;background:#faf7f0;border:1px solid var(--line);border-radius:8px;padding:6px 9px;margin:6px 0}}
+ .calcountbar b{{color:#3a4a42}}
+ .calcountbar.done{{background:#eef6f0;border-color:var(--green);color:var(--green)}}
+ .calcountbar.done b{{color:var(--green)}}
  .flipbox{{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:20px;text-align:center;max-height:92vh;overflow:auto;box-shadow:0 30px 70px rgba(0,0,0,.45)}}
  .flipbox h2{{color:var(--green);margin:0 0 10px;font-size:20px}}
  .flipbox canvas{{width:100%;max-width:360px;border:1px solid var(--line);border-radius:8px;background:#fbfaf7}}
@@ -3573,6 +3577,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="dbq">&#128197; Build your <b>12-month calendar</b> &mdash; add a photo for each month, then preview the whole calendar.</div>
          <div class="calyear"><label>Year <input type="number" id="mcalyear" value="2026" min="2025" max="2030" onchange="setCalYear(this.value)" style="width:84px"></label></div>
          <div id="mcalslots" class="calslots"></div>
+         <div id="calcountbar" class="calcountbar"><b id="calcount">0</b> of 12 months added &mdash; add all 12 for the full calendar (you can finish any you skip after your cover is approved).</div>
          <button type="button" class="savebtn" onclick="openFlipbook()">&#128214; Preview calendar</button>
        </div>
        <div class="dragbar">
@@ -4055,13 +4060,25 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var f=inp.files&&inp.files[0]; if(!f) return;
    if(!/(jpe?g|png)$/i.test(f.name)||f.size>MAX_UPLOAD_MB*1048576){{ inp.value=''; return; }}
    var r=new FileReader();
-   r.onload=function(e){{ var im=new Image(); im.onload=function(){{ CAL_PHOTOS[i]=im; var s=document.getElementById('calslot'+i); if(s)s.classList.add('filled'); }}; im.src=e.target.result; }};
+   r.onload=function(e){{ var im=new Image(); im.onload=function(){{ CAL_PHOTOS[i]=im; var s=document.getElementById('calslot'+i); if(s)s.classList.add('filled'); _updCalCount(); }}; im.src=e.target.result; }};
    r.readAsDataURL(f);
  }}
  function setCalYear(v){{ CAL_YEAR=parseInt(v)||CAL_YEAR; }}
+ // How many of the 12 months have a photo - powers the live counter, the order
+ // payload, and the gentle "finish your months" nudge.
+ function _calCount(){{ var n=0; for(var i=0;i<12;i++) if(CAL_PHOTOS[i]) n++; return n; }}
+ // Calendar specifics carried into the saved design + the basket line so production
+ // receives the 12-month intent (year + which months have a photo), not just the cover.
+ function _calMeta(){{ if(!IS_CAL) return null;
+   var filled=[]; for(var i=0;i<12;i++) if(CAL_PHOTOS[i]) filled.push(i);
+   return {{kind:'12-month', year:CAL_YEAR, photos:filled.length, months:filled}}; }}
+ function _updCalCount(){{ var c=document.getElementById('calcount'); if(c) c.textContent=_calCount();
+   var b=document.getElementById('calcountbar');
+   if(b) b.className='calcountbar'+(_calCount()===12?' done':''); }}
  function renderCalSlots(){{
    var box=document.getElementById('mcalslots'); if(!box) return;
    box.innerHTML=_MONTHS.map(function(mn,i){{ return `<label class="calslot${{CAL_PHOTOS[i]?' filled':''}}" id="calslot${{i}}" title="${{mn}}"><span>${{mn.slice(0,3)}}</span><input type="file" accept="image/png,image/jpeg" aria-label="Photo for ${{mn}}" onchange="calPhotoUpload(${{i}},this)"></label>`; }}).join('');
+   _updCalCount();
  }}
  function _drawMonthGrid(ctx,x,y,w,h,year,m){{
    ctx.save(); ctx.fillStyle='#1b1b1f'; ctx.textAlign='center';
@@ -4226,8 +4243,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
    +'printing, and your chosen mug. Please check the details before ordering.';
  // Calendar chrome copy (no supplier / marketplace names). The editor designs the
- // calendar COVER; the monthly pages are added after the cover is approved, so the
- // copy must NOT promise a live 12-month editor.
+ // calendar COVER and now also offers a live 12-month photo build + flip-through
+ // preview; months left blank can still be finished after the cover is approved.
  function calTitle(){{
    return CURGARMENT
      ? ('Personalized '+CURGARMENT+' - Design Your Calendar Cover, You Personalize It')
@@ -4238,10 +4255,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const CAL_DESC_HTML='<b>A personalized calendar, made to order just for you.</b><br>'
    +'1. Design your <b>cover</b> live - add your name, occasion and your own words or '
    +'photo, and preview the cover on screen.<br>'
-   +'2. Approve your free proof on screen - this is your final sign-off on the cover, '
-   +'locked in once you submit.<br>'
-   +'3. We add the monthly pages after your cover is approved, then print and ship '
-   +'with tracking.<br>'
+   +'2. <b>Add a photo for each of the 12 months</b> and preview your whole calendar '
+   +'on screen - or finish any months you skip after your cover is approved.<br>'
+   +'3. Approve your free proof on screen - your final sign-off, locked in once you '
+   +'submit - then we print and ship with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized calendar cover, a free proof '
    +'before printing, and your chosen size. Please check the details before ordering.';
  function applyProductChrome(fmts){{
@@ -4559,6 +4576,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      placement:(IS_APPAREL?APPLACEMENT:''),
      sides:_sides, wording:_slotWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
+     cal:_calMeta(),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -4813,6 +4831,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
+     cal:_calMeta(),
      photo:{{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}}}};
  }}
  function _toast(t){{ const n=document.getElementById('maicheck');
@@ -4839,7 +4858,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _currentDesignSummary(){{
    const s=_designState();
    const price=parseFloat((((document.getElementById('msize')||{{}}).value||'').split('|')[1])||'0');
-   return `${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"\\n`+_taxLine(price);
+   const cal=s.cal?`12-month calendar · ${{s.cal.year}} · ${{s.cal.photos}}/12 monthly photos added\\n`:'';
+   return `${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"\\n`+cal+_taxLine(price);
  }}
  function _basketSummary(){{
    if(!CART.length) return '(your basket is empty)';
@@ -5919,7 +5939,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var cv=document.getElementById('mcanvas'); if(!cv) return '';
    _CLEAN=true; drawArt();
    var b=APPAREL_BOUND||{{x:cv.width*0.2,y:cv.height*0.2,w:cv.width*0.6,h:cv.height*0.5}};
-   var cn=(CURFMT.split(' - ')[1]||'White'); var acc=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#bbb';
+   var cn=(CURFMT.split(' - ')[1]||'White'); var acc=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#c9a14a';
    var oc=document.createElement('canvas'); oc.width=cv.width; oc.height=cv.height;
    try{{ _drawMugMockup(oc.getContext('2d'),cv,b,oc.width,oc.height,acc); }}catch(e){{}}
    _CLEAN=false; drawArt();
