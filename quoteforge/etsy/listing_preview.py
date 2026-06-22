@@ -2904,6 +2904,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    font-weight:700;cursor:pointer}}
  .proofflipbtn:hover{{background:#0c3327}}
  .prooffliphint{{font-size:12px;color:#6b7b72}}
+ .proofcross{{display:none;margin:8px 0 4px;padding:10px 12px;border:1px dashed var(--gold);
+   border-radius:12px;background:#fffaf0;text-align:left}}
+ .xshead{{font-weight:700;color:var(--green);font-size:14px}}
+ .xssub{{font-size:12px;color:#6b7b72;margin:2px 0 8px}}
+ .xsrow{{display:flex;gap:8px;flex-wrap:wrap}}
+ .xsbtn{{flex:1;min-width:84px;background:#fff;border:1px solid var(--line);border-radius:20px;
+   padding:9px 8px;font-size:12px;font-weight:600;color:var(--green);cursor:pointer;text-align:center}}
+ .xsbtn:hover{{background:var(--green);color:#fff;border-color:var(--green)}}
  .proofsum{{background:#f6f2e7;border-radius:10px;padding:10px;font-size:13px;
    color:#3a4a42;white-space:pre-line;text-align:left;margin-bottom:8px}}
  .proofstatus{{color:var(--green);font-weight:600;font-size:14px;margin-bottom:8px}}
@@ -3440,6 +3448,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
       <span class="prooffliphint">or drag the shirt to spin front &harr; back</span>
     </div>
     <div class="proofsum"><span id="proofSummary"></span></div>
+    <div id="proofCross" class="proofcross"></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
     <div class="proofactions">
       <button class="pedit" onclick="proofEdit()">&larr; Go back &amp; edit</button>
@@ -4200,6 +4209,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
+   _applyCarry();                      // cross-sell hop: carry the prior wording over
  }}
  // Entry point from the homepage Apparel category: open the editor straight into
  // apparel mode and preselect the chosen garment's first colour.
@@ -4786,6 +4796,53 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    _PROOFDRAG.acc+=Math.abs(x-_PROOFDRAG.last); _PROOFDRAG.last=x;
    if(_PROOFDRAG.acc>55){{ proofFlip(); _PROOFDRAG=null; }} }}
  function _proofUp(){{ _PROOFDRAG=null; }}
+ // ── Cross-department cross-sell ─────────────────────────────────────
+ // At the final-design step, offer the SAME design on products from OTHER
+ // departments ("make it a gift set"), carrying the wording across so the buyer
+ // never retypes. The single biggest order-value lever in a multi-category shop.
+ let CARRY_DESIGN='';
+ function _applyCarry(){{
+   if(!CARRY_DESIGN) return;
+   var t=CARRY_DESIGN; CARRY_DESIGN='';
+   try{{ if(typeof SLOTS!=='undefined') SLOTS.headline=t;
+     var ta=document.getElementById('mtext'); if(ta) ta.value=t;
+     if(typeof renderSlotInputs==='function') renderSlotInputs();
+     drawArt(); }}catch(e){{}}
+ }}
+ function _xsFrom(formats,name){{
+   var ps=(formats||[]).filter(function(f){{ return f.name===name||f.name.indexOf(name+' - ')===0; }})
+     .map(function(f){{ return f.price; }}).filter(function(p){{ return p>0; }});
+   return ps.length?Math.min.apply(null,ps):0;
+ }}
+ function _crossSellHTML(){{
+   var cur = IS_MUG?'mug':IS_BRANDED?'branded':IS_CAL?'cal':IS_APPAREL?'apparel':'wall';
+   var ALL=[
+     {{kind:'mug',emoji:'🍵',label:'Mug',name:"Classic Ceramic Mug (11oz)",fmts:(typeof MUG_FORMATS!=='undefined'?MUG_FORMATS:[])}},
+     {{kind:'branded',emoji:'🎁',label:'Tote',name:"Organic Cotton Tote Bag",fmts:(typeof BRANDED_FORMATS!=='undefined'?BRANDED_FORMATS:[])}},
+     {{kind:'cal',emoji:'📅',label:'Calendar',name:"Wall Calendar",fmts:(typeof CAL_FORMATS!=='undefined'?CAL_FORMATS:[])}},
+     {{kind:'apparel',emoji:'👕',label:'T-Shirt',name:"Men's T-Shirt",fmts:(typeof APPAREL_FORMATS!=='undefined'?APPAREL_FORMATS:[])}}
+   ];
+   var picks=ALL.filter(function(x){{ return x.kind!==cur && x.fmts.length; }}).slice(0,3);
+   if(!picks.length) return '';
+   var words=(typeof _slotWording==='function'?_slotWording():'')||'';
+   var lead=words?`Put &ldquo;${{words.slice(0,36).replace(/</g,'')}}&rdquo; on more`:'Add this design to more';
+   var btns=picks.map(function(x){{
+     var p=_xsFrom(x.fmts,x.name);
+     var color=(x.fmts[0]&&x.fmts[0].name.split(' - ')[1])||'White';
+     return `<button type="button" class="xsbtn" onclick="crossSellTo('${{x.kind}}','${{x.name}}','${{color}}')">${{x.emoji}} ${{x.label}}${{p?` &middot; $${{p}}`:''}}</button>`;
+   }}).join('');
+   return `<div class="xshead">✨ Make it a gift set</div>`+
+     `<div class="xssub">${{lead}} &mdash; same design, fresh ways to gift:</div>`+
+     `<div class="xsrow">${{btns}}</div>`;
+ }}
+ function crossSellTo(kind,name,color){{
+   CARRY_DESIGN=(typeof _slotWording==='function'?_slotWording():'')||((document.getElementById('mtext')||{{}}).value||'');
+   closeProof();
+   if(kind==='mug') shopMug(name,color);
+   else if(kind==='branded') shopBranded(name,color);
+   else if(kind==='cal') shopCalendar(name,color);
+   else if(kind==='apparel') shopApparel(name,color);
+ }}
  function showFinalProof(mode){{
    PROOFMODE=(mode==='final')?'final':'item';
    setStep(PROOFMODE==='final'?3:2);
@@ -4797,9 +4854,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const edit=document.querySelector('#proofPop .pedit'); if(edit)edit.style.display='';
    if(acc){{ acc.disabled=false; acc.onclick=proofAccept; }}
    const _fl=document.getElementById('proofFlip');
+   const _xc=document.getElementById('proofCross');
    if(PROOFMODE==='final'){{
      if(img)img.style.display='none';
      if(_fl)_fl.style.display='none';
+     if(_xc)_xc.style.display='none';
      _loadContact(); finalStep(1);
    }} else {{
      REVIEWED=true; guide();              // review opened: that task is done
@@ -4813,6 +4872,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(sub)sub.textContent="This is how your piece will look. Add it to your basket - you can edit it any time before checkout.";
      if(sum)sum.innerHTML=_currentDesignSummary().replace(/\\n/g,'<br>');
      if(acc)acc.textContent='✓ Add to basket';
+     if(_xc){{ var _xh=_crossSellHTML(); _xc.innerHTML=_xh; _xc.style.display=_xh?'block':'none'; }}
    }}
    document.getElementById('proofPop').style.display='flex';
  }}
