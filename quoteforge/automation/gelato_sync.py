@@ -45,13 +45,21 @@ def _uid_map() -> dict:
 
 
 def _all_skus() -> list[str]:
-    """Every Gelato SKU we sell (catalog products + frames + apparel), sorted."""
+    """Every Gelato SKU we sell (catalog products + frames + apparel + mugs +
+    calendars + branded), sorted - so REAL costs/availability sync for ALL
+    departments and the margin guard compares against true cost, not the seed."""
     from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
     from quoteforge.etsy.frames import FRAMES
     from quoteforge.etsy.apparel_catalog import apparel_skus
+    from quoteforge.etsy.mug_catalog import mug_skus
+    from quoteforge.etsy.calendar_catalog import calendar_skus
+    from quoteforge.etsy.branded_catalog import branded_skus
     skus = {p.gelato_sku for p in GELATO_CATALOG}
     skus |= {f.gelato_sku for f in FRAMES}
     skus |= set(apparel_skus())          # apparel availability/cost syncs too
+    skus |= set(mug_skus())              # mugs / calendars / branded sync too, so
+    skus |= set(calendar_skus())         # real Gelato costs reach pricing + the
+    skus |= set(branded_skus())          # order-time margin floor for every dept
     return sorted(skus)
 
 
