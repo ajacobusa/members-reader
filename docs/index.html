@@ -1733,7 +1733,7 @@
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    // Every design opens in WALL-ART mode; the buyer can switch to Apparel.
-   IS_APPAREL=false; IS_BRANDED=false; IS_MUG=false; CURGARMENT="";
+   IS_APPAREL=false; IS_BRANDED=false; IS_MUG=false; IS_CAL=false; CURGARMENT="";
    {const _w=document.getElementById('ptwall'),_a=document.getElementById('ptapp');
      if(_w&&_a){_w.classList.add('ptsel');_a.classList.remove('ptsel');}}
    const _l=document.getElementById('mfpicklbl');
@@ -1838,6 +1838,11 @@
  // Studio, colour swatches) but draws onto a WHITE ceramic mug body - the colour
  // variant is the rim/handle ACCENT, not the print field.
  let IS_MUG=false;
+ // Calendar mode ALSO reuses the whole apparel/branded/mug editor (print frame,
+ // Layout Studio, colour swatches) as a COVER DESIGNER - the buyer designs the
+ // calendar COVER on a PORTRAIT white-paper field; the monthly pages are added
+ // after approval. The colour variant is the paper stock, not a print field.
+ let IS_CAL=false;
  // Strip a tier suffix ("Men's T-Shirt (Value)" -> "Men's T-Shirt") to find the
  // Classic base name that keys APPAREL_TIERS.
  function _baseName(n){ return (n||'').replace(/ \((?:Value|Premium)\)$/,''); }
@@ -1885,7 +1890,11 @@
    return CURGARMENT
      ? MUG_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
      : MUG_FORMATS; }
- function curFormats(i){ return IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():(IS_APPAREL?apparelFormatsFor():fmtsFor(i))); }
+ function calFormatsFor(){
+   return CURGARMENT
+     ? CAL_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
+     : CAL_FORMATS; }
+ function curFormats(i){ return IS_CAL?calFormatsFor():(IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():(IS_APPAREL?apparelFormatsFor():fmtsFor(i)))); }
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){ return fmts.map((f,j)=>
    `<span class="fchip${j===0?' sel':''}" id="fc${j}" tabindex="0" role="button" aria-label="${f.name}" onclick="pickFmt(${i},${j})">${swatchDot(f.name)}${f.name}${f.price?` - $${f.price}`:''}</span>`).join(''); }
@@ -1946,33 +1955,52 @@
    +'3. Printed and shipped with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
    +'printing, and your chosen mug. Please check the details before ordering.';
+ // Calendar chrome copy (no supplier / marketplace names). The editor designs the
+ // calendar COVER; the monthly pages are added after the cover is approved, so the
+ // copy must NOT promise a live 12-month editor.
+ function calTitle(){
+   return CURGARMENT
+     ? ('Personalized '+CURGARMENT+' - Design Your Calendar Cover, You Personalize It')
+     : 'Personalized Custom Calendars - Design Your Cover, You Personalize It';
+ }
+ const CAL_AVAIL_HTML='A <b>custom printed calendar</b> - design the <b>cover</b> '
+   +'here, pick your paper next. Made to order, personalized just for you.';
+ const CAL_DESC_HTML='<b>A personalized calendar, made to order just for you.</b><br>'
+   +'1. Design your <b>cover</b> live - add your name, occasion and your own words or '
+   +'photo, and preview the cover on screen.<br>'
+   +'2. Approve your free proof on screen - this is your final sign-off on the cover, '
+   +'locked in once you submit.<br>'
+   +'3. We add the monthly pages after your cover is approved, then print and ship '
+   +'with tracking.<br>'
+   +'<b>What you get:</b> a one-of-a-kind personalized calendar cover, a free proof '
+   +'before printing, and your chosen size. Please check the details before ordering.';
  function applyProductChrome(fmts){
    // The shared print editor (movable frame + Layout Studio) is on for apparel,
    // branded AND mug; only wall art keeps the legacy framed-print chrome.
-   const PRINT=IS_APPAREL||IS_BRANDED||IS_MUG;
+   const PRINT=IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL;
    ['mwallrow','mwalltip'].forEach(id=>{const e=document.getElementById(id);
      if(e) e.style.display = PRINT ? 'none' : '';});
    const av=document.getElementById('mavail');
    if(av){ if(!WALLART_AVAIL && !PRINT) WALLART_AVAIL=av.innerHTML;
-     av.innerHTML = IS_MUG ? MUG_AVAIL_HTML : (IS_BRANDED ? BRANDED_AVAIL_HTML
-       : (IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML))); }
+     av.innerHTML = IS_CAL ? CAL_AVAIL_HTML : (IS_MUG ? MUG_AVAIL_HTML : (IS_BRANDED ? BRANDED_AVAIL_HTML
+       : (IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML)))); }
    const md=document.getElementById('mdesc');
    if(md){ if(!WALLART_DESC && !PRINT) WALLART_DESC=md.innerHTML;
-     md.innerHTML = IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
-       : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML))); }
+     md.innerHTML = IS_CAL ? CAL_DESC_HTML : (IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
+       : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML)))); }
    const e3=document.getElementById('e3lbl');
    if(e3) e3.textContent = PRINT ? '3. Size' : '3. Frame & size';
    // Step 1 colour row is the SHIRT colour in apparel mode / product colour in
    // branded mode (the wall-art "Background" fill is not printed on a product).
    const bl=document.getElementById('mbglbl');
-   if(bl) bl.textContent = IS_MUG ? '🍵 Colour' : (IS_BRANDED ? '🎁 Colour'
-     : (IS_APPAREL ? '👕 Shirt colour' : 'Background'));
+   if(bl) bl.textContent = IS_CAL ? '📅 Paper' : (IS_MUG ? '🍵 Colour' : (IS_BRANDED ? '🎁 Colour'
+     : (IS_APPAREL ? '👕 Shirt colour' : 'Background')));
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
    // Heading: apparel/branded buyers must NEVER see the wall-art listing title.
    const mt=document.getElementById('mtitle');
-   if(mt) mt.textContent = IS_MUG ? mugTitle() : (IS_BRANDED ? brandedTitle()
-     : (IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent)));
+   if(mt) mt.textContent = IS_CAL ? calTitle() : (IS_MUG ? mugTitle() : (IS_BRANDED ? brandedTitle()
+     : (IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent))));
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
@@ -1985,9 +2013,10 @@
    if(PRINT){ renderLayoutGallery(); renderSlotInputs(); }
  }
  function setProductType(t){
+   IS_CAL=(t==='cal');
    IS_MUG=(t==='mug');
    IS_BRANDED=(t==='branded');
-   IS_APPAREL=(t==='apparel');          // exactly one of apparel/branded/mug is true
+   IS_APPAREL=(t==='apparel');          // exactly one of apparel/branded/mug/cal is true
    TXT_USER_SET=false;                 // re-auto-contrast text for the new context
    if(IS_APPAREL && !CURGARMENT && APPAREL_FORMATS.length)
      CURGARMENT=APPAREL_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
@@ -1995,6 +2024,8 @@
      CURGARMENT=BRANDED_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
    if(IS_MUG && !CURGARMENT && MUG_FORMATS.length)
      CURGARMENT=MUG_FORMATS[0].name.split(' - ')[0];       // toggled w/o a tile
+   if(IS_CAL && !CURGARMENT && CAL_FORMATS.length)
+     CURGARMENT=CAL_FORMATS[0].name.split(' - ')[0];       // toggled w/o a tile
    if(IS_APPAREL && !CURBASE) CURBASE=_baseName(CURGARMENT);
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
    if(wb&&ab){wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}
@@ -2004,7 +2035,7 @@
    CURFMT=(fmts[0]&&fmts[0].name)||"";
    // Apparel/branded colour lives in Step 1 now, so hide the Step-3 colour/frame
    // picker (it stays the frame picker for wall art).
-   const _PRINT=IS_APPAREL||IS_BRANDED||IS_MUG;
+   const _PRINT=IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL;
    const fpk=document.getElementById('mfpick');
    if(fpk) fpk.style.display = _PRINT ? 'none' : (fmts.length?'block':'none');
    const lbl=document.getElementById('mfpicklbl');
@@ -2064,6 +2095,18 @@
    setProductType('mug');          // scopes the pills to that mug's colours
    if(col) selectApparelColor(col);   // open the live preview in that colour
  }
+ // Entry point from a Custom Calendars tile: open the shared editor straight into
+ // calendar COVER-designer mode (PORTRAIT white-paper field), preselecting paper.
+ // CURGARMENT holds the calendar NAME (CAL_PID maps it to a product_id).
+ function shopCalendar(name,color){
+   if(!DATA.length) return;
+   openM(0);                       // openM clears CURGARMENT; set it AFTER
+   CURGARMENT=name||"";            // the calendar product name, e.g. "Wall Calendar"
+   CURBASE="";                     // calendars have no quality-tier picker
+   var col=color||'';             // the tile's first paper colour
+   setProductType('cal');          // scopes the pills to that calendar's papers
+   if(col) selectApparelColor(col);   // open the live preview on that paper
+ }
  // Occasion-first entry: open the editor pre-loaded with the occasion's quote,
  // ready for the buyer to personalize (they can edit/replace it).
  function shopApparelOccasion(quote){
@@ -2075,7 +2118,7 @@
  // Preselect a garment colour in the editor so the preview renders in it -
  // applies the colour WITHOUT auto-advancing the step (unlike a chip click).
  function selectApparelColor(color){
-   var fmts=IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor()), target=CURGARMENT+' - '+color, j=-1;
+   var fmts=IS_CAL?calFormatsFor():(IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor())), target=CURGARMENT+' - '+color, j=-1;
    for(var k=0;k<fmts.length;k++){ if(fmts[k].name===target){ j=k; break; } }
    if(j<0) return;
    CURFMT=fmts[j].name;
@@ -2222,7 +2265,7 @@
    for(let i=1;i<=10;i++){const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}
  function fillSizes(){const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
-   sel.innerHTML=rows.map(r=>`<option value="${r.size}|${r.price}">${r.size}${(IS_APPAREL||IS_BRANDED||IS_MUG)?'':' in'} - $${r.price}</option>`).join('');}
+   sel.innerHTML=rows.map(r=>`<option value="${r.size}|${r.price}">${r.size}${(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'} - $${r.price}</option>`).join('');}
  function addToOrder(){const sv=(document.getElementById('msize')||{}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -2240,7 +2283,7 @@
    CART.push({fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
      sides:_sides, wording:_slotWording(),
-     layout:((IS_APPAREL||IS_BRANDED||IS_MUG)?CURLAYOUT:''),
+     layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -2492,7 +2535,7 @@
  function _designState(){
    return {listing:(DATA[CUR]||{}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
      font:SELFONT, wall:SELWALL, wording:_slotWording(),
-     layout:((IS_APPAREL||IS_BRANDED||IS_MUG)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED||IS_MUG)?JSON.parse(JSON.stringify(SLOTS)):null),
+     layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
      photo:{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}};
@@ -2876,7 +2919,7 @@
  }
  // Apparel can SHRINK the photo (size 0.2x); wall art fills the frame (min 1x).
  function setPhotoZoom(v){
-   const lo=(typeof IS_APPAREL!=='undefined' && (IS_APPAREL||IS_BRANDED||IS_MUG))?0.2:1;
+   const lo=(typeof IS_APPAREL!=='undefined' && (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL))?0.2:1;
    PHOTO_ZOOM=Math.max(lo, parseFloat(v)||1); drawArt(); }
  function nudgePhoto(dx,dy){ PHOTO_FX=Math.min(1,Math.max(0,PHOTO_FX+dx));
    PHOTO_FY=Math.min(1,Math.max(0,PHOTO_FY+dy)); drawArt(); }
@@ -3088,7 +3131,7 @@
    return 'frame';
  }
  function _startDrag(ev){ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
-   if(IS_APPAREL||IS_BRANDED||IS_MUG){ DRAGTARGET=_hitTarget(DRAGPX);
+   if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){ DRAGTARGET=_hitTarget(DRAGPX);
      // Branded has no front/back to spin - grabbing outside just moves the frame.
      if((IS_BRANDED||IS_MUG) && DRAGTARGET==='rotate') DRAGTARGET='frame'; }
    else {
@@ -3120,7 +3163,7 @@
        const z=document.getElementById('mphotozoom'); if(z) z.value=PHOTO_ZOOM;
      }
    } else if(DRAGTARGET==='photo'){
-     if(IS_APPAREL||IS_BRANDED||IS_MUG){ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }
+     if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }
      else if(DRAGLAST){ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
        PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }
    } else {                                                    // move the wording
@@ -3174,8 +3217,8 @@
  }
  function renderBg(){
    const box=document.getElementById('mbg'); if(!box) return;
-   if(IS_APPAREL||IS_BRANDED||IS_MUG){   // Step-1 row = product/garment colour swatches
-     var fmts=IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor());
+   if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){   // Step-1 row = product/garment colour swatches
+     var fmts=IS_CAL?calFormatsFor():(IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor()));
      box.innerHTML=fmts.map(function(f){
        var cn=(f.name.split(' - ')[1]||'');
        var hex=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#bbb';
@@ -3218,7 +3261,7 @@
    // Mugs print on a WHITE ceramic body (the chosen colour is the handle/rim/
    // interior ACCENT, not the print field), so text must contrast the light body
    // - always dark, regardless of the accent colour.
-   if(typeof IS_MUG!=='undefined' && IS_MUG){ SELTXT='#1b1b1f'; renderTxt(); drawArt(); return; }
+   if((typeof IS_MUG!=='undefined'&&IS_MUG)||(typeof IS_CAL!=='undefined'&&IS_CAL)){ SELTXT='#1b1b1f'; renderTxt(); drawArt(); return; }
    var dark={'Black':1,'Charcoal':1,'Navy':1,'Royal Blue':1,'Red':1,'Maroon':1,
      'Forest Green':1,'Purple':1,'Brown':1};
    SELTXT = dark[cn] ? '#ffffff' : '#1b1b1f';
@@ -3353,6 +3396,11 @@
    return null;  // Poster / Canvas = unframed
  }
  function _printAR(){  // width/height ratio of the selected print size (e.g. 8x10 -> 0.8)
+   if(IS_CAL){                  // PORTRAIT white-paper cover - aspect from print bound dims
+     var _cd=CAL_DIMS[CAL_PID[CURGARMENT]];
+     if(_cd && _cd[0]>0 && _cd[1]>0) return _cd[0]/_cd[1];
+     return 0.77;               // sensible portrait default (e.g. A4-ish cover)
+   }
    if(IS_MUG){                  // white ceramic body - aspect from the print bound dims
      var _md=MUG_DIMS[MUG_PID[CURGARMENT]];
      if(_md && _md[0]>0 && _md[1]>0) return _md[0]/_md[1];
@@ -3462,6 +3510,12 @@
    ctx.save(); ctx.fillStyle='#f4f3ef'; ctx.fillRect(x,y,w,h);
    ctx.fillStyle=acc; ctx.fillRect(x,y,w,Math.max(6,h*0.06));            // accent rim band
    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }
+ function _drawCalField(ctx,x,y,w,h){
+   ctx.save(); ctx.fillStyle='#fbfaf7'; ctx.fillRect(x,y,w,h);
+   ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
+   ctx.fillStyle='rgba(0,0,0,.28)';                                   // spiral-binding cue (top)
+   for(var i=0;i<10;i++){ var cxp=x+w*(0.08+i*0.092); ctx.beginPath(); ctx.arc(cxp,y+Math.max(6,h*0.02),Math.max(2,w*0.012),0,7); ctx.fill(); }
+   ctx.restore(); }
  function _isLight(c){ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }
@@ -3593,14 +3647,17 @@
      ctx.clearRect(0,0,W,H);                  // transparent so the mockup image shows
    } else {
      if(_mg) _mg.style.display='none';
-     ctx.fillStyle = (IS_APPAREL||IS_BRANDED||IS_MUG) ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
+     ctx.fillStyle = (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
    }
-   const m=16, spec = (IS_APPAREL||IS_BRANDED||IS_MUG) ? null : frameSpec();
+   const m=16, spec = (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) ? null : frameSpec();
    const ar=_printAR(), AW=W-2*m, AH=H-2*m;
    let w,h; if(AW/AH > ar){ h=AH; w=AH*ar; } else { w=AW; h=AW/ar; }
    let x=(W-w)/2, y=(H-h)/2;
    if(!_mock){ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }  // shadow (not in real-mockup mode)
-   if(IS_MUG){                               // white ceramic body + movable print frame
+   if(IS_CAL){                               // PORTRAIT white-paper cover + movable print frame
+     _drawCalField(ctx,x,y,w,h);
+     const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+   } else if(IS_MUG){                         // white ceramic body + movable print frame
      _drawMugField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    } else if(IS_BRANDED){                     // flat product field + movable print frame
@@ -3619,11 +3676,11 @@
      if(spec.mat){ const mm=0.05*w; ctx.fillStyle="#f7f5ef";
        ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }
    }
-   if(!(IS_APPAREL||IS_BRANDED||IS_MUG)){ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }  // art background (wall-art only)
+   if(!(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)){ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }  // art background (wall-art only)
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
-     if(IS_APPAREL||IS_BRANDED||IS_MUG){
+     if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){
        // APPAREL/BRANDED/MUG: the photo is a PLACEABLE element - CONTAIN-fit x size, centred at
        // a free position, so the buyer can SHRINK it (PHOTO_ZOOM 0.2..3) and MOVE it
        // anywhere in the print area instead of it always filling the garment.
@@ -3646,7 +3703,7 @@
    }
    ART={x:x,y:y,w:w,h:h};                                    // for drag hit-testing
    // Layout Studio: a chosen preset arranges the slots; freeform keeps the single block.
-   if((IS_APPAREL||IS_BRANDED||IS_MUG) && CURLAYOUT!=='freeform'){ _drawLayout(ctx,APPAREL_BOUND); } else {
+   if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && CURLAYOUT!=='freeform'){ _drawLayout(ctx,APPAREL_BOUND); } else {
    const typed=(document.getElementById('mtext')||{}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
@@ -3689,7 +3746,7 @@
        ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
      }
    }
-   if((IS_APPAREL||IS_BRANDED||IS_MUG) && APPAREL_BOUND && !_CLEAN){ const b=APPAREL_BOUND;
+   if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && APPAREL_BOUND && !_CLEAN){ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
      const hs=9;
@@ -3700,20 +3757,23 @@
      // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
      if(PHOTO && PHOTO_RECT){ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
-     const _cap=IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
+     const _cap=IS_CAL ? '📅 Cover area - drag to move · green corner to resize'
+       : (IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
        : (IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
-       : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize'));
+       : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize')));
      ctx.fillText(_cap, b.x+b.w/2, b.y-7); ctx.restore(); }
    const crop=document.getElementById('mcrop');
    if(crop){ const sv=((document.getElementById('msize')||{}).value||'').split('|')[0];
-     crop.textContent = IS_MUG
+     crop.textContent = IS_CAL
+       ? (sv?`📅 Calendar cover preview - ${sv} (your design stays inside the dashed area)`:"📅 Calendar cover preview")
+       : (IS_MUG
        ? (sv?`🍵 Mug preview - ${sv} (your design stays inside the dashed area)`:"🍵 Mug preview")
        : (IS_BRANDED
        ? (sv?`🎁 Product preview - size ${sv} (your design stays inside the dashed area)`:"🎁 Product preview")
        : (IS_APPAREL
        ? (sv?`👕 Garment preview - size ${sv} (your design stays inside the dashed area)`:"👕 Garment preview")
        : (sv?`📐 Final print preview - actual ${sv}" crop`+(PHOTO?" (photo auto-fit to frame)":"")
-           : "📐 Final print preview"))); }
+           : "📐 Final print preview")))); }
    saveDraft(); updateReview();
  }
  // ── Single-item review: show exactly what you're adding, before you add ──

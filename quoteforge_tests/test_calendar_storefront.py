@@ -33,3 +33,12 @@ def test_cal_is_a_department(tmp_path):
     assert "selectDept('cal')" in h
     assert h.count("selectDept(") >= 5
     assert "function applyCalFilters" in h and "function clearCalFilters" in h
+
+
+def test_cal_editor_mode_wired(tmp_path):
+    h = _page(tmp_path)
+    assert "let IS_CAL" in h
+    assert "function shopCalendar" in h
+    assert "CAL_FORMATS" in h and "CAL_DIMS" in h
+    assert "function _drawCalField" in h
+    assert ("IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL" in h) or ("IS_CAL" in h and "_drawCalField" in h)
