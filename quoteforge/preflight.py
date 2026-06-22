@@ -213,7 +213,36 @@ def check_software() -> list[CheckResult]:
     results.append(CheckResult("Live readiness (required keys)",
                                "PASS" if ok else "FAIL", detail))
 
+    results.extend(check_product_mappings())
+
     return results
+
+
+def check_product_mappings() -> list[CheckResult]:
+    """Go-live gate: every department's products must map to a REAL Gelato product
+    before live orders can route. In TEST_MODE this is informational (a heads-up
+    to map before launch); in live mode an unmapped department is a hard FAIL so
+    go-live can't proceed with GEL-* placeholders that would fail to route."""
+    from quoteforge import config
+    from quoteforge.automation.go_live_readiness import mapping_readiness
+    try:
+        r = mapping_readiness()
+    except Exception as exc:  # noqa: BLE001
+        return [CheckResult("Product mappings (Gelato UIDs)", "FAIL",
+                            f"readiness check errored: {exc}")]
+    if config.TEST_MODE:
+        detail = (f"TEST_MODE on - {r['configured']}/{r['total']} variants mapped"
+                  if r["overall_ready"] else
+                  f"TEST_MODE on - {r['placeholder_count']} variant(s) still on "
+                  "placeholders; map before go-live (admin map-gelato)")
+        return [CheckResult("Product mappings (Gelato UIDs)", "PASS", detail)]
+    if r["overall_ready"]:
+        return [CheckResult("Product mappings (Gelato UIDs)", "PASS",
+                            f"all {r['total']} variants mapped to real Gelato products")]
+    unready = [d["name"] for d in r["departments"] if not d["all_real"]]
+    return [CheckResult("Product mappings (Gelato UIDs)", "FAIL",
+                        "live mode but unmapped: " + ", ".join(unready)
+                        + " - run `admin map-gelato`")]
 
 
 # Credentials that MUST be present before going live (TEST_MODE off). Optional

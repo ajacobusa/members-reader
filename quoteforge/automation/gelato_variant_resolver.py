@@ -51,12 +51,31 @@ def _family_map() -> dict:
 
 
 def family_key(garment_id: str) -> str | None:
-    """The family map key for a garment_id, e.g. 'tshirt:Classic'."""
-    from quoteforge.etsy.apparel_catalog import get_garment
-    g = get_garment(garment_id)
-    if not g:
+    """The family-map key for a product id, across EVERY department. Apparel
+    garments use '<garment_type>:<tier>' (e.g. 'tshirt:Classic'); the branded /
+    mug / calendar departments each use '<dept>:<product_id>' (one family per
+    product line). Returns None for an unknown id. This is what lets the new
+    departments be mapped to a real Gelato product family the same way apparel
+    is - ~one entry per product line instead of thousands of per-variant SKUs."""
+    import importlib
+    pid = (garment_id or "").strip().lower()
+    if not pid:
         return None
-    return f"{g.garment_type}:{getattr(g, 'tier', 'Classic')}"
+    from quoteforge.etsy.apparel_catalog import get_garment
+    g = get_garment(pid)
+    if g:
+        return f"{g.garment_type}:{getattr(g, 'tier', 'Classic')}"
+    for dept, mod_name, getter in (("branded", "branded_catalog", "get_product"),
+                                   ("mug", "mug_catalog", "get_mug"),
+                                   ("calendar", "calendar_catalog", "get_calendar")):
+        try:
+            mod = importlib.import_module(f"quoteforge.etsy.{mod_name}")
+            p = getattr(mod, getter)(pid)
+            if p:
+                return f"{dept}:{p.product_id}"
+        except Exception:  # noqa: BLE001 - a missing dept module never breaks resolution
+            continue
+    return None
 
 
 def _family_value(garment_id: str) -> str | None:
