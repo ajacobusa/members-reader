@@ -31,9 +31,10 @@ _ZONE_OF = {"US": "domestic", "USA": "domestic",
             "AU": "oceania_asia", "NZ": "oceania_asia", "JP": "oceania_asia",
             "SG": "oceania_asia"}
 
-# Heavier / more protective packaging => higher shipping by material.
+# Heavier / more protective packaging => higher shipping by material/product.
+# Mugs are heavy & fragile; calendars are bulkier than a flat poster.
 MATERIAL_SHIP_MULT = {"poster": 1.0, "framed": 1.8, "canvas": 1.5,
-                      "acrylic": 1.7, "metal": 1.7}
+                      "acrylic": 1.7, "metal": 1.7, "mug": 1.6, "calendar": 1.2}
 
 
 def zone_for(country: str) -> str:
@@ -42,9 +43,15 @@ def zone_for(country: str) -> str:
 
 
 def modeled_shipping(country: str, material: str) -> float:
-    """Expected shipping (USD) for a destination + material."""
+    """Expected shipping (USD) for a destination + material/product label.
+
+    The order's `material` is often a free-text format ("Classic Ceramic Mug (11oz)
+    - White", "Wall Calendar - White"), so match the product/material class anywhere
+    in the label - otherwise mugs/calendars fall back to flat-poster shipping and
+    the variance tripwire never fires on their heavier real cost."""
     base = ZONE_BASE.get(zone_for(country), ZONE_BASE["rest"])
-    mult = MATERIAL_SHIP_MULT.get((material or "poster").lower(), 1.0)
+    m = (material or "poster").lower()
+    mult = next((v for k, v in MATERIAL_SHIP_MULT.items() if k in m), 1.0)
     return round(base * mult, 2)
 
 

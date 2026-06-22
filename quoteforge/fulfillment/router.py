@@ -48,6 +48,14 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
             return {"status": "manual", "vendor": "gelato", "id": "",
                     "detail": "placeholder product UID - map the real Gelato UID "
                               "in GELATO_UID_MAP before fulfilment"}
+        # A 12-month calendar is a multi-image product: production needs all 12 month
+        # photos (get_design_for_order holds the URLs), which the single-file
+        # submission path cannot carry yet. NEVER auto-submit a calendar as cover-only
+        # (silent under-delivery / chargeback); hold for manual production instead.
+        if str(order.get("product_type", "")).lower() == "calendar":
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "12-month calendar needs multi-image production - "
+                              "manual fulfilment (all 12 month photos)"}
         if not (product_uid and recipient and artwork_url):
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",

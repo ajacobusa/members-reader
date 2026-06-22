@@ -260,10 +260,27 @@ def run_full_pipeline(
                         or order_data.get("size") or gelato_product_uid)
             # Apparel prints to the GARMENT chest area, not a poster size; a t-shirt
             # rendered at 5400x7200 would be cropped/wrong-DPI on the garment.
-            if order_data.get("product_type") == "apparel":
+            # Each department prints to its OWN canvas spec; rendering a mug wrap or an
+            # A4 calendar at the poster default (5400x7200) would hand Gelato a wrongly
+            # sized file (cropped/stretched on the physical product).
+            _pt = order_data.get("product_type")
+            _pid = order_data.get("product_id", "")
+            if _pt == "apparel":
                 from quoteforge.etsy.apparel_catalog import apparel_dimensions_for
                 render_size = apparel_dimensions_for(order_data.get("garment_id", ""))
                 photo_size = "12x16 in"      # garment chest area for the DPI gate
+            elif _pt == "mug":
+                from quoteforge.etsy.mug_catalog import mug_dimensions_for
+                render_size = mug_dimensions_for(_pid)
+                photo_size = size_key
+            elif _pt == "calendar":
+                from quoteforge.etsy.calendar_catalog import calendar_dimensions_for
+                render_size = calendar_dimensions_for(_pid)
+                photo_size = size_key
+            elif _pt == "branded":
+                from quoteforge.etsy.branded_catalog import branded_dimensions_for
+                render_size = branded_dimensions_for(_pid)
+                photo_size = size_key
             else:
                 render_size = dimensions_for(size_key)
                 photo_size = size_key
