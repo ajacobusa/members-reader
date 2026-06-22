@@ -3278,6 +3278,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
+     <a href="studio.html" target="_blank" rel="noopener" title="Try our new free-canvas designer">&#10024; Pro Designer <span style="font-size:9px;background:var(--gold);color:#3a2c08;padding:1px 5px;border-radius:8px;vertical-align:middle;font-weight:800">BETA</span></a>
    </nav>
    <button class="navquiz" onclick="openQuiz()">🎁 Gift Finder</button>
    <button class="navbasket" id="basketBtnNav" onclick="toggleBasket()">🛒 Basket <span id="basketCountNav">0</span></button>
@@ -6685,6 +6686,251 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         (out.parent / ".nojekyll").write_text("", encoding="utf-8")
     except OSError:
         pass
+    return out
+
+
+# ── Pro Designer (beta): a Fabric.js free-canvas studio, ADDITIVE to the main editor.
+# Customers add text + images on a live product mockup with full drag/resize/rotate/
+# layer control, save the design, and export a print-ready file to the SAME /upload +
+# /design endpoints the order pipeline already uses. No supplier/marketplace names in
+# any customer-facing copy (uses "print partner").
+_PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Joffiels - Pro Designer (beta)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Bebas+Neue&family=Montserrat:wght@400;600;700&family=Cormorant+Garamond:wght@600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+ :root{--green:#0f3d2e;--green-d:#0b2c21;--gold:#c6a052;--cream:#f7f4ec;--ink:#1b1b1f;--line:#e4ded2;--muted:#6c7570}
+ *{box-sizing:border-box}
+ body{margin:0;font-family:'Montserrat',system-ui,Arial,sans-serif;background:var(--cream);color:var(--ink)}
+ #gate{position:fixed;inset:0;background:linear-gradient(160deg,#103d2e,#0b2c21);display:flex;align-items:center;justify-content:center;z-index:50}
+ .gatebox{background:#fff;border-radius:18px;padding:36px 30px;max-width:360px;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,.4)}
+ .gatebox h2{color:var(--green);margin:6px 0;font-size:26px}
+ .gatebox input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:10px 0;font-size:15px}
+ .gatebox button{background:var(--green);color:#fff;border:none;padding:12px 0;width:100%;border-radius:10px;font-weight:700;cursor:pointer}
+ header{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+ header .logo{font-weight:800;color:var(--green);font-size:20px;letter-spacing:.3px}
+ header .beta{background:var(--gold);color:#3a2c08;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px}
+ header .sp{flex:1}
+ .hbtn{border:1px solid var(--green);background:#fff;color:var(--green);font-weight:700;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:14px}
+ .hbtn.solid{background:var(--green);color:#fff}
+ .wrap{display:flex;gap:0;min-height:calc(100vh - 58px)}
+ .tools{width:266px;background:#fff;border-right:1px solid var(--line);padding:14px;overflow:auto}
+ .grp{margin-bottom:16px}
+ .grp h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+ .prodrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ .prodbtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 6px;font-size:13px;cursor:pointer;text-align:center}
+ .prodbtn.on{border-color:var(--green);background:#eef5f0;color:var(--green);font-weight:700}
+ .tbtn{display:block;width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px;font-size:14px;cursor:pointer;margin-bottom:7px;text-align:left}
+ .tbtn:hover{border-color:var(--green)}
+ .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+ .row label{font-size:12px;color:var(--muted)}
+ select,.mini{border:1px solid var(--line);border-radius:8px;padding:7px;font-size:13px;background:#fff}
+ .mini{width:42px;text-align:center;cursor:pointer}
+ input[type=color]{width:36px;height:32px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;padding:2px}
+ .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;background:#efe9dc}
+ .board{position:relative;background:#fbfaf7;border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;padding:16px}
+ .board-tshirt{background:linear-gradient(180deg,#fdfdfc,#efeae1)}
+ .board-mug{background:linear-gradient(180deg,#fbfaf7,#efece4)}
+ .board-tote{background:linear-gradient(180deg,#f3ecd9,#e7ddc7)}
+ .board-poster{background:#fff;border:1px solid var(--line)}
+ #safe{position:absolute;border:1.5px dashed rgba(15,61,46,.45);border-radius:6px;pointer-events:none}
+ .hint{margin-top:12px;font-size:13px;color:var(--muted)}
+ #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:11px 18px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;z-index:30}
+ #toast.on{opacity:1}
+ .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
+ .disabled{opacity:.4;pointer-events:none}
+</style></head><body>
+<div id="gate"><div class="gatebox">
+  <h2>Joffiels Pro Designer</h2>
+  <p style="color:#6c7570;font-size:13px">Enter the access word to continue.</p>
+  <input id="gpw" type="password" placeholder="Access word" onkeydown="if(event.key==='Enter')tryGate()">
+  <button onclick="tryGate()">Enter</button>
+</div></div>
+
+<div id="app" style="display:none">
+<header>
+  <span class="logo">Joffiels</span><span class="beta">PRO DESIGNER · BETA</span>
+  <span class="sp"></span>
+  <button class="hbtn" onclick="saveDesign()">&#128190; Save</button>
+  <button class="hbtn solid" onclick="exportPrint()">&#10003; Make print-ready</button>
+</header>
+<div class="wrap">
+  <aside class="tools">
+    <div class="grp"><h4>Product</h4>
+      <div class="prodrow">
+        <button class="prodbtn on" data-k="tshirt" onclick="setProduct('tshirt')">&#128085; T-Shirt</button>
+        <button class="prodbtn" data-k="mug" onclick="setProduct('mug')">&#9749; Mug</button>
+        <button class="prodbtn" data-k="tote" onclick="setProduct('tote')">&#128717; Tote</button>
+        <button class="prodbtn" data-k="poster" onclick="setProduct('poster')">&#128444; Poster</button>
+      </div>
+    </div>
+    <div class="grp"><h4>Add to your design</h4>
+      <button class="tbtn" onclick="addText()">&#10133; Add text</button>
+      <label class="tbtn" style="cursor:pointer">&#128247; Upload an image / logo
+        <input type="file" accept="image/png,image/jpeg" style="display:none" onchange="uploadImage(this)"></label>
+    </div>
+    <div class="grp" id="textgrp"><h4>Text</h4>
+      <div class="row" style="margin-bottom:7px">
+        <select id="ffont" onchange="applyText('fontFamily',this.value)" style="flex:1">
+          <option value="Oswald, sans-serif">Oswald</option>
+          <option value="Montserrat, sans-serif">Montserrat</option>
+          <option value="'Bebas Neue', sans-serif">Bebas</option>
+          <option value="'Cormorant Garamond', serif">Cormorant</option>
+          <option value="'Playfair Display', serif">Playfair</option>
+          <option value="Georgia, serif">Georgia</option>
+        </select>
+      </div>
+      <div class="row" style="margin-bottom:7px">
+        <span class="mini" onclick="bumpSize(-4)">A-</span>
+        <span class="mini" onclick="bumpSize(4)">A+</span>
+        <span class="mini" onclick="applyText('fontWeight', _isBold()?'normal':'bold')"><b>B</b></span>
+        <span class="mini" onclick="applyText('fontStyle', _isItalic()?'normal':'italic')"><i>I</i></span>
+        <input type="color" id="fcolor" value="#1b1b1f" oninput="applyText('fill',this.value)">
+      </div>
+      <div class="row">
+        <span class="mini" onclick="applyText('textAlign','left')">&#8676;</span>
+        <span class="mini" onclick="applyText('textAlign','center')">&#8596;</span>
+        <span class="mini" onclick="applyText('textAlign','right')">&#8677;</span>
+      </div>
+    </div>
+    <div class="grp"><h4>Arrange</h4>
+      <div class="row">
+        <span class="mini" title="Duplicate" onclick="dupSel()">&#10697;</span>
+        <span class="mini" title="Bring forward" onclick="fwd()">&#9650;</span>
+        <span class="mini" title="Send back" onclick="bwd()">&#9660;</span>
+        <span class="mini" title="Delete" onclick="delSel()">&#128465;</span>
+      </div>
+      <div class="note">Drag to move &middot; corner to resize &middot; top handle to rotate. Keep important art inside the dashed line - the edge is trimmed in printing.</div>
+    </div>
+    <div class="grp"><h4>Your free preview</h4>
+      <div class="note">Personalizing is 100% free. "Make print-ready" builds a high-resolution file and sends it to our print partner only when you order. Nothing prints until you approve it.</div>
+    </div>
+  </aside>
+  <main class="stage">
+    <div class="board board-tshirt" id="board"><canvas id="fcanvas"></canvas><div id="safe"></div></div>
+    <div class="hint" id="hint">Add text or an image to start your T-Shirt design.</div>
+  </main>
+</div></div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" crossorigin="anonymous"></script>
+<script>
+ const ANGE_API="__ASK_API__";
+ const UPLOAD_API=ANGE_API?ANGE_API.replace(/\/ask$/,'/upload'):"";
+ const DESIGN_API=ANGE_API?ANGE_API.replace(/\/ask$/,'/design'):"";
+ const MAX_MB=25, PASS="__PASS__";
+ function knownEmail(){try{return localStorage.getItem('jf_email')||""}catch(e){return""}}
+ function toast(t){var n=document.getElementById('toast');n.textContent=t;n.classList.add('on');setTimeout(function(){n.classList.remove('on')},2200);}
+ // Each product: on-screen board size + the real print-file pixel target + safe inset.
+ const PRODUCTS={
+  tshirt:{name:'T-Shirt',w:460,h:575,print:[2400,3000],safe:0.06,board:'tshirt'},
+  mug:{name:'Mug',w:540,h:250,print:[2475,1155],safe:0.05,board:'mug'},
+  tote:{name:'Tote',w:440,h:520,print:[2200,2600],safe:0.07,board:'tote'},
+  poster:{name:'Poster',w:430,h:560,print:[3600,4500],safe:0.04,board:'poster'}
+ };
+ let CURP='tshirt', canvas=null;
+ function tryGate(){ if((document.getElementById('gpw').value||'')===PASS){ try{sessionStorage.setItem('jf','1')}catch(e){} openApp(); } else { document.getElementById('gpw').style.borderColor='#b3322c'; } }
+ function openApp(){ document.getElementById('gate').style.display='none'; document.getElementById('app').style.display=''; if(!canvas) initStudio(); }
+ function initStudio(){
+   canvas=new fabric.Canvas('fcanvas',{preserveObjectStacking:true,selection:true});
+   canvas.on('selection:created',syncText); canvas.on('selection:updated',syncText); canvas.on('selection:cleared',syncText);
+   window.addEventListener('resize',function(){ setProduct(CURP); });
+   document.addEventListener('keydown',function(e){ if((e.key==='Delete'||e.key==='Backspace') && canvas.getActiveObject() && !canvas.getActiveObject().isEditing){ e.preventDefault(); delSel(); } });
+   setProduct('tshirt');
+   // Fonts load async; Fabric renders text before they arrive, so re-render once the
+   // web fonts are ready (otherwise the chosen display font falls back to system).
+   if(document.fonts&&document.fonts.ready){ document.fonts.ready.then(function(){ if(canvas) canvas.requestRenderAll(); }); }
+ }
+ function _fontReflow(fam){ if(document.fonts&&document.fonts.load){ try{ document.fonts.load('24px '+fam).then(function(){ canvas&&canvas.requestRenderAll(); }).catch(function(){}); }catch(e){} } }
+ function setProduct(k){
+   CURP=k; var p=PRODUCTS[k];
+   document.getElementById('board').className='board board-'+p.board;
+   document.querySelectorAll('.prodbtn').forEach(function(b){ b.classList.toggle('on',b.dataset.k===k); });
+   var stage=document.querySelector('.stage'); var maxW=Math.min(p.w, (stage.clientWidth-60)), sc=maxW/p.w;
+   var W=Math.round(p.w*sc), H=Math.round(p.h*sc);
+   var board=document.getElementById('board'); board.style.width=(W+32)+'px'; board.style.height=(H+32)+'px';
+   canvas.setWidth(W); canvas.setHeight(H); canvas.calcOffset(); canvas.renderAll();
+   var s=document.getElementById('safe'), m=Math.round(Math.min(W,H)*p.safe);
+   s.style.left=(16+m)+'px'; s.style.top=(16+m)+'px'; s.style.width=(W-2*m)+'px'; s.style.height=(H-2*m)+'px';
+   document.getElementById('hint').textContent='Add text or an image to start your '+p.name+' design.';
+ }
+ function addText(){
+   var t=new fabric.IText('Your text',{left:canvas.getWidth()/2,top:canvas.getHeight()/2,originX:'center',originY:'center',
+     fontFamily:'Oswald, sans-serif',fontSize:Math.round(canvas.getHeight()*0.10),fill:'#1b1b1f',textAlign:'center'});
+   canvas.add(t); canvas.setActiveObject(t); t.enterEditing(); t.selectAll(); canvas.renderAll(); syncText();
+ }
+ function uploadImage(inp){
+   var f=inp.files&&inp.files[0]; if(!f) return;
+   if(f.size>MAX_MB*1048576){ toast('That image is over '+MAX_MB+'MB - please use a smaller file.'); inp.value=''; return; }
+   var r=new FileReader();
+   r.onload=function(e){ fabric.Image.fromURL(e.target.result,function(img){
+     var sc=Math.min(canvas.getWidth()*0.6/img.width, canvas.getHeight()*0.6/img.height);
+     img.set({left:canvas.getWidth()/2,top:canvas.getHeight()/2,originX:'center',originY:'center',scaleX:sc,scaleY:sc});
+     canvas.add(img); canvas.setActiveObject(img); canvas.renderAll();
+   }); };
+   r.readAsDataURL(f); inp.value='';
+ }
+ function _active(){ return canvas&&canvas.getActiveObject(); }
+ function _isText(o){ return o&&(o.type==='i-text'||o.type==='text'||o.type==='textbox'); }
+ function applyText(prop,val){ var o=_active(); if(_isText(o)){ o.set(prop,val); canvas.requestRenderAll(); if(prop==='fontFamily') _fontReflow(val); } }
+ function bumpSize(d){ var o=_active(); if(_isText(o)){ o.set('fontSize',Math.max(8,(o.fontSize||24)+d)); canvas.requestRenderAll(); } }
+ function _isBold(){ var o=_active(); return _isText(o)&&(o.fontWeight==='bold'); }
+ function _isItalic(){ var o=_active(); return _isText(o)&&(o.fontStyle==='italic'); }
+ function syncText(){ var o=_active(); var on=_isText(o); document.getElementById('textgrp').classList.toggle('disabled',!on);
+   if(on){ var ff=document.getElementById('ffont'); if(o.fontFamily) ff.value=o.fontFamily; var fc=document.getElementById('fcolor'); if(typeof o.fill==='string') fc.value=o.fill; } }
+ function dupSel(){ var o=_active(); if(!o) return; o.clone(function(c){ c.set({left:(o.left||0)+18,top:(o.top||0)+18}); canvas.add(c); canvas.setActiveObject(c); canvas.renderAll(); }); }
+ function fwd(){ var o=_active(); if(o){ canvas.bringForward(o); canvas.renderAll(); } }
+ function bwd(){ var o=_active(); if(o){ canvas.sendBackwards(o); canvas.renderAll(); } }
+ function delSel(){ var o=_active(); if(o){ canvas.remove(o); canvas.discardActiveObject(); canvas.renderAll(); } }
+ function saveDesign(){
+   if(!canvas.getObjects().length){ toast('Add something to your design first.'); return; }
+   var json=canvas.toJSON();
+   try{ localStorage.setItem('jf_pro_'+CURP, JSON.stringify(json)); }catch(e){}
+   var email=knownEmail();
+   if(email && DESIGN_API){
+     fetch(DESIGN_API,{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({email:email,design:{engine:'fabric',product:CURP,json:json},summary:'Pro Designer - '+PRODUCTS[CURP].name})})
+       .then(function(){toast('Saved to your account.')}).catch(function(){toast('Saved on this device.')});
+   } else { toast('Saved on this device. (Sign up to save it to your order.)'); }
+ }
+ function _dataURLtoBlob(u){ var a=u.split(','),m=a[0].match(/:(.*?);/)[1],b=atob(a[1]),n=b.length,arr=new Uint8Array(n); while(n--) arr[n]=b.charCodeAt(n); return new Blob([arr],{type:m}); }
+ function exportPrint(){
+   if(!canvas.getObjects().length){ toast('Add something to your design first.'); return; }
+   var p=PRODUCTS[CURP], mult=p.print[0]/canvas.getWidth();
+   canvas.discardObjectControls&&canvas.discardObjectControls(); canvas.discardActiveObject(); canvas.renderAll();
+   var url=canvas.toDataURL({format:'png',multiplier:mult});
+   var a=document.createElement('a'); a.href=url; a.download='joffiels-'+CURP+'-design.png'; a.click();
+   saveDesign();
+   var email=knownEmail();
+   if(email && UPLOAD_API){
+     try{ var fd=new FormData(); fd.append('file',_dataURLtoBlob(url),'design-'+CURP+'.png');
+       fd.append('email',email); fd.append('size',p.print[0]+'x'+p.print[1]); fd.append('name','pro-'+CURP);
+       fetch(UPLOAD_API,{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){ toast('Print-ready file created &amp; saved.'); }).catch(function(){ toast('Print-ready file downloaded.'); });
+     }catch(e){ toast('Print-ready file downloaded.'); }
+   } else { toast('Print-ready file downloaded. (Sign up to attach it to your order.)'); }
+ }
+ // Open immediately if the shop gate was already cleared this session.
+ try{ if(sessionStorage.getItem('jf')==='1'){ window.addEventListener('load',openApp); } }catch(e){}
+</script></body></html>
+"""
+
+
+def build_pro_studio(out_path=None, password: str = "Jesus") -> Path:
+    """Write the self-contained Fabric.js Pro Designer studio (beta) to docs/studio.html.
+
+    Additive to the main editor: it reuses the same /upload (print file) and /design
+    (save) endpoints the order pipeline already consumes, so a Pro design flows to the
+    print partner exactly like a classic-editor design."""
+    try:
+        from quoteforge.config import ASK_ANGE_API_URL as ask_api_url
+    except Exception:  # noqa: BLE001
+        ask_api_url = ""
+    html = _PRO_STUDIO_HTML.replace("__ASK_API__", ask_api_url).replace("__PASS__", password)
+    out = Path(out_path) if out_path else Path("docs/studio.html")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(html, encoding="utf-8")
     return out
 
 
