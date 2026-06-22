@@ -751,6 +751,16 @@
    display:none;align-items:center;justify-content:center;padding:20px}
  .proofbox{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:22px;
    text-align:center;max-height:90vh;overflow:auto;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+ .calslots{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:6px 0}
+ .calslot{position:relative;border:1px dashed var(--line);border-radius:8px;padding:8px 2px;text-align:center;font-size:10px;color:#7a7466;cursor:pointer;background:#fff}
+ .calslot.filled{border-style:solid;border-color:var(--green);background:#eef6f0;color:var(--green);font-weight:700}
+ .calslot input{position:absolute;inset:0;opacity:0;cursor:pointer}
+ .calyear{font-size:12px;color:#3a4a42;margin:2px 0 6px}
+ .flipbox{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:20px;text-align:center;max-height:92vh;overflow:auto;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+ .flipbox h2{color:var(--green);margin:0 0 10px;font-size:20px}
+ .flipbox canvas{width:100%;max-width:360px;border:1px solid var(--line);border-radius:8px;background:#fbfaf7}
+ .fliprow{display:flex;gap:8px;margin-top:12px}
+ #flipPop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:center;justify-content:center;display:none}
  .proofbox h2{color:var(--green);margin:0 0 4px;font-size:22px}
  .proofimg{width:100%;max-width:300px;border-radius:8px;border:1px solid var(--line);
    margin:10px auto;display:block}
@@ -1339,6 +1349,18 @@
   </div>
 </div>
 
+<div id="flipPop" role="dialog" aria-modal="true" aria-label="Calendar preview" onclick="if(event.target.id==='flipPop')closeFlipbook()">
+  <div class="flipbox">
+    <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeFlipbook()">&times;</span>
+    <h2 id="flipLbl">Cover</h2>
+    <canvas id="flipCanvas" width="420" height="560"></canvas>
+    <div class="fliprow">
+      <button type="button" class="pedit" onclick="flipPage(-1)">&larr; Prev</button>
+      <button type="button" class="pedit" onclick="flipPage(1)">Next &rarr;</button>
+    </div>
+  </div>
+</div>
+
 <div id="exitpop" role="dialog" aria-modal="true" aria-label="A note before you go" onclick="if(event.target.id==='exitpop')closeExit()">
   <div class="xbox">
     <span class="qclose" role="button" tabindex="0" aria-label="Close" onclick="closeExit()">&times;</span>
@@ -1404,6 +1426,12 @@
            <button type="button" class="tposreset" onclick="resetFrame()">Reset</button>
          </div>
          <div class="dbhint">Move the whole design (wording + photo) anywhere on the garment and size it up or down.</div>
+       </div>
+       <div class="dragbar" id="mcalbar" style="display:none">
+         <div class="dbq">&#128197; Build your <b>12-month calendar</b> &mdash; add a photo for each month, then preview the whole calendar.</div>
+         <div class="calyear"><label>Year <input type="number" id="mcalyear" value="2026" min="2025" max="2030" onchange="setCalYear(this.value)" style="width:84px"></label></div>
+         <div id="mcalslots" class="calslots"></div>
+         <button type="button" class="savebtn" onclick="openFlipbook()">&#128214; Preview calendar</button>
        </div>
        <div class="dragbar">
          <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
@@ -1876,6 +1904,73 @@
  // calendar COVER on a PORTRAIT white-paper field; the monthly pages are added
  // after approval. The colour variant is the paper stock, not a print field.
  let IS_CAL=false;
+ // ── Calendars: 12-month photo engine + flip-through preview ──────────
+ let CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null];
+ let CAL_YEAR=2026, FLIP_PAGE=0;
+ const _MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+ const _WD=['S','M','T','W','T','F','S'];
+ function calPhotoUpload(i,inp){
+   var f=inp.files&&inp.files[0]; if(!f) return;
+   if(!/(jpe?g|png)$/i.test(f.name)||f.size>MAX_UPLOAD_MB*1048576){ inp.value=''; return; }
+   var r=new FileReader();
+   r.onload=function(e){ var im=new Image(); im.onload=function(){ CAL_PHOTOS[i]=im; var s=document.getElementById('calslot'+i); if(s)s.classList.add('filled'); }; im.src=e.target.result; };
+   r.readAsDataURL(f);
+ }
+ function setCalYear(v){ CAL_YEAR=parseInt(v)||CAL_YEAR; }
+ function renderCalSlots(){
+   var box=document.getElementById('mcalslots'); if(!box) return;
+   box.innerHTML=_MONTHS.map(function(mn,i){ return `<label class="calslot${CAL_PHOTOS[i]?' filled':''}" id="calslot${i}" title="${mn}"><span>${mn.slice(0,3)}</span><input type="file" accept="image/png,image/jpeg" aria-label="Photo for ${mn}" onchange="calPhotoUpload(${i},this)"></label>`; }).join('');
+ }
+ function _drawMonthGrid(ctx,x,y,w,h,year,m){
+   ctx.save(); ctx.fillStyle='#1b1b1f'; ctx.textAlign='center';
+   ctx.font='700 '+Math.round(h*0.12)+"px 'Oswald',sans-serif";
+   ctx.fillText(_MONTHS[m].toUpperCase()+' '+year, x+w/2, y+h*0.10);
+   var gx=x+w*0.04, gy=y+h*0.18, gw=w*0.92, cellW=gw/7, rowH=(h*0.80)/7;
+   ctx.font='700 '+Math.round(rowH*0.42)+"px 'Montserrat',sans-serif"; ctx.fillStyle='#9a8f78';
+   for(var d=0;d<7;d++) ctx.fillText(_WD[d], gx+cellW*d+cellW/2, gy+rowH*0.6);
+   var first=new Date(year,m,1).getDay(), dim=new Date(year,m+1,0).getDate();
+   ctx.fillStyle='#1b1b1f'; ctx.font='600 '+Math.round(rowH*0.4)+"px 'Montserrat',sans-serif";
+   var day=1;
+   for(var row=1;row<7 && day<=dim;row++){
+     for(var col=0;col<7;col++){
+       if(row===1 && col<first) continue;
+       if(day>dim) break;
+       ctx.fillText(String(day), gx+cellW*col+cellW/2, gy+rowH*(row+0.6)); day++;
+     }
+   }
+   ctx.restore();
+ }
+ function _drawCalPage(ctx,W,H,page){
+   ctx.save(); ctx.fillStyle='#fbfaf7'; ctx.fillRect(0,0,W,H);
+   ctx.fillStyle='rgba(0,0,0,.22)';
+   for(var i=0;i<12;i++){ ctx.beginPath(); ctx.arc(W*(0.07+i*0.078), H*0.03, Math.max(2,W*0.008),0,7); ctx.fill(); }
+   if(page===0){
+     var cv=document.getElementById('mcanvas');
+     if(cv){ var s=Math.min((W*0.9)/cv.width,(H*0.82)/cv.height); var dw=cv.width*s, dh=cv.height*s; ctx.drawImage(cv,(W-dw)/2,H*0.08,dw,dh); }
+   } else if(page>=1 && page<=12){
+     var m=page-1, im=CAL_PHOTOS[m], px=W*0.06, py=H*0.07, pw=W*0.88, ph=H*0.50;
+     if(im&&im.complete&&im.naturalWidth){
+       ctx.save(); ctx.beginPath(); ctx.rect(px,py,pw,ph); ctx.clip();
+       var cov=Math.max(pw/im.naturalWidth, ph/im.naturalHeight), iw=im.naturalWidth*cov, ih=im.naturalHeight*cov;
+       ctx.drawImage(im, px+(pw-iw)/2, py+(ph-ih)/2, iw, ih); ctx.restore();
+     } else { ctx.fillStyle='#ece7da'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#b3a890'; ctx.textAlign='center'; ctx.font="600 "+Math.round(H*0.024)+"px 'Montserrat',sans-serif"; ctx.fillText('Add a photo for '+_MONTHS[m], W/2, py+ph/2); }
+     ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=1; ctx.strokeRect(px,py,pw,ph);
+     _drawMonthGrid(ctx, W*0.06, H*0.60, W*0.88, H*0.36, CAL_YEAR, m);
+   } else {
+     ctx.fillStyle='#9a8f78'; ctx.textAlign='center'; ctx.font="600 "+Math.round(H*0.032)+"px 'Cormorant Garamond',serif";
+     ctx.fillText('Made just for you - '+CAL_YEAR, W/2, H*0.5);
+   }
+   ctx.restore();
+ }
+ function _renderFlip(){
+   var cv=document.getElementById('flipCanvas'); if(!cv) return;
+   _drawCalPage(cv.getContext('2d'), cv.width, cv.height, FLIP_PAGE);
+   var lbl=document.getElementById('flipLbl');
+   if(lbl) lbl.textContent=(FLIP_PAGE===0?'Cover':(FLIP_PAGE>=1&&FLIP_PAGE<=12?_MONTHS[FLIP_PAGE-1]+' '+CAL_YEAR:'Back cover'));
+ }
+ function openFlipbook(){ FLIP_PAGE=0; var p=document.getElementById('flipPop'); if(p)p.style.display='flex'; _renderFlip(); }
+ function closeFlipbook(){ var p=document.getElementById('flipPop'); if(p)p.style.display='none'; }
+ function flipPage(d){ FLIP_PAGE=Math.max(0,Math.min(13,FLIP_PAGE+d)); _renderFlip(); }
  // Strip a tier suffix ("Men's T-Shirt (Value)" -> "Men's T-Shirt") to find the
  // Classic base name that keys APPAREL_TIERS.
  function _baseName(n){ return (n||'').replace(/ \((?:Value|Premium)\)$/,''); }
@@ -2044,6 +2139,10 @@
    const lb=document.getElementById('mlayoutbar');
    if(lb) lb.style.display = PRINT ? 'block' : 'none';
    if(PRINT){ renderLayoutGallery(); renderSlotInputs(); }
+   // Calendars get an extra 12-month photo panel + flip-through preview.
+   var _cb=document.getElementById('mcalbar');
+   if(_cb)_cb.style.display=IS_CAL?'block':'none';
+   if(IS_CAL)renderCalSlots();
  }
  function setProductType(t){
    IS_CAL=(t==='cal');
