@@ -51,3 +51,8 @@ def test_verify_calendar_mappings_reports_placeholders():
     rep = verify_calendar_mappings()
     assert rep["total"] > 0
     assert set(("total", "configured", "placeholder_count", "placeholders", "all_real")) <= set(rep)
+
+
+def test_margin_guard_includes_calendars():
+    from quoteforge.etsy.margin_guard import audit_catalog
+    assert any(r.get("kind") == "calendar" for r in audit_catalog()["rows"])
