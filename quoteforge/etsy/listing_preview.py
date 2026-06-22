@@ -6741,6 +6741,13 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
  #toast.on{opacity:1}
  .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
  .disabled{opacity:.4;pointer-events:none}
+ .swrow{display:flex;flex-wrap:wrap;gap:7px}
+ .sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer}
+ .sw.on{box-shadow:0 0 0 2px var(--green)}
+ .readybox{font-size:12px;line-height:1.5;margin-bottom:8px}
+ .readybox .ok{color:#2e7d52}.readybox .warn{color:#b06a00}.readybox .bad{color:#b3322c}
+ .cpr{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#3a4a42;cursor:pointer;margin:4px 0}
+ .cpr input{margin-top:2px}
 </style></head><body>
 <div id="gate"><div class="gatebox">
   <h2>Joffiels Pro Designer</h2>
@@ -6754,7 +6761,7 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
   <span class="logo">Joffiels</span><span class="beta">PRO DESIGNER · BETA</span>
   <span class="sp"></span>
   <button class="hbtn" onclick="saveDesign()">&#128190; Save</button>
-  <button class="hbtn solid" onclick="exportPrint()">&#10003; Make print-ready</button>
+  <button class="hbtn solid" onclick="approveOrder()">&#10003; Approve &amp; order</button>
 </header>
 <div class="wrap">
   <aside class="tools">
@@ -6765,6 +6772,14 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
         <button class="prodbtn" data-k="tote" onclick="setProduct('tote')">&#128717; Tote</button>
         <button class="prodbtn" data-k="poster" onclick="setProduct('poster')">&#128444; Poster</button>
       </div>
+    </div>
+    <div class="grp"><h4>Size, colour &amp; quantity</h4>
+      <div class="row" style="margin-bottom:8px"><label style="width:42px">Size</label>
+        <select id="psize" onchange="CSIZE=this.value" style="flex:1"></select></div>
+      <div class="row" style="margin-bottom:8px"><label style="width:42px">Qty</label>
+        <input id="pqty" type="number" min="1" max="50" value="1" class="mini" style="width:60px"
+          onchange="CQTY=Math.max(1,Math.min(50,parseInt(this.value)||1));this.value=CQTY"></div>
+      <div id="pcolors" class="swrow"></div>
     </div>
     <div class="grp"><h4>Add to your design</h4>
       <button class="tbtn" onclick="addText()">&#10133; Add text</button>
@@ -6804,8 +6819,10 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
       </div>
       <div class="note">Drag to move &middot; corner to resize &middot; top handle to rotate. Keep important art inside the dashed line - the edge is trimmed in printing.</div>
     </div>
-    <div class="grp"><h4>Your free preview</h4>
-      <div class="note">Personalizing is 100% free. "Make print-ready" builds a high-resolution file and sends it to our print partner only when you order. Nothing prints until you approve it.</div>
+    <div class="grp"><h4>Before you order</h4>
+      <div id="ready" class="readybox"></div>
+      <label class="cpr"><input type="checkbox" id="cpr" onchange="checkReady()"> I own or have the rights to use this design.</label>
+      <div class="note">Personalizing is 100% free. "Approve &amp; order" builds a high-resolution print file and sends it to our print partner only after you check out. Nothing prints until you approve it.</div>
     </div>
   </aside>
   <main class="stage">
@@ -6820,22 +6837,34 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
  const ANGE_API="__ASK_API__";
  const UPLOAD_API=ANGE_API?ANGE_API.replace(/\/ask$/,'/upload'):"";
  const DESIGN_API=ANGE_API?ANGE_API.replace(/\/ask$/,'/design'):"";
+ const CHECKOUT_URL="__CHECKOUT__";
  const MAX_MB=25, PASS="__PASS__";
  function knownEmail(){try{return localStorage.getItem('jf_email')||""}catch(e){return""}}
- function toast(t){var n=document.getElementById('toast');n.textContent=t;n.classList.add('on');setTimeout(function(){n.classList.remove('on')},2200);}
- // Each product: on-screen board size + the real print-file pixel target + safe inset.
+ function toast(t){var n=document.getElementById('toast');n.textContent=t;n.classList.add('on');setTimeout(function(){n.classList.remove('on')},2600);}
+ // Garment/print colour name -> swatch hex (the print field on a real product).
+ const COLORHEX={'White':'#f4f3ef','Natural':'#e7ddc7','Sand':'#d8c9a8','Cream':'#f3ecd9','Heather Grey':'#b9bdc2',
+   'Light Blue':'#a7c7e7','Black':'#1c1c1e','Navy':'#26324a','Royal Blue':'#2f4ba0','Red':'#b3322c',
+   'Maroon':'#5e2a32','Forest Green':'#2e4a39','Sage':'#7f9b78','Mustard':'#cda434'};
+ const DARKCOLOR={'Black':1,'Navy':1,'Royal Blue':1,'Red':1,'Maroon':1,'Forest Green':1};
+ // Each product: on-screen board size + the real print-file pixel target + safe inset +
+ // the sizes/colours that actually order through the pipeline.
  const PRODUCTS={
-  tshirt:{name:'T-Shirt',w:460,h:575,print:[2400,3000],safe:0.06,board:'tshirt'},
-  mug:{name:'Mug',w:540,h:250,print:[2475,1155],safe:0.05,board:'mug'},
-  tote:{name:'Tote',w:440,h:520,print:[2200,2600],safe:0.07,board:'tote'},
-  poster:{name:'Poster',w:430,h:560,print:[3600,4500],safe:0.04,board:'poster'}
+  tshirt:{name:'T-Shirt',w:460,h:575,print:[2400,3000],safe:0.06,board:'tshirt',
+    sizes:['S','M','L','XL','2XL','3XL'],colors:['White','Sand','Heather Grey','Light Blue','Black','Navy','Red','Forest Green']},
+  mug:{name:'Mug',w:540,h:250,print:[2475,1155],safe:0.05,board:'mug',
+    sizes:['11oz','15oz'],colors:['White','Black','Navy','Red']},
+  tote:{name:'Tote',w:440,h:520,print:[2200,2600],safe:0.07,board:'tote',
+    sizes:['One size'],colors:['Natural','Black']},
+  poster:{name:'Poster',w:430,h:560,print:[3600,4500],safe:0.04,board:'poster',
+    sizes:['12x18','18x24','24x36'],colors:['White']}
  };
- let CURP='tshirt', canvas=null;
+ let CURP='tshirt', CSIZE='M', CCOLOR='White', CQTY=1, canvas=null;
  function tryGate(){ if((document.getElementById('gpw').value||'')===PASS){ try{sessionStorage.setItem('jf','1')}catch(e){} openApp(); } else { document.getElementById('gpw').style.borderColor='#b3322c'; } }
  function openApp(){ document.getElementById('gate').style.display='none'; document.getElementById('app').style.display=''; if(!canvas) initStudio(); }
  function initStudio(){
    canvas=new fabric.Canvas('fcanvas',{preserveObjectStacking:true,selection:true});
    canvas.on('selection:created',syncText); canvas.on('selection:updated',syncText); canvas.on('selection:cleared',syncText);
+   canvas.on('object:modified',checkReady); canvas.on('object:removed',checkReady);
    window.addEventListener('resize',function(){ setProduct(CURP); });
    document.addEventListener('keydown',function(e){ if((e.key==='Delete'||e.key==='Backspace') && canvas.getActiveObject() && !canvas.getActiveObject().isEditing){ e.preventDefault(); delSel(); } });
    setProduct('tshirt');
@@ -6855,22 +6884,90 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
    var s=document.getElementById('safe'), m=Math.round(Math.min(W,H)*p.safe);
    s.style.left=(16+m)+'px'; s.style.top=(16+m)+'px'; s.style.width=(W-2*m)+'px'; s.style.height=(H-2*m)+'px';
    document.getElementById('hint').textContent='Add text or an image to start your '+p.name+' design.';
+   renderOptions(); applyColor(); checkReady();
+ }
+ // Size dropdown + colour swatches for the chosen product; ordering carries these.
+ function renderOptions(){
+   var p=PRODUCTS[CURP];
+   if(p.sizes.indexOf(CSIZE)<0) CSIZE=p.sizes[Math.min(1,p.sizes.length-1)];
+   var sz=document.getElementById('psize'); sz.innerHTML=p.sizes.map(function(s){return '<option'+(s===CSIZE?' selected':'')+'>'+s+'</option>';}).join('');
+   if(p.colors.indexOf(CCOLOR)<0) CCOLOR=p.colors[0];
+   document.getElementById('pcolors').innerHTML=p.colors.map(function(c){
+     return '<span class="sw'+(c===CCOLOR?' on':'')+'" title="'+c+'" style="background:'+(COLORHEX[c]||'#ccc')+'" onclick="setColor(\''+c+'\')"></span>';
+   }).join('');
+ }
+ function setColor(c){ CCOLOR=c; renderOptions(); applyColor(); }
+ // Tint the print field to the chosen colour and keep text legible on it.
+ function applyColor(){
+   if(!canvas) return; canvas.setBackgroundColor(COLORHEX[CCOLOR]||'#fbfaf7', canvas.renderAll.bind(canvas));
+   var ink=DARKCOLOR[CCOLOR]?'#ffffff':'#1b1b1f';
+   document.getElementById('board').style.background=COLORHEX[CCOLOR]||'#fbfaf7';
+   window._inkDefault=ink;
  }
  function addText(){
    var t=new fabric.IText('Your text',{left:canvas.getWidth()/2,top:canvas.getHeight()/2,originX:'center',originY:'center',
-     fontFamily:'Oswald, sans-serif',fontSize:Math.round(canvas.getHeight()*0.10),fill:'#1b1b1f',textAlign:'center'});
-   canvas.add(t); canvas.setActiveObject(t); t.enterEditing(); t.selectAll(); canvas.renderAll(); syncText();
+     fontFamily:'Oswald, sans-serif',fontSize:Math.round(canvas.getHeight()*0.10),fill:(window._inkDefault||'#1b1b1f'),textAlign:'center'});
+   canvas.add(t); canvas.setActiveObject(t); t.enterEditing(); t.selectAll(); canvas.renderAll(); syncText(); checkReady();
  }
  function uploadImage(inp){
    var f=inp.files&&inp.files[0]; if(!f) return;
    if(f.size>MAX_MB*1048576){ toast('That image is over '+MAX_MB+'MB - please use a smaller file.'); inp.value=''; return; }
+   var isPng=/\.png$/i.test(f.name)||f.type==='image/png';
    var r=new FileReader();
    r.onload=function(e){ fabric.Image.fromURL(e.target.result,function(img){
      var sc=Math.min(canvas.getWidth()*0.6/img.width, canvas.getHeight()*0.6/img.height);
      img.set({left:canvas.getWidth()/2,top:canvas.getHeight()/2,originX:'center',originY:'center',scaleX:sc,scaleY:sc});
-     canvas.add(img); canvas.setActiveObject(img); canvas.renderAll();
+     // Print-quality checks the customer should see (spec): native resolution vs the
+     // print target, and whether a logo has a transparent background.
+     img._natW=img.width; img._natH=img.height; img._isPng=isPng; img._hasAlpha=isPng&&_hasAlpha(img._element);
+     canvas.add(img); canvas.setActiveObject(img); canvas.renderAll(); checkReady();
    }); };
    r.readAsDataURL(f); inp.value='';
+ }
+ // Sample the image's corners for transparency (a logo on a photo background prints
+ // the box, not just the mark) - drives the "needs a transparent background" tip.
+ function _hasAlpha(el){ try{ var c=document.createElement('canvas'),n=24; c.width=n;c.height=n;
+   var x=c.getContext('2d'); x.drawImage(el,0,0,n,n); var d=x.getImageData(0,0,n,n).data;
+   for(var i=3;i<d.length;i+=4){ if(d[i]<200) return true; } return false; }catch(e){ return true; } }
+ function _outsideSafe(){ var p=PRODUCTS[CURP], m=Math.min(canvas.getWidth(),canvas.getHeight())*p.safe, out=false;
+   canvas.getObjects().forEach(function(o){ var r=o.getBoundingRect(true,true);
+     if(r.left<m-1||r.top<m-1||r.left+r.width>canvas.getWidth()-m+1||r.top+r.height>canvas.getHeight()-m+1) out=true; }); return out; }
+ // Live print-readiness messages (the spec's plain-language checks).
+ function checkReady(){
+   var box=document.getElementById('ready'); if(!box||!canvas) return; var p=PRODUCTS[CURP], objs=canvas.getObjects();
+   if(!objs.length){ box.innerHTML='<span class="warn">Add text or an image to begin.</span>'; window._READY=false; return; }
+   var lowres=false, needAlpha=false, tiny=false;
+   objs.forEach(function(o){
+     if(o.type==='image'){ var req=(o.getScaledWidth()/canvas.getWidth())*p.print[0];
+       if(o._natW && o._natW<req*0.6) lowres=true; if(o._hasAlpha===false) needAlpha=true; }
+     else if(_isText(o)){ if(o.fontSize*(p.print[0]/canvas.getWidth())<55) tiny=true; }
+   });
+   var outside=_outsideSafe(), m=[];
+   if(outside) m.push('<span class="bad">&#9888; Part of your design is outside the safe print area (dashed line) - move it inside.</span>');
+   if(lowres) m.push('<span class="warn">&#9888; Your image looks low-resolution for this print size - it may print soft. Try a larger file.</span>');
+   if(needAlpha) m.push('<span class="warn">&#9888; For a logo, use a PNG with a transparent background - otherwise it prints inside a box.</span>');
+   if(tiny) m.push('<span class="warn">&#9888; Some text may be too small to print clearly - make it larger.</span>');
+   if(!m.length) m.push('<span class="ok">&#10003; Looks print-ready. Order whenever you are happy.</span>');
+   box.innerHTML=m.join('<br>'); window._READY=!outside;
+ }
+ function approveOrder(){
+   if(!canvas.getObjects().length){ toast('Add something to your design first.'); return; }
+   checkReady();
+   if(window._READY===false){ toast('Move your design inside the dashed safe area first.'); return; }
+   if(!document.getElementById('cpr').checked){ toast('Please confirm you own the rights to this design.'); try{document.getElementById('cpr').focus();}catch(e){} return; }
+   var email=knownEmail(), p=PRODUCTS[CURP], mult=p.print[0]/canvas.getWidth();
+   canvas.discardActiveObject(); canvas.renderAll();
+   var url=canvas.toDataURL({format:'png',multiplier:mult});
+   var design={engine:'fabric',product:CURP,productName:p.name,size:CSIZE,color:CCOLOR,qty:CQTY,rights:true,json:canvas.toJSON()};
+   try{ localStorage.setItem('jf_pro_order', JSON.stringify(design)); }catch(e){}
+   if(email && DESIGN_API){ fetch(DESIGN_API,{method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({email:email,design:design,summary:'Pro Designer - '+p.name+' '+CSIZE+' '+CCOLOR+' x'+CQTY})}).catch(function(){}); }
+   if(email && UPLOAD_API){ try{ var fd=new FormData(); fd.append('file',_dataURLtoBlob(url),'pro-'+CURP+'.png');
+     fd.append('email',email); fd.append('size',p.print[0]+'x'+p.print[1]); fd.append('name','pro-'+CURP+'-'+CSIZE+'-'+CCOLOR);
+     fetch(UPLOAD_API,{method:'POST',body:fd}).catch(function(){}); }catch(e){} }
+   var a=document.createElement('a'); a.href=url; a.download='joffiels-'+CURP+'-design.png'; a.click();
+   if(CHECKOUT_URL){ toast('Design approved - opening secure checkout...'); setTimeout(function(){ window.open(CHECKOUT_URL,'_blank','noopener'); },800); }
+   else { toast('Design approved & print-ready file saved - we will follow up to finish your order.'); }
  }
  function _active(){ return canvas&&canvas.getActiveObject(); }
  function _isText(o){ return o&&(o.type==='i-text'||o.type==='text'||o.type==='textbox'); }
@@ -6927,7 +7024,12 @@ def build_pro_studio(out_path=None, password: str = "Jesus") -> Path:
         from quoteforge.config import ASK_ANGE_API_URL as ask_api_url
     except Exception:  # noqa: BLE001
         ask_api_url = ""
-    html = _PRO_STUDIO_HTML.replace("__ASK_API__", ask_api_url).replace("__PASS__", password)
+    try:
+        from quoteforge.config import ETSY_SHOP_URL as shop_url
+    except Exception:  # noqa: BLE001
+        shop_url = ""
+    html = (_PRO_STUDIO_HTML.replace("__ASK_API__", ask_api_url)
+            .replace("__CHECKOUT__", shop_url).replace("__PASS__", password))
     out = Path(out_path) if out_path else Path("docs/studio.html")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")

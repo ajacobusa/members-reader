@@ -51,3 +51,24 @@ def test_storefront_links_to_pro_studio(tmp_path):
     # The storefront offers a discoverable entry point to the beta studio.
     h = _page(tmp_path)
     assert "studio.html" in h and "Pro Designer" in h
+
+
+def test_pro_studio_end_to_end_order_path(tmp_path):
+    # The studio is a true end-to-end path: product + size + colour + qty, print-
+    # readiness checks, a copyright gate, then Approve & order -> export + /upload +
+    # /design (full product context) -> checkout.
+    from quoteforge.etsy.listing_preview import build_pro_studio
+    h = (build_pro_studio(out_path=tmp_path / "studio.html")).read_text(encoding="utf-8")
+    # size / colour / quantity selection
+    assert "function renderOptions" in h and "function setColor" in h
+    assert "Size, colour" in h
+    # copyright gate (real IP-risk control)
+    assert "I own or have the rights" in h
+    # print-readiness messages (the spec's plain-language checks)
+    assert "outside the safe print area" in h
+    assert "transparent background" in h
+    assert "too small to print" in h
+    assert "low-resolution" in h
+    # order carries full product context + hands off to checkout
+    assert "function approveOrder" in h and "CHECKOUT_URL" in h
+    assert "size:CSIZE" in h and "color:CCOLOR" in h and "qty:CQTY" in h
