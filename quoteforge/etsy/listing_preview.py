@@ -6635,6 +6635,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 </script>
 </body></html>"""
     out.write_text(html, encoding="utf-8")
+    # GitHub Pages serves this generated static site via legacy Jekyll, which fails
+    # on the storefront's braces/`${...}`. A .nojekyll file next to the page tells
+    # Pages to skip Jekyll and serve the files as-is. Emit it on EVERY build so a
+    # rebuild can never silently drop it and break the deploy.
+    try:
+        (out.parent / ".nojekyll").write_text("", encoding="utf-8")
+    except OSError:
+        pass
     return out
 
 

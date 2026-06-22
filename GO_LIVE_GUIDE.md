@@ -66,6 +66,16 @@ When your shop is live, copy your shop URL, e.g. `https://www.etsy.com/shop/Joff
 
 That's the whole funnel: **browse → personalize → review proof → checkout on Etsy.**
 
+> **Deploying via GitHub Pages? `docs/.nojekyll` is REQUIRED on every deploy.**
+> The storefront is a generated static site full of `{`/`}` and `${...}`; GitHub
+> Pages' legacy Jekyll build FAILS on it and silently leaves the live site frozen
+> on the last good build (this is how "I don't see the new departments" happens —
+> a stale build, not a cache). `rebuild-site` now writes `docs/.nojekyll`
+> automatically, and `test_build_emits_nojekyll` guards it — do not delete it.
+> After any push to the Pages branch, confirm the deploy actually published:
+> `gh api repos/<owner>/<repo>/pages/builds/latest` should show `status: built`
+> (not `errored`/`building`) on your latest commit.
+
 ---
 
 ## Part 3 — (OPTIONAL, LATER) Host the personalizer on your dedicated computer

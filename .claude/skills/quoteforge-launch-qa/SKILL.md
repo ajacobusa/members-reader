@@ -261,7 +261,16 @@ never skip hooks or force-push without being told.
 7. **Refresh backups:** `python -m quoteforge.admin backup-all` then
    `python -m quoteforge.admin verify-backup` (expect `RESULT: HEALTHY`).
 8. **Give the UAT link** (with the gate password) for any storefront change, and
-   note it only reflects the work once merged to `main`.
+   note it only reflects the work once merged to `main` **AND the GitHub Pages build
+   actually published**. The UAT is GitHub Pages (legacy Jekyll, `main /docs`), which
+   FAILS to build the generated storefront unless `docs/.nojekyll` exists — a failed
+   build silently freezes the live site on the last good commit (looks like "the new
+   work isn't there" / a cache bug, but it's a stale deploy). `rebuild-site` writes
+   `docs/.nojekyll` automatically (guarded by `test_build_emits_nojekyll`); never
+   delete it. If the user reports missing/old content on UAT, FIRST check the deploy,
+   don't assume cache: `gh api repos/<owner>/<repo>/pages/builds/latest` must show
+   `status: built` on the latest commit (not `errored`/`building`), and
+   `curl -s <uat-url> | grep -c "<a string only the new build has>"` must be > 0.
 
 To revert a merged change cleanly: `git revert -m 1 <merge-sha>`, then
 `rebuild-site`, re-run the relevant tests, push, and refresh the backup.
