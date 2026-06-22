@@ -55,6 +55,7 @@ def audit_catalog(floor_pct: float = None) -> dict:
     from quoteforge.etsy.apparel_catalog import build_apparel_variations
     from quoteforge.etsy.branded_catalog import build_branded_variations
     from quoteforge.etsy.mug_catalog import build_mug_variations
+    from quoteforge.etsy.calendar_catalog import build_calendar_variations
 
     rows = []
     # The actual sellable variations (was never audited - the floor was only
@@ -78,6 +79,11 @@ def audit_catalog(floor_pct: float = None) -> dict:
         c = margin_check(v.price, v.gelato_cost, floor)
         rows.append({"name": f"{v.name} {v.size} {v.color}",
                      "kind": "mug", **c})
+    # Calendar variants (calendar x size x colour) clear the SAME floor.
+    for v in build_calendar_variations():
+        c = margin_check(v.price, v.gelato_cost, floor)
+        rows.append({"name": f"{v.name} {v.size} {v.color}",
+                     "kind": "calendar", **c})
     for p in PRODUCT_LINES:
         c = margin_check(p.sell_price, p.gelato_cost, floor)
         rows.append({"name": p.name, "kind": "product", **c})

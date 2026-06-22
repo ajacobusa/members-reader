@@ -135,6 +135,8 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
     data.update(enrich_branded_order(data))
     from quoteforge.etsy.mug_catalog import enrich_mug_order
     data.update(enrich_mug_order(data))
+    from quoteforge.etsy.calendar_catalog import enrich_calendar_order
+    data.update(enrich_calendar_order(data))
     return data
 
 

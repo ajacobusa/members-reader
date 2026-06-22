@@ -1383,6 +1383,163 @@ def _mug_hero(external_assets: bool = False, assets=None) -> str:
         '</div>')
 
 
+def _cal_section(photos: dict | None = None, external_assets: bool = False,
+                 assets=None) -> str:
+    """Visible Custom Calendars department - a department-store grid of calendar
+    lines (wall/desk/family/corporate/photo/event/promo). Real product PHOTO per
+    product when `photos` (product_id -> src) is supplied, else a neutral SVG
+    fallback. Mirrors `_mug_section` exactly: hero band, faceted filter bar, one
+    tile per product with a from-price and a (single, white-paper) colour swatch.
+    Tiles carry `appcard calcard` so they inherit the apparel tile CSS. Emits ONLY
+    customer-safe facets (name/category/type/size/price) - never the supplier
+    brand or any SKU/cost."""
+    photos = photos or {}
+    try:
+        from quoteforge.etsy.calendar_catalog import (
+            CALENDAR_CATALOG, build_calendar_variations)
+    except Exception:  # noqa: BLE001
+        return ""
+    frm: dict = {}
+    for v in build_calendar_variations():
+        frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
+    if not frm:
+        return ""
+    shown = [p for p in CALENDAR_CATALOG if frm.get(p.product_id) is not None]
+    if not shown:
+        return ""
+
+    def _swatches(colors) -> str:
+        """Static paper-colour swatch dots painted from the customer-safe hex map."""
+        dots = []
+        for cn in colors:
+            hexv = _BRANDED_SWATCH_HEX.get(cn, "#bbbbbb")
+            ring = (";box-shadow:inset 0 0 0 1px #cfcabb"
+                    if cn in ("White", "Sand", "Natural", "Cream", "Silver",
+                              "Light Blue", "Heather Grey") else "")
+            dots.append(f'<i class="swdot" title="{cn}" data-color="{cn}" '
+                        f'style="background:{hexv}{ring}"></i>')
+        return "".join(dots)
+
+    def _card(p) -> str:
+        """Render one calendar product tile (product photo, else neutral SVG)."""
+        low = frm.get(p.product_id)
+        if low is None:
+            return ""
+        src = photos.get(p.product_id)
+        if src:
+            tile = (f'<span class="apptile apptilephoto"><img class="appimg" '
+                    f'loading="lazy" src="{src}" alt="Custom {p.name}"></span>')
+        else:
+            tile = ('<span class="apptile" '
+                    'style="background:linear-gradient(135deg,#eef1ee,#dfe5df)">'
+                    '<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
+                    '<rect x="30" y="30" width="60" height="60" rx="8" '
+                    'fill="none" stroke="#9aa79a" stroke-width="4"/>'
+                    '<circle cx="60" cy="60" r="14" fill="#9aa79a" '
+                    'opacity="0.5"/></svg></span>')
+        name_js = p.name.replace("\\", "\\\\").replace("'", "\\'")
+        color0 = (p.colors[0] if p.colors else "").replace("\\", "\\\\").replace("'", "\\'")
+        return (
+            f'<button class="appcard calcard" type="button" '
+            f'data-cpid="{p.product_id}" data-cat="{p.category}" '
+            f'data-type="{p.type_name}" data-product="{p.name}" '
+            f'data-colors="{",".join(p.colors)}" data-sizes="{",".join(p.sizes)}" '
+            f'onclick="shopCalendar(\'{name_js}\',\'{color0}\')" '
+            f'aria-label="Design a custom {p.name}">'
+            f'{tile}'
+            f'<span class="appname">{p.type_name}</span>'
+            f'<span class="appsw" aria-label="Available colours">'
+            f'{_swatches(p.colors)}</span>'
+            f'<span class="appfrom">from ${low:.2f}</span>'
+            f'<span class="appcta">Design yours &rarr;</span></button>')
+
+    cards = [c for c in (_card(p) for p in shown) if c]
+    if not cards:
+        return ""
+
+    # ── Faceted filter bar (Category / Type / Size) ──
+    def _distinct(seq) -> list:
+        """Distinct truthy values from seq, preserving first-seen order."""
+        out: list = []
+        for x in seq:
+            if x and x not in out:
+                out.append(x)
+        return out
+    cats_f = _distinct(p.category for p in shown)
+    types_f = _distinct(p.type_name for p in shown)
+    sizes_f = _distinct(s for p in shown for s in p.sizes)
+
+    def _opts(vals) -> str:
+        """Render a list of values as <option> tags for a filter <select>."""
+        return "".join(f'<option value="{v}">{v}</option>' for v in vals)
+
+    def _sel(sid, label, all_label, opts) -> str:
+        """Render one labelled filter <select> with an 'all' default + options."""
+        return (f'<select class="appfilter" id="{sid}" aria-label="{label}" '
+                f'onchange="applyCalFilters()">'
+                f'<option value="">{all_label}</option>{opts}</select>')
+    filterbar = (
+        '<div class="appfilters calfilter" role="group" '
+        'aria-label="Filter calendars">'
+        + '<span class="appfilterlbl">Refine</span>'
+        + _sel("clCat", "Category", "All categories", _opts(cats_f))
+        + _sel("clType", "Type", "All types", _opts(types_f))
+        + _sel("clSize", "Size", "All sizes", _opts(sizes_f))
+        + '<button type="button" class="appfilterclear" '
+          'onclick="clearCalFilters()">Clear</button>'
+        + f'<span class="appfiltercount" id="clCount">{len(cards)} products</span>'
+        + '</div>')
+    nomatch = (
+        '<p class="apnomatch" id="clNoMatch" style="display:none">'
+        'No calendars match those filters. '
+        '<button type="button" class="appfilterclear" '
+        'onclick="clearCalFilters()">Clear filters</button></p>')
+    return (
+        '<section class="apparel-sec cal-sec" id="calendars">'
+        f'{_cal_hero(external_assets, assets)}{filterbar}'
+        f'<div class="appgroup"><div class="appgrid">{"".join(cards)}</div></div>'
+        f'{nomatch}</section>')
+
+
+def _cal_hero(external_assets: bool = False, assets=None) -> str:
+    """The calendars department hero - mirrors the apparel/mug hero markup and
+    classes for a consistent department look. Generic copy (no supplier or
+    marketplace names). Uses brand/cal-hero.jpg when bundled. In external_assets
+    mode the hero photo is written to the assets folder and referenced by URL
+    (lazy-loaded) instead of inlined as a parse-blocking data-URI."""
+    from quoteforge.config import OUTPUT_DIR
+    img = ""
+    for p in (Path(__file__).resolve().parents[2] / "brand" / "cal-hero.jpg",
+              Path(OUTPUT_DIR) / "cal-hero.jpg"):
+        try:
+            if p.exists():
+                if external_assets and assets is not None:
+                    _save_web_jpg(p, assets / "cal-hero.jpg", 1200, 80)
+                    src = "assets/cal-hero.jpg"
+                else:
+                    src = _web_img(p, 1200, 80)
+                img = (f'<img class="apheroimg" src="{src}" '
+                       f'alt="Custom calendars" loading="lazy">')
+                break
+        except Exception:  # noqa: BLE001
+            img = ""
+    return (
+        '<div class="aphero" id="calhero">'
+        '<div class="apherobody">'
+        '<span class="apheroeyebrow">Personalized &middot; made to order</span>'
+        '<h2 class="apheroh">Custom Calendars</h2>'
+        '<p class="apherosub">Design a calendar around your own photos, dates and '
+        'words - wall, desk, family, photo &amp; event styles, the same easy '
+        'editor, and a free proof you approve on screen before anything prints.</p>'
+        '<button type="button" class="apherocta" onclick="'
+        "(document.querySelector('.calfilter')||document.getElementById('calendars'))"
+        ".scrollIntoView({behavior:'smooth',block:'center'})"
+        '">Start designing &rarr;</button>'
+        '</div>'
+        f'<div class="apheromedia">{img}</div>'
+        '</div>')
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -1754,6 +1911,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                                       brand / "dept-mug.png") if p.exists()), None)
     dept_mug_src = (_emit(_dept_mug_img, "dept-mug.jpg")
                     if _dept_mug_img else "")
+    _dept_cal_img = next((p for p in (brand / "dept-cal.jpg",
+                                      brand / "dept-cal.png") if p.exists()), None)
+    dept_cal_src = (_emit(_dept_cal_img, "dept-cal.jpg")
+                    if _dept_cal_img else "")
     # Per-garment product photos for the apparel tiles, keyed by garment_id so each
     # GENDER shows its OWN model photo (brand/tile-<garment_id>.jpg, e.g.
     # tile-m_tshirt.jpg / tile-w_tshirt.jpg). Falls back to the shaded SVG tile when
@@ -1867,6 +2028,43 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         mug_formats_json = "[]"
         mug_dims_json = "{}"
         mug_pid_json = "{}"
+
+    # Per-product tile photos for the Custom Calendars grid, keyed by product_id
+    # (brand/tile-<product_id>.jpg, e.g. tile-wall_cal.jpg). Falls back to the
+    # section's neutral SVG tile when a photo is absent - mirrors the mug grid.
+    # Customer-safe only (no supplier data).
+    _cal_photos: dict = {}
+    cal_formats_json = "[]"
+    cal_dims_json = "{}"
+    cal_pid_json = "{}"
+    try:
+        from quoteforge.etsy.calendar_catalog import (
+            CALENDAR_CATALOG as _CC, build_calendar_variations as _bcv)
+        for _p in _CC:
+            _cp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
+                        if (brand / f"tile-{_p.product_id}.{e}").exists()), None)
+            if _cp:
+                _cal_photos[_p.product_id] = _emit(_cp, f"tile-{_p.product_id}.jpg")
+        # Cheapest price per (product, paper-colour) for the editor's calendar picker.
+        _cc_from: dict = {}
+        for _v in _bcv():
+            _key = (_v.product_id, _v.color)
+            _cc_from[_key] = min(_cc_from.get(_key, 1e9), _v.price)
+        _cname = {_p.product_id: _p.name for _p in _CC}
+        cal_formats = [
+            {"name": f"{_cname[_pid]} - {_col}", "price": round(_pr, 2)}
+            for (_pid, _col), _pr in _cc_from.items() if _pid in _cname]
+        cal_formats_json = json.dumps(cal_formats)
+        cal_dims_json = json.dumps(
+            {_p.product_id: [_p.width_px, _p.height_px] for _p in _CC})
+        # Editor maps the picked product NAME (what shopCalendar carries) back to a
+        # product_id so it can look up CAL_DIMS (which is keyed by product_id).
+        cal_pid_json = json.dumps({_p.name: _p.product_id for _p in _CC})
+    except Exception:  # noqa: BLE001 — never break the build on the calendar catalog
+        _cal_photos = {}
+        cal_formats_json = "[]"
+        cal_dims_json = "{}"
+        cal_pid_json = "{}"
 
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
@@ -3035,6 +3233,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <a href="#apparel" onclick="selectDept('apparel');return false;">👕 Apparel</a>
      <a href="#branded" onclick="selectDept('branded');return false;">🎁 Branded</a>
      <a href="#mugs" onclick="selectDept('mug');return false;">🍵 Mugs</a>
+     <a href="#calendars" onclick="selectDept('cal');return false;">📅 Calendars</a>
      <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
@@ -3095,6 +3294,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="deptgo">Browse Mugs →</span>
        </div>
      </a>
+     <a class="deptcard deptcal" href="#calendars" onclick="selectDept('cal');return false;">
+       {f'<img class="deptimg" loading="lazy" src="{dept_cal_src}" alt="Custom calendars - wall, desk &amp; photo">' if dept_cal_src else '<span class="depticon">📅</span>'}
+       <div class="deptbody">
+         <span class="depttitle">Custom Calendars</span>
+         <span class="deptsub">Wall, desk &amp; photo calendars, personalized month by month</span>
+         <span class="deptgo">Browse Calendars →</span>
+       </div>
+     </a>
    </div>
  </section>
  <section class="hiw" aria-label="How it works">
@@ -3144,6 +3351,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <button type="button" class="dsapp" onclick="selectDept('apparel')">👕 Apparel</button>
    <button type="button" class="dsbranded" onclick="selectDept('branded')">🎁 Branded</button>
    <button type="button" class="dsmug" onclick="selectDept('mug')">🍵 Mugs</button>
+   <button type="button" class="dscal" onclick="selectDept('cal')">📅 Calendars</button>
    <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
  </div>
  <div id="deptWall" class="deptpane" style="display:none">
@@ -3180,6 +3388,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div id="deptApparel" class="deptpane" style="display:none">{_apparel_section(_garment_photos)}</div>
  <div id="deptBranded" class="deptpane" style="display:none">{_branded_section(_branded_photos, external_assets, assets)}</div>
  <div id="deptMug" class="deptpane" style="display:none">{_mug_section(_mug_photos, external_assets, assets)}</div>
+ <div id="deptCal" class="deptpane" style="display:none">{_cal_section(_cal_photos, external_assets, assets)}</div>
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
@@ -3666,7 +3875,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const d = DATA[i];
    const fp=document.getElementById('mfpick'), fc=document.getElementById('mfchips');
    // Every design opens in WALL-ART mode; the buyer can switch to Apparel.
-   IS_APPAREL=false; IS_BRANDED=false; IS_MUG=false; CURGARMENT="";
+   IS_APPAREL=false; IS_BRANDED=false; IS_MUG=false; IS_CAL=false; CURGARMENT="";
    {{const _w=document.getElementById('ptwall'),_a=document.getElementById('ptapp');
      if(_w&&_a){{_w.classList.add('ptsel');_a.classList.remove('ptsel');}}}}
    const _l=document.getElementById('mfpicklbl');
@@ -3744,6 +3953,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Mug product NAME -> product_id, so the editor can resolve MUG_DIMS (keyed by
  // product_id) from the name shopMug carries.
  const MUG_PID = {mug_pid_json};
+ // ── Custom Calendars: a parallel product family sharing this editor ──
+ // CAL_FORMATS: one entry per product x paper-colour ("{{name}} - {{colour}}" + from-price).
+ // CAL_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
+ const CAL_FORMATS = {cal_formats_json};
+ const CAL_DIMS = {cal_dims_json};
+ // Calendar product NAME -> product_id, so the editor can resolve CAL_DIMS (keyed
+ // by product_id) from the name shopCalendar carries.
+ const CAL_PID = {cal_pid_json};
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
@@ -3763,6 +3980,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Studio, colour swatches) but draws onto a WHITE ceramic mug body - the colour
  // variant is the rim/handle ACCENT, not the print field.
  let IS_MUG=false;
+ // Calendar mode ALSO reuses the whole apparel/branded/mug editor (print frame,
+ // Layout Studio, colour swatches) as a COVER DESIGNER - the buyer designs the
+ // calendar COVER on a PORTRAIT white-paper field; the monthly pages are added
+ // after approval. The colour variant is the paper stock, not a print field.
+ let IS_CAL=false;
  // Strip a tier suffix ("Men's T-Shirt (Value)" -> "Men's T-Shirt") to find the
  // Classic base name that keys APPAREL_TIERS.
  function _baseName(n){{ return (n||'').replace(/ \\((?:Value|Premium)\\)$/,''); }}
@@ -3810,7 +4032,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return CURGARMENT
      ? MUG_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
      : MUG_FORMATS; }}
- function curFormats(i){{ return IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():(IS_APPAREL?apparelFormatsFor():fmtsFor(i))); }}
+ function calFormatsFor(){{
+   return CURGARMENT
+     ? CAL_FORMATS.filter(f=>f.name.indexOf(CURGARMENT+' - ')===0)
+     : CAL_FORMATS; }}
+ function curFormats(i){{ return IS_CAL?calFormatsFor():(IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():(IS_APPAREL?apparelFormatsFor():fmtsFor(i)))); }}
  // Shared pill renderer (used by openM AND the product-type toggle).
  function _fchips(fmts,i){{ return fmts.map((f,j)=>
    `<span class="fchip${{j===0?' sel':''}}" id="fc${{j}}" tabindex="0" role="button" aria-label="${{f.name}}" onclick="pickFmt(${{i}},${{j}})">${{swatchDot(f.name)}}${{f.name}}${{f.price?` - $${{f.price}}`:''}}</span>`).join(''); }}
@@ -3871,33 +4097,52 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    +'3. Printed and shipped with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
    +'printing, and your chosen mug. Please check the details before ordering.';
+ // Calendar chrome copy (no supplier / marketplace names). The editor designs the
+ // calendar COVER; the monthly pages are added after the cover is approved, so the
+ // copy must NOT promise a live 12-month editor.
+ function calTitle(){{
+   return CURGARMENT
+     ? ('Personalized '+CURGARMENT+' - Design Your Calendar Cover, You Personalize It')
+     : 'Personalized Custom Calendars - Design Your Cover, You Personalize It';
+ }}
+ const CAL_AVAIL_HTML='A <b>custom printed calendar</b> - design the <b>cover</b> '
+   +'here, pick your paper next. Made to order, personalized just for you.';
+ const CAL_DESC_HTML='<b>A personalized calendar, made to order just for you.</b><br>'
+   +'1. Design your <b>cover</b> live - add your name, occasion and your own words or '
+   +'photo, and preview the cover on screen.<br>'
+   +'2. Approve your free proof on screen - this is your final sign-off on the cover, '
+   +'locked in once you submit.<br>'
+   +'3. We add the monthly pages after your cover is approved, then print and ship '
+   +'with tracking.<br>'
+   +'<b>What you get:</b> a one-of-a-kind personalized calendar cover, a free proof '
+   +'before printing, and your chosen size. Please check the details before ordering.';
  function applyProductChrome(fmts){{
    // The shared print editor (movable frame + Layout Studio) is on for apparel,
    // branded AND mug; only wall art keeps the legacy framed-print chrome.
-   const PRINT=IS_APPAREL||IS_BRANDED||IS_MUG;
+   const PRINT=IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL;
    ['mwallrow','mwalltip'].forEach(id=>{{const e=document.getElementById(id);
      if(e) e.style.display = PRINT ? 'none' : '';}});
    const av=document.getElementById('mavail');
    if(av){{ if(!WALLART_AVAIL && !PRINT) WALLART_AVAIL=av.innerHTML;
-     av.innerHTML = IS_MUG ? MUG_AVAIL_HTML : (IS_BRANDED ? BRANDED_AVAIL_HTML
-       : (IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML))); }}
+     av.innerHTML = IS_CAL ? CAL_AVAIL_HTML : (IS_MUG ? MUG_AVAIL_HTML : (IS_BRANDED ? BRANDED_AVAIL_HTML
+       : (IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML)))); }}
    const md=document.getElementById('mdesc');
    if(md){{ if(!WALLART_DESC && !PRINT) WALLART_DESC=md.innerHTML;
-     md.innerHTML = IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
-       : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML))); }}
+     md.innerHTML = IS_CAL ? CAL_DESC_HTML : (IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
+       : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML)))); }}
    const e3=document.getElementById('e3lbl');
    if(e3) e3.textContent = PRINT ? '3. Size' : '3. Frame & size';
    // Step 1 colour row is the SHIRT colour in apparel mode / product colour in
    // branded mode (the wall-art "Background" fill is not printed on a product).
    const bl=document.getElementById('mbglbl');
-   if(bl) bl.textContent = IS_MUG ? '🍵 Colour' : (IS_BRANDED ? '🎁 Colour'
-     : (IS_APPAREL ? '👕 Shirt colour' : 'Background'));
+   if(bl) bl.textContent = IS_CAL ? '📅 Paper' : (IS_MUG ? '🍵 Colour' : (IS_BRANDED ? '🎁 Colour'
+     : (IS_APPAREL ? '👕 Shirt colour' : 'Background')));
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
    // Heading: apparel/branded buyers must NEVER see the wall-art listing title.
    const mt=document.getElementById('mtitle');
-   if(mt) mt.textContent = IS_MUG ? mugTitle() : (IS_BRANDED ? brandedTitle()
-     : (IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent)));
+   if(mt) mt.textContent = IS_CAL ? calTitle() : (IS_MUG ? mugTitle() : (IS_BRANDED ? brandedTitle()
+     : (IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent))));
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
@@ -3910,9 +4155,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(PRINT){{ renderLayoutGallery(); renderSlotInputs(); }}
  }}
  function setProductType(t){{
+   IS_CAL=(t==='cal');
    IS_MUG=(t==='mug');
    IS_BRANDED=(t==='branded');
-   IS_APPAREL=(t==='apparel');          // exactly one of apparel/branded/mug is true
+   IS_APPAREL=(t==='apparel');          // exactly one of apparel/branded/mug/cal is true
    TXT_USER_SET=false;                 // re-auto-contrast text for the new context
    if(IS_APPAREL && !CURGARMENT && APPAREL_FORMATS.length)
      CURGARMENT=APPAREL_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
@@ -3920,6 +4166,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      CURGARMENT=BRANDED_FORMATS[0].name.split(' - ')[0];   // toggled w/o a tile
    if(IS_MUG && !CURGARMENT && MUG_FORMATS.length)
      CURGARMENT=MUG_FORMATS[0].name.split(' - ')[0];       // toggled w/o a tile
+   if(IS_CAL && !CURGARMENT && CAL_FORMATS.length)
+     CURGARMENT=CAL_FORMATS[0].name.split(' - ')[0];       // toggled w/o a tile
    if(IS_APPAREL && !CURBASE) CURBASE=_baseName(CURGARMENT);
    const wb=document.getElementById('ptwall'),ab=document.getElementById('ptapp');
    if(wb&&ab){{wb.classList.toggle('ptsel',!IS_APPAREL);ab.classList.toggle('ptsel',IS_APPAREL);}}
@@ -3929,7 +4177,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    CURFMT=(fmts[0]&&fmts[0].name)||"";
    // Apparel/branded colour lives in Step 1 now, so hide the Step-3 colour/frame
    // picker (it stays the frame picker for wall art).
-   const _PRINT=IS_APPAREL||IS_BRANDED||IS_MUG;
+   const _PRINT=IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL;
    const fpk=document.getElementById('mfpick');
    if(fpk) fpk.style.display = _PRINT ? 'none' : (fmts.length?'block':'none');
    const lbl=document.getElementById('mfpicklbl');
@@ -3989,6 +4237,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    setProductType('mug');          // scopes the pills to that mug's colours
    if(col) selectApparelColor(col);   // open the live preview in that colour
  }}
+ // Entry point from a Custom Calendars tile: open the shared editor straight into
+ // calendar COVER-designer mode (PORTRAIT white-paper field), preselecting paper.
+ // CURGARMENT holds the calendar NAME (CAL_PID maps it to a product_id).
+ function shopCalendar(name,color){{
+   if(!DATA.length) return;
+   openM(0);                       // openM clears CURGARMENT; set it AFTER
+   CURGARMENT=name||"";            // the calendar product name, e.g. "Wall Calendar"
+   CURBASE="";                     // calendars have no quality-tier picker
+   var col=color||'';             // the tile's first paper colour
+   setProductType('cal');          // scopes the pills to that calendar's papers
+   if(col) selectApparelColor(col);   // open the live preview on that paper
+ }}
  // Occasion-first entry: open the editor pre-loaded with the occasion's quote,
  // ready for the buyer to personalize (they can edit/replace it).
  function shopApparelOccasion(quote){{
@@ -4000,7 +4260,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Preselect a garment colour in the editor so the preview renders in it -
  // applies the colour WITHOUT auto-advancing the step (unlike a chip click).
  function selectApparelColor(color){{
-   var fmts=IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor()), target=CURGARMENT+' - '+color, j=-1;
+   var fmts=IS_CAL?calFormatsFor():(IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor())), target=CURGARMENT+' - '+color, j=-1;
    for(var k=0;k<fmts.length;k++){{ if(fmts[k].name===target){{ j=k; break; }} }}
    if(j<0) return;
    CURFMT=fmts[j].name;
@@ -4120,6 +4380,26 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }});
    applyMugFilters();
  }}
+ function applyCalFilters(){{
+   var cat=_afVal('clCat'),t=_afVal('clType'),s=_afVal('clSize');
+   var cards=document.querySelectorAll('.calcard'),shown=0;
+   cards.forEach(function(card){{
+     var ds=card.dataset;
+     var ok=(!cat||ds.cat===cat)&&(!t||ds.type===t)
+       &&(!s||(ds.sizes||'').split(',').indexOf(s)>=0);
+     card.classList.toggle('hide',!ok); if(ok)shown++;
+   }});
+   var cnt=document.getElementById('clCount');
+   if(cnt)cnt.textContent=shown+(shown===1?' product':' products');
+   var nm=document.getElementById('clNoMatch');
+   if(nm)nm.style.display=shown?'none':'block';
+ }}
+ function clearCalFilters(){{
+   ['clCat','clType','clSize'].forEach(function(id){{
+     var e=document.getElementById(id); if(e)e.value='';
+   }});
+   applyCalFilters();
+ }}
  let CART = [];
  const QD = {qty_discount_json};
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
@@ -4127,7 +4407,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
-   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED||IS_MUG)?'':' in'}} - $${{r.price}}</option>`).join('');}}
+   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'}} - $${{r.price}}</option>`).join('');}}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -4145,7 +4425,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
      sides:_sides, wording:_slotWording(),
-     layout:((IS_APPAREL||IS_BRANDED||IS_MUG)?CURLAYOUT:''),
+     layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -4200,29 +4480,35 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function selectDept(d){{
    DEPT=d;
    var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
-       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug');
+       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug'),
+       cl=document.getElementById('deptCal');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display = d==='wall' ? '' : 'none';
    if(a) a.style.display = d==='apparel' ? '' : 'none';
    if(br) br.style.display = d==='branded' ? '' : 'none';
    if(mg) mg.style.display = d==='mug' ? '' : 'none';
+   if(cl) cl.style.display = d==='cal' ? '' : 'none';
    if(sw){{ sw.style.display='flex';
      var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp'),
-         bb=sw.querySelector('.dsbranded'), bm=sw.querySelector('.dsmug');
+         bb=sw.querySelector('.dsbranded'), bm=sw.querySelector('.dsmug'),
+         bc=sw.querySelector('.dscal');
      if(bw) bw.classList.toggle('on', d==='wall');
      if(ba) ba.classList.toggle('on', d==='apparel');
      if(bb) bb.classList.toggle('on', d==='branded');
-     if(bm) bm.classList.toggle('on', d==='mug'); }}
-   var pane = d==='wall' ? w : (d==='apparel' ? a : (d==='branded' ? br : mg));
+     if(bm) bm.classList.toggle('on', d==='mug');
+     if(bc) bc.classList.toggle('on', d==='cal'); }}
+   var pane = d==='wall' ? w : (d==='apparel' ? a : (d==='branded' ? br : (d==='mug' ? mg : cl)));
    if(pane) pane.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function showAllDepartments(){{
    DEPT=null;
    var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
-       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug');
+       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug'),
+       cl=document.getElementById('deptCal');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display='none'; if(a) a.style.display='none';
    if(br) br.style.display='none'; if(mg) mg.style.display='none';
+   if(cl) cl.style.display='none';
    if(sw) sw.style.display='none';
    var d=document.getElementById('depts'); if(d) d.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
@@ -4391,7 +4677,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _designState(){{
    return {{listing:(DATA[CUR]||{{}}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
      font:SELFONT, wall:SELWALL, wording:_slotWording(),
-     layout:((IS_APPAREL||IS_BRANDED||IS_MUG)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED||IS_MUG)?JSON.parse(JSON.stringify(SLOTS)):null),
+     layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
      photo:{{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}}}};
@@ -4775,7 +5061,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Apparel can SHRINK the photo (size 0.2x); wall art fills the frame (min 1x).
  function setPhotoZoom(v){{
-   const lo=(typeof IS_APPAREL!=='undefined' && (IS_APPAREL||IS_BRANDED||IS_MUG))?0.2:1;
+   const lo=(typeof IS_APPAREL!=='undefined' && (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL))?0.2:1;
    PHOTO_ZOOM=Math.max(lo, parseFloat(v)||1); drawArt(); }}
  function nudgePhoto(dx,dy){{ PHOTO_FX=Math.min(1,Math.max(0,PHOTO_FX+dx));
    PHOTO_FY=Math.min(1,Math.max(0,PHOTO_FY+dy)); drawArt(); }}
@@ -4987,7 +5273,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return 'frame';
  }}
  function _startDrag(ev){{ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
-   if(IS_APPAREL||IS_BRANDED||IS_MUG){{ DRAGTARGET=_hitTarget(DRAGPX);
+   if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{ DRAGTARGET=_hitTarget(DRAGPX);
      // Branded has no front/back to spin - grabbing outside just moves the frame.
      if((IS_BRANDED||IS_MUG) && DRAGTARGET==='rotate') DRAGTARGET='frame'; }}
    else {{
@@ -5019,7 +5305,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        const z=document.getElementById('mphotozoom'); if(z) z.value=PHOTO_ZOOM;
      }}
    }} else if(DRAGTARGET==='photo'){{
-     if(IS_APPAREL||IS_BRANDED||IS_MUG){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
+     if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
      else if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
        PHOTO_FY=_clamp(PHOTO_FY-(f.y-DRAGLAST.y),0,1); }}
    }} else {{                                                    // move the wording
@@ -5073,8 +5359,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function renderBg(){{
    const box=document.getElementById('mbg'); if(!box) return;
-   if(IS_APPAREL||IS_BRANDED||IS_MUG){{   // Step-1 row = product/garment colour swatches
-     var fmts=IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor());
+   if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{   // Step-1 row = product/garment colour swatches
+     var fmts=IS_CAL?calFormatsFor():(IS_MUG?mugFormatsFor():(IS_BRANDED?brandedFormatsFor():apparelFormatsFor()));
      box.innerHTML=fmts.map(function(f){{
        var cn=(f.name.split(' - ')[1]||'');
        var hex=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#bbb';
@@ -5117,7 +5403,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Mugs print on a WHITE ceramic body (the chosen colour is the handle/rim/
    // interior ACCENT, not the print field), so text must contrast the light body
    // - always dark, regardless of the accent colour.
-   if(typeof IS_MUG!=='undefined' && IS_MUG){{ SELTXT='#1b1b1f'; renderTxt(); drawArt(); return; }}
+   if((typeof IS_MUG!=='undefined'&&IS_MUG)||(typeof IS_CAL!=='undefined'&&IS_CAL)){{ SELTXT='#1b1b1f'; renderTxt(); drawArt(); return; }}
    var dark={{'Black':1,'Charcoal':1,'Navy':1,'Royal Blue':1,'Red':1,'Maroon':1,
      'Forest Green':1,'Purple':1,'Brown':1}};
    SELTXT = dark[cn] ? '#ffffff' : '#1b1b1f';
@@ -5252,6 +5538,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return null;  // Poster / Canvas = unframed
  }}
  function _printAR(){{  // width/height ratio of the selected print size (e.g. 8x10 -> 0.8)
+   if(IS_CAL){{                  // PORTRAIT white-paper cover - aspect from print bound dims
+     var _cd=CAL_DIMS[CAL_PID[CURGARMENT]];
+     if(_cd && _cd[0]>0 && _cd[1]>0) return _cd[0]/_cd[1];
+     return 0.77;               // sensible portrait default (e.g. A4-ish cover)
+   }}
    if(IS_MUG){{                  // white ceramic body - aspect from the print bound dims
      var _md=MUG_DIMS[MUG_PID[CURGARMENT]];
      if(_md && _md[0]>0 && _md[1]>0) return _md[0]/_md[1];
@@ -5361,6 +5652,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ctx.save(); ctx.fillStyle='#f4f3ef'; ctx.fillRect(x,y,w,h);
    ctx.fillStyle=acc; ctx.fillRect(x,y,w,Math.max(6,h*0.06));            // accent rim band
    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }}
+ function _drawCalField(ctx,x,y,w,h){{
+   ctx.save(); ctx.fillStyle='#fbfaf7'; ctx.fillRect(x,y,w,h);
+   ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
+   ctx.fillStyle='rgba(0,0,0,.28)';                                   // spiral-binding cue (top)
+   for(var i=0;i<10;i++){{ var cxp=x+w*(0.08+i*0.092); ctx.beginPath(); ctx.arc(cxp,y+Math.max(6,h*0.02),Math.max(2,w*0.012),0,7); ctx.fill(); }}
+   ctx.restore(); }}
  function _isLight(c){{ c=(c||'').replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
    var n=parseInt(c||'0',16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
    return (0.299*r+0.587*g+0.114*b)>150; }}
@@ -5492,14 +5789,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.clearRect(0,0,W,H);                  // transparent so the mockup image shows
    }} else {{
      if(_mg) _mg.style.display='none';
-     ctx.fillStyle = (IS_APPAREL||IS_BRANDED||IS_MUG) ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
+     ctx.fillStyle = (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
    }}
-   const m=16, spec = (IS_APPAREL||IS_BRANDED||IS_MUG) ? null : frameSpec();
+   const m=16, spec = (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) ? null : frameSpec();
    const ar=_printAR(), AW=W-2*m, AH=H-2*m;
    let w,h; if(AW/AH > ar){{ h=AH; w=AH*ar; }} else {{ w=AW; h=AW/ar; }}
    let x=(W-w)/2, y=(H-h)/2;
    if(!_mock){{ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }}  // shadow (not in real-mockup mode)
-   if(IS_MUG){{                               // white ceramic body + movable print frame
+   if(IS_CAL){{                               // PORTRAIT white-paper cover + movable print frame
+     _drawCalField(ctx,x,y,w,h);
+     const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+   }} else if(IS_MUG){{                         // white ceramic body + movable print frame
      _drawMugField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    }} else if(IS_BRANDED){{                     // flat product field + movable print frame
@@ -5518,11 +5818,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(spec.mat){{ const mm=0.05*w; ctx.fillStyle="#f7f5ef";
        ctx.fillRect(x,y,w,h); x+=mm; y+=mm; w-=2*mm; h-=2*mm; }}
    }}
-   if(!(IS_APPAREL||IS_BRANDED||IS_MUG)){{ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }}  // art background (wall-art only)
+   if(!(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)){{ ctx.fillStyle=SELBG; ctx.fillRect(x,y,w,h); }}  // art background (wall-art only)
    if(PHOTO && PHOTO.complete && PHOTO.naturalWidth){{        // uploaded photo
      const iw=PHOTO.naturalWidth, ih=PHOTO.naturalHeight;
      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
-     if(IS_APPAREL||IS_BRANDED||IS_MUG){{
+     if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{
        // APPAREL/BRANDED/MUG: the photo is a PLACEABLE element - CONTAIN-fit x size, centred at
        // a free position, so the buyer can SHRINK it (PHOTO_ZOOM 0.2..3) and MOVE it
        // anywhere in the print area instead of it always filling the garment.
@@ -5545,7 +5845,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    ART={{x:x,y:y,w:w,h:h}};                                    // for drag hit-testing
    // Layout Studio: a chosen preset arranges the slots; freeform keeps the single block.
-   if((IS_APPAREL||IS_BRANDED||IS_MUG) && CURLAYOUT!=='freeform'){{ _drawLayout(ctx,APPAREL_BOUND); }} else {{
+   if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && CURLAYOUT!=='freeform'){{ _drawLayout(ctx,APPAREL_BOUND); }} else {{
    const typed=(document.getElementById('mtext')||{{}}).value;
    const text=(typed&&typed.trim())?typed.trim():CURQUOTE;
    ctx.fillStyle=SELTXT; ctx.textAlign='center';
@@ -5588,7 +5888,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
      }}
    }}
-   if((IS_APPAREL||IS_BRANDED||IS_MUG) && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
+   if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
      ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
      const hs=9;
@@ -5599,20 +5899,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
      if(PHOTO && PHOTO_RECT){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
-     const _cap=IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
+     const _cap=IS_CAL ? '📅 Cover area - drag to move · green corner to resize'
+       : (IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
        : (IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
-       : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize'));
+       : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize')));
      ctx.fillText(_cap, b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
-     crop.textContent = IS_MUG
+     crop.textContent = IS_CAL
+       ? (sv?`📅 Calendar cover preview - ${{sv}} (your design stays inside the dashed area)`:"📅 Calendar cover preview")
+       : (IS_MUG
        ? (sv?`🍵 Mug preview - ${{sv}} (your design stays inside the dashed area)`:"🍵 Mug preview")
        : (IS_BRANDED
        ? (sv?`🎁 Product preview - size ${{sv}} (your design stays inside the dashed area)`:"🎁 Product preview")
        : (IS_APPAREL
        ? (sv?`👕 Garment preview - size ${{sv}} (your design stays inside the dashed area)`:"👕 Garment preview")
        : (sv?`📐 Final print preview - actual ${{sv}}\" crop`+(PHOTO?" (photo auto-fit to frame)":"")
-           : "📐 Final print preview"))); }}
+           : "📐 Final print preview")))); }}
    saveDraft(); updateReview();
  }}
  // ── Single-item review: show exactly what you're adding, before you add ──
