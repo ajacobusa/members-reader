@@ -58,3 +58,11 @@ def test_mug_wrap_preview_in_proof(tmp_path):
     assert "function _drawMugMockup" in h
     assert "function _mugMockupURL" in h
     assert "IS_MUG?_mugMockupURL()" in h
+
+
+def test_mug_wrap_preserves_design_aspect(tmp_path):
+    # REGRESSION: the wrap must keep the design's true aspect (no vertical stretch
+    # onto a near-square body) - the auditor's print-fidelity NO-GO fix.
+    h = _page(tmp_path)
+    assert "aspect-true height" in h
+    assert "var drawnH=Math.min(" in h

@@ -76,3 +76,11 @@ def test_calendar_month_photos_upload_to_server(tmp_path):
     # reset on product open clears the hosted urls too (no leak across orders)
     empty = "CAL_PHOTO_URLS=[null,null,null,null,null,null,null,null,null,null,null,null]"
     assert h.count(empty) >= 2
+
+
+def test_calendar_month_page_has_safe_guide_and_crop_note(tmp_path):
+    # REGRESSION: month pages show a trim-safe guide (so nothing important is near the
+    # trimmed edge) and the panel warns photos are cropped to a landscape frame.
+    h = _page(tmp_path)
+    assert "trim-safe guide" in h
+    assert "cropped to a landscape frame" in h
