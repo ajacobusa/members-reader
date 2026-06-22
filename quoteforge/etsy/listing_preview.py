@@ -2270,6 +2270,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    text-transform:uppercase;letter-spacing:.06em}}
  .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
  @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
+ .giftsets{{max-width:1080px;margin:18px auto 8px;padding:0 16px;text-align:center}}
+ .gshead{{margin:0 0 14px;color:var(--green);font-size:20px;font-weight:800;
+   text-transform:uppercase;letter-spacing:.06em}}
+ .occrow{{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0 0 18px}}
+ .occchip{{appearance:none;cursor:pointer;border:1px solid var(--line);
+   background:#fff;color:var(--green);font:inherit;font-weight:700;font-size:13px;
+   padding:8px 14px;border-radius:999px;transition:background .15s,border-color .15s}}
+ .occchip:hover{{background:var(--gold);border-color:var(--gold)}}
+ .setgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}}
+ .setcard{{background:#fff;border:1px solid var(--line);border-radius:14px;
+   padding:16px;text-align:left;display:flex;flex-direction:column;gap:6px}}
+ .setname{{color:var(--green);font-weight:800;font-size:16px}}
+ .setitems{{color:#6b7280;font-size:13px;line-height:1.4;flex:1}}
+ .setfrom{{color:var(--green);font-weight:700;font-size:15px;margin-top:2px}}
+ .setcta{{appearance:none;cursor:pointer;border:0;background:var(--green);color:#fff;
+   font:inherit;font-weight:700;font-size:14px;padding:9px 14px;border-radius:10px;
+   margin-top:8px;transition:filter .15s}}
+ .setcta:hover{{filter:brightness(1.08)}}
  .hiw{{max-width:1040px;margin:42px auto 8px;padding:0 16px;text-align:center}}
  .hiweyebrow{{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-ink);
    font-weight:700;margin:0 0 8px}}
@@ -3311,6 +3329,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
      </a>
    </div>
+ </section>
+ <section id="giftsets" class="giftsets">
+   <div class="gshead">🎁 Gift sets &amp; occasions</div>
+   <div class="occrow" id="occrow"></div>
+   <div class="setgrid" id="setgrid"></div>
  </section>
  <section class="hiw" aria-label="How it works">
    <p class="hiweyebrow">Simple &middot; transparent &middot; risk-free</p>
@@ -4843,6 +4866,45 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    else if(kind==='cal') shopCalendar(name,color);
    else if(kind==='apparel') shopApparel(name,color);
  }}
+ // ── Homepage gift sets & occasions ──────────────────────────────────
+ // Occasion -> a sensible default product + a starter line. Opens that editor
+ // pre-filled so the buyer starts from gift intent (the highest-converting entry).
+ const OCCASIONS=[
+   {{label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Happy Birthday [Name]!'}},
+   {{label:'Anniversary', kind:'cal', name:"Wall Calendar", color:'White', quote:'Our Year Together'}},
+   {{label:'For Mom', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Dusty Rose', quote:'Best Mom Ever'}},
+   {{label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Best Dad Ever'}},
+   {{label:'Wedding', kind:'cal', name:"Wall Calendar", color:'White', quote:'Mr & Mrs [Name]'}},
+   {{label:'New Baby', kind:'branded', name:"Organic Cotton Tote Bag", color:'Natural', quote:'Welcome Baby [Name]'}},
+   {{label:'Graduation', kind:'apparel', name:"Men's T-Shirt", color:'White', quote:'Class of 2025'}},
+   {{label:'Corporate', kind:'branded', name:"Organic Cotton Tote Bag", color:'Black', quote:'[Your Company]'}},
+   {{label:'Memorial', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'White', quote:'In Loving Memory'}},
+   {{label:'Just Because', kind:'branded', name:"Organic Cotton Tote Bag", color:'Sage', quote:'Just Because'}}
+ ];
+ // Curated cross-department sets. Combined from-price = sum of each item's from-price.
+ const GIFTSETS=[
+   {{key:'family', name:'Family Memory Set', items:[{{kind:'cal',name:"Wall Calendar",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Navy'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}}]}},
+   {{key:'corporate', name:'Corporate Welcome Kit', items:[{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Black'}},{{kind:'branded',name:"Insulated Stainless Water Bottle",color:'White'}},{{kind:'branded',name:"Hardcover Journal",color:'Black'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'White'}}]}},
+   {{key:'newhome', name:'New Home Set', items:[{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Forest Green'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Sage'}},{{kind:'cal',name:"Wall Calendar",color:'White'}}]}},
+   {{key:'celebration', name:'Celebration Set', items:[{{kind:'apparel',name:"Men's T-Shirt",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Red'}}]}}
+ ];
+ function _fmtFor(kind){{ return kind==='mug'?(typeof MUG_FORMATS!=='undefined'?MUG_FORMATS:[]):kind==='branded'?(typeof BRANDED_FORMATS!=='undefined'?BRANDED_FORMATS:[]):kind==='cal'?(typeof CAL_FORMATS!=='undefined'?CAL_FORMATS:[]):(typeof APPAREL_FORMATS!=='undefined'?APPAREL_FORMATS:[]); }}
+ function _prodFrom(kind,name){{ var ps=_fmtFor(kind).filter(function(f){{return f.name===name||f.name.indexOf(name+' - ')===0;}}).map(function(f){{return f.price;}}).filter(function(p){{return p>0;}}); return ps.length?Math.min.apply(null,ps):0; }}
+ function _openProduct(kind,name,color){{ if(kind==='mug')shopMug(name,color); else if(kind==='branded')shopBranded(name,color); else if(kind==='cal')shopCalendar(name,color); else shopApparel(name,color); }}
+ function shopOccasion(i){{ var o=OCCASIONS[i]; if(!o)return; CARRY_DESIGN=o.quote; _openProduct(o.kind,o.name,o.color); }}
+ function startGiftSet(i){{ var s=GIFTSETS[i]; if(!s||!s.items.length)return; var it=s.items[0]; _openProduct(it.kind,it.name,it.color); }}
+ function renderGiftSets(){{
+   var oc=document.getElementById('occrow');
+   if(oc) oc.innerHTML=OCCASIONS.map(function(o,i){{ return `<button type="button" class="occchip" onclick="shopOccasion(${{i}})">${{o.label}}</button>`; }}).join('');
+   var sg=document.getElementById('setgrid');
+   if(sg) sg.innerHTML=GIFTSETS.map(function(s,i){{
+     var from=s.items.reduce(function(t,it){{ return t+_prodFrom(it.kind,it.name); }},0);
+     var items=s.items.map(function(it){{ return it.name.replace(/ \\(.*\\)/,''); }}).join(' + ');
+     return `<div class="setcard"><div class="setname">${{s.name}}</div><div class="setitems">${{items}}</div>`+
+       `<div class="setfrom">${{from?`from $${{from.toFixed(2)}}`:''}}</div>`+
+       `<button type="button" class="setcta" onclick="startGiftSet(${{i}})">Build this set &rarr;</button></div>`;
+   }}).join('');
+ }}
  function showFinalProof(mode){{
    PROOFMODE=(mode==='final')?'final':'item';
    setStep(PROOFMODE==='final'?3:2);
@@ -6291,6 +6353,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  window.addEventListener('DOMContentLoaded', applyExperiments);
  window.addEventListener('DOMContentLoaded', function(){{
    if(typeof initApparelSwatches==='function') initApparelSwatches();
+   if(typeof renderGiftSets==='function') renderGiftSets();
  }});
  const SIGNUP_URL = "{signup_url}";
  let EXIT_SHOWN = false;
