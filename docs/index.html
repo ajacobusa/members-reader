@@ -3557,7 +3557,7 @@
      {slot:'arcBottom',kind:'arc',cx:0.5,cy:0.5,r:0.40,midAngle:90,sweep:-1,weight:0.06,caps:true}
     ]}
   ,{key:'emblem',name:'Vintage Emblem',logo:{cx:0.5,cy:0.46,scale:0.34,frame:'border'},
-    decor:['border','banner'],defaultFont:"'Cormorant Garamond',serif",
+    decor:['border'],defaultFont:"'Cormorant Garamond',serif",
     slots:[{slot:'headline',kind:'line',x:0.5,y:0.16,weight:0.10,caps:true},
            {slot:'secondary',kind:'line',x:0.5,y:0.535,weight:0.045,caps:true},
            {slot:'tagline',kind:'line',x:0.5,y:0.88,weight:0.04,caps:true}]}
@@ -3908,6 +3908,32 @@
    const R=Math.min(b.w,b.h), ink=SELTXT||'#1c1c1e', font=L.defaultFont||SELFONT;
    if(L.key==='collage') _drawCollage(ctx,b);     // photos first; frames overlay them
    (L.decor||[]).forEach(function(d){ _decor(ctx,d,b,ink); });
+   // EDITOR-ONLY drop-zone: when a layout reserves a spot for the buyer's photo/logo
+   // and none is added yet, SAY so - so the centre never reads as a mystery empty
+   // box. Drawn under the wording, and skipped in the clean/proof render so it NEVER
+   // prints. (Monogram uses initials, not a logo, so it has no drop-zone.)
+   var _lg=L.logo, _clearCentre = _lg && (_lg.scale||0)>=0.2 && (L.slots||[]).every(function(s){
+     if(s.kind!=='line') return true;                 // arcs hug the rim, never the centre
+     var sy=(s.y==null?0.5:s.y), sx=(s.x==null?0.5:s.x);
+     return (Math.abs(sy-_lg.cy) > _lg.scale*0.6) || (Math.abs(sx-_lg.cx) > _lg.scale*0.6);
+   });
+   if(!_CLEAN && L.key!=='collage' && _clearCentre
+       && !(PHOTO&&PHOTO.complete&&PHOTO.naturalWidth)){
+     var pr=R*(L.logo.scale||0.3)*0.6, pcx=b.x+b.w*L.logo.cx, pcy=b.y+b.h*L.logo.cy;
+     ctx.save(); ctx.strokeStyle='rgba(120,120,120,.9)'; ctx.fillStyle='rgba(110,110,110,.95)';
+     ctx.lineWidth=Math.max(1.4,R*0.006); ctx.setLineDash([Math.max(3,R*0.024),Math.max(2,R*0.018)]);
+     ctx.strokeRect(pcx-pr,pcy-pr,pr*2,pr*2); ctx.setLineDash([]);
+     ctx.beginPath();                                    // little photo glyph
+     ctx.moveTo(pcx-pr*0.36,pcy+pr*0.04); ctx.lineTo(pcx-pr*0.06,pcy-pr*0.34);
+     ctx.lineTo(pcx+pr*0.14,pcy-pr*0.08); ctx.lineTo(pcx+pr*0.34,pcy-pr*0.30);
+     ctx.lineTo(pcx+pr*0.36,pcy+pr*0.04); ctx.stroke();
+     ctx.beginPath(); ctx.arc(pcx-pr*0.20,pcy-pr*0.30,pr*0.08,0,7); ctx.stroke();
+     ctx.font='600 '+Math.max(9,pr*0.22)+"px 'Montserrat',sans-serif";
+     ctx.textAlign='center'; ctx.textBaseline='middle';
+     ctx.fillText('Add your photo',pcx,pcy+pr*0.52);
+     ctx.fillText('or logo here',pcx,pcy+pr*0.52+Math.max(10,pr*0.26));
+     ctx.restore();
+   }
    (L.slots||[]).forEach(function(s){
      var txt=_slot(s.slot); if(!txt) return;
      var size=Math.max(11, R*(s.weight||0.07));
@@ -3936,7 +3962,7 @@
        for(var wx=b.x+b.w*0.30;wx<=b.x+b.w*0.70;wx+=2){ var yo=Math.sin((wx-b.x)/(b.w*0.05))*R*0.02;
          (wx===b.x+b.w*0.30)?ctx.moveTo(wx,yy+yo):ctx.lineTo(wx,yy+yo); } ctx.stroke(); } }
    else if(kind==='banner'){ var bw=b.w*0.5,bh=b.h*0.12,bx=cx-bw/2,by=cy+R*0.18;
-     ctx.fillRect(bx,by,bw,bh); }
+     ctx.lineWidth=Math.max(1.5,R*0.01); ctx.strokeRect(bx,by,bw,bh); }  // ribbon outline, not a solid empty box
    else if(kind==='shield'){ ctx.beginPath();
      ctx.moveTo(cx,b.y+b.h*0.12); ctx.lineTo(b.x+b.w*0.82,b.y+b.h*0.30);
      ctx.lineTo(b.x+b.w*0.82,b.y+b.h*0.62); ctx.lineTo(cx,b.y+b.h*0.88);

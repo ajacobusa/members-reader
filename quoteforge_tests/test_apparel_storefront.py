@@ -711,6 +711,17 @@ def test_layout_thumbnails_preview_each_layout(tmp_path):
     assert "M22,38 L30,24 L34,31 L40,21 L46,38" not in h
 
 
+def test_layout_logo_dropzone_editor_only(tmp_path):
+    # REGRESSION: a layout's empty centre must COMMUNICATE that the buyer's photo/logo
+    # goes there ("Add your photo or logo here"), not read as a blank box - and it must
+    # be EDITOR-ONLY (gated on !_CLEAN) so it never prints on the proof/production file.
+    h = _page(tmp_path)
+    assert "Add your photo" in h and "or logo here" in h
+    assert "EDITOR-ONLY drop-zone" in h
+    assert "!_CLEAN" in h           # skipped in the clean/proof render -> never prints
+    assert "_clearCentre" in h      # only shown when the centre is free of text
+
+
 def test_layout_studio_persists_and_payload(tmp_path):
     # REGRESSION: layout + slots persist per side and reach the order payload;
     # `wording` is a readable concat of the active slots; a slots-only badge (no
