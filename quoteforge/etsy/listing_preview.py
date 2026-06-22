@@ -2268,8 +2268,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .depts{{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}}
  .deptshead{{margin:0 0 14px;color:var(--green);font-size:20px;
    text-transform:uppercase;letter-spacing:.06em}}
- .deptgrid{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
- @media(max-width:640px){{.deptgrid{{grid-template-columns:1fr}}}}
+ .deptgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}}
+ @media(max-width:560px){{.deptgrid{{grid-template-columns:1fr 1fr;gap:12px}}}}
+ @media(max-width:380px){{.deptgrid{{grid-template-columns:1fr}}}}
  .giftsets{{max-width:1080px;margin:18px auto 8px;padding:0 16px;text-align:center}}
  .gshead{{margin:0 0 14px;color:var(--green);font-size:20px;font-weight:800;
    text-transform:uppercase;letter-spacing:.06em}}
