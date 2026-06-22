@@ -490,6 +490,7 @@ if FLASK_AVAILABLE and app:
             out = {"status": "ok", "decision": decision,
                    "reasons": assessment["reasons"],
                    "hosted": pub["public"], "host": pub["host"],
+                   "url": pub["url"],   # published, print-partner-fetchable URL
                    "focal": focal}
             if decision != "approve":
                 out["message"] = reupload_request(assessment)

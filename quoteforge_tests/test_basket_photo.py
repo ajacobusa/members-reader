@@ -60,6 +60,26 @@ def test_upload_returns_focal(tmp_path, monkeypatch):
     assert r.status_code == 200 and "focal" in j and "x" in j["focal"]
 
 
+def test_upload_returns_hosted_url(tmp_path, monkeypatch):
+    # REGRESSION: the client (e.g. the 12-month calendar) needs the published URL
+    # back to record each month's photo with the design. /upload computes pub["url"]
+    # server-side; it must also return it so the browser can persist it.
+    from quoteforge.db import database
+    monkeypatch.setattr(database, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(database, "DB_PATH", tmp_path / "quoteforge.db")
+    database.init_db()
+    from quoteforge.automation.webhook_server import app, FLASK_AVAILABLE
+    if not (FLASK_AVAILABLE and app):
+        pytest.skip("Flask not available")
+    import io
+    buf = io.BytesIO(); Image.new("RGB", (1800, 2400), (15, 61, 46)).save(buf, "JPEG"); buf.seek(0)
+    r = app.test_client().post("/upload", data={"email": "c@x.com", "size": "a4",
+        "name": "cal-03", "file": (buf, "march.jpg")}, content_type="multipart/form-data")
+    j = r.get_json()
+    assert r.status_code == 200
+    assert "url" in j and isinstance(j["url"], str) and j["url"]
+
+
 def test_preview_matches_selected_size_crop(tmp_path):
     """Preview must use the selected size's aspect ratio so the crop is accurate."""
     h = _page(tmp_path)
