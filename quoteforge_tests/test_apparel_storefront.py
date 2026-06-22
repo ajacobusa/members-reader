@@ -351,7 +351,7 @@ def test_apparel_proof_shows_garment_not_just_art(tmp_path):
     # sees the whole piece, not just the wording on a white print area.
     h = _page(tmp_path)
     assert "function _composedProofURL" in h
-    assert "_du=_composedProofURL()" in h               # proof uses the composite
+    assert ":_composedProofURL()" in h          # non-mug proof uses the composite (mugs wrap)
     assert "tx.drawImage(mg," in h and "tx.drawImage(cv,0,0)" in h   # garment, then design
 
 
