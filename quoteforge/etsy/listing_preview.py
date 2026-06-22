@@ -3574,7 +3574,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="dbhint">Move the whole design (wording + photo) anywhere on the garment and size it up or down.</div>
        </div>
        <div class="dragbar" id="mcalbar" style="display:none">
-         <div class="dbq">&#128197; Build your <b>12-month calendar</b> &mdash; add a photo for each month, then preview the whole calendar.</div>
+         <div class="dbq">&#128197; Build your <b>12-month calendar</b> &mdash; add a photo for each month, then preview the whole calendar.<br><span style="font-size:11px;color:#7a7466">&#128247; Photos are centered &amp; cropped to a landscape frame &mdash; landscape shots look best.</span></div>
          <div class="calyear"><label>Year <input type="number" id="mcalyear" value="2026" min="2025" max="2030" onchange="setCalYear(this.value)" style="width:84px"></label></div>
          <div id="mcalslots" class="calslots"></div>
          <div id="calcountbar" class="calcountbar"><b id="calcount">0</b> of 12 months added &mdash; add all 12 for the full calendar (you can finish any you skip after your cover is approved).</div>
@@ -4138,6 +4138,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      }} else {{ ctx.fillStyle='#ece7da'; ctx.fillRect(px,py,pw,ph); ctx.fillStyle='#b3a890'; ctx.textAlign='center'; ctx.font="600 "+Math.round(H*0.024)+"px 'Montserrat',sans-serif"; ctx.fillText('Add a photo for '+_MONTHS[m], W/2, py+ph/2); }}
      ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=1; ctx.strokeRect(px,py,pw,ph);
      _drawMonthGrid(ctx, W*0.06, H*0.60, W*0.88, H*0.36, CAL_YEAR, m);
+     // Faint trim-safe guide: anything important should sit inside this dashed line
+     // (the page edge is trimmed in printing). Lets the buyer see the photo crop +
+     // that the last week of the grid clears the trim.
+     ctx.save(); ctx.strokeStyle='rgba(154,143,120,.55)'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+     var sm=W*0.035, st=H*0.05; ctx.strokeRect(sm,st,W-2*sm,H-2*st); ctx.setLineDash([]); ctx.restore();
    }} else {{
      ctx.fillStyle='#9a8f78'; ctx.textAlign='center'; ctx.font="600 "+Math.round(H*0.032)+"px 'Cormorant Garamond',serif";
      ctx.fillText('Made just for you - '+CAL_YEAR, W/2, H*0.5);
@@ -5937,13 +5942,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      octx.lineTo(bx,by+r); octx.quadraticCurveTo(bx,by,bx+r,by); octx.closePath(); }}
    bodyPath(); octx.fillStyle='#f4f3ef'; octx.fill();                    // warm-white ceramic body (matches the print panel)
    octx.save(); bodyPath(); octx.clip();                                 // wrap design onto body
-   var span=2.3, N=Math.max(48,Math.round(bw)), inset=bh*0.12;
-   function sx(u){{ var th=(u-0.5)*span; return cx+Math.sin(th)/Math.sin(span/2)*(bw/2)*0.94; }}
+   // Gentler cylinder curve, and PRESERVE the design's true aspect ratio: the wide
+   // wrap panel renders as a wide-but-short band centred on the mug (what actually
+   // prints), instead of being stretched to fill a near-square body.
+   var span=1.9, N=Math.max(48,Math.round(bw)), rimInset=bh*0.10;
+   function sx(u){{ var th=(u-0.5)*span; return cx+Math.sin(th)/Math.sin(span/2)*(bw/2)*0.92; }}
+   var screenW=sx(1)-sx(0);
+   var ar=(b.w>0&&b.h>0)?(b.h/b.w):0.5;
+   var drawnH=Math.min(bh-2*rimInset, screenW*ar);                       // aspect-true height
+   var dy=by+(bh-drawnH)/2;                                              // vertical centre
    for(var i=0;i<N;i++){{
      var u0=i/N,u1=(i+1)/N,x0=sx(u0),x1=sx(u1),th=(((u0+u1)/2)-0.5)*span;
-     octx.drawImage(src,b.x+u0*b.w,b.y,Math.max(0.5,(u1-u0)*b.w),b.h,x0,by+inset,(x1-x0)+1.0,bh-2*inset);
+     octx.drawImage(src,b.x+u0*b.w,b.y,Math.max(0.5,(u1-u0)*b.w),b.h,x0,dy,(x1-x0)+1.0,drawnH);
      var shade=0.20*(1-Math.cos(th));
-     if(shade>0.01){{ octx.fillStyle='rgba(0,0,0,'+shade.toFixed(3)+')'; octx.fillRect(x0,by+inset,(x1-x0)+1.2,bh-2*inset); }}
+     if(shade>0.01){{ octx.fillStyle='rgba(0,0,0,'+shade.toFixed(3)+')'; octx.fillRect(x0,dy,(x1-x0)+1.2,drawnH); }}
    }}
    octx.restore();
    octx.save(); bodyPath(); octx.clip();                                 // cylinder sheen

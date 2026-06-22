@@ -29,6 +29,31 @@ def test_accept_design(fresh_db):
     assert db.get_designs("a@b.com")[0]["accepted"] == 1
 
 
+def test_create_order_links_confirmed_design(fresh_db):
+    # REGRESSION: a confirmed design (incl. 12-month calendar photo URLs) must travel
+    # with the order - create_order links the customer's most-recent design, and
+    # fulfillment can retrieve the full personalization by order_id.
+    import json
+    db = fresh_db
+    db.save_design("Buyer@X.com",
+                   design_json=json.dumps({"cal": {"urls": ["u1", "u2"], "photos": 2}}),
+                   design_id="cal1", summary="12-month calendar")
+    oid = db.create_order({"customer_email": "buyer@x.com", "product_type": "calendar"})
+    linked = db.get_design_for_order(oid)
+    assert linked is not None
+    assert json.loads(linked["design_json"])["cal"]["urls"] == ["u1", "u2"]
+    # the saved-design row now carries the order id
+    assert db.get_designs("buyer@x.com")[0]["order_id"] == oid
+
+
+def test_link_design_to_order_skips_when_no_design(fresh_db):
+    # An order with no prior saved design must not error and links nothing.
+    db = fresh_db
+    oid = db.create_order({"customer_email": "nobody@x.com", "product_type": "print"})
+    assert db.get_design_for_order(oid) is None
+    assert db.link_design_to_order("", oid) == 0
+
+
 def test_confirm_design_records_without_customer_email(fresh_db, monkeypatch):
     # REGRESSION: the on-screen approval is the record - NO customer email is
     # sent from the confirm flow (the customer is never emailed a proof/receipt).
