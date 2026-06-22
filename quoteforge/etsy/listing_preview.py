@@ -1383,6 +1383,163 @@ def _mug_hero(external_assets: bool = False, assets=None) -> str:
         '</div>')
 
 
+def _cal_section(photos: dict | None = None, external_assets: bool = False,
+                 assets=None) -> str:
+    """Visible Custom Calendars department - a department-store grid of calendar
+    lines (wall/desk/family/corporate/photo/event/promo). Real product PHOTO per
+    product when `photos` (product_id -> src) is supplied, else a neutral SVG
+    fallback. Mirrors `_mug_section` exactly: hero band, faceted filter bar, one
+    tile per product with a from-price and a (single, white-paper) colour swatch.
+    Tiles carry `appcard calcard` so they inherit the apparel tile CSS. Emits ONLY
+    customer-safe facets (name/category/type/size/price) - never the supplier
+    brand or any SKU/cost."""
+    photos = photos or {}
+    try:
+        from quoteforge.etsy.calendar_catalog import (
+            CALENDAR_CATALOG, build_calendar_variations)
+    except Exception:  # noqa: BLE001
+        return ""
+    frm: dict = {}
+    for v in build_calendar_variations():
+        frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
+    if not frm:
+        return ""
+    shown = [p for p in CALENDAR_CATALOG if frm.get(p.product_id) is not None]
+    if not shown:
+        return ""
+
+    def _swatches(colors) -> str:
+        """Static paper-colour swatch dots painted from the customer-safe hex map."""
+        dots = []
+        for cn in colors:
+            hexv = _BRANDED_SWATCH_HEX.get(cn, "#bbbbbb")
+            ring = (";box-shadow:inset 0 0 0 1px #cfcabb"
+                    if cn in ("White", "Sand", "Natural", "Cream", "Silver",
+                              "Light Blue", "Heather Grey") else "")
+            dots.append(f'<i class="swdot" title="{cn}" data-color="{cn}" '
+                        f'style="background:{hexv}{ring}"></i>')
+        return "".join(dots)
+
+    def _card(p) -> str:
+        """Render one calendar product tile (product photo, else neutral SVG)."""
+        low = frm.get(p.product_id)
+        if low is None:
+            return ""
+        src = photos.get(p.product_id)
+        if src:
+            tile = (f'<span class="apptile apptilephoto"><img class="appimg" '
+                    f'loading="lazy" src="{src}" alt="Custom {p.name}"></span>')
+        else:
+            tile = ('<span class="apptile" '
+                    'style="background:linear-gradient(135deg,#eef1ee,#dfe5df)">'
+                    '<svg class="appsvg" viewBox="0 0 120 120" aria-hidden="true">'
+                    '<rect x="30" y="30" width="60" height="60" rx="8" '
+                    'fill="none" stroke="#9aa79a" stroke-width="4"/>'
+                    '<circle cx="60" cy="60" r="14" fill="#9aa79a" '
+                    'opacity="0.5"/></svg></span>')
+        name_js = p.name.replace("\\", "\\\\").replace("'", "\\'")
+        color0 = (p.colors[0] if p.colors else "").replace("\\", "\\\\").replace("'", "\\'")
+        return (
+            f'<button class="appcard calcard" type="button" '
+            f'data-cpid="{p.product_id}" data-cat="{p.category}" '
+            f'data-type="{p.type_name}" data-product="{p.name}" '
+            f'data-colors="{",".join(p.colors)}" data-sizes="{",".join(p.sizes)}" '
+            f'onclick="shopCalendar(\'{name_js}\',\'{color0}\')" '
+            f'aria-label="Design a custom {p.name}">'
+            f'{tile}'
+            f'<span class="appname">{p.type_name}</span>'
+            f'<span class="appsw" aria-label="Available colours">'
+            f'{_swatches(p.colors)}</span>'
+            f'<span class="appfrom">from ${low:.2f}</span>'
+            f'<span class="appcta">Design yours &rarr;</span></button>')
+
+    cards = [c for c in (_card(p) for p in shown) if c]
+    if not cards:
+        return ""
+
+    # ── Faceted filter bar (Category / Type / Size) ──
+    def _distinct(seq) -> list:
+        """Distinct truthy values from seq, preserving first-seen order."""
+        out: list = []
+        for x in seq:
+            if x and x not in out:
+                out.append(x)
+        return out
+    cats_f = _distinct(p.category for p in shown)
+    types_f = _distinct(p.type_name for p in shown)
+    sizes_f = _distinct(s for p in shown for s in p.sizes)
+
+    def _opts(vals) -> str:
+        """Render a list of values as <option> tags for a filter <select>."""
+        return "".join(f'<option value="{v}">{v}</option>' for v in vals)
+
+    def _sel(sid, label, all_label, opts) -> str:
+        """Render one labelled filter <select> with an 'all' default + options."""
+        return (f'<select class="appfilter" id="{sid}" aria-label="{label}" '
+                f'onchange="applyCalFilters()">'
+                f'<option value="">{all_label}</option>{opts}</select>')
+    filterbar = (
+        '<div class="appfilters calfilter" role="group" '
+        'aria-label="Filter calendars">'
+        + '<span class="appfilterlbl">Refine</span>'
+        + _sel("clCat", "Category", "All categories", _opts(cats_f))
+        + _sel("clType", "Type", "All types", _opts(types_f))
+        + _sel("clSize", "Size", "All sizes", _opts(sizes_f))
+        + '<button type="button" class="appfilterclear" '
+          'onclick="clearCalFilters()">Clear</button>'
+        + f'<span class="appfiltercount" id="clCount">{len(cards)} products</span>'
+        + '</div>')
+    nomatch = (
+        '<p class="apnomatch" id="clNoMatch" style="display:none">'
+        'No calendars match those filters. '
+        '<button type="button" class="appfilterclear" '
+        'onclick="clearCalFilters()">Clear filters</button></p>')
+    return (
+        '<section class="apparel-sec cal-sec" id="calendars">'
+        f'{_cal_hero(external_assets, assets)}{filterbar}'
+        f'<div class="appgroup"><div class="appgrid">{"".join(cards)}</div></div>'
+        f'{nomatch}</section>')
+
+
+def _cal_hero(external_assets: bool = False, assets=None) -> str:
+    """The calendars department hero - mirrors the apparel/mug hero markup and
+    classes for a consistent department look. Generic copy (no supplier or
+    marketplace names). Uses brand/cal-hero.jpg when bundled. In external_assets
+    mode the hero photo is written to the assets folder and referenced by URL
+    (lazy-loaded) instead of inlined as a parse-blocking data-URI."""
+    from quoteforge.config import OUTPUT_DIR
+    img = ""
+    for p in (Path(__file__).resolve().parents[2] / "brand" / "cal-hero.jpg",
+              Path(OUTPUT_DIR) / "cal-hero.jpg"):
+        try:
+            if p.exists():
+                if external_assets and assets is not None:
+                    _save_web_jpg(p, assets / "cal-hero.jpg", 1200, 80)
+                    src = "assets/cal-hero.jpg"
+                else:
+                    src = _web_img(p, 1200, 80)
+                img = (f'<img class="apheroimg" src="{src}" '
+                       f'alt="Custom calendars" loading="lazy">')
+                break
+        except Exception:  # noqa: BLE001
+            img = ""
+    return (
+        '<div class="aphero" id="calhero">'
+        '<div class="apherobody">'
+        '<span class="apheroeyebrow">Personalized &middot; made to order</span>'
+        '<h2 class="apheroh">Custom Calendars</h2>'
+        '<p class="apherosub">Design a calendar around your own photos, dates and '
+        'words - wall, desk, family, photo &amp; event styles, the same easy '
+        'editor, and a free proof you approve on screen before anything prints.</p>'
+        '<button type="button" class="apherocta" onclick="'
+        "(document.querySelector('.calfilter')||document.getElementById('calendars'))"
+        ".scrollIntoView({behavior:'smooth',block:'center'})"
+        '">Start designing &rarr;</button>'
+        '</div>'
+        f'<div class="apheromedia">{img}</div>'
+        '</div>')
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -1867,6 +2024,43 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         mug_formats_json = "[]"
         mug_dims_json = "{}"
         mug_pid_json = "{}"
+
+    # Per-product tile photos for the Custom Calendars grid, keyed by product_id
+    # (brand/tile-<product_id>.jpg, e.g. tile-wall_cal.jpg). Falls back to the
+    # section's neutral SVG tile when a photo is absent - mirrors the mug grid.
+    # Customer-safe only (no supplier data).
+    _cal_photos: dict = {}
+    cal_formats_json = "[]"
+    cal_dims_json = "{}"
+    cal_pid_json = "{}"
+    try:
+        from quoteforge.etsy.calendar_catalog import (
+            CALENDAR_CATALOG as _CC, build_calendar_variations as _bcv)
+        for _p in _CC:
+            _cp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
+                        if (brand / f"tile-{_p.product_id}.{e}").exists()), None)
+            if _cp:
+                _cal_photos[_p.product_id] = _emit(_cp, f"tile-{_p.product_id}.jpg")
+        # Cheapest price per (product, paper-colour) for the editor's calendar picker.
+        _cc_from: dict = {}
+        for _v in _bcv():
+            _key = (_v.product_id, _v.color)
+            _cc_from[_key] = min(_cc_from.get(_key, 1e9), _v.price)
+        _cname = {_p.product_id: _p.name for _p in _CC}
+        cal_formats = [
+            {"name": f"{_cname[_pid]} - {_col}", "price": round(_pr, 2)}
+            for (_pid, _col), _pr in _cc_from.items() if _pid in _cname]
+        cal_formats_json = json.dumps(cal_formats)
+        cal_dims_json = json.dumps(
+            {_p.product_id: [_p.width_px, _p.height_px] for _p in _CC})
+        # Editor maps the picked product NAME (what shopCalendar carries) back to a
+        # product_id so it can look up CAL_DIMS (which is keyed by product_id).
+        cal_pid_json = json.dumps({_p.name: _p.product_id for _p in _CC})
+    except Exception:  # noqa: BLE001 — never break the build on the calendar catalog
+        _cal_photos = {}
+        cal_formats_json = "[]"
+        cal_dims_json = "{}"
+        cal_pid_json = "{}"
 
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
@@ -3180,6 +3374,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div id="deptApparel" class="deptpane" style="display:none">{_apparel_section(_garment_photos)}</div>
  <div id="deptBranded" class="deptpane" style="display:none">{_branded_section(_branded_photos, external_assets, assets)}</div>
  <div id="deptMug" class="deptpane" style="display:none">{_mug_section(_mug_photos, external_assets, assets)}</div>
+ <div id="deptCal" class="deptpane" style="display:none">{_cal_section(_cal_photos, external_assets, assets)}</div>
  {reviews_html}
  {gallery_html}
  {_competitive_sections()}
@@ -3744,6 +3939,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Mug product NAME -> product_id, so the editor can resolve MUG_DIMS (keyed by
  // product_id) from the name shopMug carries.
  const MUG_PID = {mug_pid_json};
+ // ── Custom Calendars: a parallel product family sharing this editor ──
+ // CAL_FORMATS: one entry per product x paper-colour ("{{name}} - {{colour}}" + from-price).
+ // CAL_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
+ const CAL_FORMATS = {cal_formats_json};
+ const CAL_DIMS = {cal_dims_json};
+ // Calendar product NAME -> product_id, so the editor can resolve CAL_DIMS (keyed
+ // by product_id) from the name shopCalendar carries.
+ const CAL_PID = {cal_pid_json};
  // Real per-colour supplier photos {{type:{{colour:url}}}} - populated at go-live;
  // when empty the tile keeps its default photo (the swatch still rings + carries).
  const APPAREL_COLOR_IMG = {apparel_color_img_json};
