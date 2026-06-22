@@ -32,3 +32,14 @@ def test_cross_department_cross_sell(tmp_path):
     assert "crossSellTo(" in h                          # wired on the buttons
     # no supplier/marketplace leak
     assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
+def test_all_five_departments_visible_in_grid(tmp_path):
+    # REGRESSION: the "Shop by department" grid must show ALL FIVE departments,
+    # not bury the 3 new ones below the fold. Was a fixed 2-column grid (only Wall
+    # Art + Apparel above the fold); now a responsive auto-fit grid.
+    h = _page(tmp_path)
+    for cls in ("deptcard deptwall", "deptcard deptapp", "deptcard deptbranded",
+                "deptcard deptmug", "deptcard deptcal"):
+        assert cls in h, cls
+    assert "repeat(auto-fit,minmax" in h   # responsive grid, not a fixed 2-col

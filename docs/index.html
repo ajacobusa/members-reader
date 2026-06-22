@@ -108,8 +108,9 @@
  .depts{max-width:1080px;margin:24px auto 8px;padding:0 16px;text-align:center}
  .deptshead{margin:0 0 14px;color:var(--green);font-size:20px;
    text-transform:uppercase;letter-spacing:.06em}
- .deptgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
- @media(max-width:640px){.deptgrid{grid-template-columns:1fr}}
+ .deptgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+ @media(max-width:560px){.deptgrid{grid-template-columns:1fr 1fr;gap:12px}}
+ @media(max-width:380px){.deptgrid{grid-template-columns:1fr}}
  .giftsets{max-width:1080px;margin:18px auto 8px;padding:0 16px;text-align:center}
  .gshead{margin:0 0 14px;color:var(--green);font-size:20px;font-weight:800;
    text-transform:uppercase;letter-spacing:.06em}
@@ -1233,7 +1234,7 @@
    </div>
  </section>
  
- <div class="cutoff">⏰ Only 4 days left - order by Jun 25 to get it in time for Independence Day.</div>
+ <div class="cutoff">⏰ Only 3 days left - order by Jun 25 to get it in time for Independence Day.</div>
  <div class='uatbar'>👋 Thanks for helping review Joffiels! <b>Tap any piece</b> to see all its photos &amp; details, rate it, then tap <b>feedback</b>. <a href='mailto:ajacobusa@gmail.com?subject=Joffiels%20overall%20feedback'>Send overall feedback</a></div>
  <div id="deptswitch" class="deptswitch" style="display:none">
    <button type="button" class="dswall" onclick="selectDept('wall')">🖼️ Wall Art</button>
