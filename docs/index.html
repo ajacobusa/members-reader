@@ -2783,7 +2783,7 @@
      _loadContact(); finalStep(1);
    } else {
      REVIEWED=true; guide();              // review opened: that task is done
-     if(cv&&img){ const _du=_composedProofURL();      // garment + design, not just art
+     if(cv&&img){ const _du=IS_MUG?_mugMockupURL():_composedProofURL();  // mugs: wrap on a real mug
        if(_du){ img.src=_du; img.style.display='block'; } }
      // Apparel: let the buyer spin the garment to review the BACK too before approving.
      if(_fl)_fl.style.display=IS_APPAREL?'flex':'none';
@@ -3633,6 +3633,57 @@
    ctx.save(); ctx.fillStyle='#f4f3ef'; ctx.fillRect(x,y,w,h);
    ctx.fillStyle=acc; ctx.fillRect(x,y,w,Math.max(6,h*0.06));            // accent rim band
    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }
+ // Mug WRAP preview: draw a realistic white mug (body + handle + accent rim) and
+ // wrap the buyer's design (the print panel `b`) around the body with a cylinder
+ // warp (compress toward the edges) + soft shading, so the final proof shows the
+ // design ON a mug, not on a flat panel. The #1 mug conversion lever.
+ function _drawMugMockup(octx,src,b,W,H,acc){
+   octx.save(); octx.fillStyle='#efece4'; octx.fillRect(0,0,W,H);        // studio
+   var bw=W*0.50, bh=H*0.40, bx=W*0.42-bw/2, by=H*0.30, cx=bx+bw/2;
+   octx.fillStyle='rgba(0,0,0,.12)';                                     // contact shadow
+   octx.beginPath(); octx.ellipse(cx,by+bh+12,bw*0.42,9,0,0,7); octx.fill();
+   octx.lineWidth=Math.max(10,bw*0.11); octx.strokeStyle='#f1efe9';      // handle (behind)
+   octx.beginPath(); octx.arc(bx+bw-2,by+bh*0.50,bh*0.27,-1.15,1.15); octx.stroke();
+   octx.strokeStyle='rgba(0,0,0,.10)'; octx.lineWidth=2;
+   octx.beginPath(); octx.arc(bx+bw-2,by+bh*0.50,bh*0.27+bw*0.055,-1.05,1.05); octx.stroke();
+   function bodyPath(){ var r=bw*0.11; octx.beginPath();
+     octx.moveTo(bx+r,by); octx.lineTo(bx+bw-r,by); octx.quadraticCurveTo(bx+bw,by,bx+bw,by+r);
+     octx.lineTo(bx+bw,by+bh-r); octx.quadraticCurveTo(bx+bw,by+bh,bx+bw-r,by+bh);
+     octx.lineTo(bx+r,by+bh); octx.quadraticCurveTo(bx,by+bh,bx,by+bh-r);
+     octx.lineTo(bx,by+r); octx.quadraticCurveTo(bx,by,bx+r,by); octx.closePath(); }
+   bodyPath(); octx.fillStyle='#f4f3ef'; octx.fill();                    // warm-white ceramic body (matches the print panel)
+   octx.save(); bodyPath(); octx.clip();                                 // wrap design onto body
+   var span=2.3, N=Math.max(48,Math.round(bw)), inset=bh*0.12;
+   function sx(u){ var th=(u-0.5)*span; return cx+Math.sin(th)/Math.sin(span/2)*(bw/2)*0.94; }
+   for(var i=0;i<N;i++){
+     var u0=i/N,u1=(i+1)/N,x0=sx(u0),x1=sx(u1),th=(((u0+u1)/2)-0.5)*span;
+     octx.drawImage(src,b.x+u0*b.w,b.y,Math.max(0.5,(u1-u0)*b.w),b.h,x0,by+inset,(x1-x0)+1.0,bh-2*inset);
+     var shade=0.20*(1-Math.cos(th));
+     if(shade>0.01){ octx.fillStyle='rgba(0,0,0,'+shade.toFixed(3)+')'; octx.fillRect(x0,by+inset,(x1-x0)+1.2,bh-2*inset); }
+   }
+   octx.restore();
+   octx.save(); bodyPath(); octx.clip();                                 // cylinder sheen
+   var g=octx.createLinearGradient(bx,0,bx+bw,0);
+   g.addColorStop(0,'rgba(0,0,0,.13)'); g.addColorStop(0.2,'rgba(255,255,255,.12)');
+   g.addColorStop(0.5,'rgba(255,255,255,.05)'); g.addColorStop(1,'rgba(0,0,0,.15)');
+   octx.fillStyle=g; octx.fillRect(bx,by,bw,bh); octx.restore();
+   octx.fillStyle='#ffffff'; octx.beginPath(); octx.ellipse(cx,by,bw/2,bh*0.06,0,0,7); octx.fill();
+   octx.fillStyle='rgba(0,0,0,.16)'; octx.beginPath(); octx.ellipse(cx,by,bw/2*0.84,bh*0.046,0,0,7); octx.fill();
+   octx.strokeStyle=acc; octx.lineWidth=Math.max(4,bh*0.022);            // accent rim ring
+   octx.beginPath(); octx.ellipse(cx,by,bw/2,bh*0.06,0,0,7); octx.stroke();
+   octx.strokeStyle='rgba(0,0,0,.16)'; octx.lineWidth=2; octx.stroke();
+   octx.restore();
+ }
+ function _mugMockupURL(){
+   var cv=document.getElementById('mcanvas'); if(!cv) return '';
+   _CLEAN=true; drawArt();
+   var b=APPAREL_BOUND||{x:cv.width*0.2,y:cv.height*0.2,w:cv.width*0.6,h:cv.height*0.5};
+   var cn=(CURFMT.split(' - ')[1]||'White'); var acc=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#bbb';
+   var oc=document.createElement('canvas'); oc.width=cv.width; oc.height=cv.height;
+   try{ _drawMugMockup(oc.getContext('2d'),cv,b,oc.width,oc.height,acc); }catch(e){}
+   _CLEAN=false; drawArt();
+   try{ return oc.toDataURL('image/png'); }catch(e){ return ''; }
+ }
  function _drawCalField(ctx,x,y,w,h){
    ctx.save(); ctx.fillStyle='#fbfaf7'; ctx.fillRect(x,y,w,h);
    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);

@@ -49,3 +49,12 @@ def test_mug_no_supplier_leak(tmp_path):
     h = _page(tmp_path).lower()
     for bad in ("gelato", "printify", "printful"):
         assert bad not in h, bad
+
+
+def test_mug_wrap_preview_in_proof(tmp_path):
+    # REGRESSION: the mug final proof shows the design WRAPPED on a realistic mug
+    # (cylinder warp + handle + accent rim), not the flat design panel.
+    h = _page(tmp_path)
+    assert "function _drawMugMockup" in h
+    assert "function _mugMockupURL" in h
+    assert "IS_MUG?_mugMockupURL()" in h
