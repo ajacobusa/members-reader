@@ -542,6 +542,12 @@ def create_order(data: dict) -> str:
             data.get("shipping_cost"),
             data.get("shipping_collected"),
         ))
+    # Attach the customer's most-recent confirmed design (incl. any 12-month calendar
+    # photo URLs) to this order, so the personalization travels with it to production.
+    try:
+        link_design_to_order(data.get("customer_email", ""), order_id)
+    except Exception:  # noqa: BLE001 - linking is best-effort, never block an order
+        pass
     return order_id
 
 
@@ -868,6 +874,38 @@ def get_designs(email: str = "") -> list[dict]:
         else:
             rows = conn.execute("SELECT * FROM saved_designs ORDER BY updated_at DESC")
         return [dict(r) for r in rows]
+
+
+def link_design_to_order(email: str, order_id: str) -> int:
+    """Attach the customer's most-recent UNLINKED saved design to an order, so the
+    confirmed personalization (including any 12-month calendar photo URLs) travels
+    with the order for production. Returns the linked design row id (0 if none)."""
+    email = (email or "").strip().lower()
+    if "@" not in email or not order_id:
+        return 0
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM saved_designs WHERE email=? "
+            "AND (order_id IS NULL OR order_id='') "
+            "ORDER BY updated_at DESC LIMIT 1", (email,)).fetchone()
+        if not row:
+            return 0
+        conn.execute(
+            "UPDATE saved_designs SET order_id=?, updated_at=datetime('now') WHERE id=?",
+            (order_id, row["id"]))
+        return row["id"]
+
+
+def get_design_for_order(order_id: str) -> dict | None:
+    """Return the saved design linked to an order (most recent), or None. Lets
+    fulfillment retrieve the full personalization - e.g. all 12 calendar months."""
+    if not order_id:
+        return None
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM saved_designs WHERE order_id=? ORDER BY updated_at DESC LIMIT 1",
+            (order_id,)).fetchone()
+        return dict(row) if row else None
 
 
 # ── Competitor snapshots (intelligence) ─────────────────────────
