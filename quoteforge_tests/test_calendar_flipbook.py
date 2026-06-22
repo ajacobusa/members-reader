@@ -61,3 +61,18 @@ def test_calendar_cover_strips_editor_chrome(tmp_path):
     # REGRESSION: the flipbook cover must not show the editor frame/drag handles.
     h = _page(tmp_path)
     assert "strip editor chrome" in h
+
+
+def test_calendar_month_photos_upload_to_server(tmp_path):
+    # REGRESSION: each month photo is sent to the server /upload endpoint and its
+    # hosted (print-partner-fetchable) URL is recorded into the design payload, so
+    # the ACTUAL month photos reach production - not just the on-screen preview.
+    h = _page(tmp_path)
+    assert "function _calUpload" in h
+    assert "_calUpload(i,f)" in h                 # called from calPhotoUpload
+    assert "let CAL_PHOTO_URLS" in h
+    assert "urls:filled.map" in h                 # hosted URLs carried in _calMeta
+    assert "'cal-'+(i+1)" in h                    # each month tagged cal-<month>
+    # reset on product open clears the hosted urls too (no leak across orders)
+    empty = "CAL_PHOTO_URLS=[null,null,null,null,null,null,null,null,null,null,null,null]"
+    assert h.count(empty) >= 2

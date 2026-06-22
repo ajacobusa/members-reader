@@ -3980,7 +3980,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5; _showPhotoCtl(false);
    // Clear any 12-month calendar photos from a prior design so they never carry
    // into a different calendar/order (privacy + wrong-photo-into-production guard).
-   CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null]; FLIP_PAGE=0; _updCalCount();
+   CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null];
+   CAL_PHOTO_URLS=[null,null,null,null,null,null,null,null,null,null,null,null]; FLIP_PAGE=0; _updCalCount();
    var ui=document.getElementById('mupload'); if(ui) ui.value="";
    document.getElementById('mrate').style.display = UAT ? 'block':'none';
    const fb = document.getElementById('mfb');
@@ -4056,6 +4057,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let IS_CAL=false;
  // ── Calendars: 12-month photo engine + flip-through preview ──────────
  let CAL_PHOTOS=[null,null,null,null,null,null,null,null,null,null,null,null];
+ // Hosted, print-partner-fetchable URL per month (filled by the server /upload), so
+ // the actual month photos travel with the order - not just the on-screen preview.
+ let CAL_PHOTO_URLS=[null,null,null,null,null,null,null,null,null,null,null,null];
  let CAL_YEAR=2026, FLIP_PAGE=0;
  const _MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
  const _WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -4065,6 +4069,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var r=new FileReader();
    r.onload=function(e){{ var im=new Image(); im.onload=function(){{ CAL_PHOTOS[i]=im; var s=document.getElementById('calslot'+i); if(s)s.classList.add('filled'); _updCalCount(); }}; im.src=e.target.result; }};
    r.readAsDataURL(f);
+   _calUpload(i,f);   // send the bytes to the server so the month photo reaches production
+ }}
+ // Upload one month's photo to the server (same endpoint as the single print photo),
+ // tagged cal-<month>, and remember the hosted URL it returns. Fire-and-forget; the
+ // on-screen preview never waits on it. No-ops if not hosted / not signed in.
+ function _calUpload(i,f){{
+   try{{
+     var email=knownEmail(); if(!UPLOAD_API||!email||!f) return;
+     var fd=new FormData(); fd.append('file',f); fd.append('email',email);
+     fd.append('name','cal-'+(i+1)); fd.append('size','calendar');
+     fetch(UPLOAD_API,{{method:'POST',body:fd}}).then(function(r){{return r.json();}})
+       .then(function(d){{ if(d&&d.url) CAL_PHOTO_URLS[i]=d.url; }}).catch(function(){{}});
+   }}catch(e){{}}
  }}
  function setCalYear(v){{ CAL_YEAR=parseInt(v)||CAL_YEAR; }}
  // How many of the 12 months have a photo - powers the live counter, the order
@@ -4074,7 +4091,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // receives the 12-month intent (year + which months have a photo), not just the cover.
  function _calMeta(){{ if(!IS_CAL) return null;
    var filled=[]; for(var i=0;i<12;i++) if(CAL_PHOTOS[i]) filled.push(i);
-   return {{kind:'12-month', year:CAL_YEAR, photos:filled.length, months:filled}}; }}
+   return {{kind:'12-month', year:CAL_YEAR, photos:filled.length, months:filled,
+     urls:filled.map(function(i){{ return CAL_PHOTO_URLS[i]||''; }})}}; }}
  function _updCalCount(){{ var c=document.getElementById('calcount'); if(c) c.textContent=_calCount();
    var b=document.getElementById('calcountbar');
    if(b) b.className='calcountbar'+(_calCount()===12?' done':''); }}
