@@ -23,3 +23,13 @@ def test_cal_section_renders_products_and_facets(tmp_path):
     assert 'shopCalendar(' in h
     assert 'CAL_FORMATS' in h and 'CAL_DIMS' in h
     assert "gelato" not in h.lower() and "printify" not in h.lower()
+
+
+def test_cal_is_a_department(tmp_path):
+    h = _page(tmp_path)
+    assert 'href="#calendars"' in h
+    assert 'deptcal' in h
+    assert 'id="deptCal"' in h
+    assert "selectDept('cal')" in h
+    assert h.count("selectDept(") >= 5
+    assert "function applyCalFilters" in h and "function clearCalFilters" in h

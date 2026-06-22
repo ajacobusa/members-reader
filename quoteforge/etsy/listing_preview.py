@@ -1911,6 +1911,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                                       brand / "dept-mug.png") if p.exists()), None)
     dept_mug_src = (_emit(_dept_mug_img, "dept-mug.jpg")
                     if _dept_mug_img else "")
+    _dept_cal_img = next((p for p in (brand / "dept-cal.jpg",
+                                      brand / "dept-cal.png") if p.exists()), None)
+    dept_cal_src = (_emit(_dept_cal_img, "dept-cal.jpg")
+                    if _dept_cal_img else "")
     # Per-garment product photos for the apparel tiles, keyed by garment_id so each
     # GENDER shows its OWN model photo (brand/tile-<garment_id>.jpg, e.g.
     # tile-m_tshirt.jpg / tile-w_tshirt.jpg). Falls back to the shaded SVG tile when
@@ -3229,6 +3233,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      <a href="#apparel" onclick="selectDept('apparel');return false;">👕 Apparel</a>
      <a href="#branded" onclick="selectDept('branded');return false;">🎁 Branded</a>
      <a href="#mugs" onclick="selectDept('mug');return false;">🍵 Mugs</a>
+     <a href="#calendars" onclick="selectDept('cal');return false;">📅 Calendars</a>
      <a href="#" onclick="openQuiz();return false;">Occasions</a>
      <a href="#why">Why</a>
      <a href="#faq">FAQ</a>
@@ -3289,6 +3294,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <span class="deptgo">Browse Mugs →</span>
        </div>
      </a>
+     <a class="deptcard deptcal" href="#calendars" onclick="selectDept('cal');return false;">
+       {f'<img class="deptimg" loading="lazy" src="{dept_cal_src}" alt="Custom calendars - wall, desk &amp; photo">' if dept_cal_src else '<span class="depticon">📅</span>'}
+       <div class="deptbody">
+         <span class="depttitle">Custom Calendars</span>
+         <span class="deptsub">Wall, desk &amp; photo calendars, personalized month by month</span>
+         <span class="deptgo">Browse Calendars →</span>
+       </div>
+     </a>
    </div>
  </section>
  <section class="hiw" aria-label="How it works">
@@ -3338,6 +3351,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <button type="button" class="dsapp" onclick="selectDept('apparel')">👕 Apparel</button>
    <button type="button" class="dsbranded" onclick="selectDept('branded')">🎁 Branded</button>
    <button type="button" class="dsmug" onclick="selectDept('mug')">🍵 Mugs</button>
+   <button type="button" class="dscal" onclick="selectDept('cal')">📅 Calendars</button>
    <button type="button" class="dsall" onclick="showAllDepartments()">&#8593; All departments</button>
  </div>
  <div id="deptWall" class="deptpane" style="display:none">
@@ -4323,6 +4337,26 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }});
    applyMugFilters();
  }}
+ function applyCalFilters(){{
+   var cat=_afVal('clCat'),t=_afVal('clType'),s=_afVal('clSize');
+   var cards=document.querySelectorAll('.calcard'),shown=0;
+   cards.forEach(function(card){{
+     var ds=card.dataset;
+     var ok=(!cat||ds.cat===cat)&&(!t||ds.type===t)
+       &&(!s||(ds.sizes||'').split(',').indexOf(s)>=0);
+     card.classList.toggle('hide',!ok); if(ok)shown++;
+   }});
+   var cnt=document.getElementById('clCount');
+   if(cnt)cnt.textContent=shown+(shown===1?' product':' products');
+   var nm=document.getElementById('clNoMatch');
+   if(nm)nm.style.display=shown?'none':'block';
+ }}
+ function clearCalFilters(){{
+   ['clCat','clType','clSize'].forEach(function(id){{
+     var e=document.getElementById(id); if(e)e.value='';
+   }});
+   applyCalFilters();
+ }}
  let CART = [];
  const QD = {qty_discount_json};
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
@@ -4403,29 +4437,35 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function selectDept(d){{
    DEPT=d;
    var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
-       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug');
+       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug'),
+       cl=document.getElementById('deptCal');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display = d==='wall' ? '' : 'none';
    if(a) a.style.display = d==='apparel' ? '' : 'none';
    if(br) br.style.display = d==='branded' ? '' : 'none';
    if(mg) mg.style.display = d==='mug' ? '' : 'none';
+   if(cl) cl.style.display = d==='cal' ? '' : 'none';
    if(sw){{ sw.style.display='flex';
      var bw=sw.querySelector('.dswall'), ba=sw.querySelector('.dsapp'),
-         bb=sw.querySelector('.dsbranded'), bm=sw.querySelector('.dsmug');
+         bb=sw.querySelector('.dsbranded'), bm=sw.querySelector('.dsmug'),
+         bc=sw.querySelector('.dscal');
      if(bw) bw.classList.toggle('on', d==='wall');
      if(ba) ba.classList.toggle('on', d==='apparel');
      if(bb) bb.classList.toggle('on', d==='branded');
-     if(bm) bm.classList.toggle('on', d==='mug'); }}
-   var pane = d==='wall' ? w : (d==='apparel' ? a : (d==='branded' ? br : mg));
+     if(bm) bm.classList.toggle('on', d==='mug');
+     if(bc) bc.classList.toggle('on', d==='cal'); }}
+   var pane = d==='wall' ? w : (d==='apparel' ? a : (d==='branded' ? br : (d==='mug' ? mg : cl)));
    if(pane) pane.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
  function showAllDepartments(){{
    DEPT=null;
    var w=document.getElementById('deptWall'), a=document.getElementById('deptApparel'),
-       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug');
+       br=document.getElementById('deptBranded'), mg=document.getElementById('deptMug'),
+       cl=document.getElementById('deptCal');
    var sw=document.getElementById('deptswitch');
    if(w) w.style.display='none'; if(a) a.style.display='none';
    if(br) br.style.display='none'; if(mg) mg.style.display='none';
+   if(cl) cl.style.display='none';
    if(sw) sw.style.display='none';
    var d=document.getElementById('depts'); if(d) d.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
