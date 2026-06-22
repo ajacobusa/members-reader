@@ -161,3 +161,87 @@ def calendar_skus() -> list[str]:
     """Every calendar variant SKU (the fulfillment routing keys), sorted."""
     return sorted({_variant_sku(p, s, c)
                    for p in CALENDAR_CATALOG for s in p.sizes for c in p.colors})
+
+
+# ── Fulfilment resolver: storefront cart line -> variant SKU ──────
+# Mirrors mug_catalog.py's ingest seam. The storefront records a calendar
+# choice as a format ("{product} - {colour}") plus a size; order-ingest calls
+# these pure functions to turn that basket line into the variant SKU, which maps
+# to a real Gelato UID via the SAME map mechanism wall-art and mug SKUs use.
+# Pure + side-effect-free, so safe to call from any ingest path.
+
+def parse_calendar_format(fmt: str) -> tuple[str | None, str | None]:
+    """('Wall Calendar - White') -> (product_id, colour); (None, None) for anything
+    that is not a real calendar format (so apparel/branded/mug/wall-art are safe)."""
+    if not fmt or " - " not in fmt:
+        return (None, None)
+    name, _, color = fmt.partition(" - ")
+    p = next((x for x in CALENDAR_CATALOG if x.name == name.strip()), None)
+    return (p.product_id, color.strip()) if p else (None, None)
+
+
+def calendar_sku_for(product_id: str, size: str, color: str) -> str | None:
+    """The variant SKU for a (product, size, colour), or None if the combination
+    is not in the catalogue (so a bad size/colour can never route to production)."""
+    p = get_calendar(product_id)
+    if not p or size not in p.sizes or color not in p.colors:
+        return None
+    return _variant_sku(p, size, color)
+
+
+def resolve_calendar_sku(fmt: str, size: str) -> str | None:
+    """Storefront basket line ("Wall Calendar - White", "A3") -> variant SKU, or
+    None when the line is not a valid calendar selection. The single entry point
+    order-ingest calls to obtain a fulfilment routing key; None means 'not calendar
+    / not orderable' so the caller routes to manual review."""
+    pid, color = parse_calendar_format(fmt)
+    if not pid:
+        return None
+    return calendar_sku_for(pid, size, color)
+
+
+def enrich_calendar_order(order_data: dict) -> dict:
+    """Merge calendar fields into an order. {} for non-calendar orders. Single ingest seam."""
+    fmt = (order_data.get("material") or order_data.get("fmt")
+           or order_data.get("product_format") or order_data.get("format") or "")
+    size = (order_data.get("product_size") or order_data.get("size") or "")
+    pid, color = parse_calendar_format(fmt)
+    if not pid:
+        return {}
+    sku = calendar_sku_for(pid, size, color)
+    out: dict = {"product_type": "calendar", "product_id": pid,
+                 "color": color, "material": fmt, "gelato_sku": sku}
+    p = get_calendar(pid)
+    if p and sku:
+        cost = _variant_cost(p, sku)
+        if cost is not None:
+            out["gelato_cost"] = cost
+    from quoteforge.automation.gelato_variant_resolver import resolve_variant_uid
+    uid = resolve_variant_uid(sku, pid, color, size)
+    if uid:
+        out["gelato_product_uid"] = uid
+    return out
+
+
+# ── Isolated Gelato placeholder guard (separate from print + apparel + branded + mug guards) ──
+
+def verify_calendar_mappings() -> dict:
+    """Every calendar variant GO-LIVE READY when its UID is statically mapped OR its
+    family is mapped (resolved dynamically). Independent of the print + apparel +
+    branded + mug guards."""
+    from quoteforge.automation.gelato_sync import _uid_map
+    from quoteforge.automation.gelato_variant_resolver import family_covered
+    uid_map = _uid_map()
+    vs = build_calendar_variations()
+    placeholders = []
+    for v in vs:
+        st = uid_map.get(v.gelato_sku)
+        if st and not str(st).upper().startswith("GEL-"):
+            continue
+        if family_covered(v.product_id):
+            continue
+        placeholders.append(v.gelato_sku)
+    total = len(vs)
+    return {"total": total, "configured": total - len(placeholders),
+            "placeholder_count": len(placeholders), "placeholders": placeholders,
+            "all_real": not placeholders}

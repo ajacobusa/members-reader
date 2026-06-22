@@ -21,3 +21,27 @@ def test_every_variant_clears_the_margin_floor():
 def test_dimensions_lookup_falls_back_safely():
     assert calendar_dimensions_for("wall_cal")[0] > 0
     assert calendar_dimensions_for("nope")[0] > 0
+
+
+def test_parse_and_resolve_sku_round_trip():
+    from quoteforge.etsy.calendar_catalog import parse_calendar_format, resolve_calendar_sku
+    assert parse_calendar_format("Wall Calendar - White") == ("wall_cal", "White")
+    assert parse_calendar_format("Framed - Oak") == (None, None)
+    assert resolve_calendar_sku("Wall Calendar - White", "A3") == "GEL-WALL_CAL-A3-WHITE"
+    assert resolve_calendar_sku("Wall Calendar - White", "BadSize") is None
+
+
+def test_enrich_calendar_order_merges_fields_or_empty():
+    from quoteforge.etsy.calendar_catalog import enrich_calendar_order
+    out = enrich_calendar_order({"material": "Wall Calendar - White", "size": "A3"})
+    assert out["product_type"] == "calendar" and out["product_id"] == "wall_cal"
+    assert out["color"] == "White" and out["gelato_sku"] == "GEL-WALL_CAL-A3-WHITE"
+    assert out["gelato_cost"] > 0
+    assert enrich_calendar_order({"material": "Framed - Oak"}) == {}
+
+
+def test_verify_calendar_mappings_reports_placeholders():
+    from quoteforge.etsy.calendar_catalog import verify_calendar_mappings
+    rep = verify_calendar_mappings()
+    assert rep["total"] > 0
+    assert set(("total", "configured", "placeholder_count", "placeholders", "all_real")) <= set(rep)
