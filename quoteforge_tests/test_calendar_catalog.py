@@ -40,6 +40,12 @@ def test_enrich_calendar_order_merges_fields_or_empty():
     assert enrich_calendar_order({"material": "Framed - Oak"}) == {}
 
 
+def test_pipeline_and_webhook_call_calendar_enrich():
+    import quoteforge.automation.pipeline_orchestrator as po, quoteforge.automation.webhook_server as ws, inspect
+    assert "enrich_calendar_order" in inspect.getsource(po)
+    assert "enrich_calendar_order" in inspect.getsource(ws)
+
+
 def test_verify_calendar_mappings_reports_placeholders():
     from quoteforge.etsy.calendar_catalog import verify_calendar_mappings
     rep = verify_calendar_mappings()
