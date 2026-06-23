@@ -120,13 +120,14 @@ def test_no_native_alerts_in_purchase_flow(tmp_path):
 
 
 def test_move_toggle_is_a_clean_segmented_control(tmp_path):
-    """The drag toggle reads as one component: bold heading, a full-width
-    50/50 segmented control, and a quiet one-line hint - no mid-sentence
-    wrapping."""
+    """The drag toggle reads as one component: bold heading, a segmented control
+    (Wording / Photo / Reset), and a quiet one-line how-to hint."""
     h = _page(tmp_path)
     assert "Reposition the wording or photo" in h
     assert 'class="dbhint"' in h
-    assert "Select one, then drag it on the preview." in h
+    # the hint now tells the buyer HOW to move each element (per-element drag)
+    assert "Drag any word or the photo on the preview to move it" in h
+    assert 'aria-label="Reset placement"' in h
 
 
 def test_editor_controls_have_aria_labels(tmp_path):

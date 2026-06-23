@@ -1444,7 +1444,8 @@
          <div class="dseg" role="group" aria-label="Select what to move">
            <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ Wording</button>
            <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ Photo</button>
-           <button type="button" class="dmbtn" aria-label="Reset placement" onclick="resetPlacement()" style="margin-left:auto">↺ Reset</button>
+           <button type="button" class="dmbtn" aria-label="Auto-arrange my design" onclick="autoArrange()" style="margin-left:auto">✨ Auto-arrange</button>
+           <button type="button" class="dmbtn" aria-label="Reset placement" onclick="resetPlacement()">↺ Reset</button>
          </div>
          <div class="dbhint">Drag any word or the photo on the preview to move it &middot; drag a corner to resize &middot; <b>Reset</b> restores the template.</div>
        </div>
@@ -3235,10 +3236,8 @@
      const dup=dupPhotoNote(f);
      const forSz=isInch?(' for '+inches[0]+'x'+inches[1]+'"'):'';
      const okRes=isInch?(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)):(big>=1500);
-     if(okRes){msg.className='note upok';
-       msg.innerHTML='Great - '+img.width+'x'+img.height+'px works'+forSz+'. Previewing on the left.'+rm+dup;}
-     else{msg.className='note upbad';
-       msg.innerHTML='Only '+img.width+'x'+img.height+'px - a bit low for a sharp'+forSz+' print (previewing anyway). Please upload a higher-resolution original.'+rm+dup;}
+     renderPhotoReview(msg, img.width, img.height);   // 🤖 AI Smart photo review card
+     if(dup){ msg.innerHTML+=dup; }
      PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo');                    // dragging now moves the PHOTO
@@ -4468,6 +4467,40 @@
      if(d.decision==='approve') note.innerHTML='✅ AI quality check passed - good to print.';
      else note.innerHTML='⚠️ '+(d.message||'Please upload a higher-quality photo.');
    }).catch(function(){ if(note)note.textContent=''; });
+ }
+ // ── AI design assistant (mirrors quoteforge/ai/design_assistant.py) ──
+ // Works for EVERY product, instantly + free (no server) - the deterministic review
+ // + auto-arrange. The server AI vision note (aiCheckPhoto) enriches it when live.
+ function _pk(){ return (typeof IS_MUG!=='undefined'&&IS_MUG)?'mug':((typeof IS_APPAREL!=='undefined'&&IS_APPAREL)?'apparel':((typeof IS_BRANDED!=='undefined'&&IS_BRANDED)?'branded':((typeof IS_CAL!=='undefined'&&IS_CAL)?'calendar':'wallart'))); }
+ function _photoReview(w,h){
+   if(!w||!h) return {score:0,verdict:'No image',tips:['Upload a photo to see a quality review.']};
+   var lng=Math.max(w,h), mp=Math.round(w*h/1e5)/10, score=100, tips=[];
+   if(lng<1000){ score-=45; tips.push('Low resolution ('+w+'×'+h+'px) - use a larger original for a crisp print.'); }
+   else if(lng<1600){ score-=18; tips.push('Medium resolution - great for small prints; larger files print sharper at big sizes.'); }
+   else { tips.push('Sharp resolution ('+w+'×'+h+'px, '+mp+' MP).'); }
+   var PA={mug:2.4,apparel:0.82,branded:1.0,calendar:1.33}, tgt=PA[_pk()];
+   if(!tgt){ var iv=(((document.getElementById('msize')||{}).value)||'18x24').split('|')[0].split('x').map(parseFloat); if(iv.length>=2&&isFinite(iv[0])&&isFinite(iv[1])) tgt=iv[0]/iv[1]; }
+   if(tgt){ var ar=w/h, rt=ar/tgt; if(rt>1.35||rt<0.74){ score-=12; tips.push(ar>tgt?'Wider than the print area - the sides may crop. Zoom out or nudge to keep everyone in.':'Taller than the print area - the top or bottom may crop. Zoom out or nudge to fit.'); } }
+   score=Math.max(0,Math.min(100,score));
+   var verdict=score>=80?'Great photo':(score>=55?'Good - a couple of tips':'Use a higher-quality photo');
+   return {score:score,verdict:verdict,tips:tips};
+ }
+ function renderPhotoReview(el,w,h){
+   if(!el) return; var r=_photoReview(w,h);
+   var col=r.score>=80?'#1f7a44':(r.score>=55?'#9a6a00':'#b23b3b');
+   var bar='<div style="height:6px;border-radius:6px;background:#e7e3da;overflow:hidden;margin:4px 0"><div style="height:6px;width:'+r.score+'%;background:'+col+'"></div></div>';
+   var tips=r.tips.map(function(t){return '<li>'+t+'</li>';}).join('');
+   el.className='note'; el.innerHTML='<b>🤖 Smart photo review: '+r.verdict+'</b>'+bar+'<ul style="margin:.2em 0 .2em 1.1em;padding:0">'+tips+'</ul><span class="rmphoto" onclick="removePhoto()">remove</span>';
+ }
+ // One-click best placement: layout + photo centring + text clear of the subject.
+ function autoArrange(){
+   var w=PHOTO?(PHOTO.naturalWidth||PHOTO.width):0, h=PHOTO?(PHOTO.naturalHeight||PHOTO.height):0;
+   var nlines=(((document.getElementById('mtext')||{}).value)||'').split(/\n/).filter(function(s){return s.trim();}).length;
+   if(w&&h){ if(nlines>=1 && typeof pickLayout==='function'){ pickLayout(w>h*1.1?'hbanner':'badge'); }
+     if(typeof autoCenterPhoto==='function') autoCenterPhoto(); }
+   else if(typeof pickLayout==='function'){ pickLayout('freeform'); if(typeof centerText==='function') centerText(); }
+   if(typeof toast==='function') toast('✨ Auto-arranged your design.');
+   if(typeof drawArt==='function') drawArt();
  }
  // ── Automated A/B testing ──
  const AB_EXPERIMENTS = {"hero_headline": {"target": "hero_h1", "variants": {"A": "Personalized gifts for life's most meaningful moments", "B": "Turn your words into a gift they'll treasure forever", "C": "Custom wall art & apparel - made to order, just for them"}}};
