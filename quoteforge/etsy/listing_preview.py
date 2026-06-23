@@ -3550,9 +3550,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <div class="dragbar" id="mlayoutbar" style="display:none">
-         <div class="dbq">&#127912; Pick a <b>layout</b> &mdash; we arrange your logo &amp; words professionally. Tweak anything after.</div>
+         <div class="dbq">&#127912; Pick a <b>layout</b> &mdash; we arrange your logo &amp; words professionally. Type your words in <b>Step 1</b>, then tweak anything.</div>
          <div id="mlayouts" class="layoutgrid"></div>
-         <div id="mslots" class="slotinputs"></div>
        </div>
        <div class="dragbar" id="mframebar" style="display:none">
          <div class="dbq">&#128208; <b>Move &amp; resize your design</b> &mdash; drag the dashed box to move it, or
@@ -3653,6 +3652,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <textarea id="mtext" maxlength="250" rows="4" oninput="onText()"
              placeholder="Type your message - e.g. &quot;Happy 40th, Sam - love you to the mountains and back&quot;. It previews live on the left."></textarea>
            <div class="cc"><span id="mcc">0 / 250</span> characters &middot; leave empty to keep the quote shown</div>
+         </div>
+         <div class="wordbox" id="mslotbox" style="display:none">
+           <div class="wordlbl">✍️ Your wording - type each line</div>
+           <div id="mslots" class="slotinputs"></div>
          </div>
          <div class="swrow">Font</div>
          <div class="fonts" id="mfonts"></div>
@@ -5827,8 +5830,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        [0,1,2,3].map(i=>`<input type="file" accept="image/png,image/jpeg" class="collageup" `+
          `aria-label="Collage photo ${{i+1}}" onchange="collageUpload(${{i}},this)">`).join('');
    }}
-   // Freeform uses the existing wording box; a layout hides it (slots replace it).
+   // Freeform uses the textarea; a layout swaps it for the per-line slot inputs -
+   // BOTH live in Step 1 (the Design step) so there is always a visible text field.
    var wb=document.getElementById('mwordbox'); if(wb) wb.style.display=(CURLAYOUT==='freeform')?'':'none';
+   var sb=document.getElementById('mslotbox'); if(sb) sb.style.display=(CURLAYOUT==='freeform')?'none':'';
  }}
  function onSlot(k,v){{ SLOTS[k]=v; if(k==='headline'){{ var ta=document.getElementById('mtext'); if(ta) ta.value=v; }} drawArt(); }}
  function pickLayout(k){{ CURLAYOUT=k; LOFF={{}}; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}

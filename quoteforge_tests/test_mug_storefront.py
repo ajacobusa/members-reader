@@ -77,3 +77,15 @@ def test_layout_elements_are_individually_draggable():
     for marker in ("let LOFF=", "function _loff", "function resetPlacement",
                    "DRAGTARGET.indexOf('slot:')", "return 'slot:'+s.slot"):
         assert marker in src, f"per-element drag marker missing: {marker}"
+
+
+def test_layout_wording_inputs_live_in_the_design_step(tmp_path):
+    # REGRESSION: when a layout is active the freeform textarea is hidden; the per-line
+    # slot inputs must appear in Step 1 (the Design step), not only in the left layout
+    # bar - otherwise the buyer 'cannot add or modify text'.
+    h = _page(tmp_path)
+    assert 'id="mslotbox"' in h
+    i_e1, i_slots, i_e2 = (h.find('id="esec1"'), h.find('id="mslots"'),
+                           h.find('id="esec2"'))
+    assert i_e1 > 0 and i_e2 > i_e1
+    assert i_e1 < i_slots < i_e2          # wording inputs are inside the Design step
