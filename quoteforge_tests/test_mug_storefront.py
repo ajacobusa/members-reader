@@ -89,3 +89,19 @@ def test_layout_wording_inputs_live_in_the_design_step(tmp_path):
                            h.find('id="esec2"'))
     assert i_e1 > 0 and i_e2 > i_e1
     assert i_e1 < i_slots < i_e2          # wording inputs are inside the Design step
+
+
+def test_mug_and_calendar_show_real_sizes_not_poster_fallback(tmp_path):
+    # REGRESSION: the mug/calendar Size dropdown must show real sizes/prices (mug
+    # capacity 11oz, calendar A3/A4) - not fall back to poster sizes (8x10..24x36).
+    import json
+    import re
+    h = _page(tmp_path)
+    sm = json.loads(re.search(r'const SIZEMAP = (\{.*?\});', h).group(1))
+    mug_keys = [k for k in sm if "oz" in k.lower()]
+    assert mug_keys, "no mug format keys in SIZEMAP - mug falls back to poster sizes"
+    mug_sizes = [r["size"] for r in sm[mug_keys[0]]]
+    assert any("oz" in s for s in mug_sizes)          # capacity, not 24x36
+    assert not any("x" in s for s in mug_sizes)        # never a poster size
+    cal_keys = [k for k in sm if "calendar" in k.lower()]
+    assert cal_keys and all("oz" not in s["size"] for s in sm[cal_keys[0]])

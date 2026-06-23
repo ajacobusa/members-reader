@@ -1852,6 +1852,45 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     _seen.values(), key=lambda r: r["price"])
         except Exception:  # noqa: BLE001 — never break the build on the branded catalog
             pass
+    # MUGS + CALENDARS: like branded + apparel, each is a "format" ("{name} - {colour}")
+    # whose REAL sizes/prices must live in SIZEMAP under that key. These were missing,
+    # so the editor's Size dropdown fell back to the first key (poster) and showed
+    # 8x10..24x36 at poster prices. Mug size = capacity (11oz); calendar = A3/A4/A5.
+    # Name/colour/size/price only - never the supplier SKU or cost.
+    try:
+        from quoteforge.etsy.mug_catalog import (
+            MUG_CATALOG as _MUc, build_mug_variations as _bmuv)
+        _mun = {p.product_id: p.name for p in _MUc}
+        _mukeys: set = set()
+        for _v in _bmuv():
+            if _v.product_id not in _mun:
+                continue
+            _muk = f"{_mun[_v.product_id]} - {_v.color}"
+            _mukeys.add(_muk)
+            sizemap.setdefault(_muk, []).append(
+                {"size": _v.size, "price": round(_v.price, 2)})
+        for _muk in _mukeys:                  # de-dup sizes per mug key only
+            _s = {r["size"]: r for r in sizemap[_muk]}
+            sizemap[_muk] = sorted(_s.values(), key=lambda r: r["price"])
+    except Exception:  # noqa: BLE001 — never break the build on the mug catalog
+        pass
+    try:
+        from quoteforge.etsy.calendar_catalog import (
+            CALENDAR_CATALOG as _CAc, build_calendar_variations as _bcav)
+        _can = {p.product_id: p.name for p in _CAc}
+        _cakeys: set = set()
+        for _v in _bcav():
+            if _v.product_id not in _can:
+                continue
+            _cak = f"{_can[_v.product_id]} - {_v.color}"
+            _cakeys.add(_cak)
+            sizemap.setdefault(_cak, []).append(
+                {"size": _v.size, "price": round(_v.price, 2)})
+        for _cak in _cakeys:                  # de-dup sizes per calendar key only
+            _s = {r["size"]: r for r in sizemap[_cak]}
+            sizemap[_cak] = sorted(_s.values(), key=lambda r: r["price"])
+    except Exception:  # noqa: BLE001 — never break the build on the calendar catalog
+        pass
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
     editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
