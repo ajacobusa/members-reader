@@ -2288,6 +2288,34 @@ def _cmd_rebuild_site(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_automap(args: list[str]) -> int:
+    """Auto-map product families to REAL Gelato product UIDs (read-only catalog API)
+    and write the GELATO_PRODUCT_FAMILY_FILE. A DRAFT for owner review - does NOT
+    enable live mode. Usage: gelato-automap [output_path]."""
+    import json
+    import os
+    from pathlib import Path
+    from quoteforge.automation.gelato_automap import (build_family_map,
+                                                      gelato_fetch_products)
+    res = build_family_map(gelato_fetch_products)
+    out = Path(args[0] if args else (os.getenv("GELATO_PRODUCT_FAMILY_FILE")
+                                     or "gelato_product_family.json"))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res["map"], indent=2, sort_keys=True), encoding="utf-8")
+    print(f"Mapped {res['mapped_count']}/{res['total']} families -> {out}")
+    if res["unmapped"]:
+        print("\nNOT fulfillable by Gelato (no catalog) - drop these or source elsewhere:")
+        for f in res["unmapped"]:
+            print(f"  - {f}")
+    print("\nDRAFT mapping written. Next:")
+    print("  1. Review each pick (a representative UID may be the wrong quality/brand).")
+    print("  2. Place ONE test order per product before going live.")
+    print(f"  3. Set GELATO_PRODUCT_FAMILY_FILE={out} in your env, then run "
+          "`python -m quoteforge.admin go-live-readiness`.")
+    print("  TEST_MODE stays ON - this command never enables live ordering.")
+    return 0
+
+
 def _cmd_email_capture(args: list[str]) -> int:
     """Build the email-capture kit (QR, announcement, Linktree, signup snippet)."""
     from quoteforge.marketing.email_capture import build_capture_kit
@@ -2337,6 +2365,7 @@ def _cmd_map_gelato(args: list[str]) -> int:
 COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "map-gelato": _cmd_map_gelato,
+    "gelato-automap": _cmd_gelato_automap,
     "variations": _cmd_variations,
     "apparel": _cmd_apparel,
     "frame-preview": _cmd_frame_preview,
