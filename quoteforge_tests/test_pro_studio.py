@@ -38,6 +38,18 @@ def test_pro_studio_reuses_pipeline_endpoints(tmp_path):
     assert "UPLOAD_API" in h and "DESIGN_API" in h
 
 
+def test_pro_studio_resize_refits_without_destroying_design(tmp_path):
+    # REGRESSION: a window resize must NOT call setProduct (which empties SIDES and
+    # discards the back-side design). It must re-fit the canvas only, and product
+    # switching must clear with a confirm so work is never lost silently.
+    from quoteforge.etsy.listing_preview import build_pro_studio
+    h = (build_pro_studio(out_path=tmp_path / "studio.html")).read_text(encoding="utf-8")
+    assert "function refitCanvas" in h
+    assert "setTimeout(refitCanvas" in h                 # debounced resize -> refit
+    assert "addEventListener('resize',function(){ setProduct(CURP)" not in h  # old bug
+    assert "Switch product? This clears your current design." in h  # switch confirm
+
+
 def test_pro_studio_no_supplier_or_marketplace_leak(tmp_path):
     # Customer-facing studio: never a supplier/marketplace name; use "print partner".
     from quoteforge.etsy.listing_preview import build_pro_studio

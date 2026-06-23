@@ -73,7 +73,7 @@ def generate_personalized_customer_message(
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     prompt = (
-        f"Rewrite this Etsy shop message to feel personal and warm for this specific customer.\n\n"
+        f"Rewrite this shop message to feel personal and warm for this specific customer.\n\n"
         f"Base message:\n{base}\n\n"
         f"Personalization details:\n"
         f"  Customer name: {customer_name}\n"

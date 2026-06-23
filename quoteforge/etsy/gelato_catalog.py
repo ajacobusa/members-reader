@@ -494,12 +494,11 @@ GELATO_CATALOG: list[GelatoProduct] = [
     _framed_11x14,
     _framed_16x20,
     _framed_18x24,
-    # Acrylic
-    _acrylic_8x10,
+    # Acrylic (8x10 omitted - Gelato's acrylic line does not offer an 8x10 size;
+    # confirmed against the live catalog. Re-add only when a real UID exists.)
     _acrylic_12x16,
     _acrylic_16x20,
-    # Metal
-    _metal_8x10,
+    # Metal (8x10 omitted - Gelato's metal line does not offer an 8x10 size.)
     _metal_12x16,
     _metal_16x20,
     # Mugs

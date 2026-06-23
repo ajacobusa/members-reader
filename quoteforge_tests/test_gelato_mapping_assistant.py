@@ -49,8 +49,10 @@ def test_unmapped_families_lists_new_departments_and_template(monkeypatch):
 
 
 def test_mapping_a_department_marks_it_ready(monkeypatch):
-    # REGRESSION: mapping a new department's families to real UIDs flips its guard
-    # to all_real - proving the family path now works end to end for new depts.
+    # REGRESSION: mapping a new department's families to real UIDs resolves every
+    # FAMILY-mappable variant - proving the family path works end to end for new depts.
+    # Phone cases stay a known model-specific gap (one UID = one phone model), so the
+    # department's all_real intentionally remains False until per-model UIDs exist.
     import json
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP", "{}")
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_FILE", "")
@@ -60,7 +62,12 @@ def test_mapping_a_department_marks_it_ready(monkeypatch):
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP",
                        json.dumps({f: f"prod-{i}_ver_1" for i, f in enumerate(branded)}))
     from quoteforge.etsy.branded_catalog import verify_branded_mappings
-    assert verify_branded_mappings()["all_real"] is True
+    rep = verify_branded_mappings()
+    # The family path cleared every NON-phonecase placeholder...
+    non_model = [p for p in rep["placeholders"] if p not in rep["model_specific_gaps"]]
+    assert non_model == []
+    # ...and phonecase is still correctly flagged as the only remaining gap.
+    assert rep["model_specific_gaps"]
 
 
 # ── Preflight go-live gate ──────────────────────────────────────────

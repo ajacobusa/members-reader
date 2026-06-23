@@ -66,3 +66,12 @@ def test_catalog_sync_baseline_includes_branded():
     records = build_local_catalog()
     assert any(r.get("type") == "branded" or pid in {p.product_id for p in BRANDED_CATALOG}
                for pid, r in records.items()), "branded not in local catalog baseline"
+
+
+def test_phonecase_never_go_live_ready_until_per_model_uids():
+    # REGRESSION (#11): phone cases are model-specific on the print partner; a generic
+    # family UID must NOT mark phonecase go-live-ready. It is always a flagged gap.
+    from quoteforge.etsy.branded_catalog import verify_branded_mappings
+    rep = verify_branded_mappings()
+    assert rep["model_specific_gaps"]                       # phonecase flagged
+    assert set(rep["model_specific_gaps"]).issubset(set(rep["placeholders"]))
