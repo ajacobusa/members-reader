@@ -2350,6 +2350,48 @@ def _cmd_wallart_automap(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_draft(args: list[str]) -> int:
+    """DRAFT-order preview: create a Gelato DRAFT order (NEVER production, NEVER
+    charged) so you can review Gelato's own production proof before go-live. DRY-RUN
+    by default - prints the exact payload and sends nothing; pass --confirm to create
+    the draft (still draft-only, hard-guarded against production). Then review it in
+    your Gelato dashboard and delete with gelato-draft-delete.
+    Usage: gelato-draft <product_uid> [design_url] [--confirm]."""
+    import json
+    from quoteforge.automation.gelato_draft import (build_draft_payload,
+                                                    create_draft_order, DASHBOARD_ORDER)
+    pos = [a for a in args if not a.startswith("--")]
+    if not pos:
+        print("usage: gelato-draft <product_uid> [design_url] [--confirm]")
+        return 2
+    uid = pos[0]
+    design = pos[1] if len(pos) > 1 else "<a public design image URL Gelato can fetch>"
+    payload = build_draft_payload(uid, design)
+    if "--confirm" not in args:
+        print("DRY RUN - nothing sent. This payload would create a DRAFT order "
+              "(orderType=draft, never production, never charged):\n")
+        print(json.dumps(payload, indent=2))
+        print("\nRe-run with --confirm to actually create the draft.")
+        return 0
+    res = create_draft_order(uid, design)
+    oid = res.get("id") or res.get("orderId") or res.get("orderReferenceId")
+    print(f"Draft order created (NOT in production): {oid}")
+    print(f"Review Gelato's proof: {DASHBOARD_ORDER}{oid}")
+    print(f"Delete when done: python -m quoteforge.admin gelato-draft-delete {oid}")
+    return 0
+
+
+def _cmd_gelato_draft_delete(args: list[str]) -> int:
+    """Delete a Gelato draft order by id (cleanup). Usage: gelato-draft-delete <id>."""
+    from quoteforge.automation.gelato_draft import delete_draft_order
+    if not args:
+        print("usage: gelato-draft-delete <order_id>")
+        return 2
+    ok = delete_draft_order(args[0])
+    print(("deleted " if ok else "could not delete ") + args[0])
+    return 0
+
+
 def _cmd_gelato_review(args: list[str]) -> int:
     """Scheduled catalog-review agent: re-check every mapped product UID for
     availability (DISCONTINUED guard) and diff the catalog vs last run for NEW/removed
@@ -2517,6 +2559,8 @@ COMMANDS = {
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
+    "gelato-draft": _cmd_gelato_draft,
+    "gelato-draft-delete": _cmd_gelato_draft_delete,
     "gelato-review": _cmd_gelato_review,
     "product-photos": _cmd_product_photos,
     "variations": _cmd_variations,

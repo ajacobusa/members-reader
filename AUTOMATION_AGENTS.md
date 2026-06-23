@@ -148,6 +148,29 @@ in Google and never touches a file:
 
 ---
 
+## Reviewing products BEFORE go-live (no production, no charge)
+
+Gelato exposes **no product-photo API and no mockup-render API** (verified: the
+mockup endpoints return 404/405). So there are two legitimate ways to review what a
+product looks like before flipping live:
+
+1. **The live editor (free, now).** On the UAT site every product's design editor
+   renders an accurate live preview (mug wrap, poster, apparel colour-tint, calendar,
+   Pro Designer). That is exactly what the customer sees - review the whole catalog
+   there with no production and no `TEST_MODE` change.
+
+2. **Gelato draft orders (`gelato-draft`).** A Gelato *draft* order is saved but
+   NEVER sent to production and NEVER charged; it shows Gelato's own production proof
+   in your dashboard. The tool is **draft-only and hard-guarded**: `orderType` is a
+   hardcoded constant and `assert_draft()` refuses to send anything else, so there is
+   no path that places a production order.
+   - Dry-run (default) prints the exact payload and sends nothing:
+     `python -m quoteforge.admin gelato-draft <product_uid> <public_design_url>`
+   - Create the draft (still never production/charged) with `--confirm`, review the
+     proof in the Gelato dashboard, then delete it:
+     `python -m quoteforge.admin gelato-draft-delete <order_id>`
+   - Source: [`quoteforge/automation/gelato_draft.py`](quoteforge/automation/gelato_draft.py).
+
 ## Filenames reference
 
 The exact `tile-<id>.jpg` name for every product is in
