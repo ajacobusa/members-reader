@@ -72,3 +72,13 @@ def test_pro_studio_end_to_end_order_path(tmp_path):
     # order carries full product context + hands off to checkout
     assert "function approveOrder" in h and "CHECKOUT_URL" in h
     assert "size:CSIZE" in h and "color:CCOLOR" in h and "qty:CQTY" in h
+
+
+def test_pro_studio_curved_and_circle_text(tmp_path):
+    # Parity with the classic Layout Studio: a real (editable) text object can be
+    # curved into an arc or a full circle (badge) via Fabric text-on-path.
+    from quoteforge.etsy.listing_preview import build_pro_studio
+    h = (build_pro_studio(out_path=tmp_path / "studio.html")).read_text(encoding="utf-8")
+    assert "function curveText" in h
+    assert "Arc (curved)" in h and "Full circle" in h
+    assert "fabric.Path" in h and "pathSide" in h

@@ -108,10 +108,15 @@
         <span class="mini" onclick="applyText('fontStyle', _isItalic()?'normal':'italic')"><i>I</i></span>
         <input type="color" id="fcolor" value="#1b1b1f" oninput="applyText('fill',this.value)">
       </div>
-      <div class="row">
+      <div class="row" style="margin-bottom:7px">
         <span class="mini" onclick="applyText('textAlign','left')">&#8676;</span>
         <span class="mini" onclick="applyText('textAlign','center')">&#8596;</span>
         <span class="mini" onclick="applyText('textAlign','right')">&#8677;</span>
+      </div>
+      <div class="row"><label style="width:42px">Curve</label>
+        <span class="mini" title="Straight" onclick="curveText('straight')">&mdash;</span>
+        <span class="mini" title="Arc (curved)" onclick="curveText('up')">&#9180;</span>
+        <span class="mini" title="Full circle (badge)" onclick="curveText('circle')">&#9711;</span>
       </div>
     </div>
     <div class="grp"><h4>Arrange</h4>
@@ -277,6 +282,24 @@
  function _isText(o){ return o&&(o.type==='i-text'||o.type==='text'||o.type==='textbox'); }
  function applyText(prop,val){ var o=_active(); if(_isText(o)){ o.set(prop,val); canvas.requestRenderAll(); if(prop==='fontFamily') _fontReflow(val); } }
  function bumpSize(d){ var o=_active(); if(_isText(o)){ o.set('fontSize',Math.max(8,(o.fontSize||24)+d)); canvas.requestRenderAll(); } }
+ // Curve a real (still-editable) text object along an arc/circle using Fabric's native
+ // text-on-path. Straight removes the path. Radius is derived from the text width so it
+ // fits the wording. The classic Layout Studio's badge/arc look, in the free editor.
+ function curveText(mode){
+   var o=_active(); if(!_isText(o)) return;
+   if(mode==='straight'){ o.set({path:null,pathStartOffset:0}); o.setCoords(); canvas.requestRenderAll(); return; }
+   o.set({path:null}); if(o.initDimensions) o.initDimensions();
+   var tw=Math.max(40,o.width||o.getScaledWidth()), r, d, path, side='left', off=0;
+   if(mode==='circle'){ r=Math.max(34,tw/(2*Math.PI)); d=2*r;
+     path='M '+d+','+r+' A '+r+','+r+' 0 1,1 0,'+r+' A '+r+','+r+' 0 1,1 '+d+','+r+' z'; off=0; }
+   else { r=Math.max(40,tw/Math.PI*1.04); d=2*r; var plen=Math.PI*r; off=Math.max(0,(plen-tw)/2);
+     if(mode==='up'){ path='M 0,'+r+' A '+r+','+r+' 0 0,1 '+d+','+r; side='left'; }    // hump (rainbow over the top)
+     else { path='M 0,'+r+' A '+r+','+r+' 0 0,0 '+d+','+r; side='right'; }             // cup under, letters upright
+   }
+   var p=new fabric.Path(path,{fill:'',stroke:''});
+   o.set({path:p, pathSide:side, pathAlign:'baseline', pathStartOffset:off, textAlign:'left'});
+   o.setCoords(); canvas.requestRenderAll(); checkReady();
+ }
  function _isBold(){ var o=_active(); return _isText(o)&&(o.fontWeight==='bold'); }
  function _isItalic(){ var o=_active(); return _isText(o)&&(o.fontStyle==='italic'); }
  function syncText(){ var o=_active(); var on=_isText(o); document.getElementById('textgrp').classList.toggle('disabled',!on);
