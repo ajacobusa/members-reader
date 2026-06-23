@@ -54,6 +54,43 @@ def test_link_design_to_order_skips_when_no_design(fresh_db):
     assert db.link_design_to_order("", oid) == 0
 
 
+def test_pro_design_print_url_propagates_to_order_artwork(fresh_db):
+    # END-TO-END: a Pro Designer order saves the design WITH the hosted print URL;
+    # creating the order puts that print file on the order's artwork_url so production
+    # has the artwork tied to the order - no manual step.
+    import json
+    db = fresh_db
+    db.save_design("buyer@x.com",
+                   design_json=json.dumps({"engine": "fabric", "product": "tshirt",
+                                           "size": "L", "color": "Navy", "qty": 2,
+                                           "printUrl": "https://files.example/pro-tshirt.png"}),
+                   design_id="pro1", summary="Pro Designer - T-Shirt")
+    oid = db.create_order({"customer_email": "buyer@x.com", "product_type": "apparel"})
+    assert db.get_order(oid)["artwork_url"] == "https://files.example/pro-tshirt.png"
+
+
+def test_calendar_first_photo_propagates_to_order_artwork(fresh_db):
+    # A 12-month calendar design's first month photo lands on the order artwork too.
+    import json
+    db = fresh_db
+    db.save_design("c@x.com",
+                   design_json=json.dumps({"cal": {"urls": ["https://files.example/jan.jpg",
+                                                            "https://files.example/feb.jpg"]}}),
+                   design_id="c1", summary="cal")
+    oid = db.create_order({"customer_email": "c@x.com", "product_type": "calendar"})
+    assert db.get_order(oid)["artwork_url"] == "https://files.example/jan.jpg"
+
+
+def test_design_without_print_url_leaves_artwork_empty(fresh_db):
+    # A design with no hosted file must not invent an artwork_url.
+    import json
+    db = fresh_db
+    db.save_design("d@x.com", design_json=json.dumps({"product": "tshirt"}),
+                   design_id="d", summary="x")
+    oid = db.create_order({"customer_email": "d@x.com"})
+    assert not (db.get_order(oid).get("artwork_url") or "")
+
+
 def test_confirm_design_records_without_customer_email(fresh_db, monkeypatch):
     # REGRESSION: the on-screen approval is the record - NO customer email is
     # sent from the confirm flow (the customer is never emailed a proof/receipt).

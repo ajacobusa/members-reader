@@ -7021,17 +7021,23 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
    canvas.discardActiveObject(); canvas.renderAll();
    var url=canvas.toDataURL({format:'png',multiplier:mult});
    if(p.twosided) SIDES[CSIDE]=canvas.toJSON();
-   var design={engine:'fabric',product:CURP,productName:p.name,size:CSIZE,color:CCOLOR,qty:CQTY,rights:true,
-     side:CSIDE, sides:(p.twosided?SIDES:null), json:canvas.toJSON()};
-   try{ localStorage.setItem('jf_pro_order', JSON.stringify(design)); }catch(e){}
-   if(email && DESIGN_API){ fetch(DESIGN_API,{method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({email:email,design:design,summary:'Pro Designer - '+p.name+' '+CSIZE+' '+CCOLOR+' x'+CQTY})}).catch(function(){}); }
+   // Save the design WITH the hosted print URL so the pipeline can put it straight on
+   // the order's artwork (link_design_to_order -> _propagate_design_artwork). True
+   // end to end: design + print file reach production tied to the order.
+   function _finish(printUrl){
+     var design={engine:'fabric',product:CURP,productName:p.name,size:CSIZE,color:CCOLOR,qty:CQTY,rights:true,
+       side:CSIDE, sides:(p.twosided?SIDES:null), printUrl:printUrl||'', json:canvas.toJSON()};
+     try{ localStorage.setItem('jf_pro_order', JSON.stringify(design)); }catch(e){}
+     if(email && DESIGN_API){ fetch(DESIGN_API,{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({email:email,design:design,summary:'Pro Designer - '+p.name+' '+CSIZE+' '+CCOLOR+' x'+CQTY})}).catch(function(){}); }
+     var a=document.createElement('a'); a.href=url; a.download='joffiels-'+CURP+'-design.png'; a.click();
+     if(CHECKOUT_URL){ toast('Design approved - opening secure checkout...'); setTimeout(function(){ window.open(CHECKOUT_URL,'_blank','noopener'); },800); }
+     else { toast('Design approved & print-ready file saved - we will follow up to finish your order.'); }
+   }
    if(email && UPLOAD_API){ try{ var fd=new FormData(); fd.append('file',_dataURLtoBlob(url),'pro-'+CURP+'.png');
      fd.append('email',email); fd.append('size',p.print[0]+'x'+p.print[1]); fd.append('name','pro-'+CURP+'-'+CSIZE+'-'+CCOLOR);
-     fetch(UPLOAD_API,{method:'POST',body:fd}).catch(function(){}); }catch(e){} }
-   var a=document.createElement('a'); a.href=url; a.download='joffiels-'+CURP+'-design.png'; a.click();
-   if(CHECKOUT_URL){ toast('Design approved - opening secure checkout...'); setTimeout(function(){ window.open(CHECKOUT_URL,'_blank','noopener'); },800); }
-   else { toast('Design approved & print-ready file saved - we will follow up to finish your order.'); }
+     fetch(UPLOAD_API,{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){ _finish(d&&d.url); }).catch(function(){ _finish(''); }); }catch(e){ _finish(''); } }
+   else { _finish(''); }
  }
  function _active(){ return canvas&&canvas.getActiveObject(); }
  function _isText(o){ return o&&(o.type==='i-text'||o.type==='text'||o.type==='textbox'); }
