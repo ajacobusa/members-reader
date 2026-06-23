@@ -2253,7 +2253,9 @@ def _cmd_gelato_sync(args: list[str]) -> int:
 def _cmd_catalog_sync(args: list[str]) -> int:
     """Nightly catalog sync: rebuild the local product DB from Gelato, validate
     images, diff vs the last snapshot, and emit the daily audit. `catalog-sync`
-    [email] [refresh-images]. TEST_MODE-safe (local rebuild, no Gelato call)."""
+    [email] [refresh-images]. TEST_MODE-safe (local rebuild, no Gelato call).
+    NOTE: this refreshes the local product DB + audit only; the public storefront
+    (docs/index.html) is regenerated separately by `rebuild-site` in the daily cron."""
     from quoteforge.automation.catalog_sync import (
         sync_catalog_full, format_catalog_audit, persist_audit)
     refresh = "refresh-images" in args or "refresh" in args
