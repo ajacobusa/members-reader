@@ -50,6 +50,31 @@ Keeps the mapping honest over time. Source:
 - **Reports only** — never changes the mapping; emails the owner only when there is
   something to act on. A transient API failure never false-flags a live product.
 
+## 2b. Wall-Art UID map (`wallart-automap`)
+
+One-shot mapper (re-run when sizes change) that replaces the Wall-Art `GEL-*`
+placeholder SKUs with REAL Gelato UIDs and writes them to the static map
+(`GELATO_UID_MAP_FILE`, default `config/gelato_uid_map.json`). Source:
+[`quoteforge/automation/gelato_wallart_map.py`](quoteforge/automation/gelato_wallart_map.py).
+
+- Covers poster / canvas / framed / acrylic / metal across our 6 sizes, picking a
+  portrait, standard-material default (silk poster, gallery-wrap canvas, black-wood
+  frame, 4 mm acrylic, plain metal). Every UID is a real catalog UID — it only ever
+  picks from what the API returns.
+- **DRAFT for owner review** — confirm material/orientation per pick and place one
+  test order per material before go-live. Never enables live ordering.
+- **Known gaps to decide before go-live:**
+  - Gelato acrylic & metal do **not** offer an 8×10 size (`GEL-ACRYLIC-8X10-ULT`,
+    `GEL-METAL-8X10-ULT` stay unmapped) — change those two sizes or drop them.
+  - `branded:phonecase` is **model-specific** on Gelato (iPhone-11, etc.); a single
+    UID only serves one phone. Add a phone-model selector or drop phone cases.
+  - Framed products default to a black-wood frame; the per-frame-colour composite
+    SKUs need their own picks if you offer multiple frame colours.
+
+Wall-Art tiles are **design-gallery driven** (generated occasion previews + the
+`brand/wallart-hero.jpg` room shot), not per-product `tile-<id>.jpg` files — so Wall
+Art is not part of the product-photo sheet below.
+
 ## 3. Product photos (`product-photos`) — the image pipeline
 
 Automates "get the right photo onto the right product tile" so the owner never

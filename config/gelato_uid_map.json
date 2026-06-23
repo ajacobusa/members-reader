@@ -1,0 +1,20 @@
+{
+  "GEL-ACRYLIC-12X16-ULT": "acrylic_print_product_af_12x16-inch_ap_4-mm_ae_none_cl_4-0_ver",
+  "GEL-ACRYLIC-16X20-ULT": "acrylic_print_product_af_16x20-inch_ap_4-mm_ae_none_cl_4-0_ver",
+  "GEL-CANVAS-11X14-PRM": "canvas_s_product_cf_11x14-inch_cm_canvas_cthck_wood-fsc-thick_cl_4-0_ver",
+  "GEL-CANVAS-16X20-PRM": "canvas_s_product_cf_16x20-inch_cm_canvas_cthck_wood-fsc-thick_cl_4-0_ver",
+  "GEL-CANVAS-18X24-PRM": "canvas_s_product_cf_18x24-inch_cm_canvas_cthck_wood-fsc-thick_cl_4-0_ver",
+  "GEL-CANVAS-24X36-PRM": "canvas_s_product_cf_24x36-inch_cm_canvas_cthck_wood-fsc-thick_cl_4-0_ver",
+  "GEL-CANVAS-8X10-PRM": "canvas_s_product_cf_8x10-inch_cm_canvas_cthck_wood-fsc-thick_cl_4-0_ver",
+  "GEL-FRAMED-11X14-PRM": "framed_poster_11x14-inch-270x350-mm_black_wood_w12xt22-mm_plexiglass_11x14-inch-270x350-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-FRAMED-16X20-PRM": "framed_poster_16x20-inch-400x500-mm_black_wood_w12xt22-mm_plexiglass_16x20-inch-400x500-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-FRAMED-18X24-PRM": "framed_poster_18x24-inch-450x600-mm_black_wood_w12xt22-mm_plexiglass_18x24-inch-450x600-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-FRAMED-8X10-PRM": "framed_poster_8x10-inch-200x250-mm_black_wood_w12xt22-mm_plexiglass_8x10-inch-200x250-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-METAL-12X16-ULT": "metallic_print_product_mf_12x16-inch_mp_3-mm_me_none_cl_4-0_ver",
+  "GEL-METAL-16X20-ULT": "metallic_print_product_mf_16x20-inch_mp_3-mm_me_none_cl_4-0_ver",
+  "GEL-POSTER-11X14-STD": "flat_11x14-inch-270x350-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-POSTER-12X16-STD": "flat_12x16-inch-300x400-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-POSTER-18X24-STD": "flat_18x24-inch-450x600-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-POSTER-24X36-STD": "flat_24x36-inch-600x900-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-POSTER-8X10-STD": "flat_8x10-inch-200x250-mm_170-gsm-65lb-coated-silk_4-0_ver"
+}
