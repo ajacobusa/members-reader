@@ -82,3 +82,21 @@ def test_pro_studio_curved_and_circle_text(tmp_path):
     assert "function curveText" in h
     assert "Arc (curved)" in h and "Full circle" in h
     assert "fabric.Path" in h and "pathSide" in h
+    # the curve must survive load (front/back + undo) - mode persisted, path rebuilt
+    assert "_rehydrateCurves" in h and "_jfPatched" in h
+
+
+def test_pro_studio_full_option_set(tmp_path):
+    # The full set of options a customer can choose: more products, front/back,
+    # shapes/elements, undo/redo, text + image effects.
+    from quoteforge.etsy.listing_preview import build_pro_studio
+    h = (build_pro_studio(out_path=tmp_path / "studio.html")).read_text(encoding="utf-8")
+    for p in ("Hoodie", "Sweatshirt", "Kids Tee"):           # more products
+        assert p in h
+    assert "function addShape" in h                          # shapes / elements
+    for s in ("'rect'", "'circle'", "'star'", "'heart'", "'triangle'", "'line'"):
+        assert s in h
+    assert "function setSide" in h and "twosided" in h and 'id="sidegrp"' in h   # front/back
+    assert "function undo" in h and "function redo" in h and "function _snap" in h
+    assert "function textOutline" in h and "function bumpSpacing" in h           # text effects
+    assert "function flipImg" in h and "function imgBW" in h                     # image effects

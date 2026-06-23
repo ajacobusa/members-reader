@@ -6760,6 +6760,8 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
 <header>
   <span class="logo">Joffiels</span><span class="beta">PRO DESIGNER · BETA</span>
   <span class="sp"></span>
+  <button class="hbtn" title="Undo" onclick="undo()">&#8634;</button>
+  <button class="hbtn" title="Redo" onclick="redo()">&#8635;</button>
   <button class="hbtn" onclick="saveDesign()">&#128190; Save</button>
   <button class="hbtn solid" onclick="approveOrder()">&#10003; Approve &amp; order</button>
 </header>
@@ -6768,9 +6770,16 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
     <div class="grp"><h4>Product</h4>
       <div class="prodrow">
         <button class="prodbtn on" data-k="tshirt" onclick="setProduct('tshirt')">&#128085; T-Shirt</button>
+        <button class="prodbtn" data-k="hoodie" onclick="setProduct('hoodie')">&#129509; Hoodie</button>
+        <button class="prodbtn" data-k="sweat" onclick="setProduct('sweat')">&#129508; Sweatshirt</button>
+        <button class="prodbtn" data-k="kids" onclick="setProduct('kids')">&#129722; Kids Tee</button>
         <button class="prodbtn" data-k="mug" onclick="setProduct('mug')">&#9749; Mug</button>
         <button class="prodbtn" data-k="tote" onclick="setProduct('tote')">&#128717; Tote</button>
         <button class="prodbtn" data-k="poster" onclick="setProduct('poster')">&#128444; Poster</button>
+      </div>
+      <div id="sidegrp" class="prodrow" style="margin-top:8px;display:none">
+        <button class="prodbtn on" id="sideFront" onclick="setSide('front')">&#128083; Front</button>
+        <button class="prodbtn" id="sideBack" onclick="setSide('back')">&#128083; Back</button>
       </div>
     </div>
     <div class="grp"><h4>Size, colour &amp; quantity</h4>
@@ -6785,6 +6794,30 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
       <button class="tbtn" onclick="addText()">&#10133; Add text</button>
       <label class="tbtn" style="cursor:pointer">&#128247; Upload an image / logo
         <input type="file" accept="image/png,image/jpeg" style="display:none" onchange="uploadImage(this)"></label>
+    </div>
+    <div class="grp"><h4>Elements</h4>
+      <div class="row">
+        <span class="mini" title="Rectangle" onclick="addShape('rect')">&#9645;</span>
+        <span class="mini" title="Circle" onclick="addShape('circle')">&#9679;</span>
+        <span class="mini" title="Line" onclick="addShape('line')">&#9135;</span>
+        <span class="mini" title="Triangle" onclick="addShape('triangle')">&#9650;</span>
+        <span class="mini" title="Star" onclick="addShape('star')">&#9733;</span>
+        <span class="mini" title="Heart" onclick="addShape('heart')">&#9829;</span>
+      </div>
+      <div class="row" style="margin-top:7px"><label style="width:42px">Fill</label>
+        <input type="color" id="shapecolor" value="#0f3d2e" oninput="applyShape('fill',this.value)">
+        <span class="mini" title="No fill (outline)" onclick="applyShape('fill','')">&#9633;</span>
+      </div>
+    </div>
+    <div class="grp disabled" id="imggrp"><h4>Image</h4>
+      <div class="row">
+        <span class="mini" title="Flip horizontal" onclick="flipImg('x')">&#8596;</span>
+        <span class="mini" title="Flip vertical" onclick="flipImg('y')">&#8597;</span>
+        <span class="mini" title="Black &amp; white" onclick="imgBW()">&#9680;</span>
+        <span class="mini" title="Original colours" onclick="imgClear()">&#127912;</span>
+      </div>
+      <div class="row" style="margin-top:7px"><label style="width:42px">Fade</label>
+        <input type="range" min="20" max="100" value="100" style="flex:1" oninput="applyAny('opacity',this.value/100)"></div>
     </div>
     <div class="grp" id="textgrp"><h4>Text</h4>
       <div class="row" style="margin-bottom:7px">
@@ -6809,10 +6842,16 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
         <span class="mini" onclick="applyText('textAlign','center')">&#8596;</span>
         <span class="mini" onclick="applyText('textAlign','right')">&#8677;</span>
       </div>
-      <div class="row"><label style="width:42px">Curve</label>
+      <div class="row" style="margin-bottom:7px"><label style="width:42px">Curve</label>
         <span class="mini" title="Straight" onclick="curveText('straight')">&mdash;</span>
         <span class="mini" title="Arc (curved)" onclick="curveText('up')">&#9180;</span>
         <span class="mini" title="Full circle (badge)" onclick="curveText('circle')">&#9711;</span>
+      </div>
+      <div class="row"><label style="width:42px">Style</label>
+        <span class="mini" title="Outline / solid" onclick="textOutline()">&#9106;</span>
+        <span class="mini" title="Wider letters" onclick="bumpSpacing(80)">A&rarr;A</span>
+        <span class="mini" title="Tighter letters" onclick="bumpSpacing(-80)">A&larr;A</span>
+        <input type="range" title="Fade" min="20" max="100" value="100" style="flex:1" oninput="applyAny('opacity',this.value/100)">
       </div>
     </div>
     <div class="grp"><h4>Arrange</h4>
@@ -6853,9 +6892,16 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
  const DARKCOLOR={'Black':1,'Navy':1,'Royal Blue':1,'Red':1,'Maroon':1,'Forest Green':1};
  // Each product: on-screen board size + the real print-file pixel target + safe inset +
  // the sizes/colours that actually order through the pipeline.
+ const _APP_COL=['White','Sand','Heather Grey','Light Blue','Black','Navy','Red','Forest Green'];
  const PRODUCTS={
-  tshirt:{name:'T-Shirt',w:460,h:575,print:[2400,3000],safe:0.06,board:'tshirt',
-    sizes:['S','M','L','XL','2XL','3XL'],colors:['White','Sand','Heather Grey','Light Blue','Black','Navy','Red','Forest Green']},
+  tshirt:{name:'T-Shirt',w:460,h:575,print:[2400,3000],safe:0.06,board:'tshirt',twosided:true,
+    sizes:['S','M','L','XL','2XL','3XL'],colors:_APP_COL},
+  hoodie:{name:'Hoodie',w:470,h:560,print:[2400,3000],safe:0.07,board:'tshirt',twosided:true,
+    sizes:['S','M','L','XL','2XL','3XL'],colors:['White','Sand','Heather Grey','Black','Navy','Forest Green','Maroon']},
+  sweat:{name:'Sweatshirt',w:470,h:560,print:[2400,3000],safe:0.07,board:'tshirt',twosided:true,
+    sizes:['S','M','L','XL','2XL','3XL'],colors:['White','Sand','Heather Grey','Black','Navy']},
+  kids:{name:'Kids Tee',w:430,h:520,print:[1800,2400],safe:0.06,board:'tshirt',twosided:true,
+    sizes:['2T','3T','4T','5-6','7-8','10-12'],colors:['White','Light Blue','Heather Grey','Black','Red']},
   mug:{name:'Mug',w:540,h:250,print:[2475,1155],safe:0.05,board:'mug',
     sizes:['11oz','15oz'],colors:['White','Black','Navy','Red']},
   tote:{name:'Tote',w:440,h:520,print:[2200,2600],safe:0.07,board:'tote',
@@ -6863,13 +6909,20 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
   poster:{name:'Poster',w:430,h:560,print:[3600,4500],safe:0.04,board:'poster',
     sizes:['12x18','18x24','24x36'],colors:['White']}
  };
- let CURP='tshirt', CSIZE='M', CCOLOR='White', CQTY=1, canvas=null;
+ let CURP='tshirt', CSIZE='M', CCOLOR='White', CQTY=1, CSIDE='front', SIDES={}, canvas=null;
  function tryGate(){ if((document.getElementById('gpw').value||'')===PASS){ try{sessionStorage.setItem('jf','1')}catch(e){} openApp(); } else { document.getElementById('gpw').style.borderColor='#b3322c'; } }
  function openApp(){ document.getElementById('gate').style.display='none'; document.getElementById('app').style.display=''; if(!canvas) initStudio(); }
  function initStudio(){
+   // Persist the curve MODE on text, never the live path object (it breaks on reload).
+   if(fabric.Text && !fabric.Text.prototype._jfPatched){
+     var _to=fabric.Text.prototype.toObject;
+     fabric.Text.prototype.toObject=function(p){ var r=_to.call(this,(p||[]).concat(['_curve'])); delete r.path; return r; };
+     fabric.Text.prototype._jfPatched=true;
+   }
    canvas=new fabric.Canvas('fcanvas',{preserveObjectStacking:true,selection:true});
    canvas.on('selection:created',syncText); canvas.on('selection:updated',syncText); canvas.on('selection:cleared',syncText);
    canvas.on('object:modified',checkReady); canvas.on('object:removed',checkReady);
+   canvas.on('object:added',_snap); canvas.on('object:modified',_snap); canvas.on('object:removed',_snap);
    window.addEventListener('resize',function(){ setProduct(CURP); });
    document.addEventListener('keydown',function(e){ if((e.key==='Delete'||e.key==='Backspace') && canvas.getActiveObject() && !canvas.getActiveObject().isEditing){ e.preventDefault(); delSel(); } });
    setProduct('tshirt');
@@ -6889,6 +6942,10 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
    var s=document.getElementById('safe'), m=Math.round(Math.min(W,H)*p.safe);
    s.style.left=(16+m)+'px'; s.style.top=(16+m)+'px'; s.style.width=(W-2*m)+'px'; s.style.height=(H-2*m)+'px';
    document.getElementById('hint').textContent='Add text or an image to start your '+p.name+' design.';
+   CSIDE='front'; SIDES={};
+   var sg=document.getElementById('sidegrp'); if(sg) sg.style.display=p.twosided?'grid':'none';
+   var sf=document.getElementById('sideFront'),sb=document.getElementById('sideBack');
+   if(sf) sf.classList.add('on'); if(sb) sb.classList.remove('on');
    renderOptions(); applyColor(); checkReady();
  }
  // Size dropdown + colour swatches for the chosen product; ordering carries these.
@@ -6963,7 +7020,9 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
    var email=knownEmail(), p=PRODUCTS[CURP], mult=p.print[0]/canvas.getWidth();
    canvas.discardActiveObject(); canvas.renderAll();
    var url=canvas.toDataURL({format:'png',multiplier:mult});
-   var design={engine:'fabric',product:CURP,productName:p.name,size:CSIZE,color:CCOLOR,qty:CQTY,rights:true,json:canvas.toJSON()};
+   if(p.twosided) SIDES[CSIDE]=canvas.toJSON();
+   var design={engine:'fabric',product:CURP,productName:p.name,size:CSIZE,color:CCOLOR,qty:CQTY,rights:true,
+     side:CSIDE, sides:(p.twosided?SIDES:null), json:canvas.toJSON()};
    try{ localStorage.setItem('jf_pro_order', JSON.stringify(design)); }catch(e){}
    if(email && DESIGN_API){ fetch(DESIGN_API,{method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify({email:email,design:design,summary:'Pro Designer - '+p.name+' '+CSIZE+' '+CCOLOR+' x'+CQTY})}).catch(function(){}); }
@@ -6981,25 +7040,73 @@ _PRO_STUDIO_HTML = r"""<!doctype html><html lang="en"><head>
  // Curve a real (still-editable) text object along an arc/circle using Fabric's native
  // text-on-path. Straight removes the path. Radius is derived from the text width so it
  // fits the wording. The classic Layout Studio's badge/arc look, in the free editor.
- function curveText(mode){
-   var o=_active(); if(!_isText(o)) return;
-   if(mode==='straight'){ o.set({path:null,pathStartOffset:0}); o.setCoords(); canvas.requestRenderAll(); return; }
+ // Apply an arc/circle path to a text object. The live fabric.Path does NOT survive
+ // toJSON/loadFromJSON (it revives broken and crashes render), so we persist only the
+ // curve MODE on the object and rebuild the path here - on edit AND after any load.
+ function _applyCurve(o,mode){
+   if(!o) return;
+   if(!mode||mode==='straight'){ o.set({path:null,pathStartOffset:0}); o.setCoords(); return; }
    o.set({path:null}); if(o.initDimensions) o.initDimensions();
-   var tw=Math.max(40,o.width||o.getScaledWidth()), r, d, path, side='left', off=0;
+   var tw=Math.max(40,o.width||o.getScaledWidth()), r, d, path, off=0;
    if(mode==='circle'){ r=Math.max(34,tw/(2*Math.PI)); d=2*r;
      path='M '+d+','+r+' A '+r+','+r+' 0 1,1 0,'+r+' A '+r+','+r+' 0 1,1 '+d+','+r+' z'; off=0; }
-   else { r=Math.max(40,tw/Math.PI*1.04); d=2*r; var plen=Math.PI*r; off=Math.max(0,(plen-tw)/2);
-     if(mode==='up'){ path='M 0,'+r+' A '+r+','+r+' 0 0,1 '+d+','+r; side='left'; }    // hump (rainbow over the top)
-     else { path='M 0,'+r+' A '+r+','+r+' 0 0,0 '+d+','+r; side='right'; }             // cup under, letters upright
-   }
-   var p=new fabric.Path(path,{fill:'',stroke:''});
-   o.set({path:p, pathSide:side, pathAlign:'baseline', pathStartOffset:off, textAlign:'left'});
-   o.setCoords(); canvas.requestRenderAll(); checkReady();
+   else { r=Math.max(40,tw/Math.PI*1.04); d=2*r; off=Math.max(0,(Math.PI*r-tw)/2);
+     path='M 0,'+r+' A '+r+','+r+' 0 0,1 '+d+','+r; }                                   // hump (rainbow)
+   o.set({path:new fabric.Path(path,{fill:'',stroke:''}),pathSide:'left',pathAlign:'baseline',pathStartOffset:off,textAlign:'left'});
+   o.setCoords();
  }
+ function curveText(mode){ var o=_active(); if(!_isText(o)) return;
+   o._curve=(mode==='straight'?null:{mode:mode}); _applyCurve(o,mode); canvas.requestRenderAll(); checkReady(); }
+ function _rehydrateCurves(){ if(!canvas) return; canvas.getObjects().forEach(function(o){ if(o._curve&&o._curve.mode) _applyCurve(o,o._curve.mode); }); }
+ // ── Shapes / elements ───────────────────────────────────────────────
+ function _starPts(n,outer,inner){ var pts=[]; for(var i=0;i<n*2;i++){ var r=i%2?inner:outer,a=Math.PI/n*i-Math.PI/2; pts.push({x:Math.cos(a)*r,y:Math.sin(a)*r}); } return pts; }
+ function addShape(kind){
+   if(!canvas) return; var W=canvas.getWidth(),H=canvas.getHeight(),s=Math.min(W,H)*0.26,o,
+     col=(document.getElementById('shapecolor')||{}).value||'#0f3d2e',
+     base={left:W/2,top:H/2,originX:'center',originY:'center',fill:col};
+   if(kind==='rect') o=new fabric.Rect(Object.assign({width:s*1.5,height:s,rx:4,ry:4},base));
+   else if(kind==='circle') o=new fabric.Circle(Object.assign({radius:s/2},base));
+   else if(kind==='triangle') o=new fabric.Triangle(Object.assign({width:s,height:s},base));
+   else if(kind==='line') o=new fabric.Line([W/2-s,H/2,W/2+s,H/2],{stroke:col,strokeWidth:Math.max(4,s*0.05),originX:'center',originY:'center'});
+   else if(kind==='star') o=new fabric.Polygon(_starPts(5,s/2,s/4),Object.assign({},base));
+   else if(kind==='heart') o=new fabric.Path('M0,-15 C-16,-38 -46,-14 0,26 C46,-14 16,-38 0,-15 z',Object.assign({scaleX:s/42,scaleY:s/42},base));
+   if(o){ canvas.add(o); canvas.setActiveObject(o); canvas.renderAll(); _snap(); checkReady(); }
+ }
+ function applyShape(prop,val){ var o=_active(); if(o&&!_isText(o)&&o.type!=='image'){
+   if(prop==='fill'&&val===''){ o.set({fill:'',stroke:o.stroke||((document.getElementById('shapecolor')||{}).value||'#0f3d2e'),strokeWidth:o.strokeWidth||3}); }
+   else o.set(prop,val); canvas.requestRenderAll(); } }
+ function applyAny(prop,val){ var o=_active(); if(o){ o.set(prop,val); canvas.requestRenderAll(); } }
+ // ── Image effects ───────────────────────────────────────────────────
+ function flipImg(ax){ var o=_active(); if(o&&o.type==='image'){ o.set(ax==='x'?'flipX':'flipY', !(ax==='x'?o.flipX:o.flipY)); canvas.requestRenderAll(); } }
+ function imgBW(){ var o=_active(); if(o&&o.type==='image'){ o.filters=[new fabric.Image.filters.Grayscale()]; o.applyFilters(); canvas.requestRenderAll(); } }
+ function imgClear(){ var o=_active(); if(o&&o.type==='image'){ o.filters=[]; o.applyFilters(); canvas.requestRenderAll(); } }
+ // ── Text effects ────────────────────────────────────────────────────
+ function _isLightHex(h){ if(typeof h!=='string'||h[0]!=='#'||h.length<7) return false; var n=parseInt(h.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; return (0.299*r+0.587*g+0.114*b)>150; }
+ function textOutline(){ var o=_active(); if(_isText(o)){ if(o.strokeWidth>0&&o.stroke){ o.set({stroke:null,strokeWidth:0}); }
+   else { o.set({stroke:(_isLightHex(o.fill)?'#1b1b1f':'#ffffff'),strokeWidth:Math.max(1.2,(o.fontSize||24)*0.045),paintFirst:'stroke'}); } canvas.requestRenderAll(); } }
+ function bumpSpacing(d){ var o=_active(); if(_isText(o)){ o.set('charSpacing',(o.charSpacing||0)+d); canvas.requestRenderAll(); } }
+ // ── Front / back (two-sided products) ───────────────────────────────
+ function setSide(side){ if(!PRODUCTS[CURP].twosided||side===CSIDE) return;
+   SIDES[CSIDE]=canvas.toJSON(); CSIDE=side;
+   document.getElementById('sideFront').classList.toggle('on',side==='front');
+   document.getElementById('sideBack').classList.toggle('on',side==='back');
+   _histlock=true; canvas.clear();
+   if(SIDES[side]){ canvas.loadFromJSON(SIDES[side],function(){ _rehydrateCurves(); applyColor(); canvas.renderAll(); _histlock=false; checkReady(); }); }
+   else { applyColor(); canvas.renderAll(); _histlock=false; checkReady(); }
+   document.getElementById('hint').textContent='Designing the '+side.toUpperCase()+' of your '+PRODUCTS[CURP].name+'.';
+ }
+ // ── Undo / redo ─────────────────────────────────────────────────────
+ var HIST=[], HPTR=-1, _histlock=false;
+ function _snap(){ if(_histlock||!canvas) return; try{ var j=JSON.stringify(canvas.toJSON());
+   if(HIST[HPTR]===j) return; HIST=HIST.slice(0,HPTR+1); HIST.push(j); if(HIST.length>50)HIST.shift(); HPTR=HIST.length-1; }catch(e){} }
+ function undo(){ if(HPTR<=0) return; HPTR--; _restore(); }
+ function redo(){ if(HPTR>=HIST.length-1) return; HPTR++; _restore(); }
+ function _restore(){ _histlock=true; canvas.loadFromJSON(HIST[HPTR],function(){ _rehydrateCurves(); applyColor(); canvas.renderAll(); _histlock=false; checkReady(); }); }
  function _isBold(){ var o=_active(); return _isText(o)&&(o.fontWeight==='bold'); }
  function _isItalic(){ var o=_active(); return _isText(o)&&(o.fontStyle==='italic'); }
  function syncText(){ var o=_active(); var on=_isText(o); document.getElementById('textgrp').classList.toggle('disabled',!on);
-   if(on){ var ff=document.getElementById('ffont'); if(o.fontFamily) ff.value=o.fontFamily; var fc=document.getElementById('fcolor'); if(typeof o.fill==='string') fc.value=o.fill; } }
+   if(on){ var ff=document.getElementById('ffont'); if(o.fontFamily) ff.value=o.fontFamily; var fc=document.getElementById('fcolor'); if(typeof o.fill==='string') fc.value=o.fill; }
+   var ig=document.getElementById('imggrp'); if(ig) ig.classList.toggle('disabled', !(o&&o.type==='image')); }
  function dupSel(){ var o=_active(); if(!o) return; o.clone(function(c){ c.set({left:(o.left||0)+18,top:(o.top||0)+18}); canvas.add(c); canvas.setActiveObject(c); canvas.renderAll(); }); }
  function fwd(){ var o=_active(); if(o){ canvas.bringForward(o); canvas.renderAll(); } }
  function bwd(){ var o=_active(); if(o){ canvas.sendBackwards(o); canvas.renderAll(); } }
