@@ -48,6 +48,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:35"],
         "Emails the weekly sales report (Mondays)"),
     ScheduledJob(
+        "QuoteForge Gelato Catalog Review", "gelato-review email",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:55"],
+        "Weekly Gelato catalog review: re-checks every mapped product UID for "
+        "availability (discontinued guard) and flags new/removed product lines, "
+        "emailing the owner only when action is needed. (Also runs daily on Render.)"),
+    ScheduledJob(
         "QuoteForge Monthly Report", "report monthly email",
         ["/SC", "MONTHLY", "/D", "1", "/ST", "07:40"],
         "Emails the monthly sales report (1st of month)"),

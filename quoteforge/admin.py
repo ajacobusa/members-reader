@@ -2316,6 +2316,50 @@ def _cmd_gelato_automap(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_review(args: list[str]) -> int:
+    """Scheduled catalog-review agent: re-check every mapped product UID for
+    availability (DISCONTINUED guard) and diff the catalog vs last run for NEW/removed
+    product lines. Reports only - never changes the live mapping or places an order.
+    Emails the owner when there's something to act on. Usage: gelato-review [email]."""
+    import json
+    import os
+    from pathlib import Path
+    from quoteforge.automation.gelato_catalog_review import (
+        review_catalog, format_review, gelato_check_uid, gelato_list_catalogs,
+        gelato_count_catalog)
+    snap_path = Path("config/gelato_catalog_snapshot.json")
+    prev = {}
+    if snap_path.exists():
+        try:
+            prev = json.loads(snap_path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            prev = {}
+    fam_path = Path(os.getenv("GELATO_PRODUCT_FAMILY_FILE")
+                    or "config/gelato_family_map.json")
+    fam = {}
+    if fam_path.exists():
+        try:
+            fam = json.loads(fam_path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            fam = {}
+    res = review_catalog(gelato_check_uid, gelato_list_catalogs,
+                         gelato_count_catalog, fam, prev)
+    snap_path.parent.mkdir(parents=True, exist_ok=True)
+    snap_path.write_text(json.dumps(res["snapshot"], indent=2, sort_keys=True),
+                         encoding="utf-8")
+    report = format_review(res)
+    print(report)
+    actionable = (res["summary"]["discontinued"] or res["summary"]["new_catalogs"]
+                  or res["summary"]["removed_catalogs"])
+    if "email" in args and actionable:
+        try:
+            _alert("\U0001f6d2 Gelato catalog review - action needed",
+                   "<pre>" + report + "</pre>", what="gelato-review")
+        except Exception:  # noqa: BLE001
+            pass
+    return 0
+
+
 def _cmd_email_capture(args: list[str]) -> int:
     """Build the email-capture kit (QR, announcement, Linktree, signup snippet)."""
     from quoteforge.marketing.email_capture import build_capture_kit
@@ -2366,6 +2410,7 @@ COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
+    "gelato-review": _cmd_gelato_review,
     "variations": _cmd_variations,
     "apparel": _cmd_apparel,
     "frame-preview": _cmd_frame_preview,
