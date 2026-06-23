@@ -78,6 +78,25 @@ def test_sheet_round_trips_with_required_columns(tmp_path):
     assert back[0]["product_id"] == "x"
 
 
+def test_fetch_sheet_csv_parses_published_google_sheet(monkeypatch):
+    import sys
+    import quoteforge.automation.product_photo_agent as ag
+
+    class _Resp:
+        text = ("product_id,mockup_image_url,image_status\r\n"
+                "classic_mug,http://x/m.png,Ready to Download\r\n")
+
+        def raise_for_status(self):
+            """No-op: pretend the HTTP request succeeded."""
+
+    fake = type(sys)("requests")          # fetch_sheet_csv does `import requests`
+    fake.get = lambda url, timeout=0: _Resp()
+    monkeypatch.setitem(sys.modules, "requests", fake)
+    rows = ag.fetch_sheet_csv("http://sheet")
+    assert rows[0]["product_id"] == "classic_mug"
+    assert rows[0]["image_status"] == "Ready to Download"
+
+
 def test_template_lists_every_product_with_blank_urls():
     rows = build_template_rows({"mug:classic_mug": "mug_uid_123"})
     ids = {r["product_id"] for r in rows}

@@ -65,6 +65,21 @@ def download_url(url: str) -> bytes:
     return r.content
 
 
+def fetch_sheet_csv(url: str) -> list[dict]:
+    """Read a published Google-Sheet (or any) CSV URL into row dicts.
+
+    The owner keeps their product sheet in Google Sheets and publishes it to the web
+    as CSV (File -> Share -> Publish to web -> CSV); we read that link so they never
+    touch a local file. Read-only - results are mirrored to the local sheet + emailed.
+    """
+    import csv as _csv
+    import io
+    import requests
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    return list(_csv.DictReader(io.StringIO(r.text)))
+
+
 def process_photo_sheet(rows: list[dict], download, dest_for, now_iso: str, *,
                         overwrite: bool = False, retries: int = 2, exists=None) -> dict:
     """Process every "Ready to Download" row. Mutates the row status fields in place.

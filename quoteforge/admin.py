@@ -2366,19 +2366,30 @@ def _cmd_product_photos(args: list[str]) -> int:
     month/year archive), update the sheet (status/file/date) and log
     missing/failed/duplicate. If the sheet is absent, writes a ready-to-fill template
     listing every product. Never overwrites an existing tile unless --overwrite.
-    Usage: product-photos [sheet.csv] [--overwrite] [email]."""
+    Fully hands-free path: set PRODUCT_PHOTOS_SHEET_URL to a published Google-Sheet
+    CSV link and the owner never touches a local file (results mirror to the local
+    sheet + email). Usage: product-photos [sheet.csv] [--overwrite] [email]."""
     import json
     import os
     from datetime import datetime
     from pathlib import Path
     from quoteforge.automation.product_photo_agent import (
         read_sheet, write_sheet, process_photo_sheet, default_dest,
-        download_url, build_template_rows)
+        download_url, build_template_rows, fetch_sheet_csv)
     sheet = Path(next((a for a in args if a.endswith(".csv")),
                       "config/product_photos.csv"))
     overwrite = "--overwrite" in args
     brand = Path("brand")
-    if not sheet.exists():
+    sheet_url = os.getenv("PRODUCT_PHOTOS_SHEET_URL")
+    if sheet_url:
+        # Fully automated: pull the live sheet from Google; mirror results locally.
+        try:
+            rows = fetch_sheet_csv(sheet_url)
+            print(f"Loaded {len(rows)} rows from the published Google Sheet.")
+        except Exception as exc:  # noqa: BLE001
+            print("Could not read PRODUCT_PHOTOS_SHEET_URL:", exc)
+            return 1
+    elif not sheet.exists():
         fam = {}
         fp = Path(os.getenv("GELATO_PRODUCT_FAMILY_FILE")
                   or "config/gelato_family_map.json")
@@ -2392,7 +2403,8 @@ def _cmd_product_photos(args: list[str]) -> int:
         print(f"Created template with {len(rows)} products -> {sheet}")
         print("Fill mockup_image_url + set image_status='Ready to Download', re-run.")
         return 0
-    rows = read_sheet(sheet)
+    else:
+        rows = read_sheet(sheet)
     now_iso = datetime.now().strftime("%Y-%m-%d")
     summary = process_photo_sheet(
         rows, download_url, lambda pid, n: default_dest(brand, pid, n),
