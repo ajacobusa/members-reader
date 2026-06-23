@@ -3662,6 +3662,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
              <div class="dbhint">✋ Drag the photo on the preview to move it, or
                <span class="grabtip grabtip-blue"><span class="grabsq grabsq-blue"></span> drag the blue corner with your mouse to resize just the photo</span>.
                AI auto-centered your subject on upload.</div>
+             <button type="button" class="pcenter" style="margin-top:4px" aria-label="Remove the photo background" onclick="removeBg()">&#9986;&#65039; Remove background</button>
+             <span class="tposhint">best for logos &amp; solid backdrops</span>
              <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
            </div>
 
@@ -4384,7 +4386,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const lb=document.getElementById('mlayoutbar');
    if(lb) lb.style.display = PRINT ? 'block' : 'none';
    if(PRINT){{ renderLayoutGallery(); renderSlotInputs(); }}
-   var _v3=document.getElementById('view3dbtn'); if(_v3) _v3.style.display=IS_MUG?'block':'none';  // 3D = cylindrical mugs
+   if(typeof _upd3DBtn==='function') _upd3DBtn();   // 3D button: mugs + branded bottles/tumblers
    // Calendars get an extra 12-month photo panel + flip-through preview.
    var _cb=document.getElementById('mcalbar');
    if(_cb)_cb.style.display=IS_CAL?'block':'none';
@@ -4644,7 +4646,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
-   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'}} - $${{r.price}}</option>`).join('');}}
+   sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'}} - $${{r.price}}</option>`).join('');
+   if(typeof _upd3DBtn==='function') _upd3DBtn();}}    // show 3D for branded bottles/tumblers too
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -6770,6 +6773,31 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    (function loop(){{ if(!_3d.on) return; if(!drag) grp.rotation.y+=0.006; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
  }}
  function close3D(){{ var w=document.getElementById('mug3dwrap'); if(w)w.style.display='none'; _3d.on=false; }}
+ // 3D suits CYLINDRICAL products: mugs + branded bottles/tumblers. CURFMT carries the
+ // selected product name, so a tote/notebook never gets the 3D button.
+ function _is3D(){{ var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return IS_MUG || (IS_BRANDED && /bottle|tumbler/i.test(f)); }}
+ function _upd3DBtn(){{ var b=document.getElementById('view3dbtn'); if(b) b.style.display=_is3D()?'block':'none'; }}
+ // ── Remove background (client-side, free, private - the photo never leaves the
+ // browser). Samples the 4 corners to estimate the backdrop and clears matching
+ // pixels - great for logos / solid backdrops. Available on EVERY product's photo. ──
+ function removeBg(){{
+   if(!PHOTO||!PHOTO.naturalWidth){{ if(typeof toast==='function') toast('Upload a photo or logo first.'); return; }}
+   var w=PHOTO.naturalWidth, h=PHOTO.naturalHeight;
+   var c=document.createElement('canvas'); c.width=w; c.height=h;
+   var x=c.getContext('2d'); x.drawImage(PHOTO,0,0);
+   var d; try{{ d=x.getImageData(0,0,w,h); }}catch(e){{ if(typeof toast==='function') toast('Cannot edit this image.'); return; }}
+   var p=d.data, at=function(px,py){{ return (py*w+px)*4; }};
+   var cs=[at(0,0),at(w-1,0),at(0,h-1),at(w-1,h-1)], br=0,bg=0,bb=0;
+   cs.forEach(function(i){{ br+=p[i]; bg+=p[i+1]; bb+=p[i+2]; }}); br/=4; bg/=4; bb/=4;
+   var tol=46, cut=0;
+   for(var i=0;i<p.length;i+=4){{ var dr=p[i]-br, dg=p[i+1]-bg, db=p[i+2]-bb;
+     if(Math.sqrt(dr*dr+dg*dg+db*db)<tol){{ p[i+3]=0; cut++; }} }}
+   if(!cut){{ if(typeof toast==='function') toast('No clear background found to remove.'); return; }}
+   x.putImageData(d,0,0);
+   var ni=new Image(); ni.onload=function(){{ PHOTO=ni; if(typeof drawArt==='function') drawArt();
+     if(typeof toast==='function') toast('✂️ Background removed.'); }};
+   ni.src=c.toDataURL('image/png');
+ }}
  // ── Automated A/B testing ──
  const AB_EXPERIMENTS = {ab_json};
  const AB_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/ab') : "";

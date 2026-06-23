@@ -586,3 +586,12 @@ def test_layout_gallery_has_descriptions_and_product_filtering(tmp_path):
     assert "only styles that suit this product" in h       # the per-product filter
     assert "f:['apparel']" in h                            # apparel-only tagging
     assert ".layoutthumb small" in h                        # description caption style
+
+
+def test_background_removal_available_on_every_product(tmp_path):
+    # Client-side, free, private background removal on the shared photo controls -
+    # so every product that takes a photo/logo gets it. 3D stays cylindrical-only.
+    h = _page(tmp_path)
+    assert "function removeBg" in h and "Remove background" in h
+    assert "getImageData" in h                       # client-side pixel op (no upload)
+    assert "function _is3D" in h and "bottle|tumbler" in h   # 3D for mugs + bottles/tumblers
