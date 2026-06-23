@@ -52,9 +52,19 @@ product** — shoot each garment once and copy the file across its 3 tier-names.
 | Men's Sweatshirt | `tile-m_sweatshirt.jpg` | `tile-m_sweatshirt_value.jpg` | `tile-m_sweatshirt_premium.jpg` |
 | Women's Sweatshirt | `tile-w_sweatshirt.jpg` | `tile-w_sweatshirt_value.jpg` | `tile-w_sweatshirt_premium.jpg` |
 
-## Wall Art
-Posters / canvas / frames use the wall-art listing galleries (a separate set) —
-tell me when you're ready and I'll generate that sheet.
+## 🖼️ Wall Art (works differently — no per-product tiles)
+Wall-Art tiles are **generated from the design galleries**, not from a photo per
+poster/canvas size. So there is **no `tile-poster_8x10.jpg`** etc. The only photo
+Wall Art needs is the department room shot:
+
+| Image | Save as |
+|---|---|
+| Wall-Art hero / room scene | `wallart-hero.jpg` |
+
+Wall-Art fulfilment UIDs are mapped separately (poster/canvas/framed/acrylic/metal →
+real Gelato UIDs) via `python -m quoteforge.admin wallart-automap`; see
+[`AUTOMATION_AGENTS.md`](../AUTOMATION_AGENTS.md). Two sizes need a decision: Gelato
+has no 8×10 acrylic or metal.
 
 ---
 

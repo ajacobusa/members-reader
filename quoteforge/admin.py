@@ -2316,6 +2316,40 @@ def _cmd_gelato_automap(args: list[str]) -> int:
     return 0
 
 
+def _cmd_wallart_automap(args: list[str]) -> int:
+    """Map the Wall-Art products (poster/canvas/framed/acrylic/metal) to REAL Gelato
+    UIDs (read-only catalog API) and merge them into the static UID map
+    (GELATO_UID_MAP_FILE, default config/gelato_uid_map.json), replacing GEL-*
+    placeholders. A DRAFT for owner review - never enables live. Usage: wallart-automap."""
+    import json
+    import os
+    from pathlib import Path
+    from quoteforge.automation.gelato_wallart_map import (build_wallart_map,
+                                                          gelato_fetch_wallart)
+    res = build_wallart_map(gelato_fetch_wallart)
+    out = Path(os.getenv("GELATO_UID_MAP_FILE") or "config/gelato_uid_map.json")
+    existing = {}
+    if out.exists():
+        try:
+            existing = json.loads(out.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            existing = {}
+    existing.update(res["map"])          # merge, keep any non-wall-art entries
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(existing, indent=2, sort_keys=True), encoding="utf-8")
+    print(f"Mapped {res['mapped_count']}/{res['total']} wall-art products -> {out}")
+    if res["unmapped"]:
+        print("\nNOT offered by Gelato at our size (change the size or drop it):")
+        for f in res["unmapped"]:
+            print(f"  - {f}")
+    print("\nDRAFT mapping written (portrait/standard-material defaults). Next:")
+    print("  1. Review material/orientation per pick (paper, canvas wrap, frame, finish).")
+    print("  2. Place ONE test order per material before going live.")
+    print(f"  3. Set GELATO_UID_MAP_FILE={out} in your env.")
+    print("  TEST_MODE stays ON - this command never enables live ordering.")
+    return 0
+
+
 def _cmd_gelato_review(args: list[str]) -> int:
     """Scheduled catalog-review agent: re-check every mapped product UID for
     availability (DISCONTINUED guard) and diff the catalog vs last run for NEW/removed
@@ -2482,6 +2516,7 @@ COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
+    "wallart-automap": _cmd_wallart_automap,
     "gelato-review": _cmd_gelato_review,
     "product-photos": _cmd_product_photos,
     "variations": _cmd_variations,
