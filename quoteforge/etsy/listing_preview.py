@@ -4066,7 +4066,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const _WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
  function calPhotoUpload(i,inp){{
    var f=inp.files&&inp.files[0]; if(!f) return;
-   if(!/(jpe?g|png)$/i.test(f.name)||f.size>MAX_UPLOAD_MB*1048576){{ inp.value=''; return; }}
+   if(!/(jpe?g|png)$/i.test(f.name)){{ toast('Use a JPG or PNG photo for the calendar.'); inp.value=''; return; }}
+   if(f.size>MAX_UPLOAD_MB*1048576){{ toast('That photo is too large (max '+MAX_UPLOAD_MB+' MB).'); inp.value=''; return; }}
    var r=new FileReader();
    r.onload=function(e){{ var im=new Image(); im.onload=function(){{ CAL_PHOTOS[i]=im; var s=document.getElementById('calslot'+i); if(s)s.classList.add('filled'); _updCalCount(); }}; im.src=e.target.result; }};
    r.readAsDataURL(f);
@@ -5021,7 +5022,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const OCCASIONS=[
    {{label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Happy Birthday [Name]!'}},
    {{label:'Anniversary', kind:'cal', name:"Wall Calendar", color:'White', quote:'Our Year Together'}},
-   {{label:'For Mom', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Dusty Rose', quote:'Best Mom Ever'}},
+   {{label:'For Mom', kind:'mug', name:"Accent Mug", color:'Dusty Rose', quote:'Best Mom Ever'}},
    {{label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Best Dad Ever'}},
    {{label:'Wedding', kind:'cal', name:"Wall Calendar", color:'White', quote:'Mr & Mrs [Name]'}},
    {{label:'New Baby', kind:'branded', name:"Organic Cotton Tote Bag", color:'Natural', quote:'Welcome Baby [Name]'}},
@@ -5407,7 +5408,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _collageFilled(){{ return COLLAGE.some(function(im){{ return !!im; }}); }}
  function collageUpload(i, inp){{
    var f=inp.files&&inp.files[0]; if(!f) return;
-   if(!/(jpe?g|png)$/i.test(f.name)||f.size>MAX_UPLOAD_MB*1048576){{ inp.value=''; return; }}
+   if(!/(jpe?g|png)$/i.test(f.name)){{ toast('Use a JPG or PNG photo.'); inp.value=''; return; }}
+   if(f.size>MAX_UPLOAD_MB*1048576){{ toast('That photo is too large (max '+MAX_UPLOAD_MB+' MB).'); inp.value=''; return; }}
    var r=new FileReader();
    r.onload=function(e){{ var img=new Image();
      img.onload=function(){{ COLLAGE[i]=img; drawArt(); }}; img.src=e.target.result; }};
