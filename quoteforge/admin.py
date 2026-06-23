@@ -2280,9 +2280,11 @@ def _cmd_rebuild_site(args: list[str]) -> int:
     """Rebuild the public GitHub Pages shop-home page (docs/index.html) with the
     latest listings + analytics tags. Run by backup-all's push, fully hands-free."""
     from pathlib import Path
-    from quoteforge.etsy.listing_preview import build_shop_home
+    from quoteforge.etsy.listing_preview import build_shop_home, build_pro_studio
     out = build_shop_home(out_path=Path("docs/index.html"), external_assets=True)
     print(f"Rebuilt {out} ({out.stat().st_size // 1024} KB, lazy-loaded assets)")
+    studio = build_pro_studio(out_path=Path("docs/studio.html"))
+    print(f"Rebuilt {studio} ({studio.stat().st_size // 1024} KB, Pro Designer beta)")
     return 0
 
 
