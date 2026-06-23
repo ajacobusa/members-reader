@@ -885,7 +885,7 @@ def link_design_to_order(email: str, order_id: str) -> int:
         return 0
     with _conn() as conn:
         row = conn.execute(
-            "SELECT id FROM saved_designs WHERE email=? "
+            "SELECT id, design_json FROM saved_designs WHERE email=? "
             "AND (order_id IS NULL OR order_id='') "
             "ORDER BY updated_at DESC LIMIT 1", (email,)).fetchone()
         if not row:
@@ -893,7 +893,31 @@ def link_design_to_order(email: str, order_id: str) -> int:
         conn.execute(
             "UPDATE saved_designs SET order_id=?, updated_at=datetime('now') WHERE id=?",
             (order_id, row["id"]))
-        return row["id"]
+        design_json = row["design_json"]
+    # Carry the design's print file onto the order so production has the artwork even
+    # for a Pro Designer / calendar order (best-effort; never blocks the link).
+    try:
+        _propagate_design_artwork(order_id, design_json)
+    except Exception:  # noqa: BLE001
+        pass
+    return row["id"]
+
+
+def _propagate_design_artwork(order_id: str, design_json: str) -> None:
+    """If a linked design carries a hosted print URL (Pro Designer printUrl, or the
+    first 12-month calendar photo), set it as the order's artwork_url - but only when
+    the order doesn't already have one (don't clobber a real upload)."""
+    import json as _json
+    d = _json.loads(design_json or "{}")
+    url = (d.get("printUrl") or "").strip()
+    if not url:
+        urls = ((d.get("cal") or {}).get("urls")) or []
+        url = (urls[0] if urls else "") or ""
+    if not url:
+        return
+    cur = get_order(order_id)
+    if cur and not (cur.get("artwork_url") or "").strip():
+        update_order(order_id, artwork_url=url)
 
 
 def get_design_for_order(order_id: str) -> dict | None:
