@@ -3586,8 +3586,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="dseg" role="group" aria-label="Select what to move">
            <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ Wording</button>
            <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ Photo</button>
+           <button type="button" class="dmbtn" aria-label="Reset placement" onclick="resetPlacement()" style="margin-left:auto">↺ Reset</button>
          </div>
-         <div class="dbhint">Select one, then drag it on the preview.</div>
+         <div class="dbhint">Drag any word or the photo on the preview to move it &middot; drag a corner to resize &middot; <b>Reset</b> restores the template.</div>
        </div>
            <div id="mphotoctl" style="display:none">
              <div class="pctitle">🖼️ Resize &amp; place your photo</div>
@@ -5443,6 +5444,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
      tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT,
      layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)),
+     loff:JSON.parse(JSON.stringify(LOFF)),
      collage:COLLAGE.map(function(im){{ return (im&&im.src)||''; }}) }};
  }}
  function _restoreSide(s){{
@@ -5454,6 +5456,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
      if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
      CURLAYOUT=s.layout||'freeform'; SLOTS=s.slots?JSON.parse(JSON.stringify(s.slots)):_emptySlots();
+     LOFF=s.loff?JSON.parse(JSON.stringify(s.loff)):{{}};
      COLLAGE=(s.collage||[]).map(function(src){{ if(!src) return null;
        var ci=new Image(); ci.onload=function(){{drawArt();}}; ci.src=src; return ci; }});
      while(COLLAGE.length<4) COLLAGE.push(null);
@@ -5464,7 +5467,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
-     CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null];
+     CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null]; LOFF={{}};
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
    _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
@@ -5506,6 +5509,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={{x:0.5, y:0.5}}, TSIZE=0, TROT=0, ART={{x:0,y:0,w:1,h:1}}, DRAGMODE='text';
+ // Per-element nudge offsets for a LAYOUT (badge/emblem): {{slotName:{{dx,dy}}}} in box
+ // fractions, so the buyer can drag each word off its template spot. Reset per layout.
+ let LOFF={{}};
+ function _loff(k){{ return LOFF[k]||{{dx:0,dy:0}}; }}
  function setTextRot(v){{ TROT=parseInt(v)||0;
    const lbl=document.getElementById('mtrotlbl'); if(lbl)lbl.textContent=TROT+'°'; drawArt(); }}
  function setRot(deg){{ const s=document.getElementById('mtrot'); if(s)s.value=deg; setTextRot(deg); }}
@@ -5548,6 +5555,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
    if(PHOTO && PHOTO_RECT && px.x>=PHOTO_RECT.x && px.x<=PHOTO_RECT.x+PHOTO_RECT.w
       && px.y>=PHOTO_RECT.y && px.y<=PHOTO_RECT.y+PHOTO_RECT.h) return 'photo';
+   // Layout mode: grabbing near a wording slot moves THAT element (per-element nudge).
+   if(CURLAYOUT && CURLAYOUT!=='freeform' && b){{
+     var L=_layout(CURLAYOUT), R=Math.min(b.w,b.h), ss=(L&&L.slots)||[];
+     for(var i=0;i<ss.length;i++){{ var s=ss[i]; if(!_slot(s.slot)) continue;
+       var o=_loff(s.slot);
+       var hx=b.x+b.w*((s.kind==='arc'?s.cx:(s.x==null?0.5:s.x))+o.dx);
+       var hy=b.y+b.h*((s.kind==='arc'?s.cy:s.y)+o.dy);
+       if(s.kind==='arc'){{ var ang=((s.midAngle||0))*Math.PI/180;   // text sits on the radius
+         hx+=R*(s.r||0.5)*Math.cos(ang); hy+=R*(s.r||0.5)*Math.sin(ang); }}
+       if(Math.abs(px.x-hx)<R*0.30 && Math.abs(px.y-hy)<R*0.16) return 'slot:'+s.slot;
+     }}
+   }}
    return 'frame';
  }}
  function _startDrag(ev){{ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
@@ -5582,6 +5601,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        PHOTO_ZOOM=Math.max(0.2, Math.min(3, PHOTO_ZOOM*r));
        const z=document.getElementById('mphotozoom'); if(z) z.value=PHOTO_ZOOM;
      }}
+   }} else if(DRAGTARGET && DRAGTARGET.indexOf('slot:')===0){{    // nudge ONE layout element
+     var k=DRAGTARGET.slice(5), bb=APPAREL_BOUND;
+     if(DRAGLAST && bb){{ var o=_loff(k);
+       o.dx=_clamp((o.dx||0)+(f.x-DRAGLAST.x)*W/Math.max(1,bb.w),-0.6,0.6);
+       o.dy=_clamp((o.dy||0)+(f.y-DRAGLAST.y)*H/Math.max(1,bb.h),-0.6,0.6);
+       LOFF[k]=o; }}
    }} else if(DRAGTARGET==='photo'){{
      if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
      else if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
@@ -5807,7 +5832,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var wb=document.getElementById('mwordbox'); if(wb) wb.style.display=(CURLAYOUT==='freeform')?'':'none';
  }}
  function onSlot(k,v){{ SLOTS[k]=v; if(k==='headline'){{ var ta=document.getElementById('mtext'); if(ta) ta.value=v; }} drawArt(); }}
- function pickLayout(k){{ CURLAYOUT=k; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}
+ function pickLayout(k){{ CURLAYOUT=k; LOFF={{}}; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}
+ // Put every nudged element back to its template position.
+ function resetPlacement(){{ LOFF={{}}; TPOS={{x:0.5,y:0.5}}; drawArt(); toast('Placement reset.'); }}
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
@@ -6091,12 +6118,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var txt=_slot(s.slot); if(!txt) return;
      var size=Math.max(11, R*(s.weight||0.07));
      var t=s.caps?txt.toUpperCase():txt;
+     var o=_loff(s.slot);                              // buyer's per-element nudge
      if(s.kind==='arc'){{
-       drawArcText(ctx,t, b.x+b.w*s.cx, b.y+b.h*s.cy, R*s.r, s.midAngle, s.sweep, font, size, ink, size*0.06);
+       drawArcText(ctx,t, b.x+b.w*(s.cx+o.dx), b.y+b.h*(s.cy+o.dy), R*s.r, s.midAngle, s.sweep, font, size, ink, size*0.06);
      }} else {{
        ctx.save(); ctx.fillStyle=ink; ctx.font='700 '+size+'px '+font;
        ctx.textAlign=s.align||'center'; ctx.textBaseline='middle';
-       ctx.fillText(t, b.x+b.w*(s.x==null?0.5:s.x), b.y+b.h*s.y); ctx.restore();
+       ctx.fillText(t, b.x+b.w*((s.x==null?0.5:s.x)+o.dx), b.y+b.h*(s.y+o.dy)); ctx.restore();
      }}
    }});
  }}
