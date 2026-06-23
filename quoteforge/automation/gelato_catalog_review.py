@@ -104,6 +104,7 @@ def format_review(res: dict) -> str:
 
 # ── live (network) fetchers ─────────────────────────────────────────
 def gelato_check_uid(uid: str) -> bool:
+    """Live: is this product UID still available on Gelato? (read-only GET)."""
     import requests
     from quoteforge.config import GELATO_API_KEY
     r = requests.get(f"https://product.gelatoapis.com/v3/products/{uid}",
@@ -112,6 +113,7 @@ def gelato_check_uid(uid: str) -> bool:
 
 
 def gelato_list_catalogs() -> list[str]:
+    """Live: the current list of Gelato catalogUids (read-only GET)."""
     import requests
     from quoteforge.config import GELATO_API_KEY
     r = requests.get("https://product.gelatoapis.com/v3/catalogs",
@@ -121,6 +123,7 @@ def gelato_list_catalogs() -> list[str]:
 
 
 def gelato_count_catalog(catalog: str) -> int | None:
+    """Live: total number of products in a Gelato catalog (the search 'hits')."""
     import requests
     from quoteforge.config import GELATO_API_KEY
     r = requests.post(
