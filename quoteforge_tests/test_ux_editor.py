@@ -575,3 +575,14 @@ def test_no_customer_facing_etsy_in_page_copy(tmp_path):
     assert "secure Etsy" not in h
     assert "Etsy checkout" not in h
     assert "live Etsy page" not in h
+
+
+def test_layout_gallery_has_descriptions_and_product_filtering(tmp_path):
+    # UX: each template carries a plain-English description, and apparel-only styles
+    # (Back Print / Left-Chest / Streetwear) are filtered out for non-apparel products.
+    h = _page(tmp_path)
+    assert "const LAYOUT_META" in h
+    assert "Name curved around a round photo" in h        # a real description
+    assert "only styles that suit this product" in h       # the per-product filter
+    assert "f:['apparel']" in h                            # apparel-only tagging
+    assert ".layoutthumb small" in h                        # description caption style

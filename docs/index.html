@@ -843,7 +843,8 @@
  .layoutthumb{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}
  .layoutthumb.sel{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
  .layoutthumb svg{width:100%;height:auto;display:block}
- .layoutthumb span{display:block;font-size:9px;line-height:1.15;text-align:center;color:#5b6b62;margin-top:2px}
+ .layoutthumb span{display:block;font-size:9px;line-height:1.15;text-align:center;color:#3a4742;margin-top:2px;font-weight:600}
+ .layoutthumb small{display:block;font-size:8px;line-height:1.15;text-align:center;color:#8a948c;margin-top:1px}
  .slotinputs label{display:block;font-size:12px;font-weight:600;margin:7px 0 2px;color:#3a4a42}
  .slotinputs input{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px}
  .dbhint{font-size:12.5px;color:var(--muted);font-weight:500;
@@ -3638,6 +3639,24 @@
     slots:[{slot:'monogram',kind:'line',x:0.5,y:0.42,weight:0.26,caps:true},
            {slot:'headline',kind:'line',x:0.5,y:0.74,weight:0.05,caps:true}]}
  ];
+ // Plain-English "what this style does" + which products it suits (f). No f = all
+ // products. Drives the gallery caption + per-product filtering so a mug never shows
+ // an apparel-only style (Back Print / Left-Chest / Streetwear).
+ const LAYOUT_META = {
+   freeform:{d:'Place your words & photo anywhere'},
+   badge:{d:'Name curved around a round photo'},
+   emblem:{d:'Classic crest — text top & bottom'},
+   minimal:{d:'Clean — small photo, simple text'},
+   street:{d:'Big bold front graphic',f:['apparel']},
+   vstack:{d:'Photo with stacked lines of text'},
+   hbanner:{d:'Photo on the left, text banner'},
+   chest:{d:'Small logo on the left chest',f:['apparel']},
+   backprint:{d:'Large design across the back',f:['apparel']},
+   wrap:{d:'Design wraps all the way around',f:['apparel','mug','branded']},
+   collage:{d:'Up to 4 photos in a grid'},
+   adventure:{d:'Shield badge with your text'},
+   monogram:{d:'Elegant initials monogram'}
+ };
  function _layout(k){ for(var i=0;i<LAYOUTS.length;i++) if(LAYOUTS[i].key===k) return LAYOUTS[i]; return LAYOUTS[0]; }
  // Layout gallery: a thumbnail per LAYOUTS entry; picking one swaps the visible
  // text-slot inputs and redraws. Customer-facing slot labels (no design jargon).
@@ -3669,10 +3688,13 @@
  }
  function renderLayoutGallery(){
    var box=document.getElementById('mlayouts'); if(!box) return;
-   box.innerHTML=LAYOUTS.map(L=>
-     `<div class="layoutthumb${L.key===CURLAYOUT?' sel':''}" role="button" tabindex="0" title="${L.name}" `+
-     `onclick="pickLayout('${L.key}')" onkeydown="if(event.key==='Enter')pickLayout('${L.key}')">`+
-     `${_thumbSVG(L)}<span>${L.name}</span></div>`).join('');
+   var pk=(typeof _pk==='function')?_pk():'wallart';
+   box.innerHTML=LAYOUTS.filter(function(L){ var m=LAYOUT_META[L.key]||{};
+       return !m.f || m.f.indexOf(pk)>=0; })              // only styles that suit this product
+     .map(function(L){ var m=LAYOUT_META[L.key]||{};
+       return `<div class="layoutthumb${L.key===CURLAYOUT?' sel':''}" role="button" tabindex="0" title="${m.d||L.name}" `+
+       `onclick="pickLayout('${L.key}')" onkeydown="if(event.key==='Enter')pickLayout('${L.key}')">`+
+       `${_thumbSVG(L)}<span>${L.name}</span><small>${m.d||''}</small></div>`; }).join('');
  }
  function renderSlotInputs(){
    var box=document.getElementById('mslots'); if(!box) return;
