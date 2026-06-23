@@ -105,3 +105,14 @@ def test_mug_and_calendar_show_real_sizes_not_poster_fallback(tmp_path):
     assert not any("x" in s for s in mug_sizes)        # never a poster size
     cal_keys = [k for k in sm if "calendar" in k.lower()]
     assert cal_keys and all("oz" not in s["size"] for s in sm[cal_keys[0]])
+
+
+def test_mug_has_threejs_3d_preview(tmp_path):
+    # Additive 3D preview: lazy-loaded Three.js, drag-to-rotate mug, never blocks the
+    # flat proof. Button shows for mugs only.
+    h = _page(tmp_path)
+    for marker in ("function view3D", "function _build3D", "three.min.js",
+                   'id="mug3dwrap"', 'id="view3dbtn"', "CylinderGeometry"):
+        assert marker in h, f"3D preview marker missing: {marker}"
+    # the 3D button is gated to mugs (cylindrical), not shown for flat products
+    assert "_v3.style.display=IS_MUG?'block':'none'" in h

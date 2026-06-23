@@ -3580,6 +3580,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
+       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="View your mug in 3D" onclick="view3D()">&#128260; View in 3D &mdash; spin it</button>
+       <div id="mug3dwrap" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(20,20,20,.55);align-items:center;justify-content:center" onclick="if(event.target===this)close3D()">
+         <div style="background:#f3efe6;border-radius:14px;padding:14px;max-width:420px;width:92%;box-shadow:0 18px 50px rgba(0,0,0,.35)">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+             <b>&#128260; Spin your design &mdash; drag to rotate</b>
+             <span role="button" tabindex="0" aria-label="Close 3D view" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="cursor:pointer;font-size:20px;line-height:1">&times;</span>
+           </div>
+           <div id="mug3d" style="width:100%;height:340px;border-radius:10px;overflow:hidden;background:#fff"></div>
+           <div style="font-size:11px;color:#7a7466;margin-top:6px">A bonus 3D preview &mdash; your approved flat proof is exactly what prints.</div>
+         </div>
+       </div>
        <div class="dragbar" id="mplacement" style="display:none">
          <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
          <div class="dseg" role="group" aria-label="Choose side">
@@ -4373,6 +4384,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const lb=document.getElementById('mlayoutbar');
    if(lb) lb.style.display = PRINT ? 'block' : 'none';
    if(PRINT){{ renderLayoutGallery(); renderSlotInputs(); }}
+   var _v3=document.getElementById('view3dbtn'); if(_v3) _v3.style.display=IS_MUG?'block':'none';  // 3D = cylindrical mugs
    // Calendars get an extra 12-month photo panel + flip-through preview.
    var _cb=document.getElementById('mcalbar');
    if(_cb)_cb.style.display=IS_CAL?'block':'none';
@@ -6710,6 +6722,54 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(typeof toast==='function') toast('✨ Auto-arranged your design.');
    if(typeof drawArt==='function') drawArt();
  }}
+ // ── 3D preview (Three.js, lazy-loaded from CDN; mug/bottle/tumbler) ──────────────
+ // Additive bonus view - the approved FLAT proof is still what prints. Never blocks.
+ var _3d={{on:false}};
+ function view3D(){{
+   var wrap=document.getElementById('mug3dwrap'); if(!wrap) return;
+   var img=(typeof _composedProofURL==='function')?_composedProofURL():'';
+   if(!img){{ if(typeof toast==='function') toast('Add your design first.'); return; }}
+   wrap.style.display='flex';
+   var go=function(){{ _build3D(img); }};
+   if(window.THREE){{ go(); return; }}
+   var s=document.createElement('script');
+   s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+   s.onload=go; s.onerror=function(){{ close3D(); if(typeof toast==='function') toast('3D view unavailable right now.'); }};
+   document.head.appendChild(s);
+ }}
+ function _build3D(imgURL){{
+   var mount=document.getElementById('mug3d'); if(!mount||!window.THREE) return;
+   mount.innerHTML=''; var W=mount.clientWidth||340, H=mount.clientHeight||340;
+   var pk=(typeof _pk==='function')?_pk():'mug';
+   var scene=new THREE.Scene();
+   var cam=new THREE.PerspectiveCamera(40,W/H,0.1,100); cam.position.set(0,0,7);
+   var rnd=new THREE.WebGLRenderer({{antialias:true,alpha:true}});
+   rnd.setSize(W,H); rnd.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+   mount.appendChild(rnd.domElement);
+   scene.add(new THREE.AmbientLight(0xffffff,0.9));
+   var dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(3,4,5); scene.add(dl);
+   var rad=(pk==='mug')?1.35:1.0, ht=(pk==='mug')?2.0:3.0;   // mugs squat; bottles tall
+   var grp=new THREE.Group();
+   var tex=new THREE.Texture(); tex.wrapS=THREE.RepeatWrapping;
+   var im=new Image(); im.crossOrigin='anonymous';
+   im.onload=function(){{ tex.image=im; tex.needsUpdate=true; }}; im.src=imgURL;
+   var side=new THREE.MeshStandardMaterial({{map:tex,roughness:0.35,metalness:0.04,color:0xffffff}});
+   var cap=new THREE.MeshStandardMaterial({{color:0xffffff,roughness:0.45}});
+   var body=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,ht,64,1,false),[side,cap,cap]);
+   grp.add(body);
+   if(pk==='mug'){{ var hd=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.13,16,42,Math.PI*1.15),cap);
+     hd.position.set(rad+0.22,0,0); hd.rotation.y=Math.PI/2; grp.add(hd); }}
+   scene.add(grp);
+   var drag=false,lx=0; var el=rnd.domElement; el.style.cursor='grab';
+   el.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;el.style.cursor='grabbing';}});
+   window.addEventListener('mouseup',function(){{drag=false;el.style.cursor='grab';}});
+   el.addEventListener('mousemove',function(e){{ if(drag){{ grp.rotation.y+=(e.clientX-lx)*0.012; lx=e.clientX; }} }});
+   el.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx) grp.rotation.y+=(e.touches[0].clientX-lx)*0.012; lx=e.touches[0].clientX; }} }},{{passive:true}});
+   el.addEventListener('touchend',function(){{ lx=0; }});
+   _3d={{on:true}};
+   (function loop(){{ if(!_3d.on) return; if(!drag) grp.rotation.y+=0.006; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
+ }}
+ function close3D(){{ var w=document.getElementById('mug3dwrap'); if(w)w.style.display='none'; _3d.on=false; }}
  // ── Automated A/B testing ──
  const AB_EXPERIMENTS = {ab_json};
  const AB_API = ANGE_API ? ANGE_API.replace(/\\/ask$/,'/ab') : "";
