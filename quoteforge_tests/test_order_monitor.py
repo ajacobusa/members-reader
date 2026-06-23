@@ -75,3 +75,16 @@ def test_monitor_orders_aggregates(tmp_path, monkeypatch):
     assert r["checked"] == 2
     assert "M1" in [v["order_id"] for v in r["violations"]]
     assert "M2" not in [v["order_id"] for v in r["violations"]]
+
+
+def test_approved_but_unrouted_order_is_surfaced():
+    # REGRESSION (#7): a customer-approved recorded sale stuck at 'received' with no
+    # vendor order id must be flagged for review - direct/WEB orders were silently
+    # frozen (nothing downstream fulfils a no-vendor order).
+    from quoteforge.automation.order_monitor import audit_order
+    a = audit_order({"order_id": "WEB-1", "status": "received",
+                     "proof_approved": 1, "sale_price": 42.0})
+    assert any("not submitted to the print partner" in r for r in a["review"])
+    # an order still awaiting approval is NOT flagged (legitimately waiting)
+    b = audit_order({"order_id": "WEB-2", "status": "received", "sale_price": 42.0})
+    assert not any("not submitted" in r for r in b["review"])

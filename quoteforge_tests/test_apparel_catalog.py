@@ -240,4 +240,5 @@ def test_apparel_guard_is_separate_from_print_guard():
     # catalogs are independent, so the existing go-live tests keep passing.
     from quoteforge.etsy.gelato_catalog import verify_catalog_mappings
     print_total = verify_catalog_mappings()["total"]
-    assert print_total == 22        # the 22 print products, unchanged by apparel
+    assert print_total == 20        # 20 print products (8x10 acrylic+metal dropped -
+    #                                 Gelato does not offer that size), unchanged by apparel

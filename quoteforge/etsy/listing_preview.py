@@ -5365,15 +5365,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      msg.className='note upok';msg.innerHTML="PDF received - we'll verify print quality. "
        +"<span class='rmphoto' onclick='removePhoto()'>remove</span>";aiCheckPhoto(f);return;}}
    const inches=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0].split('x').map(parseFloat);
+   // Only wall-art sizes are an inch pair (e.g. 18x24). Mug/apparel/calendar/branded
+   // sizes are '11oz'/'M'/'A4'/'One size' - never print a bogus "11xundefined" size.
+   const isInch=(inches.length>=2 && isFinite(inches[0]) && isFinite(inches[1]));
    const img=new Image();
-   img.onload=function(){{const nw=(inches[0]||18)*150, nh=(inches[1]||24)*150;
+   img.onload=function(){{const nw=isInch?inches[0]*150:1500, nh=isInch?inches[1]*150:1500;
      const big=Math.max(img.width,img.height), small=Math.min(img.width,img.height);
      const rm=" <span class='rmphoto' onclick='removePhoto()'>remove</span>";
      const dup=dupPhotoNote(f);
-     if(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)){{msg.className='note upok';
-       msg.innerHTML=`Great - ${{img.width}}x${{img.height}}px works for ${{inches[0]}}x${{inches[1]}}". Previewing on the left.`+rm+dup;}}
+     const forSz=isInch?(' for '+inches[0]+'x'+inches[1]+'"'):'';
+     const okRes=isInch?(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)):(big>=1500);
+     if(okRes){{msg.className='note upok';
+       msg.innerHTML='Great - '+img.width+'x'+img.height+'px works'+forSz+'. Previewing on the left.'+rm+dup;}}
      else{{msg.className='note upbad';
-       msg.innerHTML=`Only ${{img.width}}x${{img.height}}px - too low for a sharp ${{inches[0]}}x${{inches[1]}}" print (previewing anyway). Please upload a higher-resolution original.`+rm+dup;}}
+       msg.innerHTML='Only '+img.width+'x'+img.height+'px - a bit low for a sharp'+forSz+' print (previewing anyway). Please upload a higher-resolution original.'+rm+dup;}}
      PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo');                    // dragging now moves the PHOTO
@@ -5619,14 +5624,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(!PHOTO || !PHOTO.naturalWidth || !msg) return;
    const inch=((document.getElementById('msize')||{{}}).value||'18x24|0').split('|')[0]
      .split('x').map(parseFloat);
-   const nw=(inch[0]||18)*150, nh=(inch[1]||24)*150;
+   const isInch=(inch.length>=2 && isFinite(inch[0]) && isFinite(inch[1]));
+   const nw=isInch?inch[0]*150:1500, nh=isInch?inch[1]*150:1500;
    const big=Math.max(PHOTO.naturalWidth,PHOTO.naturalHeight),
          small=Math.min(PHOTO.naturalWidth,PHOTO.naturalHeight);
    const rm=" <span class='rmphoto' onclick='removePhoto()'>remove</span>";
-   if(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)){{ msg.className='note upok';
-     msg.innerHTML=`Great - ${{PHOTO.naturalWidth}}x${{PHOTO.naturalHeight}}px works for ${{inch[0]}}x${{inch[1]}}".`+rm; }}
+   const forSz=isInch?(' for '+inch[0]+'x'+inch[1]+'"'):'';
+   const okRes=isInch?(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)):(big>=1500);
+   if(okRes){{ msg.className='note upok';
+     msg.innerHTML='Great - '+PHOTO.naturalWidth+'x'+PHOTO.naturalHeight+'px works'+forSz+'.'+rm; }}
    else {{ msg.className='note upbad';
-     msg.innerHTML=`Only ${{PHOTO.naturalWidth}}x${{PHOTO.naturalHeight}}px - too low for a sharp ${{inch[0]}}x${{inch[1]}}" print. Try a larger size or a higher-res photo.`+rm; }}
+     msg.innerHTML='Only '+PHOTO.naturalWidth+'x'+PHOTO.naturalHeight+'px - a bit low for a sharp'+forSz+' print. Try a larger size or a higher-res photo.'+rm; }}
  }}
  function renderBg(){{
    const box=document.getElementById('mbg'); if(!box) return;
@@ -6368,14 +6376,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var g=document.getElementById('grid');
    if(g) g.scrollIntoView({{behavior:'smooth',block:'start'}});
  }}
- // Esc closes any open overlay - expected behavior on every modern store.
+ // Esc closes ONLY the topmost open overlay - never cascade. Cascading lost the
+ // editor design behind the proof popup, skipped the flipbook, and (because
+ // closeExit() always runs _exitDone) a stray Esc permanently suppressed exit-intent
+ // email capture. Close the highest-priority visible overlay and stop.
  document.addEventListener('keydown', function(e){{
    if(e.key!=='Escape') return;
-   try{{ closeProof(); }}catch(_e){{}}
-   try{{ closeBasket(); }}catch(_e){{}}
-   try{{ closeQuiz(); }}catch(_e){{}}
-   try{{ closeExit(); }}catch(_e){{}}
-   try{{ closeM(); }}catch(_e){{}}
+   var _vis=function(id){{ var el=document.getElementById(id); return !!(el && el.style.display && el.style.display!=='none'); }};
+   if(_vis('proofPop')){{ try{{ closeProof(); }}catch(_e){{}} return; }}
+   if(_vis('flipPop')){{ try{{ closeFlipbook(); }}catch(_e){{}} return; }}
+   if(_vis('exitpop')){{ try{{ closeExit(); }}catch(_e){{}} return; }}
+   if(_vis('quiz')){{ try{{ closeQuiz(); }}catch(_e){{}} return; }}
+   if(_vis('basketPanel')){{ try{{ closeBasket(); }}catch(_e){{}} return; }}
+   if(_vis('modal')){{ try{{ closeM(); }}catch(_e){{}} return; }}
  }});
  // Keyboard-operate role=button spans (close x, fchips, step links) with Enter/Space.
  document.addEventListener('keydown', function(e){{

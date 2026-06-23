@@ -232,7 +232,16 @@ def verify_branded_mappings() -> dict:
     uid_map = _uid_map()
     vs = build_branded_variations()
     placeholders = []
+    model_gaps = []
     for v in vs:
+        # Phone cases are MODEL-SPECIFIC on the print partner (one UID = one phone
+        # model). A generic iPhone/Samsung family UID cannot fulfil a real order, so
+        # phonecase is never go-live-ready until per-model UIDs + a model-capture
+        # field exist - regardless of family coverage.
+        if str(v.product_id).startswith("phonecase"):
+            model_gaps.append(v.gelato_sku)
+            placeholders.append(v.gelato_sku)
+            continue
         st = uid_map.get(v.gelato_sku)
         if st and not str(st).upper().startswith("GEL-"):
             continue
@@ -242,4 +251,5 @@ def verify_branded_mappings() -> dict:
     total = len(vs)
     return {"total": total, "configured": total - len(placeholders),
             "placeholder_count": len(placeholders), "placeholders": placeholders,
+            "model_specific_gaps": model_gaps,
             "all_real": not placeholders}

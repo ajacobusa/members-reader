@@ -74,6 +74,16 @@ def audit_order(order: dict) -> dict:
         review.append("refunded - confirm it went through the individual claim "
                       "review (custom items have no automatic refund)")
 
+    # Approved but never routed: a recorded sale the customer approved that is still
+    # at 'received' with no vendor order id has stalled - nothing downstream fulfils
+    # it (fulfillment_tracker skips no-vendor orders; this monitor's production gate
+    # only watches production+). Surface it so a direct/checkout order is never
+    # silently frozen. (Orders still awaiting approval are legitimately waiting.)
+    if (status == "received" and order.get("proof_approved")
+            and order.get("sale_price") is not None and not _has_vendor(order)):
+        review.append("customer-approved but not submitted to the print partner "
+                       "(stalled at 'received') - route it or investigate")
+
     # Margin floor: a real order priced/costed below the floor (custom or
     # discounted price, live cost spike, heavy upcharge) leaks margin silently.
     # The catalog audit only covers the static price book; this catches the
