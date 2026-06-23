@@ -118,7 +118,9 @@ def test_uploaded_photo_previews_on_canvas(tmp_path):
                           out_path=tmp_path / "h.html", frame_picker=True)
     h = out.read_text(encoding="utf-8")
     assert "let PHOTO=null" in h and "ctx.drawImage(PHOTO" in h
-    assert "function removePhoto" in h and "previewing anyway" in h
+    # The photo previews on canvas regardless of resolution; the upload now shows the
+    # AI Smart-review card (with a remove link) instead of the old inline message.
+    assert "function removePhoto" in h and "renderPhotoReview" in h
 
 
 def test_text_drag_and_size_controls(tmp_path):
