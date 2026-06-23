@@ -66,3 +66,14 @@ def test_mug_wrap_preserves_design_aspect(tmp_path):
     h = _page(tmp_path)
     assert "aspect-true height" in h
     assert "var drawnH=Math.min(" in h
+
+
+def test_layout_elements_are_individually_draggable():
+    # The badge/emblem layouts let the buyer NUDGE each word + the photo (per-element
+    # offsets), with a Reset to restore the template - not a locked template.
+    import pathlib
+    from quoteforge.etsy import listing_preview as lp
+    src = pathlib.Path(lp.__file__).read_text(encoding="utf-8")
+    for marker in ("let LOFF=", "function _loff", "function resetPlacement",
+                   "DRAGTARGET.indexOf('slot:')", "return 'slot:'+s.slot"):
+        assert marker in src, f"per-element drag marker missing: {marker}"

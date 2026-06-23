@@ -3586,8 +3586,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="dseg" role="group" aria-label="Select what to move">
            <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ Wording</button>
            <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ Photo</button>
+           <button type="button" class="dmbtn" aria-label="Auto-arrange my design" onclick="autoArrange()" style="margin-left:auto">✨ Auto-arrange</button>
+           <button type="button" class="dmbtn" aria-label="Reset placement" onclick="resetPlacement()">↺ Reset</button>
          </div>
-         <div class="dbhint">Select one, then drag it on the preview.</div>
+         <div class="dbhint">Drag any word or the photo on the preview to move it &middot; drag a corner to resize &middot; <b>Reset</b> restores the template.</div>
        </div>
            <div id="mphotoctl" style="display:none">
              <div class="pctitle">🖼️ Resize &amp; place your photo</div>
@@ -5376,10 +5378,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const dup=dupPhotoNote(f);
      const forSz=isInch?(' for '+inches[0]+'x'+inches[1]+'"'):'';
      const okRes=isInch?(big>=Math.max(nw,nh)&&small>=Math.min(nw,nh)):(big>=1500);
-     if(okRes){{msg.className='note upok';
-       msg.innerHTML='Great - '+img.width+'x'+img.height+'px works'+forSz+'. Previewing on the left.'+rm+dup;}}
-     else{{msg.className='note upbad';
-       msg.innerHTML='Only '+img.width+'x'+img.height+'px - a bit low for a sharp'+forSz+' print (previewing anyway). Please upload a higher-resolution original.'+rm+dup;}}
+     renderPhotoReview(msg, img.width, img.height);   // 🤖 AI Smart photo review card
+     if(dup){{ msg.innerHTML+=dup; }}
      PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo');                    // dragging now moves the PHOTO
@@ -5443,6 +5443,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
      tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT,
      layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)),
+     loff:JSON.parse(JSON.stringify(LOFF)),
      collage:COLLAGE.map(function(im){{ return (im&&im.src)||''; }}) }};
  }}
  function _restoreSide(s){{
@@ -5454,6 +5455,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
      if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
      CURLAYOUT=s.layout||'freeform'; SLOTS=s.slots?JSON.parse(JSON.stringify(s.slots)):_emptySlots();
+     LOFF=s.loff?JSON.parse(JSON.stringify(s.loff)):{{}};
      COLLAGE=(s.collage||[]).map(function(src){{ if(!src) return null;
        var ci=new Image(); ci.onload=function(){{drawArt();}}; ci.src=src; return ci; }});
      while(COLLAGE.length<4) COLLAGE.push(null);
@@ -5464,7 +5466,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
      TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
-     CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null];
+     CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null]; LOFF={{}};
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
    _sync('mphotozoom',PHOTO_ZOOM); _sync('mframesize',BOX.s); _sync('mtsize',TSIZE); _sync('mtrot',TROT);
@@ -5506,6 +5508,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={{x:0.5, y:0.5}}, TSIZE=0, TROT=0, ART={{x:0,y:0,w:1,h:1}}, DRAGMODE='text';
+ // Per-element nudge offsets for a LAYOUT (badge/emblem): {{slotName:{{dx,dy}}}} in box
+ // fractions, so the buyer can drag each word off its template spot. Reset per layout.
+ let LOFF={{}};
+ function _loff(k){{ return LOFF[k]||{{dx:0,dy:0}}; }}
  function setTextRot(v){{ TROT=parseInt(v)||0;
    const lbl=document.getElementById('mtrotlbl'); if(lbl)lbl.textContent=TROT+'°'; drawArt(); }}
  function setRot(deg){{ const s=document.getElementById('mtrot'); if(s)s.value=deg; setTextRot(deg); }}
@@ -5548,6 +5554,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
    if(PHOTO && PHOTO_RECT && px.x>=PHOTO_RECT.x && px.x<=PHOTO_RECT.x+PHOTO_RECT.w
       && px.y>=PHOTO_RECT.y && px.y<=PHOTO_RECT.y+PHOTO_RECT.h) return 'photo';
+   // Layout mode: grabbing near a wording slot moves THAT element (per-element nudge).
+   if(CURLAYOUT && CURLAYOUT!=='freeform' && b){{
+     var L=_layout(CURLAYOUT), R=Math.min(b.w,b.h), ss=(L&&L.slots)||[];
+     for(var i=0;i<ss.length;i++){{ var s=ss[i]; if(!_slot(s.slot)) continue;
+       var o=_loff(s.slot);
+       var hx=b.x+b.w*((s.kind==='arc'?s.cx:(s.x==null?0.5:s.x))+o.dx);
+       var hy=b.y+b.h*((s.kind==='arc'?s.cy:s.y)+o.dy);
+       if(s.kind==='arc'){{ var ang=((s.midAngle||0))*Math.PI/180;   // text sits on the radius
+         hx+=R*(s.r||0.5)*Math.cos(ang); hy+=R*(s.r||0.5)*Math.sin(ang); }}
+       if(Math.abs(px.x-hx)<R*0.30 && Math.abs(px.y-hy)<R*0.16) return 'slot:'+s.slot;
+     }}
+   }}
    return 'frame';
  }}
  function _startDrag(ev){{ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
@@ -5582,6 +5600,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        PHOTO_ZOOM=Math.max(0.2, Math.min(3, PHOTO_ZOOM*r));
        const z=document.getElementById('mphotozoom'); if(z) z.value=PHOTO_ZOOM;
      }}
+   }} else if(DRAGTARGET && DRAGTARGET.indexOf('slot:')===0){{    // nudge ONE layout element
+     var k=DRAGTARGET.slice(5), bb=APPAREL_BOUND;
+     if(DRAGLAST && bb){{ var o=_loff(k);
+       o.dx=_clamp((o.dx||0)+(f.x-DRAGLAST.x)*W/Math.max(1,bb.w),-0.6,0.6);
+       o.dy=_clamp((o.dy||0)+(f.y-DRAGLAST.y)*H/Math.max(1,bb.h),-0.6,0.6);
+       LOFF[k]=o; }}
    }} else if(DRAGTARGET==='photo'){{
      if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{ PHOTO_FX=_clamp(f.x,0,1); PHOTO_FY=_clamp(f.y,0,1); }}
      else if(DRAGLAST){{ PHOTO_FX=_clamp(PHOTO_FX-(f.x-DRAGLAST.x),0,1);
@@ -5807,7 +5831,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var wb=document.getElementById('mwordbox'); if(wb) wb.style.display=(CURLAYOUT==='freeform')?'':'none';
  }}
  function onSlot(k,v){{ SLOTS[k]=v; if(k==='headline'){{ var ta=document.getElementById('mtext'); if(ta) ta.value=v; }} drawArt(); }}
- function pickLayout(k){{ CURLAYOUT=k; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}
+ function pickLayout(k){{ CURLAYOUT=k; LOFF={{}}; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}
+ // Put every nudged element back to its template position.
+ function resetPlacement(){{ LOFF={{}}; TPOS={{x:0.5,y:0.5}}; drawArt(); toast('Placement reset.'); }}
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
@@ -6091,12 +6117,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var txt=_slot(s.slot); if(!txt) return;
      var size=Math.max(11, R*(s.weight||0.07));
      var t=s.caps?txt.toUpperCase():txt;
+     var o=_loff(s.slot);                              // buyer's per-element nudge
      if(s.kind==='arc'){{
-       drawArcText(ctx,t, b.x+b.w*s.cx, b.y+b.h*s.cy, R*s.r, s.midAngle, s.sweep, font, size, ink, size*0.06);
+       drawArcText(ctx,t, b.x+b.w*(s.cx+o.dx), b.y+b.h*(s.cy+o.dy), R*s.r, s.midAngle, s.sweep, font, size, ink, size*0.06);
      }} else {{
        ctx.save(); ctx.fillStyle=ink; ctx.font='700 '+size+'px '+font;
        ctx.textAlign=s.align||'center'; ctx.textBaseline='middle';
-       ctx.fillText(t, b.x+b.w*(s.x==null?0.5:s.x), b.y+b.h*s.y); ctx.restore();
+       ctx.fillText(t, b.x+b.w*((s.x==null?0.5:s.x)+o.dx), b.y+b.h*(s.y+o.dy)); ctx.restore();
      }}
    }});
  }}
@@ -6582,6 +6609,40 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(d.decision==='approve') note.innerHTML='✅ AI quality check passed - good to print.';
      else note.innerHTML='⚠️ '+(d.message||'Please upload a higher-quality photo.');
    }}).catch(function(){{ if(note)note.textContent=''; }});
+ }}
+ // ── AI design assistant (mirrors quoteforge/ai/design_assistant.py) ──
+ // Works for EVERY product, instantly + free (no server) - the deterministic review
+ // + auto-arrange. The server AI vision note (aiCheckPhoto) enriches it when live.
+ function _pk(){{ return (typeof IS_MUG!=='undefined'&&IS_MUG)?'mug':((typeof IS_APPAREL!=='undefined'&&IS_APPAREL)?'apparel':((typeof IS_BRANDED!=='undefined'&&IS_BRANDED)?'branded':((typeof IS_CAL!=='undefined'&&IS_CAL)?'calendar':'wallart'))); }}
+ function _photoReview(w,h){{
+   if(!w||!h) return {{score:0,verdict:'No image',tips:['Upload a photo to see a quality review.']}};
+   var lng=Math.max(w,h), mp=Math.round(w*h/1e5)/10, score=100, tips=[];
+   if(lng<1000){{ score-=45; tips.push('Low resolution ('+w+'×'+h+'px) - use a larger original for a crisp print.'); }}
+   else if(lng<1600){{ score-=18; tips.push('Medium resolution - great for small prints; larger files print sharper at big sizes.'); }}
+   else {{ tips.push('Sharp resolution ('+w+'×'+h+'px, '+mp+' MP).'); }}
+   var PA={{mug:2.4,apparel:0.82,branded:1.0,calendar:1.33}}, tgt=PA[_pk()];
+   if(!tgt){{ var iv=(((document.getElementById('msize')||{{}}).value)||'18x24').split('|')[0].split('x').map(parseFloat); if(iv.length>=2&&isFinite(iv[0])&&isFinite(iv[1])) tgt=iv[0]/iv[1]; }}
+   if(tgt){{ var ar=w/h, rt=ar/tgt; if(rt>1.35||rt<0.74){{ score-=12; tips.push(ar>tgt?'Wider than the print area - the sides may crop. Zoom out or nudge to keep everyone in.':'Taller than the print area - the top or bottom may crop. Zoom out or nudge to fit.'); }} }}
+   score=Math.max(0,Math.min(100,score));
+   var verdict=score>=80?'Great photo':(score>=55?'Good - a couple of tips':'Use a higher-quality photo');
+   return {{score:score,verdict:verdict,tips:tips}};
+ }}
+ function renderPhotoReview(el,w,h){{
+   if(!el) return; var r=_photoReview(w,h);
+   var col=r.score>=80?'#1f7a44':(r.score>=55?'#9a6a00':'#b23b3b');
+   var bar='<div style="height:6px;border-radius:6px;background:#e7e3da;overflow:hidden;margin:4px 0"><div style="height:6px;width:'+r.score+'%;background:'+col+'"></div></div>';
+   var tips=r.tips.map(function(t){{return '<li>'+t+'</li>';}}).join('');
+   el.className='note'; el.innerHTML='<b>🤖 Smart photo review: '+r.verdict+'</b>'+bar+'<ul style="margin:.2em 0 .2em 1.1em;padding:0">'+tips+'</ul><span class="rmphoto" onclick="removePhoto()">remove</span>';
+ }}
+ // One-click best placement: layout + photo centring + text clear of the subject.
+ function autoArrange(){{
+   var w=PHOTO?(PHOTO.naturalWidth||PHOTO.width):0, h=PHOTO?(PHOTO.naturalHeight||PHOTO.height):0;
+   var nlines=(((document.getElementById('mtext')||{{}}).value)||'').split(/\\n/).filter(function(s){{return s.trim();}}).length;
+   if(w&&h){{ if(nlines>=1 && typeof pickLayout==='function'){{ pickLayout(w>h*1.1?'hbanner':'badge'); }}
+     if(typeof autoCenterPhoto==='function') autoCenterPhoto(); }}
+   else if(typeof pickLayout==='function'){{ pickLayout('freeform'); if(typeof centerText==='function') centerText(); }}
+   if(typeof toast==='function') toast('✨ Auto-arranged your design.');
+   if(typeof drawArt==='function') drawArt();
  }}
  // ── Automated A/B testing ──
  const AB_EXPERIMENTS = {ab_json};
