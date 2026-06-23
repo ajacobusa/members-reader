@@ -2360,6 +2360,66 @@ def _cmd_gelato_review(args: list[str]) -> int:
     return 0
 
 
+def _cmd_product_photos(args: list[str]) -> int:
+    """Sheet-driven product-photo agent. For every row marked 'Ready to Download',
+    download mockup_image_url, save it as tile-<product_id>.jpg (live tile + dated
+    month/year archive), update the sheet (status/file/date) and log
+    missing/failed/duplicate. If the sheet is absent, writes a ready-to-fill template
+    listing every product. Never overwrites an existing tile unless --overwrite.
+    Usage: product-photos [sheet.csv] [--overwrite] [email]."""
+    import json
+    import os
+    from datetime import datetime
+    from pathlib import Path
+    from quoteforge.automation.product_photo_agent import (
+        read_sheet, write_sheet, process_photo_sheet, default_dest,
+        download_url, build_template_rows)
+    sheet = Path(next((a for a in args if a.endswith(".csv")),
+                      "config/product_photos.csv"))
+    overwrite = "--overwrite" in args
+    brand = Path("brand")
+    if not sheet.exists():
+        fam = {}
+        fp = Path(os.getenv("GELATO_PRODUCT_FAMILY_FILE")
+                  or "config/gelato_family_map.json")
+        if fp.exists():
+            try:
+                fam = json.loads(fp.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                fam = {}
+        rows = build_template_rows(fam)
+        write_sheet(sheet, rows)
+        print(f"Created template with {len(rows)} products -> {sheet}")
+        print("Fill mockup_image_url + set image_status='Ready to Download', re-run.")
+        return 0
+    rows = read_sheet(sheet)
+    now_iso = datetime.now().strftime("%Y-%m-%d")
+    summary = process_photo_sheet(
+        rows, download_url, lambda pid, n: default_dest(brand, pid, n),
+        now_iso, overwrite=overwrite)
+    write_sheet(sheet, rows)
+    print(f"Photos: {summary['downloaded']} downloaded, "
+          f"{summary['exists']} already exist, {summary['missing']} missing-url, "
+          f"{summary['failed']} failed, {summary['skipped']} not-ready.")
+    for line in summary["log"]:
+        print("  ", line)
+    if summary["downloaded"]:
+        try:
+            from quoteforge.etsy.listing_preview import build_shop_home
+            build_shop_home(out_path=Path("docs/index.html"), external_assets=True)
+            print("Rebuilt storefront with the new tiles.")
+        except Exception as exc:  # noqa: BLE001
+            print("rebuild skipped:", exc)
+    if "email" in args and (summary["failed"] or summary["missing"]):
+        try:
+            _alert("\U0001f5bc️ Product-photo agent - downloads need attention",
+                   "<pre>" + "\n".join(summary["log"]) + "</pre>",
+                   what="product-photos")
+        except Exception:  # noqa: BLE001
+            pass
+    return 0
+
+
 def _cmd_email_capture(args: list[str]) -> int:
     """Build the email-capture kit (QR, announcement, Linktree, signup snippet)."""
     from quoteforge.marketing.email_capture import build_capture_kit
@@ -2411,6 +2471,7 @@ COMMANDS = {
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
     "gelato-review": _cmd_gelato_review,
+    "product-photos": _cmd_product_photos,
     "variations": _cmd_variations,
     "apparel": _cmd_apparel,
     "frame-preview": _cmd_frame_preview,

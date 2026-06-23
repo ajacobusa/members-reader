@@ -54,6 +54,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "availability (discontinued guard) and flags new/removed product lines, "
         "emailing the owner only when action is needed. (Also runs daily on Render.)"),
     ScheduledJob(
+        "QuoteForge Product Photos", "product-photos email",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:00"],
+        "Weekly product-photo agent: downloads any 'Ready to Download' image from the "
+        "product sheet, saves it as tile-<id>.jpg (live + dated archive), updates the "
+        "sheet and rebuilds the storefront. Emails the owner on failures/missing URLs."),
+    ScheduledJob(
         "QuoteForge Monthly Report", "report monthly email",
         ["/SC", "MONTHLY", "/D", "1", "/ST", "07:40"],
         "Emails the monthly sales report (1st of month)"),
