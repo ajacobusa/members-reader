@@ -2438,6 +2438,25 @@ def _cmd_gelato_review(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_opportunities(args: list[str]) -> int:
+    """Product-opportunity agent: report sizes/variants the print partner offers that
+    we don't sell yet (catalog-expansion ideas), per department. Report-only - never
+    changes the catalog. Emails the owner when there are ideas.
+    Usage: gelato-opportunities [email]."""
+    from quoteforge.automation.gelato_opportunities import (
+        review_opportunities, format_opportunities)
+    res = review_opportunities()
+    report = format_opportunities(res)
+    print(report)
+    if "email" in args and res:
+        try:
+            _alert("\U0001f4a1 New product opportunities from the print partner",
+                   "<pre>" + report + "</pre>", what="gelato-opportunities")
+        except Exception:  # noqa: BLE001
+            pass
+    return 0
+
+
 def _cmd_product_photos(args: list[str]) -> int:
     """Sheet-driven product-photo agent. For every row marked 'Ready to Download',
     download mockup_image_url, save it as tile-<product_id>.jpg (live tile + dated
@@ -2564,6 +2583,7 @@ COMMANDS = {
     "gelato-draft": _cmd_gelato_draft,
     "gelato-draft-delete": _cmd_gelato_draft_delete,
     "gelato-review": _cmd_gelato_review,
+    "gelato-opportunities": _cmd_gelato_opportunities,
     "product-photos": _cmd_product_photos,
     "variations": _cmd_variations,
     "apparel": _cmd_apparel,

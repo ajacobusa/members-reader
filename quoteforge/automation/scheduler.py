@@ -60,6 +60,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "product sheet, saves it as tile-<id>.jpg (live + dated archive), updates the "
         "sheet and rebuilds the storefront. Emails the owner on failures/missing URLs."),
     ScheduledJob(
+        "QuoteForge Product Opportunities", "gelato-opportunities email",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "08:05"],
+        "Weekly product-opportunity scan: reports sizes/variants the print partner "
+        "offers that we don't sell yet (catalog-expansion ideas). Report-only; emails "
+        "the owner when there are ideas."),
+    ScheduledJob(
         "QuoteForge Monthly Report", "report monthly email",
         ["/SC", "MONTHLY", "/D", "1", "/ST", "07:40"],
         "Emails the monthly sales report (1st of month)"),

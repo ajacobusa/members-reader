@@ -62,9 +62,12 @@ _MUG_TYPES = [
     ("travel_mug", "Stainless Travel Mug (15oz)", "Travel Mug", "Travel Mugs",
      ["15oz"], ["White", "Silver", "Black"],
      13.0, "Gelato Travel 15oz", "Premium", 2600, 1700, 15, False),
-    ("xl_mug", "Large-Capacity Mug (20oz)", "Large Mug", "Large-Capacity Mugs",
-     ["20oz"], ["White", "Black", "Navy"],
-     10.0, "Gelato Ceramic 20oz", "Premium", 3150, 1500, 20, True),
+    # 17oz is the print partner's LARGEST mug (there is no 20oz blank); white-only at
+    # this size, so we never sell an unfulfillable size/colour. Dims = wide wrap
+    # (~2.1) - confirm against the live template with one test order before go-live.
+    ("xl_mug", "Tall Mug (17oz)", "Large Mug", "Tall Mugs",
+     ["17oz"], ["White"],
+     10.0, "Ceramic 17oz Tall", "Premium", 2900, 1380, 17, True),
 ]
 
 
