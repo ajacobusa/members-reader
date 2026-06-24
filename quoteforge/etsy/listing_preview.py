@@ -2151,15 +2151,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         mockup_photos = {}
     mockup_photos_json = json.dumps(mockup_photos)
 
-    # Expose the SAME real product photos the grid tiles use (tile-<product_id>.jpg,
-    # downloaded by the product-photos agent) to the editor JS, so the live preview
-    # + spin render the buyer's design on the REAL product - not just a generated
-    # body. Keyed by product_id; empty until the photos land -> generated fallback.
-    # Customer-safe: these are already-rehosted image URLs, never a supplier name.
-    mug_img_json = json.dumps(_mug_photos)
-    branded_img_json = json.dumps(_branded_photos)
-    cal_img_json = json.dumps(_cal_photos)
-
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
     # in white).
@@ -4151,14 +4142,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // The preview composites the LIVE design into area (fractions of the photo); cyl
  // products wrap it on the barrel. Customer-safe (no supplier names).
  const MOCKUP_PHOTOS = {mockup_photos_json};
- // Real product photos (tile-<product_id>.jpg) for mug / branded / calendar -
- // the SAME shots the grid tiles use, now available to the editor preview + spin
- // so the design renders on the real product. product_id -> hosted url; empty
- // until the photos land (then the preview auto-upgrades). Apparel uses
- // APPAREL_COLOR_IMG / APPAREL_SIDE_IMG (already defined). Customer-safe.
- const MUG_IMG = {mug_img_json};
- const BRANDED_IMG = {branded_img_json};
- const CAL_IMG = {cal_img_json};
  let IS_APPAREL=false, CURGARMENT="", CURBASE="";
  // Branded mode reuses the WHOLE apparel editor (print frame, Layout Studio,
  // colour swatches) but draws onto a flat product field, not a garment.
@@ -6189,16 +6172,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _mockBase(){{
    var k=_mockKey();
    if(k && typeof MOCKUP_PHOTOS!=='undefined' && MOCKUP_PHOTOS[k]) return MOCKUP_PHOTOS[k];
-   var url='', cyl=false, back=null, id='';
+   // The grid's tile-<id>.jpg are MARKETING photos with a SAMPLE design baked in,
+   // so they are deliberately NOT used as a compositing base for mug/branded/
+   // calendar - that would show the sample art, not the buyer's design. Those
+   // products use the generated CLEAN body unless the owner drops a genuine BLANK
+   // photo into brand/mockups/. Only apparel resolves a real photo here.
+   var url='', cyl=false, back=null;
    var fmt=(typeof CURFMT!=='undefined'?CURFMT:'')||'';
-   if(typeof IS_MUG!=='undefined' && IS_MUG){{
-     id=(typeof MUG_PID!=='undefined'&&MUG_PID[k])||''; url=(typeof MUG_IMG!=='undefined'&&MUG_IMG[id])||''; cyl=true;
-   }} else if(typeof IS_BRANDED!=='undefined' && IS_BRANDED){{
-     id=(typeof BRANDED_PID!=='undefined'&&BRANDED_PID[k])||''; url=(typeof BRANDED_IMG!=='undefined'&&BRANDED_IMG[id])||'';
-     cyl=/bottle|tumbler/i.test(fmt);
-   }} else if(typeof IS_CAL!=='undefined' && IS_CAL){{
-     id=(typeof CAL_PID!=='undefined'&&CAL_PID[k])||''; url=(typeof CAL_IMG!=='undefined'&&CAL_IMG[id])||''; cyl=false;
-   }} else if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){{
+   if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){{
      var gid=(typeof APPGID!=='undefined'&&APPGID[k])||'';
      // The single per-garment side photo is colour-AGNOSTIC (one white studio
      // shot), so it may only stand in when real PER-COLOUR photos exist - else a
@@ -6319,7 +6300,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var handle=(typeof IS_MUG!=='undefined'&&IS_MUG);
    var cn=((typeof CURFMT!=='undefined'?CURFMT:'').split(' - ')[1])||'White';
    var acc=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#c9a14a';
-   var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false;
+   var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false,tick=0;
    function frame(){{
      ctx.clearRect(0,0,W,H);
      var photo=_mockImg(), area;
@@ -6340,13 +6321,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    c.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx){{ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; }} lx=e.touches[0].clientX; }} }},{{passive:true}});
    c.addEventListener('touchend',function(){{ lx=0; }});
    _3d={{on:true}};
-   // Gently AUTO-ROTATE so the product visibly SPINS on open - single-sided goods
-   // (mugs/bottles/tumblers) have no front/back to flip, so motion is the cue that
-   // it's a 3D preview. The buyer can grab + drag to control it; a late-loading
-   // real photo upgrades in place.
+   // Gently ROCK the product around the front (not a full spin) so it visibly moves
+   // - the cue that it's a 3D preview - while the design STAYS facing the buyer
+   // (a full auto-rotate hid the design on the bare back most of the time). Drag
+   // still gives full manual control; a late-loading real photo upgrades in place.
    (function loop(){{ if(!_3d.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){{ hadPhoto=hp; dirty=true; }}
-     if(!drag){{ rot+=0.006; dirty=true; }}
+     if(!drag){{ tick++; rot=0.42*Math.sin(tick*0.022); dirty=true; }}
      if(dirty){{ frame(); dirty=false; }} requestAnimationFrame(loop); }})();
  }}
  // Real front/back review (apparel): show the composed proof of the CURRENT side

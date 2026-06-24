@@ -63,14 +63,16 @@ def test_cylinder_routes_to_realistic_spin(tmp_path):
     assert "createLinearGradient" in h and "quadraticCurveTo" in h
 
 
-def test_cylinder_auto_rotates_so_it_visibly_spins(tmp_path):
-    # Single-sided goods (mug/bottle/tumbler) have no front/back to flip, so the
-    # spin gently AUTO-ROTATES on open as the cue that it's a 3D preview; the buyer
-    # can still grab and drag to control it.
+def test_cylinder_rocks_but_keeps_design_facing_buyer(tmp_path):
+    # REGRESSION: a full auto-rotate hid the design on the bare back most of the
+    # time ("I see the picture not the text"). The spin now gently ROCKS around the
+    # front so it visibly moves (3D cue) while the design stays facing the buyer;
+    # drag still gives full control.
     h = _page(tmp_path)
-    assert "var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false;" in h
-    assert "if(!drag){ rot+=0.006; dirty=true; }" in h    # gentle idle auto-rotate
-    assert "if(dirty){ frame(); dirty=false; }" in h      # still renders on change
+    assert "var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false,tick=0;" in h
+    assert "if(!drag){ tick++; rot=0.42*Math.sin(tick*0.022); dirty=true; }" in h
+    assert "rot+=0.006" not in h                          # no full auto-rotate
+    assert "if(dirty){ frame(); dirty=false; }" in h
 
 
 def test_wrap_leaves_back_bare_never_blank_front(tmp_path):
@@ -136,39 +138,29 @@ def test_missing_mockups_dir_is_harmless(tmp_path, monkeypatch):
     assert "const MOCKUP_PHOTOS = {};" in h
 
 
-# ── Real photos from the EXISTING pipeline feed the editor + spin ─
+# ── Marketing tiles must NOT be a compositing base ──────────────
 
-def test_tile_photos_exposed_to_editor_js(tmp_path):
-    # The real tile-<id>.jpg photos (downloaded by the product-photos agent, used
-    # by the grid tiles) are now also exposed to the editor preview + spin.
+def test_marketing_tiles_not_used_as_mockup_base(tmp_path):
+    # REGRESSION: tile-<id>.jpg are MARKETING photos with a SAMPLE design baked in
+    # (e.g. a sunrise on the mug). Compositing the buyer's design on top showed the
+    # SAMPLE art, not theirs ("I see the picture not the text"). The marketing maps
+    # must NOT be wired into the mockup base; non-apparel uses the generated clean
+    # body (or an owner-supplied BLANK photo via brand/mockups).
     h = _page(tmp_path)
-    for m in ("const MUG_IMG", "const BRANDED_IMG", "const CAL_IMG",
-              "function _mockBase"):
-        assert m in h, f"missing real-photo wiring: {m}"
+    assert "const MUG_IMG" not in h and "const BRANDED_IMG" not in h
+    assert "MUG_IMG[" not in h and "BRANDED_IMG[" not in h and "CAL_IMG[" not in h
+    assert "function _mockBase" in h
 
 
-def test_editor_renders_on_real_photo_for_nonapparel(tmp_path):
-    # REGRESSION: mug / branded / calendar render the design on the REAL product
-    # photo when present (generated field only as fallback) - matching apparel.
+def test_nonapparel_falls_back_to_generated_body(tmp_path):
+    # With no owner BLANK override, mug/branded/calendar render the generated field
+    # (which shows the buyer's design clearly), not a marketing photo.
     h = _page(tmp_path)
-    assert "else if(IS_MUG||IS_BRANDED||IS_CAL){" in h    # real-photo resolution
     assert "if(!_mock) _drawMugField" in h
     assert "if(!_mock) _drawBrandedField" in h
     assert "if(!_mock) _drawCalField" in h
-
-
-def test_tile_photo_auto_feeds_mockup_map(tmp_path, monkeypatch):
-    # Drop a real tile photo and it flows into the editor JS map (no separate
-    # manual folder needed) - the pipeline the product-photos agent already feeds.
-    import json
-    import re
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "brand").mkdir()
-    Image.new("RGB", (400, 400), (40, 120, 120)).save(
-        tmp_path / "brand" / "tile-classic_mug.jpg")
-    h = _page(tmp_path)
-    m = re.search(r"const MUG_IMG = (\{.*?\});", h)
-    assert m and "classic_mug" in json.loads(m.group(1))
+    # _mockBase resolves a real photo ONLY for apparel (+ the brand/mockups override)
+    assert "Only apparel resolves a real photo here." in h
 
 
 # ── REGRESSION: spin is inline on the product, not a separate 3D popup ─
