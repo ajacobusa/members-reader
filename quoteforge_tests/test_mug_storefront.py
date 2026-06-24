@@ -25,6 +25,20 @@ def test_mug_section_renders_products_and_facets(tmp_path):
     assert "gelato" not in h.lower() and "printify" not in h.lower()
 
 
+def test_mug_card_names_are_distinct(tmp_path):
+    # REGRESSION: the 11oz and 15oz ceramic mugs both rendered as "Coffee Mug",
+    # so the grid showed two identical cards (only the price differed). Every mug's
+    # customer-facing name (type_name) must be unique so cards are distinguishable.
+    from quoteforge.etsy.mug_catalog import MUG_CATALOG
+    names = [p.type_name for p in MUG_CATALOG]
+    assert len(names) == len(set(names)), \
+        f"duplicate mug card names: {[n for n in names if names.count(n) > 1]}"
+    # and the live grid renders each distinct label exactly once
+    h = _page(tmp_path)
+    for label in names:
+        assert h.count(f'<span class="appname">{label}</span>') == 1, label
+
+
 def test_mug_is_a_department(tmp_path):
     h = _page(tmp_path)
     assert 'href="#mugs"' in h

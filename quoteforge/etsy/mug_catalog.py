@@ -47,7 +47,7 @@ _MUG_TYPES = [
     ("classic_mug", "Classic Ceramic Mug (11oz)", "Coffee Mug", "Coffee Mugs",
      ["11oz"], ["White", "Black", "Navy", "Red", "Forest Green"],
      7.0, "Gelato Ceramic 11oz", "Value", 2475, 1155, 11, True),
-    ("large_mug", "Large Ceramic Mug (15oz)", "Coffee Mug", "Ceramic Mugs",
+    ("large_mug", "Large Ceramic Mug (15oz)", "Large Coffee Mug", "Coffee Mugs",
      ["15oz"], ["White", "Black", "Navy"],
      8.0, "Gelato Ceramic 15oz", "Classic", 2790, 1320, 15, True),
     ("color_mug", "Colour-Interior Mug (11oz)", "Colour-Interior Mug", "Colour-Interior Mugs",
