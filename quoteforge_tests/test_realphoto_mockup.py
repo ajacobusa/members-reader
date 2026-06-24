@@ -198,8 +198,12 @@ def test_front_back_flip_wired(tmp_path):
     assert "if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){ _openFlipReview(); return; }" in h
     # the flip reads each side's own design from the proof source + setPlacement
     assert "function _composedProofURL" in h
-    assert "drag or tap to flip" in h
     assert "function _preloadOne" in h                       # per-URL (front+back) cache
+    # REGRESSION: the <img> must NOT be natively draggable, or the browser's image
+    # drag-ghost swallows the drag-to-flip (user "cannot spin front and back").
+    assert "im.draggable=false" in h
+    # and an explicit, discoverable flip control (not just hidden tap/drag)
+    assert "See the " in h                                   # "See the back/front" flip button
 
 
 def test_spin_button_label_is_product_accurate(tmp_path):
