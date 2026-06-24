@@ -843,7 +843,8 @@
  .layoutthumb{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}
  .layoutthumb.sel{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
  .layoutthumb svg{width:100%;height:auto;display:block}
- .layoutthumb span{display:block;font-size:9px;line-height:1.15;text-align:center;color:#5b6b62;margin-top:2px}
+ .layoutthumb span{display:block;font-size:9px;line-height:1.15;text-align:center;color:#3a4742;margin-top:2px;font-weight:600}
+ .layoutthumb small{display:block;font-size:8px;line-height:1.15;text-align:center;color:#8a948c;margin-top:1px}
  .slotinputs label{display:block;font-size:12px;font-weight:600;margin:7px 0 2px;color:#3a4a42}
  .slotinputs input{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:13px}
  .dbhint{font-size:12.5px;color:var(--muted);font-weight:500;
@@ -1398,6 +1399,17 @@
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
+       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="View your mug in 3D" onclick="view3D()">&#128260; View in 3D &mdash; spin it</button>
+       <div id="mug3dwrap" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(20,20,20,.55);align-items:center;justify-content:center" onclick="if(event.target===this)close3D()">
+         <div style="background:#f3efe6;border-radius:14px;padding:14px;max-width:420px;width:92%;box-shadow:0 18px 50px rgba(0,0,0,.35)">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+             <b>&#128260; Spin your design &mdash; drag to rotate</b>
+             <span role="button" tabindex="0" aria-label="Close 3D view" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="cursor:pointer;font-size:20px;line-height:1">&times;</span>
+           </div>
+           <div id="mug3d" style="width:100%;height:340px;border-radius:10px;overflow:hidden;background:#fff"></div>
+           <div style="font-size:11px;color:#7a7466;margin-top:6px">A bonus 3D preview &mdash; your approved flat proof is exactly what prints.</div>
+         </div>
+       </div>
        <div class="dragbar" id="mplacement" style="display:none">
          <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
          <div class="dseg" role="group" aria-label="Choose side">
@@ -1469,6 +1481,8 @@
              <div class="dbhint">✋ Drag the photo on the preview to move it, or
                <span class="grabtip grabtip-blue"><span class="grabsq grabsq-blue"></span> drag the blue corner with your mouse to resize just the photo</span>.
                AI auto-centered your subject on upload.</div>
+             <button type="button" class="pcenter" style="margin-top:4px" aria-label="Remove the photo background" onclick="removeBg()">&#9986;&#65039; Remove background</button>
+             <span class="tposhint">best for logos &amp; solid backdrops</span>
              <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
            </div>
 
@@ -2191,6 +2205,7 @@
    const lb=document.getElementById('mlayoutbar');
    if(lb) lb.style.display = PRINT ? 'block' : 'none';
    if(PRINT){ renderLayoutGallery(); renderSlotInputs(); }
+   if(typeof _upd3DBtn==='function') _upd3DBtn();   // 3D button: mugs + branded bottles/tumblers
    // Calendars get an extra 12-month photo panel + flip-through preview.
    var _cb=document.getElementById('mcalbar');
    if(_cb)_cb.style.display=IS_CAL?'block':'none';
@@ -2450,7 +2465,8 @@
    for(let i=1;i<=10;i++){const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}
  function fillSizes(){const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
-   sel.innerHTML=rows.map(r=>`<option value="${r.size}|${r.price}">${r.size}${(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'} - $${r.price}</option>`).join('');}
+   sel.innerHTML=rows.map(r=>`<option value="${r.size}|${r.price}">${r.size}${(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'} - $${r.price}</option>`).join('');
+   if(typeof _upd3DBtn==='function') _upd3DBtn();}    // show 3D for branded bottles/tumblers too
  function addToOrder(){const sv=(document.getElementById('msize')||{}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -3638,6 +3654,24 @@
     slots:[{slot:'monogram',kind:'line',x:0.5,y:0.42,weight:0.26,caps:true},
            {slot:'headline',kind:'line',x:0.5,y:0.74,weight:0.05,caps:true}]}
  ];
+ // Plain-English "what this style does" + which products it suits (f). No f = all
+ // products. Drives the gallery caption + per-product filtering so a mug never shows
+ // an apparel-only style (Back Print / Left-Chest / Streetwear).
+ const LAYOUT_META = {
+   freeform:{d:'Place your words & photo anywhere'},
+   badge:{d:'Name curved around a round photo'},
+   emblem:{d:'Classic crest — text top & bottom'},
+   minimal:{d:'Clean — small photo, simple text'},
+   street:{d:'Big bold front graphic',f:['apparel']},
+   vstack:{d:'Photo with stacked lines of text'},
+   hbanner:{d:'Photo on the left, text banner'},
+   chest:{d:'Small logo on the left chest',f:['apparel']},
+   backprint:{d:'Large design across the back',f:['apparel']},
+   wrap:{d:'Design wraps all the way around',f:['apparel','mug','branded']},
+   collage:{d:'Up to 4 photos in a grid'},
+   adventure:{d:'Shield badge with your text'},
+   monogram:{d:'Elegant initials monogram'}
+ };
  function _layout(k){ for(var i=0;i<LAYOUTS.length;i++) if(LAYOUTS[i].key===k) return LAYOUTS[i]; return LAYOUTS[0]; }
  // Layout gallery: a thumbnail per LAYOUTS entry; picking one swaps the visible
  // text-slot inputs and redraws. Customer-facing slot labels (no design jargon).
@@ -3669,10 +3703,13 @@
  }
  function renderLayoutGallery(){
    var box=document.getElementById('mlayouts'); if(!box) return;
-   box.innerHTML=LAYOUTS.map(L=>
-     `<div class="layoutthumb${L.key===CURLAYOUT?' sel':''}" role="button" tabindex="0" title="${L.name}" `+
-     `onclick="pickLayout('${L.key}')" onkeydown="if(event.key==='Enter')pickLayout('${L.key}')">`+
-     `${_thumbSVG(L)}<span>${L.name}</span></div>`).join('');
+   var pk=(typeof _pk==='function')?_pk():'wallart';
+   box.innerHTML=LAYOUTS.filter(function(L){ var m=LAYOUT_META[L.key]||{};
+       return !m.f || m.f.indexOf(pk)>=0; })              // only styles that suit this product
+     .map(function(L){ var m=LAYOUT_META[L.key]||{};
+       return `<div class="layoutthumb${L.key===CURLAYOUT?' sel':''}" role="button" tabindex="0" title="${m.d||L.name}" `+
+       `onclick="pickLayout('${L.key}')" onkeydown="if(event.key==='Enter')pickLayout('${L.key}')">`+
+       `${_thumbSVG(L)}<span>${L.name}</span><small>${m.d||''}</small></div>`; }).join('');
  }
  function renderSlotInputs(){
    var box=document.getElementById('mslots'); if(!box) return;
@@ -4506,6 +4543,79 @@
    else if(typeof pickLayout==='function'){ pickLayout('freeform'); if(typeof centerText==='function') centerText(); }
    if(typeof toast==='function') toast('✨ Auto-arranged your design.');
    if(typeof drawArt==='function') drawArt();
+ }
+ // ── 3D preview (Three.js, lazy-loaded from CDN; mug/bottle/tumbler) ──────────────
+ // Additive bonus view - the approved FLAT proof is still what prints. Never blocks.
+ var _3d={on:false};
+ function view3D(){
+   var wrap=document.getElementById('mug3dwrap'); if(!wrap) return;
+   var img=(typeof _composedProofURL==='function')?_composedProofURL():'';
+   if(!img){ if(typeof toast==='function') toast('Add your design first.'); return; }
+   wrap.style.display='flex';
+   var go=function(){ _build3D(img); };
+   if(window.THREE){ go(); return; }
+   var s=document.createElement('script');
+   s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+   s.onload=go; s.onerror=function(){ close3D(); if(typeof toast==='function') toast('3D view unavailable right now.'); };
+   document.head.appendChild(s);
+ }
+ function _build3D(imgURL){
+   var mount=document.getElementById('mug3d'); if(!mount||!window.THREE) return;
+   mount.innerHTML=''; var W=mount.clientWidth||340, H=mount.clientHeight||340;
+   var pk=(typeof _pk==='function')?_pk():'mug';
+   var scene=new THREE.Scene();
+   var cam=new THREE.PerspectiveCamera(40,W/H,0.1,100); cam.position.set(0,0,7);
+   var rnd=new THREE.WebGLRenderer({antialias:true,alpha:true});
+   rnd.setSize(W,H); rnd.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+   mount.appendChild(rnd.domElement);
+   scene.add(new THREE.AmbientLight(0xffffff,0.9));
+   var dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(3,4,5); scene.add(dl);
+   var rad=(pk==='mug')?1.35:1.0, ht=(pk==='mug')?2.0:3.0;   // mugs squat; bottles tall
+   var grp=new THREE.Group();
+   var tex=new THREE.Texture(); tex.wrapS=THREE.RepeatWrapping;
+   var im=new Image(); im.crossOrigin='anonymous';
+   im.onload=function(){ tex.image=im; tex.needsUpdate=true; }; im.src=imgURL;
+   var side=new THREE.MeshStandardMaterial({map:tex,roughness:0.35,metalness:0.04,color:0xffffff});
+   var cap=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.45});
+   var body=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,ht,64,1,false),[side,cap,cap]);
+   grp.add(body);
+   if(pk==='mug'){ var hd=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.13,16,42,Math.PI*1.15),cap);
+     hd.position.set(rad+0.22,0,0); hd.rotation.y=Math.PI/2; grp.add(hd); }
+   scene.add(grp);
+   var drag=false,lx=0; var el=rnd.domElement; el.style.cursor='grab';
+   el.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;el.style.cursor='grabbing';});
+   window.addEventListener('mouseup',function(){drag=false;el.style.cursor='grab';});
+   el.addEventListener('mousemove',function(e){ if(drag){ grp.rotation.y+=(e.clientX-lx)*0.012; lx=e.clientX; } });
+   el.addEventListener('touchmove',function(e){ if(e.touches[0]){ if(lx) grp.rotation.y+=(e.touches[0].clientX-lx)*0.012; lx=e.touches[0].clientX; } },{passive:true});
+   el.addEventListener('touchend',function(){ lx=0; });
+   _3d={on:true};
+   (function loop(){ if(!_3d.on) return; if(!drag) grp.rotation.y+=0.006; rnd.render(scene,cam); requestAnimationFrame(loop); })();
+ }
+ function close3D(){ var w=document.getElementById('mug3dwrap'); if(w)w.style.display='none'; _3d.on=false; }
+ // 3D suits CYLINDRICAL products: mugs + branded bottles/tumblers. CURFMT carries the
+ // selected product name, so a tote/notebook never gets the 3D button.
+ function _is3D(){ var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return IS_MUG || (IS_BRANDED && /bottle|tumbler/i.test(f)); }
+ function _upd3DBtn(){ var b=document.getElementById('view3dbtn'); if(b) b.style.display=_is3D()?'block':'none'; }
+ // ── Remove background (client-side, free, private - the photo never leaves the
+ // browser). Samples the 4 corners to estimate the backdrop and clears matching
+ // pixels - great for logos / solid backdrops. Available on EVERY product's photo. ──
+ function removeBg(){
+   if(!PHOTO||!PHOTO.naturalWidth){ if(typeof toast==='function') toast('Upload a photo or logo first.'); return; }
+   var w=PHOTO.naturalWidth, h=PHOTO.naturalHeight;
+   var c=document.createElement('canvas'); c.width=w; c.height=h;
+   var x=c.getContext('2d'); x.drawImage(PHOTO,0,0);
+   var d; try{ d=x.getImageData(0,0,w,h); }catch(e){ if(typeof toast==='function') toast('Cannot edit this image.'); return; }
+   var p=d.data, at=function(px,py){ return (py*w+px)*4; };
+   var cs=[at(0,0),at(w-1,0),at(0,h-1),at(w-1,h-1)], br=0,bg=0,bb=0;
+   cs.forEach(function(i){ br+=p[i]; bg+=p[i+1]; bb+=p[i+2]; }); br/=4; bg/=4; bb/=4;
+   var tol=46, cut=0;
+   for(var i=0;i<p.length;i+=4){ var dr=p[i]-br, dg=p[i+1]-bg, db=p[i+2]-bb;
+     if(Math.sqrt(dr*dr+dg*dg+db*db)<tol){ p[i+3]=0; cut++; } }
+   if(!cut){ if(typeof toast==='function') toast('No clear background found to remove.'); return; }
+   x.putImageData(d,0,0);
+   var ni=new Image(); ni.onload=function(){ PHOTO=ni; if(typeof drawArt==='function') drawArt();
+     if(typeof toast==='function') toast('✂️ Background removed.'); };
+   ni.src=c.toDataURL('image/png');
  }
  // ── Automated A/B testing ──
  const AB_EXPERIMENTS = {"hero_headline": {"target": "hero_h1", "variants": {"A": "Personalized gifts for life's most meaningful moments", "B": "Turn your words into a gift they'll treasure forever", "C": "Custom wall art & apparel - made to order, just for them"}}};

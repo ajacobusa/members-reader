@@ -575,3 +575,23 @@ def test_no_customer_facing_etsy_in_page_copy(tmp_path):
     assert "secure Etsy" not in h
     assert "Etsy checkout" not in h
     assert "live Etsy page" not in h
+
+
+def test_layout_gallery_has_descriptions_and_product_filtering(tmp_path):
+    # UX: each template carries a plain-English description, and apparel-only styles
+    # (Back Print / Left-Chest / Streetwear) are filtered out for non-apparel products.
+    h = _page(tmp_path)
+    assert "const LAYOUT_META" in h
+    assert "Name curved around a round photo" in h        # a real description
+    assert "only styles that suit this product" in h       # the per-product filter
+    assert "f:['apparel']" in h                            # apparel-only tagging
+    assert ".layoutthumb small" in h                        # description caption style
+
+
+def test_background_removal_available_on_every_product(tmp_path):
+    # Client-side, free, private background removal on the shared photo controls -
+    # so every product that takes a photo/logo gets it. 3D stays cylindrical-only.
+    h = _page(tmp_path)
+    assert "function removeBg" in h and "Remove background" in h
+    assert "getImageData" in h                       # client-side pixel op (no upload)
+    assert "function _is3D" in h and "bottle|tumbler" in h   # 3D for mugs + bottles/tumblers
