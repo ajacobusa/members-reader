@@ -3983,6 +3983,11 @@
    return {src:(side==='back')?back:url, front:url, back:back, area:area, cyl:cyl, span:1.9};
  }
  function _mockSpec(){ return (typeof _mockBase==='function')?_mockBase():null; }
+ // NOTE: mockup photos are re-hosted SAME-ORIGIN by the build (_emit -> data-URI or
+ // assets/<file>), so crossOrigin + toDataURL() never taint the canvas. If photos
+ // are ever served from a third-party CDN, set CORS headers there (and on the
+ // editor's _mockupImg loader too) or the spin's _photoMockupURL would silently
+ // return '' while the flat editor preview still works.
  function _preloadOne(u){ if(!u||_MOCKCACHE[u]) return; _MOCKCACHE[u]='loading';
    var im=new Image(); im.crossOrigin='anonymous';
    im.onload=function(){ _MOCKCACHE[u]=im; }; im.onerror=function(){ _MOCKCACHE[u]=null; }; im.src=u; }
@@ -4059,6 +4064,7 @@
  // Realistic 2D spin for cylindrical products (mug / bottle / tumbler): real photo
  // when registered, else a clean generated body. Drag to rotate; never blank.
  function _openCylSpin(){
+   if(_3d&&_3d.on) _3d.on=false;            // stop any prior render loop (re-entrancy guard)
    _setMockTitle(false);
    var mount=document.getElementById('mug3d'); if(!mount){ _showFlatPhoto(_composedProofURL()); return; }
    mount.innerHTML='';
