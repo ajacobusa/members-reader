@@ -4104,11 +4104,13 @@
    c.addEventListener('touchmove',function(e){ if(e.touches[0]){ if(lx){ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; } lx=e.touches[0].clientX; } },{passive:true});
    c.addEventListener('touchend',function(){ lx=0; });
    _3d={on:true};
-   // Rest CENTRED (design facing front - a clear picture); the buyer drags to spin.
-   // Re-render only on change (a drag, or a late real photo finishing loading) -
-   // never a pointless 60fps redraw, and never auto-rotate the design off-front.
+   // Gently AUTO-ROTATE so the product visibly SPINS on open - single-sided goods
+   // (mugs/bottles/tumblers) have no front/back to flip, so motion is the cue that
+   // it's a 3D preview. The buyer can grab + drag to control it; a late-loading
+   // real photo upgrades in place.
    (function loop(){ if(!_3d.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){ hadPhoto=hp; dirty=true; }
+     if(!drag){ rot+=0.006; dirty=true; }
      if(dirty){ frame(); dirty=false; } requestAnimationFrame(loop); })();
  }
  // Real front/back review (apparel): show the composed proof of the CURRENT side
