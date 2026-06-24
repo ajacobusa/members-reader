@@ -108,13 +108,15 @@ def test_mug_and_calendar_show_real_sizes_not_poster_fallback(tmp_path):
 
 
 def test_mug_has_threejs_3d_preview(tmp_path):
-    # Additive 3D preview: lazy-loaded Three.js, drag-to-rotate mug, never blocks the
-    # flat proof. Button shows for mugs only.
+    # Additive 3D preview: lazy-loaded Three.js, drag-to-rotate, on EVERY product.
+    # Cylinder for mugs/bottles/tumblers, a flat panel for the rest.
     h = _page(tmp_path)
     for marker in ("function view3D", "function _build3D", "three.min.js",
-                   'id="mug3dwrap"', 'id="view3dbtn"', "CylinderGeometry"):
+                   'id="mug3dwrap"', 'id="view3dbtn"', "CylinderGeometry",
+                   "BoxGeometry(pw,ph"):                  # cylinder + flat panel branches
         assert marker in h, f"3D preview marker missing: {marker}"
-    # the 3D button is gated to CYLINDRICAL products (mugs + branded bottles/tumblers),
-    # not flat ones - via _is3D()/_upd3DBtn()
     assert "function _is3D" in h and "function _upd3DBtn" in h
-    assert "bottle|tumbler" in h
+    assert "bottle|tumbler" in h                          # cylinder routing
+    # REGRESSION: the flat-panel BACK face carries the design (flipped), so spinning a
+    # T-shirt/poster never shows a blank white back. Verified live in-browser too.
+    assert "map:texB" in h and "texB.repeat.x=-1" in h
