@@ -6778,7 +6778,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        var thick=(IS_CAL||/canvas|frame/i.test(fmt))?0.22:0.05;     // canvas/frame have depth
        var face=new THREE.MeshStandardMaterial({{map:tex,roughness:0.45,metalness:0.02,color:0xffffff}});
        var edge=new THREE.MeshStandardMaterial({{color:/frame/i.test(fmt)?0x262626:0xf2eee5,roughness:0.6}});
-       var back=new THREE.MeshStandardMaterial({{color:0xe9e5dc,roughness:0.7}});
+       // BACK face: the SAME design, horizontally flipped so it reads correctly from
+       // behind - so spinning never shows a blank white back.
+       var texB=new THREE.Texture(im); texB.needsUpdate=true;
+       if(THREE.sRGBEncoding) texB.encoding=THREE.sRGBEncoding;
+       try{{ texB.anisotropy=rnd.capabilities.getMaxAnisotropy(); }}catch(e){{ texB.anisotropy=8; }}
+       texB.minFilter=THREE.LinearMipmapLinearFilter; texB.magFilter=THREE.LinearFilter; texB.generateMipmaps=true;
+       texB.wrapS=THREE.RepeatWrapping; texB.repeat.x=-1; texB.offset.x=1;
+       var back=new THREE.MeshStandardMaterial({{map:texB,roughness:0.45,metalness:0.02,color:0xffffff}});
        grp.add(new THREE.Mesh(new THREE.BoxGeometry(pw,ph,thick),[edge,edge,edge,edge,face,back]));
        if(/frame/i.test(fmt)){{ var fr=new THREE.Mesh(new THREE.BoxGeometry(pw+0.3,ph+0.3,thick*0.8),edge); fr.position.z=-0.03; grp.add(fr); }}
        grp.rotation.x=-0.12;
