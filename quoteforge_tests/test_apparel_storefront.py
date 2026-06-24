@@ -692,7 +692,7 @@ def test_layout_studio_gallery_ui(tmp_path):
     assert "function renderSlotInputs" in h            # swaps inputs per layout
     assert "onSlot(" in h                              # slot input handler
     assert "renderLayoutGallery()" in h                # invoked when apparel controls show
-    assert "LAYOUTS.map" in h                          # a thumbnail generated per layout
+    assert "LAYOUTS.filter" in h                       # a thumbnail per layout (product-filtered)
     assert "layoutthumb" in h                          # gallery tile class
     assert "SLOT_LABELS" in h                          # friendly slot labels
 
