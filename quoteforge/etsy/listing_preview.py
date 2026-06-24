@@ -3580,7 +3580,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
-       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="View your mug in 3D" onclick="view3D()">&#128260; View in 3D &mdash; spin it</button>
+       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="View your design in 3D" onclick="view3D()">&#128260; View in 3D &mdash; spin it</button>
        <div id="mug3dwrap" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(20,20,20,.55);align-items:center;justify-content:center" onclick="if(event.target===this)close3D()">
          <div style="background:#f3efe6;border-radius:14px;padding:14px;max-width:420px;width:92%;box-shadow:0 18px 50px rgba(0,0,0,.35)">
            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -6743,39 +6743,65 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _build3D(imgURL){{
    var mount=document.getElementById('mug3d'); if(!mount||!window.THREE) return;
    mount.innerHTML=''; var W=mount.clientWidth||340, H=mount.clientHeight||340;
-   var pk=(typeof _pk==='function')?_pk():'mug';
-   var scene=new THREE.Scene();
-   var cam=new THREE.PerspectiveCamera(40,W/H,0.1,100); cam.position.set(0,0,7);
-   var rnd=new THREE.WebGLRenderer({{antialias:true,alpha:true}});
-   rnd.setSize(W,H); rnd.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
-   mount.appendChild(rnd.domElement);
-   scene.add(new THREE.AmbientLight(0xffffff,0.9));
-   var dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(3,4,5); scene.add(dl);
-   var rad=(pk==='mug')?1.35:1.0, ht=(pk==='mug')?2.0:3.0;   // mugs squat; bottles tall
-   var grp=new THREE.Group();
-   var tex=new THREE.Texture(); tex.wrapS=THREE.RepeatWrapping;
+   var cyl=(typeof _isCyl==='function')?_isCyl():false;
+   var fmt=(typeof CURFMT!=='undefined'?CURFMT:'')||'';
    var im=new Image(); im.crossOrigin='anonymous';
-   im.onload=function(){{ tex.image=im; tex.needsUpdate=true; }}; im.src=imgURL;
-   var side=new THREE.MeshStandardMaterial({{map:tex,roughness:0.35,metalness:0.04,color:0xffffff}});
-   var cap=new THREE.MeshStandardMaterial({{color:0xffffff,roughness:0.45}});
-   var body=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,ht,64,1,false),[side,cap,cap]);
-   grp.add(body);
-   if(pk==='mug'){{ var hd=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.13,16,42,Math.PI*1.15),cap);
-     hd.position.set(rad+0.22,0,0); hd.rotation.y=Math.PI/2; grp.add(hd); }}
-   scene.add(grp);
-   var drag=false,lx=0; var el=rnd.domElement; el.style.cursor='grab';
-   el.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;el.style.cursor='grabbing';}});
-   window.addEventListener('mouseup',function(){{drag=false;el.style.cursor='grab';}});
-   el.addEventListener('mousemove',function(e){{ if(drag){{ grp.rotation.y+=(e.clientX-lx)*0.012; lx=e.clientX; }} }});
-   el.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx) grp.rotation.y+=(e.touches[0].clientX-lx)*0.012; lx=e.touches[0].clientX; }} }},{{passive:true}});
-   el.addEventListener('touchend',function(){{ lx=0; }});
-   _3d={{on:true}};
-   (function loop(){{ if(!_3d.on) return; if(!drag) grp.rotation.y+=0.006; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
+   im.onerror=function(){{ if(typeof toast==='function') toast('Could not load the design for 3D.'); close3D(); }};
+   im.onload=function(){{
+     var scene=new THREE.Scene();
+     var cam=new THREE.PerspectiveCamera(38,W/H,0.1,100); cam.position.set(0,0,7.2);
+     var rnd=new THREE.WebGLRenderer({{antialias:true,alpha:true}});
+     rnd.setSize(W,H); rnd.setPixelRatio(Math.min(2.5,window.devicePixelRatio||1));   // crisp on retina
+     if(THREE.sRGBEncoding) rnd.outputEncoding=THREE.sRGBEncoding;
+     mount.appendChild(rnd.domElement);
+     // even studio lighting so the design reads clean + bright
+     scene.add(new THREE.HemisphereLight(0xffffff,0x9a9a9a,0.95));
+     var key=new THREE.DirectionalLight(0xffffff,0.65); key.position.set(4,5,6); scene.add(key);
+     var fill=new THREE.DirectionalLight(0xffffff,0.35); fill.position.set(-4,1,3); scene.add(fill);
+     // crisp, non-blurry texture (anisotropy + mipmaps + sRGB)
+     var tex=new THREE.Texture(im); tex.needsUpdate=true;
+     if(THREE.sRGBEncoding) tex.encoding=THREE.sRGBEncoding;
+     try{{ tex.anisotropy=rnd.capabilities.getMaxAnisotropy(); }}catch(e){{ tex.anisotropy=8; }}
+     tex.minFilter=THREE.LinearMipmapLinearFilter; tex.magFilter=THREE.LinearFilter; tex.generateMipmaps=true;
+     var grp=new THREE.Group();
+     if(cyl){{                                            // mug / bottle / tumbler
+       tex.wrapS=THREE.RepeatWrapping;
+       var mug=IS_MUG, rad=mug?1.35:0.95, ht=mug?2.0:3.1;
+       var side=new THREE.MeshStandardMaterial({{map:tex,roughness:0.3,metalness:0.05,color:0xffffff}});
+       var cap=new THREE.MeshStandardMaterial({{color:0xffffff,roughness:0.4}});
+       grp.add(new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,ht,96,1,false),[side,cap,cap]));
+       if(mug){{ var hd=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.13,20,48,Math.PI*1.15),cap);
+         hd.position.set(rad+0.22,0,0); hd.rotation.y=Math.PI/2; grp.add(hd); }}
+     }} else {{                                           // poster / canvas / apparel / calendar / tote: a panel
+       var ar=(im.width&&im.height)?(im.width/im.height):1, S=3.4;
+       var pw=ar>=1?S:S*ar, ph=ar>=1?S/ar:S;
+       var thick=(IS_CAL||/canvas|frame/i.test(fmt))?0.22:0.05;     // canvas/frame have depth
+       var face=new THREE.MeshStandardMaterial({{map:tex,roughness:0.45,metalness:0.02,color:0xffffff}});
+       var edge=new THREE.MeshStandardMaterial({{color:/frame/i.test(fmt)?0x262626:0xf2eee5,roughness:0.6}});
+       var back=new THREE.MeshStandardMaterial({{color:0xe9e5dc,roughness:0.7}});
+       grp.add(new THREE.Mesh(new THREE.BoxGeometry(pw,ph,thick),[edge,edge,edge,edge,face,back]));
+       if(/frame/i.test(fmt)){{ var fr=new THREE.Mesh(new THREE.BoxGeometry(pw+0.3,ph+0.3,thick*0.8),edge); fr.position.z=-0.03; grp.add(fr); }}
+       grp.rotation.x=-0.12;
+     }}
+     scene.add(grp);
+     var drag=false,lx=0; var el=rnd.domElement; el.style.cursor='grab';
+     el.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;el.style.cursor='grabbing';}});
+     window.addEventListener('mouseup',function(){{drag=false;el.style.cursor='grab';}});
+     el.addEventListener('mousemove',function(e){{ if(drag){{ grp.rotation.y+=(e.clientX-lx)*0.012; lx=e.clientX; }} }});
+     el.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx) grp.rotation.y+=(e.touches[0].clientX-lx)*0.012; lx=e.touches[0].clientX; }} }},{{passive:true}});
+     el.addEventListener('touchend',function(){{ lx=0; }});
+     _3d={{on:true}};
+     (function loop(){{ if(!_3d.on) return; if(!drag) grp.rotation.y+=0.005; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
+   }};
+   im.src=imgURL;
  }}
  function close3D(){{ var w=document.getElementById('mug3dwrap'); if(w)w.style.display='none'; _3d.on=false; }}
  // 3D suits CYLINDRICAL products: mugs + branded bottles/tumblers. CURFMT carries the
  // selected product name, so a tote/notebook never gets the 3D button.
- function _is3D(){{ var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return IS_MUG || (IS_BRANDED && /bottle|tumbler/i.test(f)); }}
+ // 3D shape: CYLINDER for mugs/bottles/tumblers, a flat (framed) PANEL for everything
+ // else. The 3D button now shows on EVERY product/department.
+ function _isCyl(){{ var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return IS_MUG || (IS_BRANDED && /bottle|tumbler/i.test(f)); }}
+ function _is3D(){{ return true; }}
  function _upd3DBtn(){{ var b=document.getElementById('view3dbtn'); if(b) b.style.display=_is3D()?'block':'none'; }}
  // ── Remove background (client-side, free, private - the photo never leaves the
  // browser). Samples the 4 corners to estimate the backdrop and clears matching
