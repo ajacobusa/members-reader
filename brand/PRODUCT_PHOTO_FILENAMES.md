@@ -68,6 +68,19 @@ has no 8×10 acrylic or metal.
 
 ---
 
+## 🔄 Spin preview (the customer rotates the real product they designed)
+
+Good news: the same `tile-<id>.jpg` photos above **also** power the live editor
+preview and the inline **"Spin your product"** view — the buyer's design is shown
+on the **real product photo**, which they drag to rotate (cylinders spin; apparel
+flips front/back). No extra files needed: add the tile photo and it lights up
+everywhere. A clean generated preview is used until a photo exists.
+
+To fine-tune *where* the print sits on a photo (or override just the preview
+image), use [`brand/mockups/`](mockups/README.md) + its optional geometry sidecar.
+
+---
+
 ### Two ways to deliver
 - **Send me the files** and I'll name, re-host, rebuild, and deploy — and confirm no
   "gelato" URL leaks into the page (the hard rule).

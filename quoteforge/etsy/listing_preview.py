@@ -2105,6 +2105,61 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         cal_dims_json = "{}"
         cal_pid_json = "{}"
 
+    # ── Real product-photo mockups (owner-supplied drop-in; auto-upgrade) ──────
+    # Keyed by product NAME (what the editor's CURGARMENT carries). Drop a real
+    # product photo at brand/mockups/<product_id>.{png,jpg} (export it once from
+    # the print partner's mockup studio) plus an optional sidecar
+    # <product_id>.json = {"area":[x,y,w,h fractions],"cyl":bool,"span":float}
+    # marking where the print sits on the photo. The editor then composites the
+    # LIVE design into that print area and shows a REAL product picture in the
+    # preview. Empty until photos exist -> the editor's generated mockup is used,
+    # so a half-set-up account never ships a broken image. Customer-safe: only the
+    # image bytes + geometry are emitted, never a supplier/marketplace name.
+    mockup_photos: dict = {}
+    try:
+        _id2name: dict = {}
+        for _m in (appgid, json.loads(branded_pid_json), json.loads(mug_pid_json),
+                   json.loads(cal_pid_json)):
+            for _nm, _id in (_m or {}).items():
+                _id2name[str(_id)] = _nm
+        _mockdir = brand / "mockups"
+        if _mockdir.is_dir():
+            for _img in sorted(_mockdir.iterdir()):
+                if _img.suffix.lower() not in (".png", ".jpg", ".jpeg"):
+                    continue
+                _name = _id2name.get(_img.stem)
+                if not _name:
+                    continue
+                _geo: dict = {}
+                _side = _mockdir / f"{_img.stem}.json"
+                if _side.exists():
+                    try:
+                        _geo = json.loads(_side.read_text(encoding="utf-8"))
+                    except Exception:  # noqa: BLE001 — bad sidecar -> defaults
+                        _geo = {}
+                _ln = _name.lower()
+                _cyl = bool(_geo.get(
+                    "cyl", "mug" in _ln or "bottle" in _ln or "tumbler" in _ln))
+                _area = _geo.get("area") or (
+                    [0.33, 0.34, 0.34, 0.34] if _cyl else [0.28, 0.26, 0.44, 0.50])
+                mockup_photos[_name] = {
+                    "src": _emit(_img, f"mockup-{_img.stem}.jpg"),
+                    "area": _area, "cyl": _cyl,
+                    "span": float(_geo.get("span", 1.9)),
+                }
+    except Exception:  # noqa: BLE001 — never break the build on mockup discovery
+        mockup_photos = {}
+    mockup_photos_json = json.dumps(mockup_photos)
+
+    # Expose the SAME real product photos the grid tiles use (tile-<product_id>.jpg,
+    # downloaded by the product-photos agent) to the editor JS, so the live preview
+    # + spin render the buyer's design on the REAL product - not just a generated
+    # body. Keyed by product_id; empty until the photos land -> generated fallback.
+    # Customer-safe: these are already-rehosted image URLs, never a supplier name.
+    mug_img_json = json.dumps(_mug_photos)
+    branded_img_json = json.dumps(_branded_photos)
+    cal_img_json = json.dumps(_cal_photos)
+
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
     # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
     # in white).
@@ -3576,21 +3631,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <div class="mcanvaswrap"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div>
+       <div class="mcanvaswrap"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
-       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="View your design in 3D" onclick="view3D()">&#128260; View in 3D &mdash; spin it</button>
-       <div id="mug3dwrap" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(20,20,20,.55);align-items:center;justify-content:center" onclick="if(event.target===this)close3D()">
-         <div style="background:#f3efe6;border-radius:14px;padding:14px;max-width:420px;width:92%;box-shadow:0 18px 50px rgba(0,0,0,.35)">
-           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-             <b>&#128260; Spin your design &mdash; drag to rotate</b>
-             <span role="button" tabindex="0" aria-label="Close 3D view" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="cursor:pointer;font-size:20px;line-height:1">&times;</span>
-           </div>
-           <div id="mug3d" style="width:100%;height:340px;border-radius:10px;overflow:hidden;background:#fff"></div>
-           <div style="font-size:11px;color:#7a7466;margin-top:6px">A bonus 3D preview &mdash; your approved flat proof is exactly what prints.</div>
-         </div>
-       </div>
+       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="Spin your product" onclick="view3D()">&#128260; Spin your product &mdash; front &amp; back</button>
        <div class="dragbar" id="mplacement" style="display:none">
          <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
          <div class="dseg" role="group" aria-label="Choose side">
@@ -4101,6 +4146,19 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Quality tiers per garment: Classic name -> [{{tier,name,from}}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
  const APPAREL_TIERS = {apparel_tiers_json};
+ // Real product-photo mockups, keyed by product NAME: {{name:{{src,area,cyl,span}}}}.
+ // Empty until the owner drops photos in -> the editor's generated mockup is used.
+ // The preview composites the LIVE design into area (fractions of the photo); cyl
+ // products wrap it on the barrel. Customer-safe (no supplier names).
+ const MOCKUP_PHOTOS = {mockup_photos_json};
+ // Real product photos (tile-<product_id>.jpg) for mug / branded / calendar -
+ // the SAME shots the grid tiles use, now available to the editor preview + spin
+ // so the design renders on the real product. product_id -> hosted url; empty
+ // until the photos land (then the preview auto-upgrades). Apparel uses
+ // APPAREL_COLOR_IMG / APPAREL_SIDE_IMG (already defined). Customer-safe.
+ const MUG_IMG = {mug_img_json};
+ const BRANDED_IMG = {branded_img_json};
+ const CAL_IMG = {cal_img_json};
  let IS_APPAREL=false, CURGARMENT="", CURBASE="";
  // Branded mode reuses the WHOLE apparel editor (print frame, Layout Studio,
  // colour swatches) but draws onto a flat product field, not a garment.
@@ -6114,6 +6172,225 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    _CLEAN=false; drawArt();
    try{{ return oc.toDataURL('image/png'); }}catch(e){{ return ''; }}
  }}
+ // ── Real product-photo mockups (owner-supplied; auto-upgrade) ────────────────
+ // When a real product photo is registered for the current product we composite
+ // the LIVE design into its print area and show a REAL product picture in the
+ // preview. Empty until photos are dropped in -> the editor's generated mockup
+ // is used. No supplier/marketplace names are emitted (customer-safe).
+ var _MOCKCACHE={{}};
+ function _mockKey(){{ var g=(typeof CURGARMENT!=='undefined'&&CURGARMENT)?CURGARMENT:'';
+   if(g) return g; var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return f.split(' - ')[0]||''; }}
+ // Resolve the real-photo mockup base for the current product, in priority order:
+ //   1) brand/mockups/<id> manual override (keyed by product NAME)
+ //   2) the real tile photo already in the pipeline (mug/branded/cal) or the
+ //      apparel per-colour / front+back photos
+ //   3) null -> the editor uses its generated body/field.
+ // Returns {{src, front, back, area:[x,y,w,h frac], cyl, span}} or null.
+ function _mockBase(){{
+   var k=_mockKey();
+   if(k && typeof MOCKUP_PHOTOS!=='undefined' && MOCKUP_PHOTOS[k]) return MOCKUP_PHOTOS[k];
+   var url='', cyl=false, back=null, id='';
+   var fmt=(typeof CURFMT!=='undefined'?CURFMT:'')||'';
+   if(typeof IS_MUG!=='undefined' && IS_MUG){{
+     id=(typeof MUG_PID!=='undefined'&&MUG_PID[k])||''; url=(typeof MUG_IMG!=='undefined'&&MUG_IMG[id])||''; cyl=true;
+   }} else if(typeof IS_BRANDED!=='undefined' && IS_BRANDED){{
+     id=(typeof BRANDED_PID!=='undefined'&&BRANDED_PID[k])||''; url=(typeof BRANDED_IMG!=='undefined'&&BRANDED_IMG[id])||'';
+     cyl=/bottle|tumbler/i.test(fmt);
+   }} else if(typeof IS_CAL!=='undefined' && IS_CAL){{
+     id=(typeof CAL_PID!=='undefined'&&CAL_PID[k])||''; url=(typeof CAL_IMG!=='undefined'&&CAL_IMG[id])||''; cyl=false;
+   }} else if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){{
+     var gid=(typeof APPGID!=='undefined'&&APPGID[k])||'';
+     // The single per-garment side photo is colour-AGNOSTIC (one white studio
+     // shot), so it may only stand in when real PER-COLOUR photos exist - else a
+     // black shirt would show as white. Mirrors the editor's drawArt guard.
+     var hasColor=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]
+       &&Object.keys(APPAREL_COLOR_IMG[gid]).length);
+     if(!hasColor) return null;
+     url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
+     var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
+     if(!url && sm) url=sm.front||'';
+     back=(sm&&sm.back)||null; cyl=false;
+   }}
+   if(!url) return null;
+   var area=cyl?[0.33,0.34,0.34,0.34]:[0.28,0.26,0.44,0.50];
+   // `src` follows the side the buyer is reviewing, so front/back resolve to their
+   // own real photo (apparel). Cylinders/flat goods have no back -> always front.
+   var side=(typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back'&&back)?'back':'front';
+   return {{src:(side==='back')?back:url, front:url, back:back, area:area, cyl:cyl, span:1.9}};
+ }}
+ function _mockSpec(){{ return (typeof _mockBase==='function')?_mockBase():null; }}
+ // NOTE: mockup photos are re-hosted SAME-ORIGIN by the build (_emit -> data-URI or
+ // assets/<file>), so crossOrigin + toDataURL() never taint the canvas. If photos
+ // are ever served from a third-party CDN, set CORS headers there (and on the
+ // editor's _mockupImg loader too) or the spin's _photoMockupURL would silently
+ // return '' while the flat editor preview still works.
+ function _preloadOne(u){{ if(!u||_MOCKCACHE[u]) return; _MOCKCACHE[u]='loading';
+   var im=new Image(); im.crossOrigin='anonymous';
+   im.onload=function(){{ _MOCKCACHE[u]=im; }}; im.onerror=function(){{ _MOCKCACHE[u]=null; }}; im.src=u; }}
+ // URL-keyed cache so a product's FRONT and BACK photos preload + resolve
+ // independently (the buyer can rotate to either side).
+ function _preloadMock(){{ var s=_mockSpec(); if(!s) return;
+   _preloadOne(s.front||s.src); if(s.back) _preloadOne(s.back); }}
+ function _mockImg(){{ var s=_mockSpec(); if(!s||!s.src) return null;
+   var im=_MOCKCACHE[s.src]; return (im&&im!=='loading'&&im.naturalWidth)?im:null; }}
+ // Snapshot the CLEAN design (no editor chrome) from #mcanvas into an offscreen
+ // canvas, so the wrap/composite never picks up the editor overlay.
+ function _designSnap(){{ var cv=document.getElementById('mcanvas'); if(!cv) return null;
+   _CLEAN=true; if(typeof drawArt==='function') drawArt();
+   var s=document.createElement('canvas'); s.width=cv.width; s.height=cv.height;
+   try{{ s.getContext('2d').drawImage(cv,0,0); }}catch(e){{}}
+   _CLEAN=false; if(typeof drawArt==='function') drawArt(); return s; }}
+ // Wrap a design panel `b` (src px) onto a cylinder's print `area` ([x,y,w,h] px).
+ // span=visible front arc (rad); arc=barrel arc the print covers; rot=spin offset.
+ // Columns outside the print arc are left bare (body/photo shows through), so a
+ // spin reveals a clean back - and the design always faces front at rest.
+ function _wrapInto(ctx,src,b,area,opts){{
+   opts=opts||{{}}; var ax=area[0],ay=area[1],aw=area[2],ah=area[3];
+   var span=opts.span||1.9, rot=opts.rot||0, arc=opts.arc||1.7;
+   var cx=ax+aw/2, N=Math.max(48,Math.round(aw));
+   var ar=(b.w>0&&b.h>0)?(b.h/b.w):0.5;
+   var drawnH=Math.min(ah, aw*ar), dy=ay+(ah-drawnH)/2, hs=Math.sin(span/2)||1;
+   for(var i=0;i<N;i++){{
+     var s0=i/N,s1=(i+1)/N,th0=(s0-0.5)*span,th1=(s1-0.5)*span,thm=(th0+th1)/2;
+     var x0=cx+Math.sin(th0)/hs*(aw/2), x1=cx+Math.sin(th1)/hs*(aw/2);
+     var rel=thm-rot; while(rel>Math.PI) rel-=2*Math.PI; while(rel<-Math.PI) rel+=2*Math.PI;
+     if(Math.abs(rel)<=arc/2){{
+       var v=(rel+arc/2)/arc, sw=Math.max(0.5,(span/(N*arc))*b.w);
+       try{{ ctx.drawImage(src, b.x+v*b.w, b.y, sw, b.h, x0, dy, (x1-x0)+1.0, drawnH); }}catch(e){{}}
+     }}
+     if(opts.shade){{ var sh=0.20*(1-Math.cos(thm));
+       if(sh>0.01){{ ctx.fillStyle='rgba(0,0,0,'+sh.toFixed(3)+')'; ctx.fillRect(x0,dy,(x1-x0)+1.2,drawnH); }} }}
+   }}
+ }}
+ // A clean generated cylinder body (warm-white mug w/ handle, or steel tumbler/
+ // bottle w/ lid) + accent rim, used when no real photo is registered yet.
+ // Returns the front print area [x,y,w,h] px.
+ function _drawCylBody(ctx,W,H,acc,opts){{
+   opts=opts||{{}}; var handle=!!opts.handle;
+   var bw=handle?W*0.46:W*0.34, bh=handle?H*0.46:H*0.66;
+   var bx=(W-bw)/2-(handle?W*0.04:0), by=(H-bh)/2+H*0.02, cx=bx+bw/2, r=Math.min(bw*0.16,18);
+   ctx.save(); ctx.fillStyle='rgba(0,0,0,.12)';
+   ctx.beginPath(); ctx.ellipse(cx,by+bh+8,bw*0.46,8,0,0,7); ctx.fill(); ctx.restore();
+   if(handle){{ ctx.lineWidth=Math.max(10,bw*0.12); ctx.strokeStyle='#efece4';
+     ctx.beginPath(); ctx.arc(bx+bw+2,by+bh*0.5,bh*0.26,-1.15,1.15); ctx.stroke();
+     ctx.strokeStyle='rgba(0,0,0,.10)'; ctx.lineWidth=2;
+     ctx.beginPath(); ctx.arc(bx+bw+2,by+bh*0.5,bh*0.26+bw*0.05,-1.05,1.05); ctx.stroke(); }}
+   function body(){{ ctx.beginPath();
+     ctx.moveTo(bx+r,by); ctx.lineTo(bx+bw-r,by); ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+r);
+     ctx.lineTo(bx+bw,by+bh-r); ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-r,by+bh);
+     ctx.lineTo(bx+r,by+bh); ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-r);
+     ctx.lineTo(bx,by+r); ctx.quadraticCurveTo(bx,by,bx+r,by); ctx.closePath(); }}
+   body(); var g=ctx.createLinearGradient(bx,0,bx+bw,0);
+   if(handle){{ g.addColorStop(0,'#e7e4dc'); g.addColorStop(0.5,'#fbfaf7'); g.addColorStop(1,'#e2dfd6'); }}
+   else {{ g.addColorStop(0,'#c5cacf'); g.addColorStop(0.5,'#f4f6f7'); g.addColorStop(1,'#c0c5cb'); }}
+   ctx.fillStyle=g; ctx.fill();
+   ctx.save(); body(); ctx.clip();
+   ctx.fillStyle=handle?'#ffffff':'#dfe3e6'; ctx.fillRect(bx,by,bw,Math.max(6,bh*0.05));
+   ctx.restore();
+   ctx.strokeStyle=acc; ctx.lineWidth=Math.max(3,bh*0.018);
+   ctx.beginPath(); ctx.moveTo(bx,by+Math.max(3,bh*0.03)); ctx.lineTo(bx+bw,by+Math.max(3,bh*0.03)); ctx.stroke();
+   if(!handle){{ ctx.fillStyle=acc; var cw=bw*0.5,ch=H*0.05; ctx.fillRect(cx-cw/2,by-ch,cw,ch); }}
+   var pad=bw*0.12; return [bx+pad,by+bh*0.22,bw-2*pad,bh*0.56];
+ }}
+ function _setMockTitle(isPhoto){{
+   var t=document.getElementById('mock3dttl'), s=document.getElementById('mock3dsub');
+   if(t) t.innerHTML=isPhoto?'&#128444;&#65039; Your design on the real product'
+     :'&#128260; Drag to spin your product';
+   if(s) s.textContent='Your approved flat proof is exactly what prints.'; }}
+ // Realistic 2D spin for cylindrical products (mug / bottle / tumbler): real photo
+ // when registered, else a clean generated body. Drag to rotate; never blank.
+ function _openCylSpin(){{
+   if(_3d&&_3d.on) _3d.on=false;            // stop any prior render loop (re-entrancy guard)
+   _setMockTitle(false);
+   var mount=document.getElementById('mug3d'); if(!mount){{ _showFlatPhoto(_composedProofURL()); return; }}
+   mount.innerHTML='';
+   var W=Math.max(240,mount.clientWidth||360), H=mount.clientHeight||340;
+   var dpr=Math.min(2.5,window.devicePixelRatio||1);
+   var c=document.createElement('canvas'); c.width=W*dpr; c.height=H*dpr;
+   c.style.width='100%'; c.style.height='100%'; c.style.display='block'; c.style.cursor='grab';
+   mount.appendChild(c);
+   var ctx=c.getContext('2d'); if(!ctx){{ _showFlatPhoto(_composedProofURL()); return; }}
+   ctx.scale(dpr,dpr);
+   var cv=document.getElementById('mcanvas');
+   var snap=_designSnap(); if(!snap){{ _showFlatPhoto(_composedProofURL()); return; }}
+   var b=(typeof APPAREL_BOUND!=='undefined'&&APPAREL_BOUND)?APPAREL_BOUND
+     :{{x:cv.width*0.2,y:cv.height*0.2,w:cv.width*0.6,h:cv.height*0.5}};
+   var spec=_mockSpec();
+   var handle=(typeof IS_MUG!=='undefined'&&IS_MUG);
+   var cn=((typeof CURFMT!=='undefined'?CURFMT:'').split(' - ')[1])||'White';
+   var acc=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#c9a14a';
+   var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false;
+   function frame(){{
+     ctx.clearRect(0,0,W,H);
+     var photo=_mockImg(), area;
+     if(photo&&spec){{
+       var ir=photo.naturalWidth/photo.naturalHeight, cr=W/H, dw,dh;
+       if(ir>cr){{ dw=W; dh=dw/ir; }} else {{ dh=H; dw=dh*ir; }}
+       var px=(W-dw)/2, py=(H-dh)/2; ctx.drawImage(photo,px,py,dw,dh);
+       area=[px+spec.area[0]*dw, py+spec.area[1]*dh, spec.area[2]*dw, spec.area[3]*dh];
+       _wrapInto(ctx,snap,b,area,{{span:spec.span||1.9,rot:rot,arc:1.7,shade:false}});
+     }} else {{
+       area=_drawCylBody(ctx,W,H,acc,{{handle:handle}});
+       _wrapInto(ctx,snap,b,area,{{span:1.9,rot:rot,arc:1.7,shade:true}});
+     }}
+   }}
+   c.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;c.style.cursor='grabbing';}});
+   window.addEventListener('mouseup',function(){{drag=false;c.style.cursor='grab';}});
+   c.addEventListener('mousemove',function(e){{ if(drag){{ rot+=(e.clientX-lx)*0.01; lx=e.clientX; dirty=true; }} }});
+   c.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx){{ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; }} lx=e.touches[0].clientX; }} }},{{passive:true}});
+   c.addEventListener('touchend',function(){{ lx=0; }});
+   _3d={{on:true}};
+   // Rest CENTRED (design facing front - a clear picture); the buyer drags to spin.
+   // Re-render only on change (a drag, or a late real photo finishing loading) -
+   // never a pointless 60fps redraw, and never auto-rotate the design off-front.
+   (function loop(){{ if(!_3d.on) return; var hp=!!_mockImg();
+     if(hp!==hadPhoto){{ hadPhoto=hp; dirty=true; }}
+     if(dirty){{ frame(); dirty=false; }} requestAnimationFrame(loop); }})();
+ }}
+ function _showFlatPhoto(url){{
+   _setMockTitle(true);
+   var mount=document.getElementById('mug3d'); if(!mount||!url) return;
+   mount.innerHTML='';
+   var im=document.createElement('img'); im.src=url; im.alt='Realistic product preview';
+   im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px';
+   mount.appendChild(im); _3d={{on:false}};
+   // Apparel has a real BACK photo + back design: drag or tap to flip front<->back
+   // so the buyer reviews their customization on BOTH sides of the real product.
+   var base=(typeof _mockBase==='function')?_mockBase():null;
+   if(base && base.back && typeof setPlacement==='function'){{
+     im.style.cursor='grab';
+     var ttl=document.getElementById('mock3dttl');
+     var _paint=function(){{ var u=_photoMockupURL(); if(u) im.src=u;
+       if(ttl) ttl.innerHTML='&#128444;&#65039; '+((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'Back':'Front')+' &mdash; tap to flip'; }};
+     var _flip=function(){{ setPlacement((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'front':'back'); _paint(); }};
+     var lx=0,drag=false;
+     im.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;im.style.cursor='grabbing';}});
+     window.addEventListener('mouseup',function(){{drag=false;im.style.cursor='grab';}});
+     im.addEventListener('mousemove',function(e){{ if(drag&&Math.abs(e.clientX-lx)>50){{ _flip(); drag=false; }} }});
+     im.addEventListener('click',function(){{ _flip(); }});
+     im.addEventListener('touchstart',function(e){{ lx=(e.touches[0]||{{}}).clientX||0; }},{{passive:true}});
+     im.addEventListener('touchmove',function(e){{ var x=(e.touches[0]||{{}}).clientX||0; if(lx&&Math.abs(x-lx)>50){{ _flip(); lx=0; }} }},{{passive:true}});
+     if(ttl) ttl.innerHTML='&#128444;&#65039; Front &mdash; tap to flip';
+   }}
+ }}
+ // Flat real-photo mockup (poster / tee / tote): design composited into the
+ // photo's print area. '' when no usable photo is registered/loaded.
+ function _photoMockupURL(){{
+   var spec=_mockSpec(); if(!spec||spec.cyl) return '';
+   var base=_mockImg(); if(!base) return '';
+   var cv=document.getElementById('mcanvas'); if(!cv) return '';
+   var snap=_designSnap(); if(!snap) return '';
+   var b=(typeof APPAREL_BOUND!=='undefined'&&APPAREL_BOUND)?APPAREL_BOUND
+     :{{x:cv.width*0.2,y:cv.height*0.2,w:cv.width*0.6,h:cv.height*0.5}};
+   var W=base.naturalWidth,H=base.naturalHeight;
+   var oc=document.createElement('canvas'); oc.width=W; oc.height=H;
+   var x=oc.getContext('2d'); x.drawImage(base,0,0,W,H);
+   var ax=spec.area[0]*W, ay=spec.area[1]*H, aw=spec.area[2]*W, ah=spec.area[3]*H;
+   var dar=(b.w>0&&b.h>0)?(b.w/b.h):1, car=aw/ah, dw,dh;
+   if(dar>car){{ dw=aw; dh=dw/dar; }} else {{ dh=ah; dw=dh*dar; }}
+   try{{ x.drawImage(snap,b.x,b.y,b.w,b.h, ax+(aw-dw)/2, ay+(ah-dh)/2, dw, dh); }}catch(e){{}}
+   try{{ return oc.toDataURL('image/png'); }}catch(e){{ return ''; }}
+ }}
  function _drawCalField(ctx,x,y,w,h){{
    ctx.save(); ctx.fillStyle='#fbfaf7'; ctx.fillRect(x,y,w,h);
    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
@@ -6252,6 +6529,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
+   if(typeof _preloadMock==='function') _preloadMock();   // warm the real-photo mockup (cheap, idempotent)
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
    // Real product mockup (go-live): show the ACTUAL garment photo in the selected
    // colour as the preview, with the design composited on its chest. Falls back to
@@ -6272,6 +6550,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
      if(!_u && _hasColorPhotos){{ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }}
      if(_u){{ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }}
+   }} else if(IS_MUG||IS_BRANDED||IS_CAL){{
+     // Same go-live path as apparel, now for mug / branded / calendar: when the
+     // real tile photo is available, the design sits on the REAL product (the buyer
+     // drags it where they want, exactly like a tee); else the generated field.
+     const _bs=(typeof _mockBase==='function')?_mockBase():null;
+     if(_bs && _bs.front){{ const _i=_mockupImg(_bs.front);
+       if(_i&&_i.complete&&_i.naturalWidth) _mock=_bs.front; }}
    }}
    if(_mock){{
      if(_mg){{ if(_mg.getAttribute('src')!==_mock) _mg.setAttribute('src',_mock); _mg.style.display='block'; }}
@@ -6286,13 +6571,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    let x=(W-w)/2, y=(H-h)/2;
    if(!_mock){{ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }}  // shadow (not in real-mockup mode)
    if(IS_CAL){{                               // PORTRAIT white-paper cover + movable print frame
-     _drawCalField(ctx,x,y,w,h);
+     if(!_mock) _drawCalField(ctx,x,y,w,h);   // real photo backdrop wins when present
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    }} else if(IS_MUG){{                         // white ceramic body + movable print frame
-     _drawMugField(ctx,x,y,w,h);
+     if(!_mock) _drawMugField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    }} else if(IS_BRANDED){{                     // flat product field + movable print frame
-     _drawBrandedField(ctx,x,y,w,h);
+     if(!_mock) _drawBrandedField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    }} else if(IS_APPAREL){{
      if(_mock){{                              // design sits on the real mockup, per placement
@@ -6733,6 +7018,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var img=(typeof _composedProofURL==='function')?_composedProofURL():'';
    if(!img){{ if(typeof toast==='function') toast('Add your design first.'); return; }}
    wrap.style.display='flex';
+   // Cylindrical products (mug/bottle/tumbler): realistic 2D spin - real photo
+   // when registered, else a clean generated body. Never a blank white cylinder.
+   if((typeof _isCyl==='function')&&_isCyl()){{ _openCylSpin(); return; }}
+   // Flat products with a real photo: show the design on the actual product photo.
+   var photo=(typeof _photoMockupURL==='function')?_photoMockupURL():'';
+   if(photo){{ _showFlatPhoto(photo); return; }}
+   _setMockTitle(false);
    var go=function(){{ _build3D(img); }};
    if(window.THREE){{ go(); return; }}
    var s=document.createElement('script');
