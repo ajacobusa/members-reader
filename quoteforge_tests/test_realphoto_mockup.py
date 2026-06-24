@@ -216,3 +216,12 @@ def test_apparel_colour_guard_on_real_photo(tmp_path):
     # photos exist - else a black shirt would render as a white studio shot.
     h = _page(tmp_path)
     assert "if(!hasColor) return null;" in h
+
+
+def test_product_switch_dismisses_open_spin(tmp_path):
+    # REGRESSION: opening the spin on a mug, then switching to a tank top, left the
+    # stale mug spin running over the apparel editor (the _openCylSpin loop never
+    # stopped). setProductType - the chokepoint every shop*() hits - now dismisses
+    # any open spin so the preview never shows the previous product.
+    h = _page(tmp_path)
+    assert "function setProductType(t){ if(typeof close3D==='function') close3D();" in h

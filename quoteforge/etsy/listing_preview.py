@@ -4450,7 +4450,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(_cb)_cb.style.display=IS_CAL?'block':'none';
    if(IS_CAL)renderCalSlots();
  }}
- function setProductType(t){{
+ function setProductType(t){{ if(typeof close3D==='function') close3D();   // dismiss any open spin from the previous product
    IS_CAL=(t==='cal');
    IS_MUG=(t==='mug');
    IS_BRANDED=(t==='branded');
