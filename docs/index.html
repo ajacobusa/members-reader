@@ -4122,22 +4122,30 @@
    if(!mount){ _build3D(_composedProofURL()); return; }
    mount.innerHTML=''; _3d={on:false};
    var im=document.createElement('img'); im.alt='Your product - front and back';
-   im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px;cursor:grab';
+   im.draggable=false;                  // stop the browser's native image drag-ghost (it ate the flip drag)
+   im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px;cursor:pointer;-webkit-user-drag:none;user-select:none';
+   im.addEventListener('dragstart',function(e){ e.preventDefault(); });
    mount.appendChild(im);
+   // Explicit, obvious flip control so the buyer never has to discover tap/drag.
+   var fb=document.createElement('button'); fb.type='button';
+   fb.style.cssText='position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:3;background:#103d2e;color:#fff;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 9px rgba(0,0,0,.28)';
+   mount.appendChild(fb);
    var ttl=document.getElementById('mock3dttl'), sub=document.getElementById('mock3dsub');
    if(sub) sub.textContent='Your approved flat proof is exactly what prints.';
+   function _isBack(){ return (typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back'); }
    function _render(){ var u=(typeof _composedProofURL==='function')?_composedProofURL():''; if(u) im.src=u;
-     if(ttl) ttl.innerHTML='&#128085; '+((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'Back':'Front')+' &mdash; drag or tap to flip'; }
-   function _flip(){ if(typeof setPlacement==='function')
-     setPlacement((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'front':'back'); _render(); }
+     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':'Front')+' &mdash; drag or tap to flip';
+     fb.innerHTML='&#8635; See the '+(_isBack()?'front':'back'); }
+   function _flip(){ if(typeof setPlacement==='function') setPlacement(_isBack()?'front':'back'); _render(); }
    _render();
-   var lx=0,drag=false;
-   im.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;im.style.cursor='grabbing';});
-   window.addEventListener('mouseup',function(){drag=false;im.style.cursor='grab';});
-   im.addEventListener('mousemove',function(e){ if(drag&&Math.abs(e.clientX-lx)>50){ _flip(); drag=false; } });
-   im.addEventListener('click',function(){ _flip(); });
-   im.addEventListener('touchstart',function(e){ lx=(e.touches[0]||{}).clientX||0; },{passive:true});
-   im.addEventListener('touchmove',function(e){ var x=(e.touches[0]||{}).clientX||0; if(lx&&Math.abs(x-lx)>50){ _flip(); lx=0; } },{passive:true});
+   fb.addEventListener('click',function(e){ e.stopPropagation(); _flip(); });
+   var lx=0,drag=false,moved=false;
+   im.addEventListener('mousedown',function(e){drag=true;moved=false;lx=e.clientX;});
+   window.addEventListener('mouseup',function(){drag=false;});
+   im.addEventListener('mousemove',function(e){ if(drag&&Math.abs(e.clientX-lx)>50){ moved=true; _flip(); drag=false; } });
+   im.addEventListener('click',function(){ if(moved){ moved=false; return; } _flip(); });
+   im.addEventListener('touchstart',function(e){ moved=false; lx=(e.touches[0]||{}).clientX||0; },{passive:true});
+   im.addEventListener('touchmove',function(e){ var x=(e.touches[0]||{}).clientX||0; if(lx&&Math.abs(x-lx)>50){ moved=true; _flip(); lx=0; } },{passive:true});
  }
  function _showFlatPhoto(url){
    _setMockTitle(true);
