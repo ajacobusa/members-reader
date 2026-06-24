@@ -63,15 +63,14 @@ def test_cylinder_routes_to_realistic_spin(tmp_path):
     assert "createLinearGradient" in h and "quadraticCurveTo" in h
 
 
-def test_cylinder_rests_centered_not_auto_spun(tmp_path):
-    # REGRESSION: the preview rests CENTRED (design facing front = a clear
-    # picture); the buyer drags to spin. It must NOT auto-rotate the design off
-    # the front on open (which re-created a "blank" front mid-spin).
+def test_cylinder_auto_rotates_so_it_visibly_spins(tmp_path):
+    # Single-sided goods (mug/bottle/tumbler) have no front/back to flip, so the
+    # spin gently AUTO-ROTATES on open as the cue that it's a 3D preview; the buyer
+    # can still grab and drag to control it.
     h = _page(tmp_path)
     assert "var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false;" in h
-    assert "rot+=0.006" not in h            # no idle auto-rotate
-    # the loop re-renders only when dirty (drag / late photo load), never auto-spins
-    assert "if(dirty){ frame(); dirty=false; }" in h
+    assert "if(!drag){ rot+=0.006; dirty=true; }" in h    # gentle idle auto-rotate
+    assert "if(dirty){ frame(); dirty=false; }" in h      # still renders on change
 
 
 def test_wrap_leaves_back_bare_never_blank_front(tmp_path):
