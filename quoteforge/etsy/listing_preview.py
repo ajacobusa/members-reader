@@ -6347,6 +6347,34 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(hp!==hadPhoto){{ hadPhoto=hp; dirty=true; }}
      if(dirty){{ frame(); dirty=false; }} requestAnimationFrame(loop); }})();
  }}
+ // Real front/back review (apparel): show the composed proof of the CURRENT side
+ // and flip to the other side's OWN design on drag/tap. Uses _composedProofURL so
+ // it works on the real garment photo OR the recolouring silhouette - independent
+ // of whether per-colour mockup photos exist (the old path fell to a WebGL panel
+ // that merely MIRRORED the front design as the back). This is the proof's flip,
+ // shown inline on the product.
+ function _openFlipReview(){{
+   var mount=document.getElementById('mug3d');
+   if(!mount){{ _build3D(_composedProofURL()); return; }}
+   mount.innerHTML=''; _3d={{on:false}};
+   var im=document.createElement('img'); im.alt='Your product - front and back';
+   im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px;cursor:grab';
+   mount.appendChild(im);
+   var ttl=document.getElementById('mock3dttl'), sub=document.getElementById('mock3dsub');
+   if(sub) sub.textContent='Your approved flat proof is exactly what prints.';
+   function _render(){{ var u=(typeof _composedProofURL==='function')?_composedProofURL():''; if(u) im.src=u;
+     if(ttl) ttl.innerHTML='&#128085; '+((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'Back':'Front')+' &mdash; drag or tap to flip'; }}
+   function _flip(){{ if(typeof setPlacement==='function')
+     setPlacement((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'front':'back'); _render(); }}
+   _render();
+   var lx=0,drag=false;
+   im.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;im.style.cursor='grabbing';}});
+   window.addEventListener('mouseup',function(){{drag=false;im.style.cursor='grab';}});
+   im.addEventListener('mousemove',function(e){{ if(drag&&Math.abs(e.clientX-lx)>50){{ _flip(); drag=false; }} }});
+   im.addEventListener('click',function(){{ _flip(); }});
+   im.addEventListener('touchstart',function(e){{ lx=(e.touches[0]||{{}}).clientX||0; }},{{passive:true}});
+   im.addEventListener('touchmove',function(e){{ var x=(e.touches[0]||{{}}).clientX||0; if(lx&&Math.abs(x-lx)>50){{ _flip(); lx=0; }} }},{{passive:true}});
+ }}
  function _showFlatPhoto(url){{
    _setMockTitle(true);
    var mount=document.getElementById('mug3d'); if(!mount||!url) return;
@@ -6354,24 +6382,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var im=document.createElement('img'); im.src=url; im.alt='Realistic product preview';
    im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px';
    mount.appendChild(im); _3d={{on:false}};
-   // Apparel has a real BACK photo + back design: drag or tap to flip front<->back
-   // so the buyer reviews their customization on BOTH sides of the real product.
-   var base=(typeof _mockBase==='function')?_mockBase():null;
-   if(base && base.back && typeof setPlacement==='function'){{
-     im.style.cursor='grab';
-     var ttl=document.getElementById('mock3dttl');
-     var _paint=function(){{ var u=_photoMockupURL(); if(u) im.src=u;
-       if(ttl) ttl.innerHTML='&#128444;&#65039; '+((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'Back':'Front')+' &mdash; tap to flip'; }};
-     var _flip=function(){{ setPlacement((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'front':'back'); _paint(); }};
-     var lx=0,drag=false;
-     im.addEventListener('mousedown',function(e){{drag=true;lx=e.clientX;im.style.cursor='grabbing';}});
-     window.addEventListener('mouseup',function(){{drag=false;im.style.cursor='grab';}});
-     im.addEventListener('mousemove',function(e){{ if(drag&&Math.abs(e.clientX-lx)>50){{ _flip(); drag=false; }} }});
-     im.addEventListener('click',function(){{ _flip(); }});
-     im.addEventListener('touchstart',function(e){{ lx=(e.touches[0]||{{}}).clientX||0; }},{{passive:true}});
-     im.addEventListener('touchmove',function(e){{ var x=(e.touches[0]||{{}}).clientX||0; if(lx&&Math.abs(x-lx)>50){{ _flip(); lx=0; }} }},{{passive:true}});
-     if(ttl) ttl.innerHTML='&#128444;&#65039; Front &mdash; tap to flip';
-   }}
  }}
  // Flat real-photo mockup (poster / tee / tote): design composited into the
  // photo's print area. '' when no usable photo is registered/loaded.
@@ -7021,6 +7031,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Cylindrical products (mug/bottle/tumbler): realistic 2D spin - real photo
    // when registered, else a clean generated body. Never a blank white cylinder.
    if((typeof _isCyl==='function')&&_isCyl()){{ _openCylSpin(); return; }}
+   // Apparel has distinct FRONT and BACK designs: flip between them (each side's
+   // own design) on the real photo or the silhouette - never the WebGL mirror.
+   if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){{ _openFlipReview(); return; }}
    // Flat products with a real photo: show the design on the actual product photo.
    var photo=(typeof _photoMockupURL==='function')?_photoMockupURL():'';
    if(photo){{ _showFlatPhoto(photo); return; }}
@@ -7101,7 +7114,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // else. The 3D button now shows on EVERY product/department.
  function _isCyl(){{ var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return IS_MUG || (IS_BRANDED && /bottle|tumbler/i.test(f)); }}
  function _is3D(){{ return true; }}
- function _upd3DBtn(){{ var b=document.getElementById('view3dbtn'); if(b) b.style.display=_is3D()?'block':'none'; }}
+ function _upd3DBtn(){{ var b=document.getElementById('view3dbtn'); if(!b) return;
+   b.style.display=_is3D()?'block':'none';
+   // Product-accurate label: only apparel has a real front+back to flip; cylinders
+   // rotate a single wrap; flat single-face goods just show on the product.
+   var lbl=(typeof IS_APPAREL!=='undefined'&&IS_APPAREL)
+       ? '&#128260; Spin your product &mdash; front &amp; back'
+       : (((typeof _isCyl==='function')&&_isCyl()) ? '&#128260; Spin your product'
+                                                   : '&#128444;&#65039; See it on your product');
+   b.innerHTML=lbl; }}
  // ── Remove background (client-side, free, private - the photo never leaves the
  // browser). Samples the 4 corners to estimate the backdrop and clears matching
  // pixels - great for logos / solid backdrops. Available on EVERY product's photo. ──
