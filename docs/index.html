@@ -1395,21 +1395,11 @@
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <div class="mcanvaswrap"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div>
+       <div class="mcanvaswrap"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
-       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="View your design in 3D" onclick="view3D()">&#128260; View in 3D &mdash; spin it</button>
-       <div id="mug3dwrap" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(20,20,20,.55);align-items:center;justify-content:center" onclick="if(event.target===this)close3D()">
-         <div style="background:#f3efe6;border-radius:14px;padding:14px;max-width:420px;width:92%;box-shadow:0 18px 50px rgba(0,0,0,.35)">
-           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-             <b id="mock3dttl">&#128260; Spin your design &mdash; drag to rotate</b>
-             <span role="button" tabindex="0" aria-label="Close 3D view" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="cursor:pointer;font-size:20px;line-height:1">&times;</span>
-           </div>
-           <div id="mug3d" style="width:100%;height:340px;border-radius:10px;overflow:hidden;background:#fff"></div>
-           <div id="mock3dsub" style="font-size:11px;color:#7a7466;margin-top:6px">A bonus 3D preview &mdash; your approved flat proof is exactly what prints.</div>
-         </div>
-       </div>
+       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="Spin your product" onclick="view3D()">&#128260; Spin your product &mdash; front &amp; back</button>
        <div class="dragbar" id="mplacement" style="display:none">
          <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
          <div class="dseg" role="group" aria-label="Choose side">
@@ -3974,6 +3964,12 @@
      id=(typeof CAL_PID!=='undefined'&&CAL_PID[k])||''; url=(typeof CAL_IMG!=='undefined'&&CAL_IMG[id])||''; cyl=false;
    } else if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){
      var gid=(typeof APPGID!=='undefined'&&APPGID[k])||'';
+     // The single per-garment side photo is colour-AGNOSTIC (one white studio
+     // shot), so it may only stand in when real PER-COLOUR photos exist - else a
+     // black shirt would show as white. Mirrors the editor's drawArt guard.
+     var hasColor=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]
+       &&Object.keys(APPAREL_COLOR_IMG[gid]).length);
+     if(!hasColor) return null;
      url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
      var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
      if(!url && sm) url=sm.front||'';
@@ -3981,16 +3977,21 @@
    }
    if(!url) return null;
    var area=cyl?[0.33,0.34,0.34,0.34]:[0.28,0.26,0.44,0.50];
-   return {src:url, front:url, back:back, area:area, cyl:cyl, span:1.9};
+   // `src` follows the side the buyer is reviewing, so front/back resolve to their
+   // own real photo (apparel). Cylinders/flat goods have no back -> always front.
+   var side=(typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back'&&back)?'back':'front';
+   return {src:(side==='back')?back:url, front:url, back:back, area:area, cyl:cyl, span:1.9};
  }
  function _mockSpec(){ return (typeof _mockBase==='function')?_mockBase():null; }
- function _preloadMock(){ var s=_mockSpec(); if(!s||!s.src) return; var k=_mockKey();
-   if(_MOCKCACHE[k]) return; _MOCKCACHE[k]='loading';
+ function _preloadOne(u){ if(!u||_MOCKCACHE[u]) return; _MOCKCACHE[u]='loading';
    var im=new Image(); im.crossOrigin='anonymous';
-   im.onload=function(){ _MOCKCACHE[k]=im; };
-   im.onerror=function(){ _MOCKCACHE[k]=null; }; im.src=s.src; }
- function _mockImg(){ var im=_MOCKCACHE[_mockKey()];
-   return (im&&im!=='loading'&&im.naturalWidth)?im:null; }
+   im.onload=function(){ _MOCKCACHE[u]=im; }; im.onerror=function(){ _MOCKCACHE[u]=null; }; im.src=u; }
+ // URL-keyed cache so a product's FRONT and BACK photos preload + resolve
+ // independently (the buyer can rotate to either side).
+ function _preloadMock(){ var s=_mockSpec(); if(!s) return;
+   _preloadOne(s.front||s.src); if(s.back) _preloadOne(s.back); }
+ function _mockImg(){ var s=_mockSpec(); if(!s||!s.src) return null;
+   var im=_MOCKCACHE[s.src]; return (im&&im!=='loading'&&im.naturalWidth)?im:null; }
  // Snapshot the CLEAN design (no editor chrome) from #mcanvas into an offscreen
  // canvas, so the wrap/composite never picks up the editor overlay.
  function _designSnap(){ var cv=document.getElementById('mcanvas'); if(!cv) return null;
@@ -4053,9 +4054,8 @@
  function _setMockTitle(isPhoto){
    var t=document.getElementById('mock3dttl'), s=document.getElementById('mock3dsub');
    if(t) t.innerHTML=isPhoto?'&#128444;&#65039; Your design on the real product'
-     :'&#128260; Spin your design &mdash; drag to rotate';
-   if(s) s.textContent=isPhoto?'A realistic product preview — your approved flat proof is exactly what prints.'
-     :'A bonus 3D preview — your approved flat proof is exactly what prints.'; }
+     :'&#128260; Drag to spin your product';
+   if(s) s.textContent='Your approved flat proof is exactly what prints.'; }
  // Realistic 2D spin for cylindrical products (mug / bottle / tumbler): real photo
  // when registered, else a clean generated body. Drag to rotate; never blank.
  function _openCylSpin(){
@@ -4110,8 +4110,26 @@
    var mount=document.getElementById('mug3d'); if(!mount||!url) return;
    mount.innerHTML='';
    var im=document.createElement('img'); im.src=url; im.alt='Realistic product preview';
-   im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:10px';
+   im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px';
    mount.appendChild(im); _3d={on:false};
+   // Apparel has a real BACK photo + back design: drag or tap to flip front<->back
+   // so the buyer reviews their customization on BOTH sides of the real product.
+   var base=(typeof _mockBase==='function')?_mockBase():null;
+   if(base && base.back && typeof setPlacement==='function'){
+     im.style.cursor='grab';
+     var ttl=document.getElementById('mock3dttl');
+     var _paint=function(){ var u=_photoMockupURL(); if(u) im.src=u;
+       if(ttl) ttl.innerHTML='&#128444;&#65039; '+((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'Back':'Front')+' &mdash; tap to flip'; };
+     var _flip=function(){ setPlacement((typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back')?'front':'back'); _paint(); };
+     var lx=0,drag=false;
+     im.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;im.style.cursor='grabbing';});
+     window.addEventListener('mouseup',function(){drag=false;im.style.cursor='grab';});
+     im.addEventListener('mousemove',function(e){ if(drag&&Math.abs(e.clientX-lx)>50){ _flip(); drag=false; } });
+     im.addEventListener('click',function(){ _flip(); });
+     im.addEventListener('touchstart',function(e){ lx=(e.touches[0]||{}).clientX||0; },{passive:true});
+     im.addEventListener('touchmove',function(e){ var x=(e.touches[0]||{}).clientX||0; if(lx&&Math.abs(x-lx)>50){ _flip(); lx=0; } },{passive:true});
+     if(ttl) ttl.innerHTML='&#128444;&#65039; Front &mdash; tap to flip';
+   }
  }
  // Flat real-photo mockup (poster / tee / tote): design composited into the
  // photo's print area. '' when no usable photo is registered/loaded.
@@ -4290,6 +4308,13 @@
      let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
      if(!_u && _hasColorPhotos){ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }
      if(_u){ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }
+   } else if(IS_MUG||IS_BRANDED||IS_CAL){
+     // Same go-live path as apparel, now for mug / branded / calendar: when the
+     // real tile photo is available, the design sits on the REAL product (the buyer
+     // drags it where they want, exactly like a tee); else the generated field.
+     const _bs=(typeof _mockBase==='function')?_mockBase():null;
+     if(_bs && _bs.front){ const _i=_mockupImg(_bs.front);
+       if(_i&&_i.complete&&_i.naturalWidth) _mock=_bs.front; }
    }
    if(_mock){
      if(_mg){ if(_mg.getAttribute('src')!==_mock) _mg.setAttribute('src',_mock); _mg.style.display='block'; }
@@ -4304,13 +4329,13 @@
    let x=(W-w)/2, y=(H-h)/2;
    if(!_mock){ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }  // shadow (not in real-mockup mode)
    if(IS_CAL){                               // PORTRAIT white-paper cover + movable print frame
-     _drawCalField(ctx,x,y,w,h);
+     if(!_mock) _drawCalField(ctx,x,y,w,h);   // real photo backdrop wins when present
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    } else if(IS_MUG){                         // white ceramic body + movable print frame
-     _drawMugField(ctx,x,y,w,h);
+     if(!_mock) _drawMugField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    } else if(IS_BRANDED){                     // flat product field + movable print frame
-     _drawBrandedField(ctx,x,y,w,h);
+     if(!_mock) _drawBrandedField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    } else if(IS_APPAREL){
      if(_mock){                              // design sits on the real mockup, per placement
