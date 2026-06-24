@@ -188,14 +188,27 @@ def test_spin_is_inline_on_product(tmp_path):
 # ── Rotate to review front AND back ──────────────────────────────
 
 def test_front_back_flip_wired(tmp_path):
-    # The buyer can rotate to review their customization on BOTH sides: cylinders
-    # spin the wrap; apparel flips between the real front and back photos (each
-    # side's own design). Photos preload per-URL so both sides resolve.
+    # REGRESSION: apparel has DISTINCT front/back designs, so the spin must flip
+    # between them - using the proof's _composedProofURL + setPlacement, which
+    # works on the silhouette OR a real photo (NOT gated on per-colour photos).
+    # The old path fell to WebGL _build3D, which only mirrored the FRONT design.
     h = _page(tmp_path)
+    assert "function _openFlipReview" in h
+    # apparel routes to the flip review, not WebGL
+    assert "if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){ _openFlipReview(); return; }" in h
+    # the flip reads each side's own design from the proof source + setPlacement
+    assert "function _composedProofURL" in h
+    assert "drag or tap to flip" in h
     assert "function _preloadOne" in h                       # per-URL (front+back) cache
-    assert "side==='back')?back:url" in h                    # src follows APPLACEMENT
-    assert "tap to flip" in h                                # apparel front/back affordance
-    assert "if(base && base.back && typeof setPlacement==='function'){" in h
+
+
+def test_spin_button_label_is_product_accurate(tmp_path):
+    # REGRESSION: "front & back" was promised on single-sided products too. The
+    # label is now product-aware: apparel = front & back; cylinder = spin; flat
+    # single-face = see-it-on-your-product.
+    h = _page(tmp_path)
+    assert "Spin your product &mdash; front &amp; back" in h   # apparel
+    assert "See it on your product" in h                       # flat single-face
 
 
 def test_apparel_colour_guard_on_real_photo(tmp_path):
