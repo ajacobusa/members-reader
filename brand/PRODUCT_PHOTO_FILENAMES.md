@@ -68,6 +68,18 @@ has no 8×10 acrylic or metal.
 
 ---
 
+## 🔄 3D preview photos (the "View in 3D" selling picture)
+
+Separate from the tiles above: drop a real product photo into
+[`brand/mockups/`](mockups/README.md) and that product's **3D preview** upgrades
+from the generated body to your buyer's design composited onto the real photo.
+Most impactful for the round products (bottle / tumbler / mug). Empty by default —
+the generated preview is used until you add one. See
+[`brand/mockups/README.md`](mockups/README.md) for filenames + the optional
+print-area sidecar.
+
+---
+
 ### Two ways to deliver
 - **Send me the files** and I'll name, re-host, rebuild, and deploy — and confirm no
   "gelato" URL leaks into the page (the hard rule).
