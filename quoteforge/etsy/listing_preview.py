@@ -2149,6 +2149,26 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 }
     except Exception:  # noqa: BLE001 — never break the build on mockup discovery
         mockup_photos = {}
+    # Merge in the CONFIRMED auto-synced print-partner photos (the daily mockup-sync:
+    # only products both review agents passed reach live_mockups()). Each master is
+    # re-emitted into docs/assets (same-origin, no supplier URL). A manual
+    # brand/mockups entry for the same product wins (set above). Empty until live.
+    try:
+        from quoteforge.automation.mockup_sync import live_mockups as _live_mockups
+        for _nm, _spec in (_live_mockups() or {}).items():
+            if _nm in mockup_photos:
+                continue                       # manual override already set
+            _src = _spec.get("src") or ""
+            _master = Path(_src)
+            _url = (_emit(_master, f"mockup-auto-{_master.stem}.jpg")
+                    if _src and _master.exists() else _src)
+            if not _url:
+                continue
+            mockup_photos[_nm] = {"src": _url, "area": _spec.get("area"),
+                                  "cyl": bool(_spec.get("cyl")),
+                                  "span": float(_spec.get("span", 1.9))}
+    except Exception:  # noqa: BLE001 — never break the build on the sync catalog
+        pass
     mockup_photos_json = json.dumps(mockup_photos)
 
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
