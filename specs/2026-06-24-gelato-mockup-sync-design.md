@@ -26,9 +26,23 @@ skipped.
 
 ```
 discovered → fetched → validated → geometry_set → rehosted → cataloged
-   → READY ──(owner confirms)──▶ approved ──(publish)──▶ PUBLISHED
+   → READY ──(TWO AGENTS agree)──▶ confirmed ──(publish)──▶ PUBLISHED
    any step fails ─▶ error (keeps the last PUBLISHED preview; never breaks the page)
 ```
+
+**The confirmation is automated by two agents** (not a manual owner click). A READY
+product is confirmed only when BOTH agree:
+- **`gelato-mockup-reviewer`** → **PASS** — the synced image is a clean, **blank**,
+  front-on base, and the derived print geometry sits on the real print zone.
+- **`gelato-sku-image-match`** → **MATCH** — the SKU resolves to a real (non-placeholder)
+  Gelato UID, the image's provenance is that same UID, and the picture is the
+  product type/variant the SKU claims.
+
+`confirmed = PASS && MATCH`. If either is HOLD/MISMATCH → the product stays at
+`held`, keeps its previous/generated preview, and goes into the daily report for a
+human. Both agent verdicts are stored on the product (`review`, `match`) so the
+trail is auditable. A human can still override (force-approve / force-hold), but the
+**default path needs no human** — the agents are the confirmation.
 
 | # | Checkpoint | Guard (must pass to advance) | Recorded |
 |---|---|---|---|
@@ -38,9 +52,11 @@ discovered → fetched → validated → geometry_set → rehosted → cataloged
 | 4 | **geometry_set** | `printArea` from Gelato template → mapped to on-photo rect; else type-default (centred; `cyl` for round). Sanity-clamped to 0–1 | area, cyl, span, source=`template\|default\|manual` |
 | 5 | **rehosted** | bytes downloaded + saved + web-optimized to `docs/assets/mockups/<id>.jpg` | path, fingerprint(sha256) |
 | 6 | **cataloged** | entry written to `config/mockups.json` with all checkpoint results | — |
-| 7 | **READY** | all 1–6 ok → awaiting confirmation | — |
-| 8 | **approved** | **owner confirmation** (per product or `all`) | approved_by, approved_at |
-| 9 | **PUBLISHED** | `live{}` block set from the approved data; baked at next `rebuild-site` | live src+geometry |
+| 7 | **READY** | all 1–6 ok → goes to the two confirming agents | — |
+| 8a | **reviewed** | `gelato-mockup-reviewer` → **PASS** (blank base, front-on, geometry on the print zone) | review verdict + reasons |
+| 8b | **matched** | `gelato-sku-image-match` → **MATCH** (real UID, provenance, right product type/variant) | match verdict + reasons |
+| 8 | **confirmed** | `reviewed.PASS && matched.MATCH` (else → `held`, into the daily report) | confirmed_at, by=`agents` |
+| 9 | **PUBLISHED** | `live{}` set from the confirmed data; baked at next `rebuild-site` | live src+geometry |
 
 **Change detection:** on each daily run, if a product's new image `fingerprint`
 differs from its `PUBLISHED` one, it drops back to **READY (pending re-confirm)** —
@@ -65,8 +81,10 @@ confirmation. Unchanged + approved products stay PUBLISHED untouched.
         "rehosted":   {"ok": true,  "path": "assets/mockups/classic_mug.jpg", "fingerprint": "<sha256>", "at": "..."},
         "cataloged":  {"ok": true,  "at": "..."}
       },
-      "approved": false, "approved_by": null, "approved_at": null,
-      "live": null                              // {src, area, cyl, span} — set ONLY on publish
+      "review": {"verdict": null, "reasons": null, "at": null},   // gelato-mockup-reviewer: PASS|HOLD
+      "match":  {"verdict": null, "reasons": null, "at": null},   // gelato-sku-image-match: MATCH|MISMATCH
+      "confirmed": false, "confirmed_by": "agents", "confirmed_at": null,
+      "live": null                              // {src, area, cyl, span} — set ONLY on publish after confirm
     }
   }
 }
@@ -75,20 +93,28 @@ confirmation. Unchanged + approved products stay PUBLISHED untouched.
 shows a product's real photo strictly after it's been confirmed and published.
 
 ## Commands (admin CLI) + the daily agent
-- `admin mockup-sync` — runs checkpoints 1–6 for **all products**, updates
-  `config/mockups.json`, **emails a per-product review** (READY / changed / error /
-  unchanged) with thumbnails. Never publishes.
-- `admin mockup-review` — prints the per-product checkpoint table (what passed,
-  what's pending confirmation, what errored).
-- `admin mockup-approve <id | all>` — the **confirmation gate**: marks products
-  approved and copies their data into `live{}`.
-- `admin mockup-publish` — `rebuild-site` using only `live{}` blocks, then the
-  normal commit/push/UAT.
-- **Daily agent `gelato-mockup-sync`** (reuses the existing scheduler cadence,
-  07:xx): runs `mockup-sync` + the review email. It does **not** auto-publish.
-  Optional `--auto-publish-approved` flag (off by default) lets you, once you trust
-  it, auto-publish products that are *already approved and only had an unchanged
-  image* — anything new or changed still waits for your confirmation.
+- `admin mockup-sync` — runs checkpoints 1–6 for **all products** (fetch / validate
+  / geometry / re-host / catalog), writing each to `config/mockups.json`; READY
+  products are queued for the two confirming agents. Never publishes.
+- `admin mockup-confirm` — runs the **two agents** over every READY product
+  (`gelato-mockup-reviewer` + `gelato-sku-image-match`), writes both verdicts, and
+  sets `confirmed` where both agree (else `held`). This is the automated
+  confirmation gate. (Run by the daily routine; can also be invoked on demand.)
+- `admin mockup-review` — prints the per-product checkpoint + agent-verdict table.
+- `admin mockup-override <id> approve|hold` — **human escape hatch** only; the
+  default path is fully agent-driven.
+- `admin mockup-publish` — `rebuild-site` using only `confirmed` products' `live{}`,
+  then the normal commit / push / UAT.
+- **Daily routine `gelato-mockup-sync`** (existing scheduler cadence, ~07:xx):
+  `mockup-sync` → `mockup-confirm` (the two agents) → email the report (confirmed /
+  held-with-reasons / changed / error) → **auto-publish the confirmed** (a changed
+  image always re-queues through the agents first, so a Gelato change can't ship
+  unconfirmed). Because the agents are the confirmation, this whole loop needs **no
+  human** — held items are the only thing surfaced for a person.
+
+> The two agents are Claude subagents; the daily routine invokes them over the READY
+> set (a scheduled Claude run or the Anthropic SDK). Their prompts/criteria live in
+> `.claude/agents/gelato-mockup-reviewer.md` and `.claude/agents/gelato-sku-image-match.md`.
 
 ## Safety invariants (launch-blockers)
 - **No supplier leak:** images re-hosted same-origin; `config/mockups.json` stores
@@ -109,10 +135,15 @@ shows a product's real photo strictly after it's been confirmed and published.
   `gelato_template_printarea(uid)` (placement) — extend the existing
   product-API client; both key-gated + cached.
 - New `automation/mockup_sync.py`: the checkpoint engine over `config/mockups.json`.
-- `admin.py`: the four `mockup-*` commands.
+- **Confirming agents (already created):** `.claude/agents/gelato-mockup-reviewer.md`
+  and `.claude/agents/gelato-sku-image-match.md`. `mockup-confirm` dispatches both
+  over each READY product and records their verdicts.
+- `admin.py`: the `mockup-sync` / `mockup-confirm` / `mockup-review` /
+  `mockup-override` / `mockup-publish` commands.
 - `etsy/listing_preview.py`: `_mockBase()` reads `config/mockups.json` `live{}` (it
   already consumes the `brand/mockups/` manifest — same shape).
-- `AUTOMATION_AGENTS.md` + scheduler: register `gelato-mockup-sync` daily.
+- `AUTOMATION_AGENTS.md` + scheduler: register the daily `gelato-mockup-sync` routine
+  (sync → confirm via the two agents → report → auto-publish confirmed).
 
 ## Acceptance
 - Every product family resolves a base mockup when live + approved; generated
