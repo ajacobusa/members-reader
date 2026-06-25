@@ -62,6 +62,11 @@ GENERATE_ROOM_MOCKUP: bool = _env_bool("GENERATE_ROOM_MOCKUP", True)
 # Set to 60%: every product and gallery set is priced to clear this, and the
 # margin guard flags anything that slips below it (e.g. after a fee increase).
 TARGET_MARGIN_PCT: float = float(os.getenv("TARGET_MARGIN_PCT", "60"))
+# When a real order's economics fall below the margin floor, the pre-vendor gate
+# HOLDS it for owner review instead of auto-routing money to the vendor. Set this
+# truthy only to allow deliberate loss-leaders through without a hold.
+ALLOW_BELOW_FLOOR_ORDERS: bool = os.getenv(
+    "ALLOW_BELOW_FLOOR_ORDERS", "").strip().lower() in ("1", "true", "yes", "on")
 # Real per-order costs beyond the print blank, folded into the AUTHORITATIVE
 # profit calc so reported/audited margins are honest (NOT into the list-price
 # floor - the 65% list anchor already absorbs them, so customer prices don't

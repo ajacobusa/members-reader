@@ -112,13 +112,24 @@ def _all_skus():
 # ── Storefront wiring ────────────────────────────────────────────
 
 def test_storefront_uses_supplier_image_when_present(tmp_path, monkeypatch):
-    # REGRESSION: when a real supplier image resolves for a garment, the tile
-    # <img src> uses it (overriding the local tile). Keyed PER GARMENT_ID (the
-    # gendered, tier-exact key) - so the men's Classic tee (m_tshirt) swaps. Patch
-    # at the source module so the in-function import in build_shop_home picks it up.
+    # REGRESSION: when a real supplier image resolves for a garment, the tile uses
+    # it - but RE-HOSTED same-origin, never the raw supplier URL (which would leak
+    # the dropship origin in view-source AND taint the editor canvas, so the proof
+    # composited without the garment). The photo is downloaded + re-hosted.
     monkeypatch.setattr(gm, "apparel_tile_images",
                         lambda *a, **k: {"m_tshirt": "https://cdn/partner-tee.png"})
+    import io
+    import requests
     from PIL import Image
+    _buf = io.BytesIO()
+    Image.new("RGB", (40, 40), (10, 10, 10)).save(_buf, "PNG")
+    _hits = []
+
+    class _R:
+        status_code = 200
+        content = _buf.getvalue()
+    monkeypatch.setattr(requests, "get",
+                        lambda url, *a, **k: (_hits.append(url), _R())[1])
     from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
     l = LAUNCH_PACK_20[0]
     g = tmp_path / f"{l.n:02d}_x" / "gallery"
@@ -128,7 +139,8 @@ def test_storefront_uses_supplier_image_when_present(tmp_path, monkeypatch):
     out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
                           out_path=tmp_path / "h.html", frame_picker=True)
     h = out.read_text(encoding="utf-8")
-    assert 'src="https://cdn/partner-tee.png"' in h
+    assert "https://cdn/partner-tee.png" not in h      # no supplier-URL leak
+    assert "https://cdn/partner-tee.png" in _hits      # was downloaded + re-hosted
 
 
 def test_admin_gelato_mockups_command(capsys):

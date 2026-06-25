@@ -54,9 +54,11 @@ def family_key(garment_id: str) -> str | None:
     """The family-map key for a product id, across EVERY department. Apparel
     garments use '<garment_type>:<tier>' (e.g. 'tshirt:Classic'); the branded /
     mug / calendar departments each use '<dept>:<product_id>' (one family per
-    product line). Returns None for an unknown id. This is what lets the new
-    departments be mapped to a real Gelato product family the same way apparel
-    is - ~one entry per product line instead of thousands of per-variant SKUs."""
+    product line). Returns None for an unknown id. The family map gates which
+    products are considered mapped; note that DYNAMIC per-variant resolution
+    (resolve_variant_uid's API search) is apparel-only - mug / branded / calendar
+    still require a static per-SKU UID, because their Gelato attributes differ
+    from apparel's GarmentColor/GarmentSize."""
     import importlib
     pid = (garment_id or "").strip().lower()
     if not pid:
@@ -211,6 +213,16 @@ def resolve_variant_uid(sku: str | None, garment_id: str | None = None,
         return None
     family = _family_value(garment_id)
     if not family:
+        return None
+    # The dynamic variant search posts apparel attribute names
+    # (GarmentColor/GarmentSize), which only exist on apparel products. A mug,
+    # bottle, tote or calendar in Gelato's catalogue uses different attributes, so
+    # the search would never match - it must resolve via a static per-SKU UID
+    # (handled above). Returning None here routes those to MANUAL rather than
+    # firing a search that silently can't match (and falsely implying the family
+    # map auto-resolves them).
+    from quoteforge.etsy.apparel_catalog import get_garment
+    if not get_garment((garment_id or "").strip().lower()):
         return None
     cache = _load_cache()
     if sku in cache:

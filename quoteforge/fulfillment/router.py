@@ -11,8 +11,39 @@ the relevant vendor key - then non-Gelato products auto-route too.
 """
 from __future__ import annotations
 
+import threading
+
+# Per-order routing locks: two concurrent duplicate webhooks each spawn a daemon
+# thread that runs the pipeline and reaches route_order. Without serialization both
+# can read vendor_order_id=None and BOTH submit to the supplier (duplicate print +
+# charge). A per-order lock makes the critical section (dedup-check -> submit ->
+# store) atomic within the process; the loser re-reads the now-stored vendor id and
+# is blocked as a duplicate. Pure in-memory: no DB sentinel that a mid-submit crash
+# could strand the order on.
+_ROUTE_LOCKS: dict = {}
+_ROUTE_LOCKS_GUARD = threading.Lock()
+
+
+def _route_lock(order_id: str) -> threading.Lock:
+    """The lock guarding routing for one order id (created on first use)."""
+    with _ROUTE_LOCKS_GUARD:
+        lk = _ROUTE_LOCKS.get(order_id)
+        if lk is None:
+            lk = _ROUTE_LOCKS[order_id] = threading.Lock()
+        return lk
+
 
 def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> dict:
+    """Send the order to its vendor's API, serialized per order id so concurrent
+    duplicate deliveries can't double-submit. Thin wrapper around the impl."""
+    order_id = order.get("order_id") or order.get("etsy_order_id") or ""
+    if not order_id:
+        return _route_order_impl(order, recipient, artwork_url)
+    with _route_lock(order_id):
+        return _route_order_impl(order, recipient, artwork_url)
+
+
+def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = "") -> dict:
     """Send the order to its vendor's API (gelato/printful/printify)."""
     vendor = (order.get("vendor") or "gelato").lower()
     order_id = order.get("order_id") or order.get("etsy_order_id") or ""

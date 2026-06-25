@@ -25,7 +25,10 @@ def test_branded_section_renders_products_and_facets(tmp_path):
     h = _page(tmp_path)
     assert 'id="deptBranded"' in h
     assert 'class="brandcard"' in h
-    assert h.count('data-bpid="') >= 9
+    assert h.count('data-bpid="') >= 8
+    # phonecase is intentionally NOT sellable (no phone-model capture -> can't be
+    # produced correctly), so it must not render in the storefront grid.
+    assert 'data-bpid="phonecase"' not in h
     assert 'data-bpid="tote"' in h and 'data-bpid="bottle"' in h
     assert 'class="brandfilter"' in h
     assert 'shopBranded(' in h
