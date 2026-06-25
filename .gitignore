@@ -63,3 +63,7 @@ Wireless/
 # Stray debug logs and nested editor config
 *.log
 quoteforge/.claude/
+
+# Portable, machine-local artifacts on the dedicated drive (never commit these)
+/python/
+/data/

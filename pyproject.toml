@@ -40,6 +40,13 @@ dev = [
     "imageio-ffmpeg>=0.4.9",
     "reportlab>=4.0.0",
     "python-pptx>=0.6.21",
+    # Google Drive backup (BACKUP_TO_DRIVE) - was relied on via the system
+    # user-site but never declared, so a clean/isolated install (e.g. the
+    # portable on-drive python) was missing it. Declared so `pip install -e .[dev]`
+    # is complete and reproducible from requirements-lock.txt.
+    "google-api-python-client>=2.100",
+    "google-auth>=2.30",
+    "google-auth-httplib2>=0.2",
 ]
 
 [project.scripts]
