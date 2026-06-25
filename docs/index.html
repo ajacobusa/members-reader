@@ -4391,8 +4391,12 @@
      // real tile photo is available, the design sits on the REAL product (the buyer
      // drags it where they want, exactly like a tee); else the generated field.
      const _bs=(typeof _mockBase==='function')?_mockBase():null;
-     if(_bs && _bs.front){ const _i=_mockupImg(_bs.front);
-       if(_i&&_i.complete&&_i.naturalWidth) _mock=_bs.front; }
+     // `src` is what both the brand/mockups override and the apparel path expose
+     // (the override has no `front`); use it so an override photo shows in the EDITOR
+     // too, not just the spin.
+     const _bsrc=_bs&&(_bs.src||_bs.front);
+     if(_bsrc){ const _i=_mockupImg(_bsrc);
+       if(_i&&_i.complete&&_i.naturalWidth) _mock=_bsrc; }
    }
    if(_mock){
      if(_mg){ if(_mg.getAttribute('src')!==_mock) _mg.setAttribute('src',_mock); _mg.style.display='block'; }
