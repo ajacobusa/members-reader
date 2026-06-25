@@ -447,6 +447,83 @@ def live_mockups() -> dict:
     return out
 
 
+def _economics_by_pid() -> dict:
+    """product_id → (cheapest sale price, its gelato cost) from each family's
+    variations, so the readiness gate can margin-check every product. Never raises
+    on one family."""
+    out: dict[str, tuple[float, float]] = {}
+
+    def _add(variants) -> None:
+        """Fold a family's variants into the cheapest (price, cost) per product_id."""
+        for v in variants or []:
+            pid = getattr(v, "product_id", None) or getattr(v, "garment_id", None)
+            price, cost = getattr(v, "price", None), getattr(v, "gelato_cost", None)
+            if pid is None or price is None or cost is None:
+                continue
+            cur = out.get(pid)
+            if cur is None or float(price) < cur[0]:
+                out[pid] = (float(price), float(cost))
+
+    for mod, fn in (("mug_catalog", "build_mug_variations"),
+                    ("branded_catalog", "build_branded_variations"),
+                    ("calendar_catalog", "build_calendar_variations"),
+                    ("apparel_catalog", "build_apparel_variations")):
+        try:
+            m = __import__(f"quoteforge.etsy.{mod}", fromlist=[fn])
+            _add(getattr(m, fn)())
+        except Exception:  # noqa: BLE001 — a family without variations just won't economics-check
+            continue
+    return out
+
+
+def readiness(*, floor_pct: float | None = None) -> list[dict]:
+    """The go-live gate, per product, tying the three things that must be right
+    before flipping live:
+      * **preview** — a CONFIRMED real-product photo (the view matches what Gelato
+        delivers). 'pending' until the live daily sync confirms it.
+      * **sku** — the SKU resolves to a real (non-placeholder) Gelato UID, so the
+        order routes to the right product at fulfilment.
+      * **margin** — the cheapest sale price still clears the margin floor.
+    Returns per-product rows with a ``go`` flag + blocking ``reasons``. Pure read."""
+    try:
+        from quoteforge.etsy.margin_guard import margin_check
+    except Exception:  # noqa: BLE001
+        margin_check = None
+    cat = load_catalog()
+    econ = _economics_by_pid()
+    rows: list[dict] = []
+    for prod in all_products():
+        pid, name, sku = prod["product_id"], prod["name"], prod["sku"]
+        uid = _real_uid(sku)
+        sku_ok = uid is not None
+        rec = cat.get("products", {}).get(pid, {})
+        if rec.get("confirmed"):
+            preview = "confirmed"
+        elif rec.get("status") == "held":
+            preview = "held"
+        else:
+            preview = "pending"
+        margin_ok = None
+        margin_pct = None
+        pc = econ.get(pid)
+        if pc and margin_check is not None:
+            m = margin_check(pc[0], pc[1], floor_pct)
+            margin_ok = bool(m.get("ok"))
+            margin_pct = m.get("margin_pct")
+        reasons = []
+        if not sku_ok:
+            reasons.append("SKU has no real Gelato UID (order would not route)")
+        if preview != "confirmed":
+            reasons.append(f"preview {preview} (no confirmed real-product photo yet)")
+        if margin_ok is False:
+            reasons.append(f"margin {margin_pct:.0f}% below floor")
+        go = bool(sku_ok and preview == "confirmed" and margin_ok is not False)
+        rows.append({"product_id": pid, "name": name, "category": prod["category"],
+                     "sku_ok": sku_ok, "preview": preview, "margin_ok": margin_ok,
+                     "margin_pct": margin_pct, "go": go, "reasons": reasons})
+    return rows
+
+
 def review_rows() -> list[dict]:
     """Flat per-product status for the `mockup-review` table / the daily email."""
     cat = load_catalog()
