@@ -116,6 +116,23 @@ shows a product's real photo strictly after it's been confirmed and published.
 > set (a scheduled Claude run or the Anthropic SDK). Their prompts/criteria live in
 > `.claude/agents/gelato-mockup-reviewer.md` and `.claude/agents/gelato-sku-image-match.md`.
 
+## Catalog lifecycle (feeds the pipeline)
+A third agent, **`gelato-catalog-watcher`**, runs first in the daily routine and
+keeps the *set of products* in lockstep with Gelato:
+- **New** Gelato product/SKU → prepares a catalog entry (name, category, SKU,
+  **price = Gelato cost → our margin floor**, print dims) and **queues its picture**
+  into this mockup-sync pipeline (so the new product's photo is fetched →
+  reviewed → matched → confirmed like any other). The SKU→UID mapping stays a human
+  confirmation (standing rule: agents never auto-edit the mapping).
+- **Discontinued** → flags the SKU unavailable (`catalog_state`) so it can't be sold
+  or routed — the one state change safe to auto-apply (removes risk).
+- **Changed cost/dims** → recommends the new price / print bound, warns on margin-floor.
+
+Daily order: `gelato-catalog-watcher` (what products exist) → `mockup-sync` →
+`mockup-confirm` (reviewer + match) → report → auto-publish confirmed. New products
+thus arrive with the right SKU, price, and a confirmed picture; dropped products
+disappear before anyone can buy an unfulfillable item.
+
 ## Safety invariants (launch-blockers)
 - **No supplier leak:** images re-hosted same-origin; `config/mockups.json` stores
   the Gelato url only under `checkpoints.fetched.src` (internal, never emitted to
