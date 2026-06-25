@@ -152,6 +152,16 @@ def test_marketing_tiles_not_used_as_mockup_base(tmp_path):
     assert "function _mockBase" in h
 
 
+def test_override_photo_shows_in_editor_not_just_spin(tmp_path):
+    # REGRESSION: a brand/mockups override exposes `src` (no `front`), so the editor
+    # branch must read `_bs.src` - otherwise an override photo rendered in the SPIN
+    # but the EDITOR stayed on the generated field.
+    h = _page(tmp_path)
+    assert "const _bsrc=_bs&&(_bs.src||_bs.front);" in h
+    assert "if(_bsrc){ const _i=_mockupImg(_bsrc);" in h
+    assert "if(_bs && _bs.front){ const _i=_mockupImg(_bs.front)" not in h
+
+
 def test_nonapparel_falls_back_to_generated_body(tmp_path):
     # With no owner BLANK override, mug/branded/calendar render the generated field
     # (which shows the buyer's design clearly), not a marketing photo.
