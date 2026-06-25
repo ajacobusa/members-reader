@@ -31,12 +31,16 @@ _COVERED = {"damaged_package", "printing_error", "poor_quality",
             "wrong_product", "incomplete_order", "lost_package"}
 
 # Required photo evidence per category (product for damage/defect/wrong item;
-# packaging additionally for damage; lost/missing need none - nothing to shoot).
+# packaging additionally for damage). A LOST package genuinely has nothing to
+# shoot (it never arrived), but a MISSING-ITEM ("incomplete_order") claim CAN and
+# must show what DID arrive - otherwise a zero-photo missing-item claim was being
+# recommended straight to supplier_review and would bounce at Gelato (whose own
+# auto-file gate, gelato_returns._PHOTO_REQUIREMENTS, requires evidence for it).
 _EVIDENCE_RULES: dict = {
     "damaged_package": ["product", "packaging"],
     "printing_error": ["product"],
     "wrong_product": ["product"],
-    "incomplete_order": [],
+    "incomplete_order": ["product"],
     "lost_package": [],
 }
 

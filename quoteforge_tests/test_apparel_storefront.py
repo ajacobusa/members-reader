@@ -356,12 +356,30 @@ def test_apparel_proof_shows_garment_not_just_art(tmp_path):
 
 
 def test_apparel_tile_uses_supplier_color_image_when_live(tmp_path, monkeypatch):
-    # REGRESSION: at go-live the per-colour map is embedded so the tile can swap.
+    # REGRESSION: at go-live the per-colour supplier photo must be RE-HOSTED
+    # same-origin (never the raw supplier URL) - the raw URL would leak the
+    # dropship origin in view-source AND taint the editor canvas (no CORS), so the
+    # apparel proof composited without the garment. It is downloaded + inlined.
+    import io
+    import requests
     import quoteforge.images.supplier_mockup as sm
     monkeypatch.setattr(sm, "apparel_tile_color_images",
                         lambda *a, **k: {"tshirt": {"Black": "https://cdn/tee-black.png"}})
+    _buf = io.BytesIO()
+    Image.new("RGB", (40, 40), (12, 12, 12)).save(_buf, "PNG")
+    _hits = []
+
+    class _R:
+        status_code = 200
+        content = _buf.getvalue()
+
+    def _fake_get(url, *a, **k):
+        _hits.append(url)
+        return _R()
+    monkeypatch.setattr(requests, "get", _fake_get)
     h = _page(tmp_path)
-    assert "https://cdn/tee-black.png" in h          # embedded in APPAREL_COLOR_IMG
+    assert "https://cdn/tee-black.png" not in h        # no supplier-URL leak
+    assert "https://cdn/tee-black.png" in _hits        # was downloaded + re-hosted
 
 
 def test_apparel_filter_options_all_have_products(tmp_path):

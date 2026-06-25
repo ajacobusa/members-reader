@@ -1086,7 +1086,9 @@ def _branded_section(photos: dict | None = None, external_assets: bool = False,
         frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
     if not frm:
         return ""
-    shown = [p for p in BRANDED_CATALOG if frm.get(p.product_id) is not None]
+    from quoteforge.etsy.branded_catalog import branded_sellable
+    shown = [p for p in BRANDED_CATALOG
+             if frm.get(p.product_id) is not None and branded_sellable(p.product_id)]
     if not shown:
         return ""
 
@@ -1610,6 +1612,29 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             return f"assets/{fname}"
         return _web_img(src)
 
+    def _emit_url(url: str, fname: str) -> str:
+        """Download a remote (supplier) image and re-host it same-origin via _emit.
+
+        A raw supplier image URL must never reach the page - it would (a) leak the
+        dropship origin in view-source/network and (b) taint the editor canvas
+        (cross-origin, no CORS), so the apparel proof composited without the
+        garment. Routing supplier photos through here keeps the page same-origin,
+        exactly like every other product photo. Returns '' on any failure so the
+        caller falls back to the AI tile - never breaks the build, never leaks."""
+        if not url or not str(url).lower().startswith(("http://", "https://")):
+            return ""
+        try:
+            import tempfile
+            import requests
+            r = requests.get(url, timeout=20)
+            if r.status_code != 200 or not r.content:
+                return ""
+            tmp = Path(tempfile.gettempdir()) / f"_emiturl_{fname}"
+            tmp.write_bytes(r.content)
+            return _emit(tmp, fname)
+        except Exception:  # noqa: BLE001 - never break the build / never leak a URL
+            return ""
+
     # Build a compact JS data array.
     #
     # The grid shows ONE design per occasion (the first seen). Pre-compute that
@@ -1817,7 +1842,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # photo to the picked colour at go-live; empty (no swap) in TEST_MODE.
     try:
         from quoteforge.images.supplier_mockup import apparel_tile_color_images
-        apparel_color_img = apparel_tile_color_images()
+        apparel_color_img = {}
+        for _gid_c, _colmap in apparel_tile_color_images().items():
+            _safe_cols = {}
+            for _cname, _curl in (_colmap or {}).items():
+                _slug = str(_cname).lower().replace(" ", "-").replace("/", "-")
+                _rh = _emit_url(_curl, f"tile-{_gid_c}-{_slug}.jpg")  # same-origin
+                if _rh:
+                    _safe_cols[_cname] = _rh
+            if _safe_cols:
+                apparel_color_img[_gid_c] = _safe_cols
     except Exception:  # noqa: BLE001
         apparel_color_img = {}
     apparel_color_img_json = json.dumps(apparel_color_img)
@@ -1836,8 +1870,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     if frame_picker:
         try:
             from quoteforge.etsy.branded_catalog import (
-                BRANDED_CATALOG as _BCs, build_branded_variations as _bbvs)
-            _bn = {p.product_id: p.name for p in _BCs}
+                BRANDED_CATALOG as _BCs, build_branded_variations as _bbvs,
+                branded_sellable as _bsell_s)
+            # Only SELLABLE products seed the editor size/price map (phonecase is
+            # hidden until it has a model picker), so it can't be opened/ordered.
+            _bn = {p.product_id: p.name for p in _BCs if _bsell_s(p.product_id)}
             _bkeys: set = set()
             for _v in _bbvs():
                 if _v.product_id not in _bn:
@@ -1976,8 +2013,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     try:
         from quoteforge.images.supplier_mockup import apparel_tile_images
         for _gidk, _url in apparel_tile_images().items():
-            if _url:
-                _garment_photos[_gidk] = _url    # garment_id key (preferred in _card)
+            _rh = _emit_url(_url, f"tile-{_gidk}.jpg")   # re-host same-origin (no leak/taint)
+            if _rh:
+                _garment_photos[_gidk] = _rh     # garment_id key (preferred in _card)
     except Exception:  # noqa: BLE001 — never break the build on the supplier API
         pass
     # Front + BACK garment photos for the editor's front/back FLIP, so a buyer can
@@ -2004,7 +2042,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     branded_pid_json = "{}"
     try:
         from quoteforge.etsy.branded_catalog import (
-            BRANDED_CATALOG as _BC, build_branded_variations as _bbv)
+            BRANDED_CATALOG as _BC, build_branded_variations as _bbv,
+            branded_sellable as _bsell)
+        _BC = [p for p in _BC if _bsell(p.product_id)]   # hide not-sellable (phonecase)
         for _p in _BC:
             _bp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
                         if (brand / f"tile-{_p.product_id}.{e}").exists()), None)

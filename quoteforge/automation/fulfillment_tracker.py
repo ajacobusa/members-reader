@@ -284,6 +284,14 @@ def sync_tracking(limit: int = 500) -> dict:
             update_order(o["order_id"], status="delivered", delivery_confirmed=1,
                          delivered_at=o.get("delivered_at") or _now_iso())
             delivered_confirmed.append(o["order_id"])
+        elif gstatus in ("canceled", "cancelled", "failed", "error"):
+            # Gelato spells it "canceled" (one L); normalize to the terminal
+            # "cancelled" every downstream consumer checks (_TERMINAL, reports,
+            # delight). The webhook path mapped this; the poll path did not, so a
+            # poll-only shop left cancelled orders non-terminal forever - re-polled
+            # endlessly and never surfaced as cancelled. No buyer push / delight.
+            update_order(o["order_id"],
+                         status="error" if gstatus in ("failed", "error") else "cancelled")
         elif o.get("tracking_number"):
             # Has tracking but the vendor hasn't confirmed delivery (Gelato often
             # only reports 'shipped') -> ask the CARRIER. No timer for Gelato:

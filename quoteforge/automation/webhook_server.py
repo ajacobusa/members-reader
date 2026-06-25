@@ -137,6 +137,15 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
     data.update(enrich_mug_order(data))
     from quoteforge.etsy.calendar_catalog import enrich_calendar_order
     data.update(enrich_calendar_order(data))
+    # Wall art has no enrich step, so its gelato_cost stayed None and the order-time
+    # margin gate could never evaluate the shop's primary product line. Backfill the
+    # cost from the material+size when nothing else resolved a product cost, so a
+    # below-floor wall-art order is actually caught.
+    if not data.get("gelato_cost") and (data.get("product_type") or "print") in ("print", ""):
+        from quoteforge.etsy.variations import wallart_cost_for
+        wc = wallart_cost_for(data.get("material", ""), data.get("product_size", ""))
+        if wc:
+            data["gelato_cost"] = wc
     return data
 
 
@@ -307,6 +316,17 @@ def process_gelato_callback(payload: dict) -> dict:
     fields: dict = {}
     if raw_status in _GELATO_STATUS_MAP:
         fields["status"] = _GELATO_STATUS_MAP[raw_status]
+        # A carrier-confirmed delivery from Gelato must stamp delivery_confirmed +
+        # delivered_at, exactly like the poll path (fulfillment_tracker.py:284-285),
+        # so the post-delivery review/referral ask fires on the REAL delivery
+        # instead of being downgraded to an ASSUMED delivery (~7 days later, on the
+        # wrong timestamp). Without this the webhook path silently lost reviews.
+        if fields["status"] == "delivered":
+            from datetime import datetime
+            existing = get_order(ref) or {}
+            fields["delivery_confirmed"] = 1
+            fields["delivered_at"] = (existing.get("delivered_at")
+                                      or datetime.now().isoformat())
     tracking = (payload.get("trackingCode") or payload.get("tracking_code")
                 or payload.get("trackingNumber") or "")
     if tracking:

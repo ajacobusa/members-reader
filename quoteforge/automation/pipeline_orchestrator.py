@@ -149,7 +149,7 @@ def validate_for_fulfillment(order: dict, recipient_address,
             or (order.get("vendor") or "") == "digital":
         return {"ok": True, "issues": []}
     from quoteforge.automation.print_quality import validate_order_for_gelato
-    return validate_order_for_gelato({
+    result = validate_order_for_gelato({
         "recipient_address": recipient_address,
         "gelato_product_uid": gelato_product_uid,
         "artwork_url": artwork_url,
@@ -157,6 +157,24 @@ def validate_for_fulfillment(order: dict, recipient_address,
         "print_quality": order.get("print_quality"),
         "proof_file_hash": order.get("proof_file_hash"),
     })
+    # Enforce the margin floor at the pre-vendor gate, not just in the read-only
+    # scheduled monitor: a below-floor (or negative) order is HELD for owner review
+    # BEFORE we spend money at the vendor. The scheduled monitor only flags it
+    # after the charge. Deliberate loss-leaders bypass via ALLOW_BELOW_FLOOR_ORDERS.
+    sale_price, gelato_cost = order.get("sale_price"), order.get("gelato_cost")
+    if sale_price is not None and gelato_cost:
+        try:
+            from quoteforge.config import ALLOW_BELOW_FLOOR_ORDERS
+            from quoteforge.etsy.margin_guard import margin_check
+            m = margin_check(float(sale_price), float(gelato_cost))
+            if not m["ok"] and not ALLOW_BELOW_FLOOR_ORDERS:
+                return {"ok": False, "issues": list(result.get("issues", [])) + [
+                    f"margin {m['margin_pct']:.1f}% below {m['floor_pct']:.0f}% floor "
+                    f"(sale ${float(sale_price):.2f} / cost ${float(gelato_cost):.2f}) "
+                    f"- held for owner review before vendor submission"]}
+        except (TypeError, ValueError):
+            pass   # unparseable economics -> defer to print-quality result
+    return result
 
 
 def run_full_pipeline(

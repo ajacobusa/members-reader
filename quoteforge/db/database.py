@@ -848,7 +848,10 @@ def save_design(email: str, design_json: str = "", design_id: str = "",
                ON CONFLICT(email, design_id) DO UPDATE SET
                  design_json=excluded.design_json, summary=excluded.summary,
                  order_id=COALESCE(NULLIF(excluded.order_id,''), order_id),
-                 updated_at=datetime('now')""",
+                 updated_at=datetime('now')
+                 WHERE accepted=0""",   # an ACCEPTED design is immutable: the
+            # customer's approved personalization can't be silently overwritten by
+            # a later /design or /confirm for the same (email, design_id).
             (email, design_id, order_id, design_json, summary))
         return cur.lastrowid or 0
 

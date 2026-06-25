@@ -96,6 +96,21 @@ def get_product(product_id: str) -> BrandedProduct | None:
     return next((p for p in BRANDED_CATALOG if p.product_id == key), None)
 
 
+# Products that stay in the catalogue (for go-live mapping + tracking) but must
+# NOT be sold yet because they can't be fulfilled correctly. A phone case offers
+# only a generic "iPhone"/"Samsung" axis with no actual MODEL, so a single family
+# UID would print a case that physically doesn't fit most buyers' phones. Until a
+# per-model picker + per-model UIDs exist it is hidden from the storefront and can
+# never resolve a routing SKU. Remove from this set to re-enable.
+NON_SELLABLE_BRANDED = frozenset({"phonecase"})
+
+
+def branded_sellable(product_id: str) -> bool:
+    """True if this branded product may be shown + sold (not a known-unfulfillable
+    line). Single source of truth for both the storefront grid and SKU routing."""
+    return (product_id or "").strip().lower() not in NON_SELLABLE_BRANDED
+
+
 def branded_dimensions_for(product_id: str) -> tuple[int, int]:
     """(width_px, height_px) of the print area for a branded product, or a safe default.
 
@@ -183,8 +198,9 @@ def branded_sku_for(product_id: str, size: str, color: str) -> str | None:
     """The variant SKU for a (product, size, colour), or None if the combination
     is not in the catalogue (so a bad size/colour can never route to production)."""
     p = get_product(product_id)
-    if not p or size not in p.sizes or color not in p.colors:
-        return None
+    if not p or not branded_sellable(product_id) \
+            or size not in p.sizes or color not in p.colors:
+        return None    # not-sellable (e.g. phonecase) never resolves a routing SKU
     return _variant_sku(p, size, color)
 
 

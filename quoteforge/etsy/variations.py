@@ -191,6 +191,38 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
     return out
 
 
+def wallart_cost_for(material: str, size: str) -> float | None:
+    """Resolve a wall-art order's gelato_cost from its material + size label by
+    matching the priced variation table, so the margin gate can actually evaluate
+    wall-art orders (which otherwise carry no cost). Returns None when it cannot
+    confidently match - the gate then simply doesn't fire rather than guess.
+
+    Tolerant of display labels: "Framed - Oak", "Poster (unframed print)", etc.
+    For an ambiguous framed match (frame colour not in the label) it returns the
+    LOWEST candidate cost, so it never false-flags a real order as below floor.
+    """
+    if not material or not size:
+        return None
+    mat = str(material).lower()
+    size_n = str(size).strip().lower()
+    key = next((k for k in ("poster", "framed", "canvas", "acrylic", "metal")
+                if k in mat), None)
+    if key is None:
+        return None
+    try:
+        cands = [v for v in build_variations()
+                 if v.material == key and v.size.strip().lower() == size_n]
+    except Exception:  # noqa: BLE001 - catalog/pricing blip: skip the check
+        return None
+    if not cands:
+        return None
+    if key == "framed":
+        named = [v for v in cands if v.frame_color and v.frame_color.lower() in mat]
+        if named:
+            cands = named
+    return min(v.gelato_cost for v in cands)
+
+
 def price_range(floor_pct: int = None) -> tuple[float, float]:
     """(lowest, highest) price across the full variations catalog."""
     prices = [v.price for v in build_variations(floor_pct)]

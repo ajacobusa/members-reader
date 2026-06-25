@@ -83,8 +83,17 @@ def _intake_order(email: str, design_id: str, contact: dict,
         return ""
     try:
         from quoteforge.db.database import create_order, get_order
+        # Idempotency key from the BASKET CONTENTS, not the per-click design_id
+        # (the storefront sends design_id='cart-'+Date.now(), unique every submit,
+        # so the get_order() dedup never matched). Now a repeated confirm of the
+        # SAME basket resolves to the same WEB- id and is deduped server-side,
+        # instead of creating a duplicate order (double alert, double revenue,
+        # possible double print).
+        import json
+        cart_key = (json.dumps(money, sort_keys=True, default=str)
+                    if money else design_id)
         oid = "WEB-" + hashlib.sha1(
-            f"{email}|{design_id}".encode("utf-8")).hexdigest()[:10].upper()
+            f"{email}|{cart_key}".encode("utf-8")).hexdigest()[:10].upper()
         if not get_order(oid):
             create_order({"order_id": oid,
                           "recipient_name": contact.get("name"),
