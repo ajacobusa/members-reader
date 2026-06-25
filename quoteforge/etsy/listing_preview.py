@@ -6082,15 +6082,63 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const cn=(CURFMT.split(' - ')[1]||'Black'); const col=APPARELCOLOR[cn]||'#1c1c1e';
    _garmentShape(ctx,x,y,w,h,_garmentType(),col);
  }}
- // Neutral flat product card for branded mode (real product mockups are a later
- // phase). Just a soft field + hairline so the print frame reads clearly on it.
- // Flat product field filled with the SELECTED product colour (like the garment
- // silhouette), so the design previews on the real product colour and the
- // auto-contrast text (white on dark, dark on light) stays legible.
+ // Draw a recognizable SILHOUETTE of the actual branded product (flat, 2D) in the
+ // selected colour, so the buyer designs on the real thing - a keychain reads as a
+ // keychain, a tote as a tote - instead of a mystery grey rectangle. Mirrors the
+ // apparel garment silhouette. The design (print frame) is composited on top.
+ function _drawBrandedShape(ctx,x,y,w,h,col,g){{
+   ctx.save(); ctx.fillStyle=col; ctx.strokeStyle='rgba(0,0,0,.20)'; ctx.lineWidth=2;
+   ctx.lineJoin='round';
+   function rr(rx,ry,rw,rh,r){{ r=Math.min(r,rw/2,rh/2); ctx.beginPath();
+     ctx.moveTo(rx+r,ry); ctx.lineTo(rx+rw-r,ry); ctx.quadraticCurveTo(rx+rw,ry,rx+rw,ry+r);
+     ctx.lineTo(rx+rw,ry+rh-r); ctx.quadraticCurveTo(rx+rw,ry+rh,rx+rw-r,ry+rh);
+     ctx.lineTo(rx+r,ry+rh); ctx.quadraticCurveTo(rx,ry+rh,rx,ry+rh-r);
+     ctx.lineTo(rx,ry+r); ctx.quadraticCurveTo(rx,ry,rx+r,ry); ctx.closePath(); }}
+   if(g.indexOf('keychain')>=0){{
+     var rr2=h*0.055, cx=x+w/2, ry=y+h*0.10;                 // split ring at the top
+     ctx.save(); ctx.strokeStyle='#9a9a9a'; ctx.lineWidth=Math.max(3,h*0.02);
+     ctx.beginPath(); ctx.arc(cx,ry,rr2,0,7); ctx.stroke(); ctx.restore();
+     var tw=w*0.58, th=h*0.66, tx=cx-tw/2, ty=ry+rr2;        // the tag
+     rr(tx,ty,tw,th,tw*0.10); ctx.fill(); ctx.stroke();
+     // little hole that the ring passes through
+     ctx.save(); ctx.fillStyle='rgba(0,0,0,.30)'; ctx.beginPath(); ctx.arc(cx,ty+th*0.07,tw*0.03,0,7); ctx.fill(); ctx.restore();
+   }} else if(g.indexOf('tote')>=0||g.indexOf('bag')>=0){{
+     var bw=w*0.64, bh=h*0.70, bx=x+(w-bw)/2, by=y+h*0.24;
+     ctx.lineWidth=Math.max(3,bw*0.028);                      // slim handles (behind the body)
+     ctx.beginPath(); ctx.arc(bx+bw*0.31,by+2,bh*0.22,Math.PI,2*Math.PI); ctx.stroke();
+     ctx.beginPath(); ctx.arc(bx+bw*0.69,by+2,bh*0.22,Math.PI,2*Math.PI); ctx.stroke();
+     ctx.lineWidth=2; rr(bx,by,bw,bh,bw*0.03); ctx.fill(); ctx.stroke();
+   }} else if(g.indexOf('phone')>=0){{
+     var pw=w*0.44, ph=h*0.84, px=x+(w-pw)/2, py=y+h*0.08;
+     rr(px,py,pw,ph,pw*0.16); ctx.fill(); ctx.stroke();
+     ctx.save(); ctx.fillStyle='rgba(0,0,0,.22)';            // camera bump
+     ctx.beginPath(); ctx.arc(px+pw*0.24,py+ph*0.11,pw*0.075,0,7); ctx.fill(); ctx.restore();
+   }} else if(g.indexOf('journal')>=0||g.indexOf('notebook')>=0){{
+     var jw=w*0.56, jh=h*0.74, jx=x+(w-jw)/2, jy=y+h*0.13;
+     rr(jx,jy,jw,jh,jw*0.04); ctx.fill(); ctx.stroke();
+     ctx.save(); ctx.strokeStyle='rgba(0,0,0,.22)';
+     ctx.beginPath(); ctx.moveTo(jx+jw*0.13,jy); ctx.lineTo(jx+jw*0.13,jy+jh); ctx.stroke();   // spine
+     ctx.strokeStyle='rgba(0,0,0,.32)'; ctx.lineWidth=Math.max(3,jw*0.035);
+     ctx.beginPath(); ctx.moveTo(jx+jw*0.82,jy); ctx.lineTo(jx+jw*0.82,jy+jh); ctx.stroke();   // elastic band
+     ctx.restore();
+   }} else if(g.indexOf('mouse')>=0){{
+     var mw=w*0.80, mh=h*0.52, mx=x+(w-mw)/2, my=y+(h-mh)/2;
+     rr(mx,my,mw,mh,mh*0.16); ctx.fill(); ctx.stroke();
+   }} else if(g.indexOf('sticker')>=0){{
+     var sw=w*0.62, sh=h*0.62, sx=x+(w-sw)/2, sy=y+(h-sh)/2, pad=Math.max(5,sw*0.05);
+     ctx.save(); ctx.fillStyle='#fff'; rr(sx-pad,sy-pad,sw+2*pad,sh+2*pad,sh*0.18); ctx.fill();
+     ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.stroke(); ctx.restore();           // die-cut white border
+     rr(sx,sy,sw,sh,sh*0.15); ctx.fill(); ctx.stroke();
+   }} else {{
+     rr(x+w*0.06,y+h*0.06,w*0.88,h*0.88,Math.min(w,h)*0.04); ctx.fill(); ctx.stroke();
+   }}
+   ctx.restore();
+ }}
+ // Branded mode now previews on the ACTUAL product silhouette (selected colour),
+ // so the design reads on the real product instead of a plain grey card.
  function _drawBrandedField(ctx,x,y,w,h){{
    var cn=(CURFMT.split(' - ')[1]||'White'); var col=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#f2efe9';
-   ctx.save(); ctx.fillStyle=col; ctx.fillRect(x,y,w,h);
-   ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h); ctx.restore(); }}
+   _drawBrandedShape(ctx,x,y,w,h,col,(typeof CURGARMENT!=='undefined'?CURGARMENT:'').toLowerCase()); }}
  // A MUG prints on its WHITE ceramic body; the colour variant is the rim/handle
  // ACCENT (not the print field). Fill a light ceramic body with a thin accent
  // band along the TOP edge as the rim cue, keeping auto-contrast text dark-on-light.

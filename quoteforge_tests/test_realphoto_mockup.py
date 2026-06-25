@@ -206,6 +206,17 @@ def test_spin_button_label_is_product_accurate(tmp_path):
     assert "See it on your product" in h                       # flat single-face
 
 
+def test_branded_products_show_real_shape_in_editor(tmp_path):
+    # The editor previews branded products on their ACTUAL product silhouette (flat,
+    # 2D) so the buyer sees the real thing - a keychain reads as a keychain, a tote
+    # as a tote - not a mystery grey rectangle.
+    h = _page(tmp_path)
+    assert "function _drawBrandedShape" in h
+    assert "_drawBrandedShape(ctx,x,y,w,h" in h           # the field delegates to the shape
+    for kind in ("keychain", "tote", "phone", "journal", "notebook", "mouse", "sticker"):
+        assert kind in h, kind                            # a branch per product family
+
+
 def test_apparel_colour_guard_on_real_photo(tmp_path):
     # REGRESSION: the colour-agnostic side photo only stands in when per-colour
     # photos exist - else a black shirt would render as a white studio shot.
