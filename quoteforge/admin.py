@@ -2575,8 +2575,76 @@ def _cmd_map_gelato(args: list[str]) -> int:
     return 0
 
 
+def _mockup_stamp() -> str:
+    """UTC ISO timestamp passed into the mockup-sync engine for its checkpoints."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _cmd_mockup_sync(args: list[str]) -> int:
+    """Daily Gelato base-mockup sync (checkpoints 1-6). `mockup-sync`. No-op until
+    live; never publishes (that needs the two confirming agents)."""
+    from quoteforge.automation import mockup_sync as ms
+    s = ms.run_sync(stamp=_mockup_stamp())
+    print("Mockup sync:", ", ".join(f"{k}={v}" for k, v in s.items()))
+    if s.get("live_gated"):
+        print("  (live-gated: no-op until GELATO_API_KEY + real UIDs are set)")
+    return 0
+
+
+def _cmd_mockup_confirm(args: list[str]) -> int:
+    """Compute confirmation from the two agents' recorded verdicts (run the
+    gelato-mockup-reviewer + gelato-sku-image-match agents over the READY set
+    first; this promotes PASS&&MATCH to confirmed, else held)."""
+    from quoteforge.automation import mockup_sync as ms
+    c = ms.confirm(stamp=_mockup_stamp())
+    print("Mockup confirm:", ", ".join(f"{k}={v}" for k, v in c.items()))
+    return 0
+
+
+def _cmd_mockup_review(args: list[str]) -> int:
+    """Per-product checkpoint + agent-verdict table. `mockup-review`."""
+    from quoteforge.automation import mockup_sync as ms
+    rows = ms.review_rows()
+    print(f"{'product':22} {'cat':9} {'status':11} {'review':6} {'match':9} conf live")
+    for r in rows:
+        print(f"{(r['product_id'] or ''):22} {(r['category'] or ''):9} "
+              f"{(r['status'] or ''):11} {(r['review'] or '-'):6} "
+              f"{(r['match'] or '-'):9} {('Y' if r['confirmed'] else '.'):4} "
+              f"{'Y' if r['live'] else '.'}")
+    return 0
+
+
+def _cmd_mockup_override(args: list[str]) -> int:
+    """Human escape hatch. `mockup-override <product_id> approve|hold`."""
+    from quoteforge.automation import mockup_sync as ms
+    if len(args) < 2 or args[1] not in ("approve", "hold"):
+        print("usage: mockup-override <product_id> approve|hold")
+        return 2
+    ok = ms.override(args[0], args[1], stamp=_mockup_stamp())
+    print(f"{'OK' if ok else 'FAILED'}: {args[0]} -> {args[1]}")
+    return 0 if ok else 1
+
+
+def _cmd_mockup_publish(args: list[str]) -> int:
+    """Promote confirmed products into their live block, then rebuild the site.
+    `mockup-publish [--no-rebuild]`."""
+    from quoteforge.automation import mockup_sync as ms
+    p = ms.publish(stamp=_mockup_stamp())
+    print("Mockup publish:", ", ".join(f"{k}={v}" for k, v in p.items()))
+    if "--no-rebuild" not in args and p.get("published"):
+        print("Rebuilding storefront with the confirmed mockups...")
+        return _cmd_rebuild_site([])
+    return 0
+
+
 COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
+    "mockup-sync": _cmd_mockup_sync,
+    "mockup-confirm": _cmd_mockup_confirm,
+    "mockup-review": _cmd_mockup_review,
+    "mockup-override": _cmd_mockup_override,
+    "mockup-publish": _cmd_mockup_publish,
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,

@@ -105,6 +105,29 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
     return url
 
 
+def gelato_template_printarea(uid: str) -> dict | None:
+    """Print placement for a product UID, as a fraction-of-photo rect for the mockup
+    sync: ``{area:[x,y,w,h], cyl, span}`` or None.
+
+    Gelato's Get-Template API exposes per-variant image placeholders with a
+    ``printArea`` + ``height``/``width``. Mapping those onto the *mockup photo's*
+    pixel rect is account/template-specific, so this is the documented seam:
+    key-gated, returns None until the mapping is calibrated against a live account
+    (the engine then falls back to the per-category geometry default, and the
+    gelato-mockup-reviewer agent flags any product whose default is off). Never
+    raises."""
+    try:
+        from quoteforge.config import TEST_MODE
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        if TEST_MODE or not GELATO_API_KEY or not uid or str(uid).startswith("GEL-"):
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    # TODO(calibrate-with-live): fetch the template, read printArea/dims, map to the
+    # mockup-photo fraction rect. Until then the per-category default is used.
+    return None
+
+
 def apparel_tile_images(*, refresh: bool = False) -> dict:
     """Map garment_type -> real product image URL, one representative SKU per type
     (Classic tier, first colour/size). Only types that resolve to a real image are
