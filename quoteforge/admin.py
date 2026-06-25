@@ -2626,6 +2626,35 @@ def _cmd_mockup_override(args: list[str]) -> int:
     return 0 if ok else 1
 
 
+def _cmd_mockup_readiness(args: list[str]) -> int:
+    """Go-live gate per product: preview matches Gelato (confirmed) + SKU routes to
+    a real Gelato UID + margin clears the floor. `mockup-readiness [email]`."""
+    from quoteforge.automation import mockup_sync as ms
+    rows = ms.readiness()
+    go = [r for r in rows if r["go"]]
+    blocked = [r for r in rows if not r["go"]]
+    lines = [f"GO-LIVE READINESS - {len(go)}/{len(rows)} products ready",
+             "=" * 60]
+    for r in blocked:
+        mp = f"{r['margin_pct']:.0f}%" if r["margin_pct"] is not None else "?"
+        lines.append(f"  [NO-GO] {r['product_id']:20} preview={r['preview']:9} "
+                     f"sku={'Y' if r['sku_ok'] else 'N'} margin={mp}")
+        for why in r["reasons"]:
+            lines.append(f"           - {why}")
+    if not blocked:
+        lines.append("  ALL PRODUCTS READY")
+    text = "\n".join(lines)
+    print(text)
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        _send_email("Joffiels Go-Live Readiness (preview/SKU/margin)",
+                    f"<html><body><pre style='font-size:12px'>{text}</pre></body></html>",
+                    to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    return 0
+
+
 def _cmd_mockup_publish(args: list[str]) -> int:
     """Promote confirmed products into their live block, then rebuild the site.
     `mockup-publish [--no-rebuild]`."""
@@ -2645,6 +2674,7 @@ COMMANDS = {
     "mockup-review": _cmd_mockup_review,
     "mockup-override": _cmd_mockup_override,
     "mockup-publish": _cmd_mockup_publish,
+    "mockup-readiness": _cmd_mockup_readiness,
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,

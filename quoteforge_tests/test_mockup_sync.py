@@ -145,6 +145,40 @@ def test_human_override_is_an_escape_hatch(cat_file, monkeypatch):
 
 # ── Future growth: enumeration is generic across all families ─────────────
 
+def test_readiness_gate_ties_preview_sku_and_margin(cat_file, monkeypatch):
+    # The go-live gate: a product is GO only when its preview is confirmed (matches
+    # Gelato), its SKU resolves to a real UID (the order routes), and margin clears
+    # the floor. Confirm+publish one product and it should read GO with margin shown.
+    _go_live(monkeypatch)
+    fetch, rehost, pa = _fakes()
+    ms.run_sync(stamp="T", fetch_image=fetch, rehost=rehost, printarea=pa)
+    pid = next(r["product_id"] for r in ms.review_rows() if r["status"] == "ready")
+    ms.apply_verdicts(pid, review="PASS", match="MATCH", stamp="T")
+    ms.confirm(stamp="T"); ms.publish(stamp="T")
+    row = next(r for r in ms.readiness() if r["product_id"] == pid)
+    assert row["sku_ok"] is True and row["preview"] == "confirmed"
+    assert row["margin_pct"] is not None          # economics resolved from the catalog
+    if row["margin_ok"]:                            # POD products clear the 60% floor
+        assert row["go"] is True
+
+
+def test_readiness_blocks_when_sku_unmapped(cat_file, monkeypatch):
+    # No real UID (pre-live / placeholder) → every product is NO-GO with the SKU
+    # reason, so a customer can never order something that won't route to Gelato.
+    monkeypatch.setattr(ms, "_real_uid", lambda sku: None)
+    rows = ms.readiness()
+    assert rows and all(r["go"] is False for r in rows)
+    assert any("no real Gelato UID" in " ".join(r["reasons"]) for r in rows)
+
+
+def test_readiness_computes_margin_from_catalog(cat_file):
+    # Margin is checked against the real catalog economics, not assumed.
+    rows = ms.readiness()
+    mugs = [r for r in rows if r["category"] == "mug" and r["margin_pct"] is not None]
+    assert mugs, "no mug economics resolved"
+    assert all(r["margin_pct"] > 0 for r in mugs)
+
+
 def test_enumerates_all_product_families(cat_file):
     prods = ms.all_products()
     cats = {p["category"] for p in prods}
