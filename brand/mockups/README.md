@@ -1,54 +1,62 @@
-# Product preview — real-photo override (optional)
+# Real Gelato product photos — drop sheet (exact-match previews)
 
-The customization preview (editor + the inline **"Spin your product"** view) shows
-the buyer's design **on the real product photo**. It already pulls those photos
-**automatically** from the same pipeline the grid tiles use — the
-`tile-<product_id>.jpg` files the `product-photos` agent downloads (apparel uses
-the per-colour / front+back photos). So you normally do **nothing** here.
+We resell Gelato products, so the customization preview should look like the
+**actual Gelato product**. Drop the real Gelato photo for a product in here and the
+editor + preview composite the customer's design **onto that exact photo**. The
+image is **re-hosted locally** on build, so the published page never contains the
+word "gelato" (the hard no-supplier-leak rule still holds — checked on every build).
 
-**This folder is only an override** — use it when you want to (a) supply a
-different photo just for the preview, or (b) fine-tune *where* the print sits on a
-photo via the geometry sidecar (below). When empty, the auto pipeline + a clean
-generated fallback are used, so nothing ever breaks.
+> Until a photo is added, a product uses a clean generated preview (flat products
+> show a recognizable silhouette; mugs/bottles show the print field + spin). Adding
+> a photo here **upgrades that product to the real picture** — nothing breaks while
+> it's empty.
 
-## How to override one
+## What to export from Gelato
 
-1. Export a clean, front-on product photo (white/neutral background is ideal) —
-   export it once from your print-partner mockup studio, or use any real product
-   shot.
-2. Save it here as **`<product_id>.png`** or `.jpg` (the product ids are the same
-   ones used by the tile photos — see the table below).
-3. *(Optional but recommended)* add a sidecar **`<product_id>.json`** that marks
-   where the print sits on the photo, as fractions `0–1` of the image:
+For each product, in your **Gelato dashboard → the product → Mockups / product
+image**, export **one clean, front-on shot on a white/neutral background** with
+**no sample design on it** (a blank product). PNG or JPG. Then save it here with the
+exact filename below and run `python -m quoteforge.admin rebuild-site`
+(or just send me the files and I'll name, re-host, tune, and rebuild).
 
-   ```json
-   { "area": [0.30, 0.34, 0.40, 0.34], "cyl": true, "span": 1.9 }
-   ```
-   - `area` = `[x, y, width, height]` of the print rectangle on the photo.
-   - `cyl` = `true` for round products (mug / bottle / tumbler) so the design
-     wraps on the barrel; `false` for flat products (tee / poster / tote).
-   - `span` = how much of the barrel front is visible (radians; ~1.9 is a good
-     default). Ignored when `cyl:false`.
+> **Blank is important.** Use the *plain* product shot — not a marketing image that
+> already has a sample design printed on it (that would show the sample, not the
+> customer's art).
 
-   With no sidecar, sensible defaults are used (a centred print, and `cyl` inferred
-   from the product name).
-4. Run `python -m quoteforge.admin rebuild-site`.
+## Filenames (`<product_id>.png`)
 
-## Product ids (key cylindrical ones first)
+**🍵 Mugs** — `classic_mug` · `large_mug` · `color_mug` · `accent_mug` ·
+`enamel_mug` · `travel_mug` · `xl_mug`
 
-| Product | Save as |
-|---|---|
-| Insulated Stainless Water Bottle | `bottle.png` |
-| Stainless Tumbler | `tumbler.png` |
-| Classic Ceramic Mug (11oz) | `classic_mug.png` |
-| Large Ceramic Mug (15oz) | `large_mug.png` |
-| Enamel Camp Mug (12oz) | `enamel_mug.png` |
-| Organic Cotton Tote Bag | `tote.png` |
-| Hardcover Journal | `journal.png` |
+**🎁 Branded** — `tote` · `bottle` · `tumbler` · `mousepad` · `notebook` ·
+`journal` · `sticker` · `phonecase` · `keychain`
 
-Apparel garments and other products use the **same ids** as their tile photos —
-see [`../PRODUCT_PHOTO_FILENAMES.md`](../PRODUCT_PHOTO_FILENAMES.md).
+**📅 Calendars** — `wall_cal` · `desk_cal` · `family_cal` · `corporate_cal` ·
+`photo_cal` · `event_cal` · `promo_cal`
 
-> **Customer-safe:** only the image bytes + geometry are published to the
-> storefront — never a supplier or marketplace name. The page is checked for that
-> on every build.
+**👕 Apparel** — by `garment_id` (a colour-neutral / white shot, one per garment):
+`m_tshirt` · `w_tshirt` · `m_tank` · `w_tank` · `m_longsleeve` · `w_longsleeve` ·
+`m_raglan` · `w_raglan` · `m_polo` · `m_hoodie` · `w_hoodie` · `m_sweatshirt` ·
+`w_sweatshirt`
+
+## Optional: tell it where the print sits (`<product_id>.json`)
+
+I'll tune these for you once your photos are in, but for reference — a sidecar next
+to the image marks the print rectangle as fractions `0–1` of the photo:
+
+```json
+{ "area": [0.30, 0.34, 0.40, 0.34], "cyl": true, "span": 1.9 }
+```
+- `area` = `[x, y, width, height]` of the print zone on the photo.
+- `cyl` = `true` for round products (mug / bottle / tumbler) so the design wraps on
+  the barrel; `false` for flat products (tote / phone case / tee …).
+- `span` = how much of the barrel front is visible (radians; ~1.9 default).
+
+With no sidecar, sensible defaults are used (centred print; `cyl` inferred from the
+product name).
+
+## The simplest hand-off
+
+**Send me the exported photos** (or drop them in this folder). I'll re-host them,
+set the print-area geometry per product so the design lands exactly right, rebuild,
+and give you the UAT link — and confirm no "gelato" leaks into the page.
