@@ -213,6 +213,19 @@ def test_apparel_colour_guard_on_real_photo(tmp_path):
     assert "if(!hasColor) return null;" in h
 
 
+def test_open_spin_updates_live_on_edit(tmp_path):
+    # REGRESSION: the spin showed a frozen snapshot, so editing text/photo/colour
+    # while it was open didn't change it ("cannot change the picture or text").
+    # drawArt now flags _SPIN_DIRTY on a real edit (guarded so the spin's own
+    # snapshotting doesn't false-trigger), and each open spin re-renders.
+    h = _page(tmp_path)
+    assert "var _SPIN_DIRTY=false, _SNAPPING=false;" in h
+    assert "if(!_SNAPPING) _SPIN_DIRTY=true;" in h            # edit -> dirty
+    assert "_SNAPPING=true;" in h                             # read-helpers guard it
+    assert "var ns=_designSnap(); if(ns) snap=ns;" in h       # cylinder re-snapshots
+    assert "if(_SPIN_DIRTY){ _SPIN_DIRTY=false; _render(); }" in h   # flip review re-renders
+
+
 def test_product_switch_dismisses_open_spin(tmp_path):
     # REGRESSION: opening the spin on a mug, then switching to a tank top, left the
     # stale mug spin running over the apparel editor (the _openCylSpin loop never
