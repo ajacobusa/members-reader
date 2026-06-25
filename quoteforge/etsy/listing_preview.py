@@ -5021,6 +5021,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _composedProofURL(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return '';
    const mg=document.getElementById('mgarment');
+   _SNAPPING=true;                       // internal redraws are a READ, not an edit
    _CLEAN=true; drawArt();               // redraw the design WITHOUT the editor chrome
    let url='';
    if(!mg || mg.style.display==='none' || !mg.complete || !mg.naturalWidth){{
@@ -5038,6 +5039,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      catch(e){{ try{{ url=cv.toDataURL('image/png'); }}catch(e2){{ url=''; }} }}
    }}
    _CLEAN=false; drawArt();              // restore the editor view (chrome back)
+   _SNAPPING=false;
    return url;
  }}
  // ── Final preview: rotate the garment front<->back so the buyer reviews BOTH
@@ -6147,12 +6149,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function _mugMockupURL(){{
    var cv=document.getElementById('mcanvas'); if(!cv) return '';
+   _SNAPPING=true;
    _CLEAN=true; drawArt();
    var b=APPAREL_BOUND||{{x:cv.width*0.2,y:cv.height*0.2,w:cv.width*0.6,h:cv.height*0.5}};
    var cn=(CURFMT.split(' - ')[1]||'White'); var acc=(typeof APPARELCOLOR!=='undefined'&&APPARELCOLOR[cn])||'#c9a14a';
    var oc=document.createElement('canvas'); oc.width=cv.width; oc.height=cv.height;
    try{{ _drawMugMockup(oc.getContext('2d'),cv,b,oc.width,oc.height,acc); }}catch(e){{}}
-   _CLEAN=false; drawArt();
+   _CLEAN=false; drawArt(); _SNAPPING=false;
    try{{ return oc.toDataURL('image/png'); }}catch(e){{ return ''; }}
  }}
  // ── Real product-photo mockups (owner-supplied; auto-upgrade) ────────────────
@@ -6161,6 +6164,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // preview. Empty until photos are dropped in -> the editor's generated mockup
  // is used. No supplier/marketplace names are emitted (customer-safe).
  var _MOCKCACHE={{}};
+ // When the design changes, the OPEN spin re-renders so editing text/photo/colour
+ // is reflected live (it used to show a frozen snapshot -> looked like you "cannot
+ // change" anything). drawArt sets _SPIN_DIRTY; the read-design helpers set
+ // _SNAPPING so their internal drawArt calls don't falsely flag a change.
+ var _SPIN_DIRTY=false, _SNAPPING=false;
  function _mockKey(){{ var g=(typeof CURGARMENT!=='undefined'&&CURGARMENT)?CURGARMENT:'';
    if(g) return g; var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return f.split(' - ')[0]||''; }}
  // Resolve the real-photo mockup base for the current product, in priority order:
@@ -6217,10 +6225,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Snapshot the CLEAN design (no editor chrome) from #mcanvas into an offscreen
  // canvas, so the wrap/composite never picks up the editor overlay.
  function _designSnap(){{ var cv=document.getElementById('mcanvas'); if(!cv) return null;
+   _SNAPPING=true;                       // snapshotting is a READ, not an edit
    _CLEAN=true; if(typeof drawArt==='function') drawArt();
    var s=document.createElement('canvas'); s.width=cv.width; s.height=cv.height;
    try{{ s.getContext('2d').drawImage(cv,0,0); }}catch(e){{}}
-   _CLEAN=false; if(typeof drawArt==='function') drawArt(); return s; }}
+   _CLEAN=false; if(typeof drawArt==='function') drawArt(); _SNAPPING=false; return s; }}
  // Wrap a design panel `b` (src px) onto a cylinder's print `area` ([x,y,w,h] px).
  // span=visible front arc (rad); arc=barrel arc the print covers; rot=spin offset.
  // Columns outside the print arc are left bare (body/photo shows through), so a
@@ -6327,6 +6336,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // still gives full manual control; a late-loading real photo upgrades in place.
    (function loop(){{ if(!_3d.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){{ hadPhoto=hp; dirty=true; }}
+     if(_SPIN_DIRTY){{ var ns=_designSnap(); if(ns) snap=ns; _SPIN_DIRTY=false; dirty=true; }}  // live edit
      if(!drag){{ tick++; rot=0.42*Math.sin(tick*0.022); dirty=true; }}
      if(dirty){{ frame(); dirty=false; }} requestAnimationFrame(loop); }})();
  }}
@@ -6365,6 +6375,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    im.addEventListener('click',function(){{ if(moved){{ moved=false; return; }} _flip(); }});
    im.addEventListener('touchstart',function(e){{ moved=false; lx=(e.touches[0]||{{}}).clientX||0; }},{{passive:true}});
    im.addEventListener('touchmove',function(e){{ var x=(e.touches[0]||{{}}).clientX||0; if(lx&&Math.abs(x-lx)>50){{ moved=true; _flip(); lx=0; }} }},{{passive:true}});
+   _SPIN_DIRTY=false; _3d={{on:true}};   // live-update when the buyer edits while reviewing
+   (function _w(){{ if(!_3d.on) return; if(_SPIN_DIRTY){{ _SPIN_DIRTY=false; _render(); }} requestAnimationFrame(_w); }})();
  }}
  function _showFlatPhoto(url){{
    _setMockTitle(true);
@@ -6372,7 +6384,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    mount.innerHTML='';
    var im=document.createElement('img'); im.src=url; im.alt='Realistic product preview';
    im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px';
-   mount.appendChild(im); _3d={{on:false}};
+   mount.appendChild(im); _SPIN_DIRTY=false; _3d={{on:true}};
+   (function _w(){{ if(!_3d.on) return; if(_SPIN_DIRTY){{ _SPIN_DIRTY=false; var u=_photoMockupURL(); if(u) im.src=u; }} requestAnimationFrame(_w); }})();
  }}
  // Flat real-photo mockup (poster / tee / tote): design composited into the
  // photo's print area. '' when no usable photo is registered/loaded.
@@ -6530,6 +6543,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
+   if(!_SNAPPING) _SPIN_DIRTY=true;   // a real edit -> the open spin re-renders live
    if(typeof _preloadMock==='function') _preloadMock();   // warm the real-photo mockup (cheap, idempotent)
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
    // Real product mockup (go-live): show the ACTUAL garment photo in the selected
