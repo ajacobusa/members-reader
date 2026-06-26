@@ -183,6 +183,37 @@ def test_gate_never_raises_on_garbage(tmp_path):
     assert r["status"] == "FAIL"
 
 
+# ── 7. the gate is correct for EVERY product family, not just posters ──────
+@pytest.mark.parametrize("token,expect_dims", [
+    ("16x20", (4800, 6000)),     # wall-art (WxH)
+    ("11oz", (2220, 1025)),      # mug
+    ("calendar", (2480, 3508)),  # calendar FAMILY tag (storefront sends this per month)
+    ("A4", (2480, 3508)),        # calendar paper size
+    ("tote", (3000, 3600)),      # branded product id
+    ("branded", (3000, 3000)),   # branded family tag
+    ("m_tshirt", (3600, 4800)),  # apparel garment id
+    ("apparel", (3600, 4800)),   # apparel family tag
+])
+def test_print_dimensions_resolve_per_family(token, expect_dims):
+    # REGRESSION: branded / calendar / apparel used to fall back to an 18x24 poster
+    # (5400x7200) because dimensions_for only searched the wall-art catalog.
+    from quoteforge.etsy.gelato_catalog import dimensions_for
+    assert dimensions_for(token) == expect_dims
+    assert dimensions_for(token) != (5400, 7200) or token == "16x20"
+
+
+def test_calendar_photo_not_falsely_rejected(tmp_path):
+    # REGRESSION: a calendar month photo is tagged size='calendar'. It used to be
+    # measured against an 18x24 poster and a good 2000x2500 photo was FALSELY rejected
+    # (~104 DPI). Against the real calendar page it's ~213 DPI -> accepted.
+    p = tmp_path / "month.jpg"
+    _photo(2000, 2500).save(p, "JPEG", quality=92)
+    cal = quality_report(p, "calendar", run_ai=False)
+    poster = quality_report(p, "24x36", run_ai=False)
+    assert cal["effective_dpi"] > poster["effective_dpi"]      # smaller real area
+    assert cal["status"] in ("PASS", "WARN", "ENHANCE")        # not FAIL
+
+
 # ── 6. score any REAL photos the owner dropped into the fixtures folder ────
 _real = sorted(FIXTURE_DIR.glob("*.jpg")) + sorted(FIXTURE_DIR.glob("*.png")) \
     if FIXTURE_DIR.exists() else []

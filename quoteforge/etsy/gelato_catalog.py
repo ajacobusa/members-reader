@@ -561,12 +561,74 @@ def get_product(identifier: str) -> "GelatoProduct | None":
     return None
 
 
+def _family_print_dimensions(identifier: str) -> "tuple[int, int] | None":
+    """Resolve print pixel dimensions for the NON-wall-art families (calendar,
+    branded, apparel) from a product id, a family size token, or a family keyword.
+
+    The customer-photo gate computes effective DPI from these, so a photo on a mug,
+    calendar, tote or tee must be measured against THAT product's print area - not a
+    poster. The storefront, for instance, tags every calendar month photo with the
+    family keyword 'calendar' (not a paper size), so that must resolve too. Returns
+    None when no family matches (caller then uses the poster default). Lazy imports
+    keep this leaf module free of catalog import cycles; never raises."""
+    if not identifier:
+        return None
+    key = identifier.strip().lower()
+    # Calendar - family tag, product id, or paper size (A3/A4/A5/A6).
+    try:
+        from quoteforge.etsy.calendar_catalog import (get_calendar, DEFAULT_CAL_DIMS,
+                                                      build_calendar_variations)
+        if key in ("calendar", "cal", "photo calendar"):
+            return DEFAULT_CAL_DIMS
+        c = get_calendar(key)
+        if c:
+            return (c.width_px, c.height_px)
+        for v in build_calendar_variations():
+            if v.size.lower() == key:
+                cc = get_calendar(v.product_id)
+                if cc:
+                    return (cc.width_px, cc.height_px)
+    except Exception:  # noqa: BLE001 - resolution is best-effort
+        pass
+    # Branded - family tag or product id (tote / bottle / tumbler / mousepad ...).
+    try:
+        from quoteforge.etsy.branded_catalog import (get_product as _bget,
+                                                     DEFAULT_BRANDED_DIMS)
+        if key in ("branded", "accessory", "accessories"):
+            return DEFAULT_BRANDED_DIMS
+        b = _bget(key)
+        if b:
+            return (b.width_px, b.height_px)
+    except Exception:  # noqa: BLE001
+        pass
+    # Apparel - family tag or garment id (the print field is constant across S-5XL).
+    try:
+        from quoteforge.etsy.apparel_catalog import get_garment, DEFAULT_APPAREL_DIMS
+        if key in ("apparel", "tshirt", "t-shirt", "tee", "shirt", "hoodie",
+                   "sweatshirt", "tank", "longsleeve", "long sleeve"):
+            return DEFAULT_APPAREL_DIMS
+        g = get_garment(key)
+        if g:
+            return (g.width_px, g.height_px)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def dimensions_for(identifier: str,
                    default: tuple[int, int] = (5400, 7200)) -> tuple[int, int]:
-    """Return (width_px, height_px) at 300 DPI for a product, or a sane default
-    (18x24 in) when the product can't be resolved."""
+    """Return (width_px, height_px) at 300 DPI for a product across ALL families
+    (wall-art, mug, calendar, branded, apparel), matched by id / sku / size / family
+    keyword. Falls back to an 18x24 poster only when nothing resolves.
+
+    This is what the customer-photo gate uses to compute effective DPI, so it must
+    resolve every product a photo can land on - measuring a calendar or mug photo
+    against an 18x24 poster over-rejects perfectly good photos."""
     p = get_product(identifier)
-    return (p.width_px, p.height_px) if p else default
+    if p:
+        return (p.width_px, p.height_px)
+    dims = _family_print_dimensions(identifier)
+    return dims if dims else default
 
 
 def calculate_profit(product_id: str, sale_price: float) -> dict:
