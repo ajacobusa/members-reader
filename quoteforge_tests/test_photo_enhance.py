@@ -93,3 +93,111 @@ def test_cli_enhance_photo(tmp_path, capsys):
     out = capsys.readouterr().out
     assert rc == 0
     assert "RESCUED" in out and "lanczos" in out
+
+
+# ── AI super-resolution provider wiring (mocked HTTP - no live key) ─────────
+def _png_bytes(w, h):
+    from io import BytesIO
+    b = BytesIO()
+    Image.new("RGB", (w, h), (130, 130, 130)).save(b, "PNG")
+    return b.getvalue()
+
+
+def _ai_config(monkeypatch, **over):
+    """Turn the AI tier ON with a fake key (TEST_MODE off only for this test, then
+    reverted by monkeypatch). photo_enhance never imports gelato_api, so this does
+    not touch the live-API binding."""
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "TEST_MODE", False)
+    monkeypatch.setattr(cfg, "AI_PHOTO_ENHANCE", True)
+    monkeypatch.setattr(cfg, "AI_UPSCALE_API_KEY", "test-key")
+    monkeypatch.setattr(cfg, "AI_UPSCALE_API_URL", over.get("url", "http://sr/scale"))
+    monkeypatch.setattr(cfg, "AI_UPSCALE_PROVIDER", over.get("provider", "generic"))
+    monkeypatch.setattr(cfg, "AI_UPSCALE_MODEL", over.get("model", ""))
+
+
+def test_generic_ai_provider_is_used(tmp_path, monkeypatch):
+    # REGRESSION: with a generic SR endpoint configured, the AI upscaler is called
+    # and its valid, big-enough output is used - method 'ai', not the baseline.
+    _ai_config(monkeypatch)
+    import requests
+    big = _png_bytes(3200, 4000)
+
+    class _R:
+        status_code = 200
+        headers = {"content-type": "image/png"}
+        content = big
+    monkeypatch.setattr(requests, "post", lambda *a, **k: _R())
+    p = _photo(tmp_path / "low.jpg", (1200, 1500))      # ~75 DPI @ 16x20
+    res = enhance_to_print(p, "16x20", tmp_path)
+    assert res["method"] == "ai" and res["ok"] is True
+
+
+def test_replicate_provider_is_used(tmp_path, monkeypatch):
+    # REGRESSION: the Replicate async path - create prediction, already succeeded,
+    # download the output - yields method 'ai' at the 4x cap.
+    _ai_config(monkeypatch, provider="replicate", url="", model="ver-123")
+    import requests
+    big = _png_bytes(3200, 4000)
+
+    class _Post:
+        status_code = 201
+
+        @staticmethod
+        def json():
+            return {"status": "succeeded", "output": "http://rep/out.png",
+                    "urls": {"get": "http://rep/poll"}}
+
+    class _Get:
+        status_code = 200
+        content = big
+    monkeypatch.setattr(requests, "post", lambda *a, **k: _Post())
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Get())
+    p = _photo(tmp_path / "low.jpg", (1200, 1500))
+    res = enhance_to_print(p, "16x20", tmp_path)
+    assert res["method"] == "ai" and res["ok"] is True
+
+
+def test_bad_ai_response_falls_back_to_lanczos(tmp_path, monkeypatch):
+    # REGRESSION: a provider returning garbage must NOT cost us the reliable Lanczos
+    # baseline - we validate the bytes are a real image and fall back when not.
+    _ai_config(monkeypatch)
+    import requests
+
+    class _R:
+        status_code = 200
+        headers = {"content-type": "image/png"}
+        content = b"this is not an image"
+    monkeypatch.setattr(requests, "post", lambda *a, **k: _R())
+    p = _photo(tmp_path / "low.jpg", (1800, 2400))
+    res = enhance_to_print(p, "18x24 in", tmp_path)
+    assert res["method"] == "lanczos" and res["ok"] is True
+
+
+def test_undersized_ai_response_falls_back_to_lanczos(tmp_path, monkeypatch):
+    # A valid but too-small AI result (below 0.9x target) is rejected -> Lanczos.
+    _ai_config(monkeypatch)
+    import requests
+    tiny = _png_bytes(300, 375)
+
+    class _R:
+        status_code = 200
+        headers = {"content-type": "image/png"}
+        content = tiny
+    monkeypatch.setattr(requests, "post", lambda *a, **k: _R())
+    p = _photo(tmp_path / "low.jpg", (1800, 2400))
+    res = enhance_to_print(p, "18x24 in", tmp_path)
+    assert res["method"] == "lanczos"
+
+
+def test_ai_never_called_in_test_mode(tmp_path, monkeypatch):
+    # Safety: even with a key set, TEST_MODE must keep the network untouched.
+    import quoteforge.config as cfg, quoteforge.images.photo_enhance as pe
+    monkeypatch.setattr(cfg, "AI_UPSCALE_API_KEY", "test-key")
+    monkeypatch.setattr(cfg, "AI_UPSCALE_API_URL", "http://sr/scale")
+    monkeypatch.setattr(cfg, "TEST_MODE", True)
+    called = {"n": 0}
+    monkeypatch.setattr(pe, "_upscale_generic",
+                        lambda *a, **k: called.__setitem__("n", called["n"] + 1))
+    assert pe._ai_upscale(tmp_path, 100, 100, 2.0) is None
+    assert called["n"] == 0

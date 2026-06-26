@@ -28,32 +28,125 @@ _LANCZOS_MAX_SCALE = 2.0
 _AI_MAX_SCALE = 4.0
 
 
-def _ai_upscale(src: Path, target_w: int, target_h: int) -> bytes | None:
-    """Pluggable AI super-resolution. POSTs the source image to the configured
-    provider and returns the enhanced PNG bytes, or None on any problem (so the
-    caller falls back to the Lanczos baseline). Key-gated + TEST_MODE-safe:
-    never calls the network without a real key."""
-    from quoteforge.config import TEST_MODE
+def _http_get_bytes(url: str, headers: dict | None = None,
+                    timeout: int = 60) -> bytes | None:
+    """GET a URL and return its body bytes, or None on any problem."""
     try:
-        from quoteforge.config import AI_UPSCALE_API_KEY, AI_UPSCALE_API_URL
-    except Exception:  # noqa: BLE001 — config without the keys: no AI tier
+        import requests
+        r = requests.get(url, headers=headers or {}, timeout=timeout)
+        if r.status_code == 200 and r.content:
+            return r.content
+    except Exception:  # noqa: BLE001
         return None
-    if TEST_MODE or not AI_UPSCALE_API_KEY or not AI_UPSCALE_API_URL:
+    return None
+
+
+def _provider_output_bytes(out, headers: dict | None = None) -> bytes | None:
+    """Normalise a provider's 'output' field (a hosted URL, a data: URI, or a list
+    of either) to raw image bytes."""
+    if isinstance(out, (list, tuple)) and out:
+        out = out[0]
+    if not isinstance(out, str) or not out:
         return None
+    if out.startswith("http"):
+        return _http_get_bytes(out, headers=headers)
+    if out.startswith("data:") and "," in out:
+        try:
+            import base64
+            return base64.b64decode(out.split(",", 1)[1])
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
+def _upscale_generic(src: Path, target_w: int, target_h: int, scale: float,
+                     url: str, key: str) -> bytes | None:
+    """A synchronous endpoint (e.g. your own Real-ESRGAN / GFPGAN server): POST the
+    image as multipart and get back the upscaled image bytes - or a JSON body
+    carrying an output URL / data-URI."""
     try:
         import requests
         with open(src, "rb") as fh:
             resp = requests.post(
-                AI_UPSCALE_API_URL,
-                headers={"Authorization": f"Bearer {AI_UPSCALE_API_KEY}"},
+                url, headers={"Authorization": f"Bearer {key}"},
                 files={"image": fh},
-                data={"target_width": target_w, "target_height": target_h},
-                timeout=60)
-        if resp.status_code == 200 and resp.content:
-            return resp.content
-    except Exception:  # noqa: BLE001 — any failure → Lanczos baseline
+                data={"target_width": target_w, "target_height": target_h,
+                      "scale": round(scale, 3)},
+                timeout=120)
+        if resp.status_code != 200:
+            return None
+        ctype = (resp.headers.get("content-type") or "").lower()
+        if ctype.startswith("image/"):
+            return resp.content or None
+        try:
+            j = resp.json()
+        except Exception:  # noqa: BLE001 - not JSON: treat the body as the image
+            return resp.content or None
+        out = j.get("output") or j.get("url") or j.get("image") or j.get("result")
+        return _provider_output_bytes(out)
+    except Exception:  # noqa: BLE001
         return None
-    return None
+
+
+def _upscale_replicate(src: Path, scale: float, url: str, key: str,
+                       model: str) -> bytes | None:
+    """Replicate's async Real-ESRGAN: create a prediction with the image as a data
+    URI, poll (bounded) until it succeeds, then download the output image."""
+    if not model:
+        return None
+    try:
+        import requests, base64, time
+        with open(src, "rb") as fh:
+            data_uri = "data:image/png;base64," + base64.b64encode(fh.read()).decode()
+        endpoint = url or "https://api.replicate.com/v1/predictions"
+        headers = {"Authorization": f"Token {key}", "Content-Type": "application/json"}
+        resp = requests.post(endpoint, headers=headers, timeout=30, json={
+            "version": model,
+            "input": {"image": data_uri, "scale": round(scale, 2)}})
+        if resp.status_code not in (200, 201):
+            return None
+        pred = resp.json()
+        status = pred.get("status")
+        get_url = (pred.get("urls") or {}).get("get")
+        for _ in range(40):                       # ~60s max, then give up -> Lanczos
+            if status in ("succeeded", "failed", "canceled"):
+                break
+            if not get_url:
+                return None
+            time.sleep(1.5)
+            pr = requests.get(get_url, headers=headers, timeout=30)
+            if pr.status_code != 200:
+                return None
+            pred = pr.json()
+            status = pred.get("status")
+        if status != "succeeded":
+            return None
+        return _provider_output_bytes(pred.get("output"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _ai_upscale(src: Path, target_w: int, target_h: int,
+                scale: float = 2.0) -> bytes | None:
+    """Pluggable AI super-resolution, dispatched by AI_UPSCALE_PROVIDER. Returns the
+    enhanced image bytes, or None on any problem (so the caller falls back to the
+    Lanczos baseline). Key-gated + TEST_MODE-safe: never touches the network without
+    a real key."""
+    from quoteforge.config import TEST_MODE
+    try:
+        from quoteforge.config import (AI_UPSCALE_API_KEY, AI_UPSCALE_API_URL,
+                                       AI_UPSCALE_PROVIDER, AI_UPSCALE_MODEL)
+    except Exception:  # noqa: BLE001 — config without the keys: no AI tier
+        return None
+    if TEST_MODE or not AI_UPSCALE_API_KEY:
+        return None
+    if (AI_UPSCALE_PROVIDER or "generic") == "replicate":
+        return _upscale_replicate(src, scale, AI_UPSCALE_API_URL,
+                                  AI_UPSCALE_API_KEY, AI_UPSCALE_MODEL)
+    if not AI_UPSCALE_API_URL:
+        return None
+    return _upscale_generic(src, target_w, target_h, scale,
+                            AI_UPSCALE_API_URL, AI_UPSCALE_API_KEY)
 
 
 def enhance_to_print(src, product_size: str = "", out_dir=None,
@@ -104,8 +197,12 @@ def enhance_to_print(src, product_size: str = "", out_dir=None,
             # rounding never lands a pixel under. Cap by the active backend.
             from quoteforge.config import TEST_MODE
             try:
-                from quoteforge.config import AI_UPSCALE_API_KEY, AI_UPSCALE_API_URL
-                ai_on = bool(AI_UPSCALE_API_KEY and AI_UPSCALE_API_URL) and not TEST_MODE
+                from quoteforge.config import (AI_UPSCALE_API_KEY, AI_UPSCALE_API_URL,
+                                               AI_UPSCALE_PROVIDER, AI_UPSCALE_MODEL)
+                if (AI_UPSCALE_PROVIDER or "generic") == "replicate":
+                    ai_on = bool(AI_UPSCALE_API_KEY and AI_UPSCALE_MODEL) and not TEST_MODE
+                else:
+                    ai_on = bool(AI_UPSCALE_API_KEY and AI_UPSCALE_API_URL) and not TEST_MODE
             except Exception:  # noqa: BLE001
                 ai_on = False
             cap = _AI_MAX_SCALE if ai_on else _LANCZOS_MAX_SCALE
@@ -118,11 +215,24 @@ def enhance_to_print(src, product_size: str = "", out_dir=None,
             dst = out_dir / "custom_photo_enhanced.png"
 
             method = "lanczos"
-            ai_bytes = _ai_upscale(src, target_w, target_h) if ai_on else None
+            ai_bytes = _ai_upscale(src, target_w, target_h, scale) if ai_on else None
+            used_ai = False
             if ai_bytes:
-                dst.write_bytes(ai_bytes)
-                method = "ai"
-            else:
+                # Trust but verify: the provider's output must be a real image at
+                # (near) the target size. A garbage / undersized response must NOT
+                # cost us the reliable Lanczos baseline.
+                try:
+                    from io import BytesIO
+                    with Image.open(BytesIO(ai_bytes)) as _ai_im:
+                        _ai_im.load()
+                        _aw, _ah = _ai_im.size
+                    if _aw >= target_w * 0.9 and _ah >= target_h * 0.9:
+                        dst.write_bytes(ai_bytes)
+                        method = "ai"
+                        used_ai = True
+                except Exception:  # noqa: BLE001 - unusable bytes -> Lanczos
+                    used_ai = False
+            if not used_ai:
                 im.resize((target_w, target_h), Image.LANCZOS).save(dst, "PNG")
     except Exception:  # noqa: BLE001 — never break the pipeline on enhancement
         return {"ok": False, "path": src, "original": src, "scale": 1.0,
