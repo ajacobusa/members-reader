@@ -105,3 +105,21 @@ def test_books_export_balances_and_writes(db, tmp_path):
     text = out.read_text(encoding="utf-8")
     assert ",".join(COLUMNS) in text and "TOTAL" in text
     assert text.count("\n") >= 4                                       # header+2 orders+total
+
+
+def test_books_export_emails_csv_to_address(db, tmp_path, monkeypatch):
+    # REGRESSION: `books-export ... <address>` sends the CSV to that inbox (Wave/QBO).
+    _insert(db, "o1", "shipped", 43.20)
+    import quoteforge.automation.emailer as em
+    seen = {}
+
+    def _fake(subject, body, to="", attachments=None):
+        seen.update(to=to, attachments=attachments, subject=subject)
+        return {"status": "sent", "to": to, "bcc": "owner@x"}
+    monkeypatch.setattr(em, "_send_email", _fake)
+    from quoteforge import admin
+    rc = admin.main(["books-export", "month", str(tmp_path / "b.csv"),
+                     "joffielsc@gmail.com"])
+    assert rc == 0
+    assert seen["to"] == "joffielsc@gmail.com"
+    assert seen["attachments"] and str(seen["attachments"][0]).endswith(".csv")
