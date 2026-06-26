@@ -179,12 +179,16 @@ def test_phonecase_not_sellable_and_not_routable():
 
 
 def test_phonecase_absent_from_storefront():
-    # The unfulfillable product must not render anywhere customer-facing.
-    src = Path(__file__).resolve().parents[1] / "quoteforge" / "docs" / "index.html"
-    if not src.exists():
-        src = Path(__file__).resolve().parents[1] / "docs" / "index.html"
-    if src.exists():
-        assert "phone case" not in src.read_text(encoding="utf-8").lower()
+    # The unfulfillable product must not render anywhere customer-facing - scan both
+    # the page and the externalized app.js (the product list lives in JS).
+    base = Path(__file__).resolve().parents[1]
+    docs = base / "quoteforge" / "docs"
+    if not (docs / "index.html").exists():
+        docs = base / "docs"
+    for fn in ("index.html", "app.js"):
+        p = docs / fn
+        if p.exists():
+            assert "phone case" not in p.read_text(encoding="utf-8").lower()
 
 
 # ── #5/#6: apparel supplier photos are re-hosted same-origin (no leak/taint) ──

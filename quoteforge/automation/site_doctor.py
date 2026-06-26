@@ -71,11 +71,20 @@ REGRESSION_TESTS = [
 
 
 def _read_page() -> str:
-    """The built page's HTML, or '' when it does not exist yet."""
+    """The built page's HTML PLUS the externalized app.js, or '' when the page does
+    not exist yet. The production build moves the main script out to docs/app.js, so
+    the JS-level checks (const DATA, function hooks) must see both files."""
     try:
-        return PAGE.read_text(encoding="utf-8")
+        html = PAGE.read_text(encoding="utf-8")
     except Exception:  # noqa: BLE001
         return ""
+    try:
+        appjs = (DOCS / "app.js")
+        if appjs.exists():
+            html += "\n" + appjs.read_text(encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+    return html
 
 
 # ── The checks (each returns {name, status: OK|FAIL, detail}) ────────────
