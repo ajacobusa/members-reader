@@ -42,8 +42,11 @@ $env:PYTHONNOUSERSITE = '1'
 if (Test-Path $PY) {
     Push-Location $PROJ
     try {
-        & $PY -m quoteforge.admin backup-all 2>&1 | Tee-Object -FilePath $LOG -Append | Out-Null
-        Log "backup-all (code+DB+bundle -> GitHub) exit: $LASTEXITCODE"
+        # --no-commit: push only COMMITTED work + DB snapshot + bundle. The job must
+        # NOT auto-commit in-progress edits to the current branch (that once swept WIP
+        # into a chore commit). Uncommitted work is preserved by the C: mirror below.
+        & $PY -m quoteforge.admin backup-all --no-commit 2>&1 | Tee-Object -FilePath $LOG -Append | Out-Null
+        Log "backup-all (push committed + DB + bundle -> GitHub) exit: $LASTEXITCODE"
     } finally { Pop-Location }
 } else {
     Log "WARN portable python missing at $PY - skipped backup-all (code still mirrored below)."
