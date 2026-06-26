@@ -334,8 +334,15 @@ def init_db() -> None:
         # joins off full scans as the tables grow.
         for _idx, _tbl, _col in (
             ("idx_orders_status", "orders", "status"),
+            # Ownership / customer-history lookups (the /upload IDOR guard, buyer
+            # order lists) and vendor-order reconciliation (order_monitor) scanned
+            # the whole table; index their lookup columns.
+            ("idx_orders_email", "orders", "customer_email"),
+            ("idx_orders_gelato", "orders", "gelato_order_id"),
             ("idx_pipeline_log_order", "pipeline_log", "order_id"),
             ("idx_customer_messages_order", "customer_messages", "order_id"),
+            # Resume-your-design lookups by email (storefront draft restore).
+            ("idx_saved_designs_email", "saved_designs", "email"),
         ):
             try:
                 conn.execute(f"CREATE INDEX IF NOT EXISTS {_idx} ON {_tbl}({_col})")
