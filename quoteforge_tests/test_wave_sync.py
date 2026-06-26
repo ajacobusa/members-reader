@@ -145,3 +145,32 @@ def test_sync_live_pushes(db, monkeypatch):
                         lambda *a, **k: {"ok": True, "id": "T1", "errors": []})
     res = ws.sync_period("month", dry_run=False)
     assert res["created"] == 1 and res["failed"] == 0
+
+
+def test_wave_sync_email_is_dry_run_review(db, monkeypatch):
+    # REGRESSION: the scheduled monthly `wave-sync month email` emails a DRY-RUN
+    # review and NEVER pushes (no --live).
+    _cfg(monkeypatch)
+    _insert(db, "E1", "shipped", 43.20)
+    import quoteforge.automation.emailer as em
+    import quoteforge.etsy.wave_api as w
+    seen = {}
+    monkeypatch.setattr(em, "_send_email",
+                        lambda subj, body, to="", attachments=None: seen.update(
+                            to=to, subj=subj, body=body) or {"status": "sent", "to": to})
+    pushed = {"n": 0}
+    monkeypatch.setattr(w, "create_money_transaction",
+                        lambda *a, **k: pushed.__setitem__("n", pushed["n"] + 1))
+    from quoteforge import admin
+    rc = admin.main(["wave-sync", "month", "email"])
+    assert rc == 0
+    assert pushed["n"] == 0                      # never pushed (dry-run)
+    assert seen["to"] and "DRY-RUN" in seen["body"]
+
+
+def test_monthly_wave_review_job_registered():
+    from quoteforge.automation.scheduler import SCHEDULED_JOBS
+    job = next((j for j in SCHEDULED_JOBS if j.name == "QuoteForge Wave Books Review"),
+               None)
+    assert job and job.admin_args == "wave-sync month email"
+    assert "--live" not in job.admin_args        # the scheduled job can never push

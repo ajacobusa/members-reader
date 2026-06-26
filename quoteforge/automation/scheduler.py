@@ -70,6 +70,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         ["/SC", "MONTHLY", "/D", "1", "/ST", "07:40"],
         "Emails the monthly sales report (1st of month)"),
     ScheduledJob(
+        "QuoteForge Wave Books Review", "wave-sync month email",
+        ["/SC", "MONTHLY", "/D", "1", "/ST", "07:42"],
+        "Monthly DRY-RUN of the Wave accounting push: emails what WOULD post to "
+        "Wave for sign-off (1st of month). Never pushes - run wave-sync --live "
+        "manually after reviewing."),
+    ScheduledJob(
         "QuoteForge Yearly Report", "report yearly email",
         # Yearly = Jan 1. schtasks MONTHLY names the month with /M (/MO expects a
         # NUMBER, so the old "/MO JAN" was rejected as an invalid /MO value).
