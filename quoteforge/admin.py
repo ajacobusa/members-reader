@@ -1519,8 +1519,9 @@ def _cmd_wave_sync(args: list[str]) -> int:
     period = next((a for a in args if a in
                    ("today", "week", "month", "year", "all")), "month")
     live = "--live" in args
+    addr = next((a for a in args if "@" in a), "")
     res = sync_period(period, dry_run=not live)
-    if res["missing_config"]:
+    if res["missing_config"] and live:
         print("Missing config (run wave-test for IDs): "
               + ", ".join(res["missing_config"]))
         return 1
@@ -1538,6 +1539,29 @@ def _cmd_wave_sync(args: list[str]) -> int:
                   f"(sum {inc:.2f})")
         if len(res["txns"]) > 8:
             print(f"  ... +{len(res['txns']) - 8} more")
+    # Email the DRY-RUN review for sign-off (never auto-pushes; the scheduled monthly
+    # job uses this). No email when there is nothing to review.
+    if (addr or "email" in args) and not live and res["orders"] > 0:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        to = addr or REPORT_RECIPIENT
+        rows = "".join(
+            f"<tr><td>{t['date']}</td><td>{t['externalId']}</td>"
+            f"<td style='text-align:right'>${t['anchor']['amount']:.2f}</td>"
+            f"<td style='text-align:right'>{len(t['lineItems'])}</td></tr>"
+            for t in res["txns"][:300])
+        body = (f"<p><b>Wave books review - {period}</b> ({res['orders']} orders). "
+                f"DRY-RUN preview of what WOULD post to Wave - nothing was pushed. "
+                f"To sync, run <code>wave-sync {period} --live</code>.</p>"
+                f"<table border='1' cellpadding='5' style='border-collapse:collapse'>"
+                f"<tr><th>Date</th><th>Ref</th><th>Deposit</th><th>Lines</th></tr>"
+                f"{rows}</table>"
+                f"<p style='color:#666'>Tip: point WAVE_ACCT_BANK at a dedicated "
+                f"'Etsy Clearing' account so these don't duplicate your bank feed.</p>")
+        r = _send_email(f"Wave books review - {period}", body, to=to)
+        print(f"  Email {r.get('status')}"
+              + (f" -> {to}" if r.get("status") == "sent"
+                 else f": {r.get('message', '')}"))
     return 0
 
 
