@@ -277,6 +277,9 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
     out = build_shop_home(numbers=[LAUNCH_PACK_20[0].n], kit_dir=tmp_path,
                           out_path=tmp_path / "e.html", external_assets=True)
     he = out.read_text(encoding="utf-8")
+    _appjs = tmp_path / "app.js"          # production build externalizes the JS
+    if _appjs.exists():
+        he += _appjs.read_text(encoding="utf-8")
     assert "assets/tile-m_tshirt.jpg" in he and "assets/tile-m_tshirt-back.jpg" in he
 
 

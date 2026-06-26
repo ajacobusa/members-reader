@@ -1542,6 +1542,42 @@ def _cal_hero(external_assets: bool = False, assets=None) -> str:
         '</div>')
 
 
+def _externalize_main_js(html: str, out) -> str:
+    """Move the large main <script> (the editor/storefront engine, ~440 KB) out to a
+    sibling ``app.js`` loaded with ``defer`` + a content-hash query string.
+
+    Why: that block is the bulk of the page weight. Inline, it re-downloads on every
+    visit and blocks first paint. As a hashed external file it is cached far-future
+    (the hash changes only when the code does) and ``defer`` lets the HTML paint
+    first. The block is already fully rendered at build time (no server interpolation
+    remains), so the extracted file is static and identical for every visitor.
+
+    Only the one big block is moved (anchored on its unique ``const DATA =``). The
+    early password gate and the small self-contained scripts stay inline, and the
+    extracted code keeps the same document order, so load behaviour is unchanged:
+    its functions are still defined before any user interaction calls them, and
+    top-level ``const``s remain visible to the inline scripts (shared script scope).
+    On any failure the original inline HTML is returned unchanged."""
+    from pathlib import Path as _Path
+    out = _Path(out)
+    anchor = html.find("const DATA = ")
+    if anchor == -1:
+        return html
+    open_tag = html.rfind("<script>", 0, anchor)
+    close_tag = html.find("</script>", anchor)
+    if open_tag == -1 or close_tag == -1:
+        return html
+    js = html[open_tag + len("<script>"):close_tag]
+    import hashlib
+    digest = hashlib.sha256(js.encode("utf-8")).hexdigest()[:12]
+    try:
+        (out.parent / "app.js").write_text(js, encoding="utf-8")
+    except OSError:
+        return html
+    tag = f'<script defer src="app.js?v={digest}"></script>'
+    return html[:open_tag] + tag + html[close_tag + len("</script>"):]
+
+
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                     out_path=None, uat: bool = True, feedback_form_url=None,
                     frame_picker: bool = True, external_assets: bool = False) -> Path:
@@ -7413,6 +7449,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
 </script>
 </body></html>"""
+    # Externalize the heavy main script into a cacheable, deferred app.js (saves the
+    # ~440 KB re-download on repeat visits and unblocks first paint). Only for the
+    # production build (external_assets) - the inline form keeps programmatic builds
+    # + tests asserting on a single self-contained HTML string.
+    if external_assets:
+        html = _externalize_main_js(html, out)
     out.write_text(html, encoding="utf-8")
     # GitHub Pages serves this generated static site via legacy Jekyll, which fails
     # on the storefront's braces/`${...}`. A .nojekyll file next to the page tells

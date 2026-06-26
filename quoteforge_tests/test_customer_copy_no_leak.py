@@ -19,8 +19,14 @@ def test_customer_message_templates_have_no_supplier_or_marketplace_name():
 
 
 def test_storefront_page_has_no_supplier_name():
-    page = (Path(__file__).resolve().parent.parent / "docs" / "index.html")
-    text = page.read_text(encoding="utf-8").lower()
+    # The production build externalizes the main JS into docs/app.js, so scan BOTH
+    # the page and the script bundle - a supplier name could otherwise hide in JS.
+    root = Path(__file__).resolve().parent.parent / "docs"
+    text = ""
+    for fn in ("index.html", "app.js"):
+        p = root / fn
+        if p.exists():
+            text += p.read_text(encoding="utf-8").lower()
     for banned in SUPPLIER_NAMES:
         assert banned not in text, f"supplier name '{banned}' leaked into storefront"
 
