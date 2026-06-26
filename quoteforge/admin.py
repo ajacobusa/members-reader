@@ -92,6 +92,7 @@ def _cmd_ha_install(args: list[str]) -> int:
     import os
     import shutil
     import subprocess
+    from pathlib import Path
     if os.name != "nt":
         print("ha-install is Windows-only (Scheduled Tasks).")
         return 1
