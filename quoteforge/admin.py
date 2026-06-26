@@ -1565,6 +1565,39 @@ def _cmd_wave_sync(args: list[str]) -> int:
     return 0
 
 
+def _cmd_wave_csv(args: list[str]) -> int:
+    """Bank-statement CSV for Wave's FREE 'Upload transactions' (no Pro needed).
+    `wave-csv [today|week|month|year|all] [email]`. Writes to OUTPUT_DIR/wave/ and
+    captures income + ALL costs (Etsy fees, Gelato, shipping, infrastructure)."""
+    from quoteforge.etsy.wave_upload import write_wave_csv, wave_summary
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "today")
+    addr = next((a for a in args if "@" in a), "")
+    path = write_wave_csv(period=period)
+    s = wave_summary(period)
+    print(f"Wrote {path}")
+    print(f"  {s['lines']} lines | income {s['income']:.2f} | expense "
+          f"{s['expense']:.2f} | net {s['net']:.2f}")
+    print("  Upload in Wave: Sales & Payments -> Transactions -> Upload transactions")
+    if (addr or "email" in args) and s["lines"] > 0:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        to = addr or REPORT_RECIPIENT
+        body = (f"<p><b>Wave transactions - {period}</b>: {s['lines']} lines, "
+                f"income ${s['income']:.2f}, expense ${s['expense']:.2f}, "
+                f"net ${s['net']:.2f}.</p>"
+                f"<p>Attached CSV captures income + every cost (Etsy fees, Gelato "
+                f"print + shipping, infrastructure). Sales tax is excluded "
+                f"(marketplace remits it). Upload it in Wave: <b>Sales &amp; "
+                f"Payments &rarr; Transactions &rarr; Upload transactions</b>.</p>")
+        r = _send_email(f"Wave transactions - {period}", body, to=to,
+                        attachments=[str(path)])
+        print(f"  Email {r.get('status')}"
+              + (f" -> {to}" if r.get("status") == "sent"
+                 else f": {r.get('message', '')}"))
+    return 0
+
+
 def _cmd_ledger_breakdown(args: list[str]) -> int:
     """P&L split by channel, vendor & product type. `ledger-breakdown [period]`."""
     from quoteforge.etsy.ledger import build_breakdown, format_breakdown_text
@@ -2875,6 +2908,7 @@ COMMANDS = {
     "books-export": _cmd_books_export,
     "wave-test": _cmd_wave_test,
     "wave-sync": _cmd_wave_sync,
+    "wave-csv": _cmd_wave_csv,
     "clv": _cmd_clv,
     "quote-performance": _cmd_quote_performance,
     "dynamic-pricing": _cmd_dynamic_pricing,
