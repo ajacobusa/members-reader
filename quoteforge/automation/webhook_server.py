@@ -499,12 +499,21 @@ if FLASK_AVAILABLE and app:
             from quoteforge.automation.file_host import publish_print_file
             pub = publish_print_file(saved or tmp)
             if order_id:
-                from quoteforge.db.database import update_order
-                fields = {"print_file": str(saved or ""), "print_quality": decision,
-                          "artwork_url": pub["url"]}
-                if decision == "reject":
-                    fields["status"] = "hold_photo"
-                update_order(order_id, **fields)
+                from quoteforge.db.database import get_order, update_order
+                # IDOR guard: only mutate an order that belongs to THIS email.
+                # order_id is an attacker-controlled form field; without this check
+                # anyone could overwrite any order's print file / artwork / status by
+                # guessing its id. The photo is still saved to the email's own folder.
+                _o = get_order(order_id)
+                if _o and (_o.get("customer_email") or "").strip().lower() == email.lower():
+                    fields = {"print_file": str(saved or ""), "print_quality": decision,
+                              "artwork_url": pub["url"]}
+                    if decision == "reject":
+                        fields["status"] = "hold_photo"
+                    update_order(order_id, **fields)
+                else:
+                    logger.warning("upload: order_id %s not owned by %s - not mutated",
+                                   order_id, email)
             from quoteforge.automation.print_quality import ai_focal_point
             focal = ai_focal_point(saved or tmp)
             out = {"status": "ok", "decision": decision,
@@ -796,7 +805,12 @@ if FLASK_AVAILABLE and app:
 
     @app.route("/backup", methods=["POST"])
     def trigger_backup():
-        """Create a database snapshot on demand (for scheduled backups)."""
+        """Create a database snapshot on demand (signature-gated; for scheduled
+        backups). An unauthenticated trigger let anyone spin DB snapshots."""
+        from quoteforge.automation.webhook_security import verify_signature
+        raw_body = request.get_data() or b""
+        if not verify_signature(raw_body, request.headers.get("X-Webhook-Signature", "")):
+            return jsonify({"status": "error", "message": "Invalid signature"}), 401
         from quoteforge.db.database import backup_database, prune_old_backups
         path = backup_database()
         prune_old_backups()  # age-based: keep last BACKUP_RETENTION_DAYS days
