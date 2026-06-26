@@ -217,7 +217,9 @@ PREFLIGHT_ASPECT_TOLERANCE: float = float(
 # ── Customer-supplied photo quality gate ─────────────────────────
 # Minimum effective DPI a buyer's own photo must meet for the ordered print
 # size. Below this the order is held and an auto-reply asks for a better photo.
-CUSTOMER_PHOTO_MIN_DPI: int = int(os.getenv("CUSTOMER_PHOTO_MIN_DPI", "120"))
+# 150 = the Gelato-safe floor (matches PREFLIGHT_MIN_DPI). Was 120, which let
+# visibly-soft photos pass and print blurry with no block.
+CUSTOMER_PHOTO_MIN_DPI: int = int(os.getenv("CUSTOMER_PHOTO_MIN_DPI", "150"))
 # Auto-email the buyer (when their email is known) on a bad photo.
 AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
 # AI-assisted photo enhancement: before bouncing a too-low-res buyer photo, try
