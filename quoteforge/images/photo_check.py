@@ -34,15 +34,18 @@ def check_customer_photo(image_path, product_size: str = "",
                 "needs_resend": True, "actual_px": (0, 0),
                 "effective_dpi": 0, "min_dpi": min_dpi}
 
-    # Required print inches for the ordered product (default 18x24).
+    # Required print INCHES, derived from the product's required PIXEL dimensions at
+    # the target DPI - robust for every family. Parsing the size *string* (the old
+    # way) crashed on non-WxH labels like a mug's "11oz" and silently fell back to an
+    # 18x24 poster, which then HARD-REJECTED perfectly good mug/calendar photos.
+    from quoteforge.config import PREFLIGHT_TARGET_DPI
+    required_w, required_h = dimensions_for(product_size)
     product = get_product(product_size)
-    if product and product.size:
-        try:
-            in_w, in_h = (float(x) for x in
-                          product.size.replace(" in", "").lower().split("x"))
-        except Exception:  # noqa: BLE001
-            in_w, in_h = 18.0, 24.0
-        size_label = product.size
+    target = float(PREFLIGHT_TARGET_DPI or 300)
+    if required_w and required_h:
+        in_w, in_h = required_w / target, required_h / target
+        size_label = (product.size if product and product.size
+                      else f"{required_w}x{required_h}px")
     else:
         in_w, in_h = 18.0, 24.0
         size_label = "18x24 in (default)"
@@ -50,7 +53,6 @@ def check_customer_photo(image_path, product_size: str = "",
     # Effective DPI = photo pixels spread across the print inches (best fit, so
     # orientation doesn't matter).
     eff_dpi = min(max(w, h) / max(in_w, in_h), min(w, h) / min(in_w, in_h))
-    required_w, required_h = dimensions_for(product_size)
 
     problems = []
     if fmt and fmt not in _ALLOWED_FORMATS:

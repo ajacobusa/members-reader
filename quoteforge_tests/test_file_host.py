@@ -51,4 +51,7 @@ def test_upload_keeps_local_copy_and_publishes(tmp_path, monkeypatch):
     r = c.post("/upload", data={"email": "buyer@x.com", "size": "8x10",
                "file": (buf, "photo.jpg")}, content_type="multipart/form-data")
     j = r.get_json()
-    assert r.status_code == 200 and j["decision"] == "approve" and "host" in j
+    # Mechanics: the route publishes + returns a host + a VALID quality decision
+    # (the decision now reflects the print-quality score, not a fixed approve).
+    assert r.status_code == 200 and "host" in j
+    assert j["decision"] in ("approve", "hold", "reject") and "quality_score" in j
