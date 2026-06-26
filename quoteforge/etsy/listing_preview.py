@@ -4768,7 +4768,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      sides:_sides, wording:_slotWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
-     logo:(IS_APPAREL&&LOGO_ON)?'front+back':''}}); renderCart();
+     logo:(IS_APPAREL&&LOGO_ON)?'front+back':'',
+     thumb:_proofThumb()}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
    // In a guided bundle: advance to the next selected design to personalize.
@@ -5057,6 +5058,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return CART.map((l,i)=>`${{i+1}}. ${{l.qty}}x ${{l.fmt}} ${{l.size}}`+
      (l.title?` - ${{l.title}}`:'')).join('\\n')+'\\n'+_taxLine(_cartTotal());
  }}
+ // Visual basket: each row shows the proof THUMBNAIL captured when the item was
+ // added, so the buyer reviews + approves the actual artwork ("exactly as shown")
+ // - not just a text line. Falls back to a placeholder tile when no thumbnail was
+ // captured. Used at the review-basket and confirm steps of checkout.
+ function _basketVisualHTML(){{
+   if(!CART.length) return '(your basket is empty)';
+   var esc=function(s){{ return (''+(s||'')).replace(/</g,'&lt;'); }};
+   var rows=CART.map(function(l,i){{
+     var t=l.thumb
+       ? '<img src="'+l.thumb+'" alt="Design preview" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto">'
+       : '<div style="width:56px;height:56px;border-radius:8px;border:1px dashed var(--line);flex:0 0 auto"></div>';
+     var txt='<div><b>'+(i+1)+'. '+l.qty+'&times; '+esc(l.fmt)+' '+esc(l.size)+'</b>'+
+       (l.title?'<br><span style="color:#6b7b72;font-size:.9em">'+esc(l.title)+'</span>':'')+'</div>';
+     return '<div style="display:flex;gap:10px;align-items:center;margin:.45rem 0">'+t+txt+'</div>';
+   }}).join('');
+   return rows+'<div style="margin-top:.5rem;font-weight:600">'+_taxLine(_cartTotal())+'</div>';
+ }}
  let PROOFMODE='item';
  // Order-progress stepper: 1 Customize, 2 Review, 3 Approve, 4 Checkout.
  function setStep(n){{ document.querySelectorAll('#mstepper li').forEach(function(li){{
@@ -5101,6 +5119,31 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    _CLEAN=false; drawArt();              // restore the editor view (chrome back)
    _SNAPPING=false;
    return url;
+ }}
+ // A small (~240px) JPEG snapshot of the composed proof, captured at add-to-basket
+ // so every basket + confirm row can SHOW the exact design the buyer approves
+ // ("exactly as shown"). In-memory only (CART is not persisted) and kept tiny on
+ // purpose. Returns '' on any failure (e.g. a cross-origin mockup that taints the
+ // canvas) - the row then falls back to text, never blocking checkout.
+ function _proofThumb(){{
+   try{{
+     var cv=document.getElementById('mcanvas'); if(!cv||!cv.width) return '';
+     var mg=document.getElementById('mgarment');
+     _SNAPPING=true; _CLEAN=true; drawArt();
+     var max=240, r=cv.width/cv.height;
+     var w=r>=1?max:Math.round(max*r), h=r>=1?Math.round(max/r):max;
+     var tc=document.createElement('canvas'); tc.width=w; tc.height=h;
+     var tx=tc.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,w,h);
+     if(mg&&mg.style.display!=='none'&&mg.complete&&mg.naturalWidth){{
+       var ir=mg.naturalWidth/mg.naturalHeight, cr=w/h, dw, dh;
+       if(ir>cr){{ dw=w; dh=dw/ir; }} else {{ dh=h; dw=dh*ir; }}
+       tx.drawImage(mg,(w-dw)/2,(h-dh)/2,dw,dh);
+     }}
+     tx.drawImage(cv,0,0,w,h);
+     var url=''; try{{ url=tc.toDataURL('image/jpeg',0.78); }}catch(e){{ url=''; }}
+     _CLEAN=false; drawArt(); _SNAPPING=false;
+     return url;
+   }}catch(e){{ try{{ _CLEAN=false; drawArt(); _SNAPPING=false; }}catch(_e){{}} return ''; }}
  }}
  // ── Final preview: rotate the garment front<->back so the buyer reviews BOTH
  // sides before approving. Reuses the editor's per-side designs (setPlacement
@@ -5312,8 +5355,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const st=document.getElementById('proofStatus'); if(st)st.textContent='';
    if(n===1){{
      if(title)title.textContent='Step 1 of 3 - Review your basket ('+CART.length+')';
-     if(sub)sub.textContent="Here's everything you picked. Remove anything you don't want (Edit), then continue.";
-     if(sum)sum.innerHTML=_basketSummary().replace(/\\n/g,'<br>');
+     if(sub)sub.textContent="Here's everything you picked - exactly as it will print. Remove anything you don't want (Edit), then continue.";
+     if(sum)sum.innerHTML=_basketVisualHTML();
      if(acc){{ acc.textContent='Next: your details →'; acc.disabled=false;
        acc.onclick=function(){{ finalStep(2); }}; }}
    }} else if(n===2){{
@@ -5326,7 +5369,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }} else {{
      if(title)title.textContent='Step 3 of 3 - Confirm & complete';
      if(sub)sub.textContent='Confirm your design below, then tap Complete order.';
-     if(sum)sum.innerHTML=_trustStripHTML()+_basketSummary().replace(/\\n/g,'<br>')+
+     if(sum)sum.innerHTML=_trustStripHTML()+_basketVisualHTML()+
        '<div class="fcship"><b>Ship to</b><br>'+_shipToHTML()+'</div>'+
        _confirmChecklistHTML()+
        '<div class="fcback" role="button" tabindex="0" onclick="finalStep(2)">&larr; Edit details</div>';

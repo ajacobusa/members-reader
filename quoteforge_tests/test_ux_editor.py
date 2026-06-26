@@ -18,6 +18,24 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_confirm_step_shows_proof_thumbnail(tmp_path):
+    """REGRESSION: the buyer authorizes 'I approve this print exactly as shown', so
+    the actual artwork must be SHOWN at review + confirm - not just a text line. A
+    proof thumbnail is captured at add-to-basket and rendered per row in the visual
+    basket used by both the review (step 1) and confirm (step 3) checkout steps."""
+    h = _page(tmp_path)
+    # The thumbnail is captured when the item is added to the basket...
+    assert "function _proofThumb()" in h
+    assert "thumb:_proofThumb()" in h
+    # ...and rendered as an <img> in the visual basket used at review + confirm.
+    assert "function _basketVisualHTML()" in h
+    assert "_basketVisualHTML()" in h
+    # The confirm step no longer uses the text-only summary at those points.
+    assert "_basketSummary().replace" not in h
+    # The affirmative authorization still gates checkout.
+    assert "I approve this print exactly as shown" in h
+
+
 def test_order_card_becomes_active_next_step(tmp_path):
     """After frame/design selection, the whole 'Build your order' card lights up
     as the active next step (gold ring + lift + 'Next step' badge) and is
