@@ -398,6 +398,19 @@ GMAIL_ADDRESS: str = os.getenv("GMAIL_ADDRESS", "")
 GMAIL_APP_PASSWORD: str = os.getenv("GMAIL_APP_PASSWORD", "")
 REPORT_RECIPIENT: str = os.getenv("REPORT_RECIPIENT", "joffielsc@gmail.com")
 
+# Wave accounting API (https://gql.waveapps.com/graphql/public). Create a Full-Access
+# token in Wave -> Settings -> (Developer/API). Personal tokens need no Wave Pro plan.
+# Run `admin wave-test` to verify the token and list your business + account IDs, then
+# fill the account IDs below and `admin wave-sync` to push per-order Etsy payouts.
+WAVE_API_TOKEN: str = os.getenv("WAVE_API_TOKEN", "")
+WAVE_BUSINESS_ID: str = os.getenv("WAVE_BUSINESS_ID", "")
+# Account IDs (from `wave-test`): the anchor bank/clearing account money lands in, and
+# the income/expense categories. Leave blank until you've created/identified them.
+WAVE_ACCT_BANK: str = os.getenv("WAVE_ACCT_BANK", "")        # anchor (Cash/Bank/Clearing)
+WAVE_ACCT_SALES: str = os.getenv("WAVE_ACCT_SALES", "")      # Sales income
+WAVE_ACCT_SHIPPING: str = os.getenv("WAVE_ACCT_SHIPPING", "")  # Shipping income (optional)
+WAVE_ACCT_FEES: str = os.getenv("WAVE_ACCT_FEES", "")        # Etsy/selling fees expense
+
 # Phase 1 priority niches to validate first (20-30 manual listings)
 PHASE1_NICHES: list[str] = [
     "Personalized Daughter Gifts",

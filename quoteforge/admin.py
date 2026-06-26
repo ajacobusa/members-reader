@@ -1488,6 +1488,59 @@ def _cmd_books_export(args: list[str]) -> int:
     return 0
 
 
+def _cmd_wave_test(args: list[str]) -> int:
+    """Verify the Wave API token and list your business + chart of accounts.
+    `wave-test`. Copy the IDs into WAVE_BUSINESS_ID / WAVE_ACCT_* in .env."""
+    from quoteforge.config import WAVE_API_TOKEN, TEST_MODE
+    if not WAVE_API_TOKEN or TEST_MODE:
+        print("Wave not configured: set WAVE_API_TOKEN in .env (and TEST_MODE=false).")
+        return 1
+    from quoteforge.etsy.wave_api import list_businesses, list_accounts
+    biz = list_businesses()
+    if not biz:
+        print("Could not reach Wave / no businesses. Check the token (Full-Access).")
+        return 1
+    print("Businesses:")
+    for b in biz:
+        print(f"  {b['id']}  {b['name']} ({b['currency']})")
+    bid = biz[0]["id"]
+    print(f"\nAccounts for {bid}:")
+    for a in list_accounts(bid):
+        print(f"  {a['id']}  [{a['type']}/{a['subtype']}]  {a['name']}")
+    print("\nSet WAVE_BUSINESS_ID + WAVE_ACCT_BANK / _SALES / _SHIPPING / _FEES, "
+          "then: admin wave-sync month   (dry-run; add --live to push)")
+    return 0
+
+
+def _cmd_wave_sync(args: list[str]) -> int:
+    """Push per-order Etsy payouts into Wave. `wave-sync [period] [--live]`.
+    Dry-run by default (prints what WOULD be pushed); --live actually creates them."""
+    from quoteforge.etsy.wave_sync import sync_period
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "month")
+    live = "--live" in args
+    res = sync_period(period, dry_run=not live)
+    if res["missing_config"]:
+        print("Missing config (run wave-test for IDs): "
+              + ", ".join(res["missing_config"]))
+        return 1
+    mode = "LIVE - pushed to Wave" if live else "DRY-RUN (use --live to push)"
+    print(f"Wave sync {period} [{mode}]: {res['orders']} orders")
+    if live:
+        print(f"  created {res['created']}, failed {res['failed']}")
+        for e in res["errors"][:10]:
+            print(f"  ! {e['order']}: {'; '.join(e['errors'])}")
+    else:
+        for t in res["txns"][:8]:
+            inc = sum(li["amount"] for li in t["lineItems"])
+            print(f"  {t['date']} {t['externalId']}: deposit "
+                  f"{t['anchor']['amount']:.2f} <- {len(t['lineItems'])} lines "
+                  f"(sum {inc:.2f})")
+        if len(res["txns"]) > 8:
+            print(f"  ... +{len(res['txns']) - 8} more")
+    return 0
+
+
 def _cmd_ledger_breakdown(args: list[str]) -> int:
     """P&L split by channel, vendor & product type. `ledger-breakdown [period]`."""
     from quoteforge.etsy.ledger import build_breakdown, format_breakdown_text
@@ -2796,6 +2849,8 @@ COMMANDS = {
     "ledger-excel": _cmd_ledger_excel,
     "ledger-breakdown": _cmd_ledger_breakdown,
     "books-export": _cmd_books_export,
+    "wave-test": _cmd_wave_test,
+    "wave-sync": _cmd_wave_sync,
     "clv": _cmd_clv,
     "quote-performance": _cmd_quote_performance,
     "dynamic-pricing": _cmd_dynamic_pricing,
