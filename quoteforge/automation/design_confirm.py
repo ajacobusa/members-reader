@@ -80,7 +80,7 @@ def _intake_order(email: str, design_id: str, contact: dict,
     returns the order id, or '' when shipping details are missing. ``money``
     carries the recorded basket (sale_price, item_count, line_items)."""
     if not (contact.get("name") and contact.get("addr")):
-        return ""
+        return "", False
     try:
         from quoteforge.db.database import create_order, get_order
         # Idempotency key from the BASKET CONTENTS, not the per-click design_id
@@ -94,7 +94,9 @@ def _intake_order(email: str, design_id: str, contact: dict,
                     if money else design_id)
         oid = "WEB-" + hashlib.sha1(
             f"{email}|{cart_key}".encode("utf-8")).hexdigest()[:10].upper()
+        created = False
         if not get_order(oid):
+            created = True
             create_order({"order_id": oid,
                           "recipient_name": contact.get("name"),
                           "customer_name": contact.get("name"),
@@ -117,9 +119,9 @@ def _intake_order(email: str, design_id: str, contact: dict,
             from datetime import datetime as _dt
             update_order(oid, proof_approved=1,
                          proof_approved_at=_dt.now().isoformat(timespec="seconds"))
-        return oid
+        return oid, created
     except Exception:  # noqa: BLE001
-        return ""
+        return "", False
 
 
 def _save_proof_pdf(order_id: str, email: str, summary: str,
@@ -200,11 +202,12 @@ def confirm_design(email: str, summary: str = "", design_json: str = "",
                 "order_id": "", "proof_pdf": ""}
     contact = _parse_contact(design_json)
     money = _cart_money(design_json)
-    order_id = _intake_order(email, design_id, contact, money)
+    order_id, created = _intake_order(email, design_id, contact, money)
     save_design(email, design_json=design_json, design_id=design_id,
                 summary=summary, order_id=order_id)
     accept_design(email, design_id)
-    _alert_owner(email, summary or "(no summary)", contact)
+    if created:                      # only alert on a NEW order, not a duplicate
+        _alert_owner(email, summary or "(no summary)", contact)   # confirm of the same basket
     # Final approval EVIDENCE: store the on-screen approved proof as a PDF under
     # the order id. This is the record the made-to-order policy rests on; it is
     # stored, never emailed. No customer email is sent from this flow.

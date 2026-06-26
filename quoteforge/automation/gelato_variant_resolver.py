@@ -93,8 +93,15 @@ def _family_value(garment_id: str) -> str | None:
 
 
 def family_covered(garment_id: str) -> bool:
-    """True when this garment's (type, tier) family is mapped to a real Gelato
-    identifier - meaning every colour/size of it is resolvable at order time."""
+    """True when a FAMILY mapping alone makes every colour/size resolvable at order
+    time. That is APPAREL-ONLY: resolve_variant_uid's dynamic search uses apparel
+    attributes (GarmentColor/GarmentSize), so mug / branded / calendar products are
+    NOT covered by a family mapping - they need a static per-SKU UID. Returning
+    False for them keeps the go-live readiness report HONEST (it previously showed
+    them READY while every such order silently routed to manual)."""
+    from quoteforge.etsy.apparel_catalog import get_garment
+    if not get_garment((garment_id or "").strip().lower()):
+        return False
     return _family_value(garment_id) is not None
 
 

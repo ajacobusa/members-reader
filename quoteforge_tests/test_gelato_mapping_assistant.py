@@ -14,16 +14,25 @@ def test_family_key_resolves_all_departments():
     assert r.family_key("not-a-real-id") is None
 
 
-def test_family_covered_reads_the_family_map(monkeypatch):
+def test_family_covered_is_apparel_only(monkeypatch):
+    # REGRESSION: family coverage means a family mapping alone resolves every variant
+    # at order time - which is APPAREL-ONLY (dynamic GarmentColor/GarmentSize search).
+    # mug/branded/calendar use different Gelato attributes, so a family mapping does
+    # NOT cover them (they need a static per-SKU UID); family_covered must report that
+    # honestly, or the readiness report shows them ready while orders route to manual.
     from quoteforge.automation import gelato_variant_resolver as r
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP", "{}")
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_FILE", "")
-    assert r.family_covered("tote") is False                       # unmapped
+    assert r.family_covered("m_tshirt") is False                   # unmapped apparel
+    monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP",
+                       '{"tshirt:Classic": "tshirt_pf_real_ver_1"}')
+    assert r.family_covered("m_tshirt") is True                    # apparel: real UID
+    monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP", '{"tshirt:Classic": "GEL-PLACEHOLDER"}')
+    assert r.family_covered("m_tshirt") is False                   # GEL-* = placeholder
+    # Non-apparel is NEVER family-covered, even when its family maps to a real UID:
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP",
                        '{"branded:tote": "tote-bag_pf_real_ver_1"}')
-    assert r.family_covered("tote") is True                        # real UID
-    monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP", '{"branded:tote": "GEL-PLACEHOLDER"}')
-    assert r.family_covered("tote") is False                       # GEL-* = placeholder
+    assert r.family_covered("tote") is False                       # needs a static UID
 
 
 # ── Readiness aggregator + mapping template ─────────────────────────
@@ -48,11 +57,11 @@ def test_unmapped_families_lists_new_departments_and_template(monkeypatch):
     assert u["template"]["branded:tote"] == "REPLACE_WITH_GELATO_PRODUCT_UID"
 
 
-def test_mapping_a_department_marks_it_ready(monkeypatch):
-    # REGRESSION: mapping a new department's families to real UIDs resolves every
-    # FAMILY-mappable variant - proving the family path works end to end for new depts.
-    # Phone cases stay a known model-specific gap (one UID = one phone model), so the
-    # department's all_real intentionally remains False until per-model UIDs exist.
+def test_nonapparel_family_mapping_does_not_mark_ready(monkeypatch):
+    # REGRESSION: mapping a mug/branded/calendar FAMILY must NOT mark its variants
+    # go-live-ready. The dynamic resolver is apparel-only, so those orders would
+    # silently route to manual; they are ready only with a static per-SKU UID.
+    # (The readiness report previously showed them ready - the false positive.)
     import json
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_MAP", "{}")
     monkeypatch.setenv("GELATO_PRODUCT_FAMILY_FILE", "")
@@ -63,11 +72,8 @@ def test_mapping_a_department_marks_it_ready(monkeypatch):
                        json.dumps({f: f"prod-{i}_ver_1" for i, f in enumerate(branded)}))
     from quoteforge.etsy.branded_catalog import verify_branded_mappings
     rep = verify_branded_mappings()
-    # The family path cleared every NON-phonecase placeholder...
-    non_model = [p for p in rep["placeholders"] if p not in rep["model_specific_gaps"]]
-    assert non_model == []
-    # ...and phonecase is still correctly flagged as the only remaining gap.
-    assert rep["model_specific_gaps"]
+    # Family mapping did NOT clear the placeholders - branded needs static per-SKU UIDs.
+    assert rep["placeholders"] and not rep["all_real"]
 
 
 # ── Preflight go-live gate ──────────────────────────────────────────

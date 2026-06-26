@@ -128,9 +128,10 @@ def test_same_basket_dedups_to_one_order(tmp_path, monkeypatch):
     contact = {"name": "Ann", "addr": "1 St, Atlanta GA 30301",
                "country": "US", "state": "GA"}
     money = {"sale_price": 42.0, "item_count": 2, "line_items": '[{"t":"mug"}]'}
-    a = _intake_order("b@x.com", "cart-111", contact, money)
-    b = _intake_order("b@x.com", "cart-222", contact, money)   # same basket, new click
-    assert a and a == b
+    a, a_created = _intake_order("b@x.com", "cart-111", contact, money)
+    b, b_created = _intake_order("b@x.com", "cart-222", contact, money)  # same basket
+    assert a and a == b                       # same order id (deduped)
+    assert a_created and not b_created         # first creates; the duplicate does not
 
 
 # ── #8b: an accepted design is immutable (no silent post-approval swap) ───────
