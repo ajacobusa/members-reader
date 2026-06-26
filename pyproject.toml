@@ -29,6 +29,7 @@ dependencies = []
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "pytest-xdist>=3.5",
     "build>=1.0",
     "anthropic>=0.25.0",
     "requests>=2.31.0",
@@ -60,9 +61,13 @@ Homepage = "https://github.com/ajacobusa/members-reader"
 where = ["src"]
 
 [tool.pytest.ini_options]
-# The product suite is quoteforge_tests (724+ tests). The legacy members_reader
+# The product suite is quoteforge_tests (1490+ tests). The legacy members_reader
 # scaffold under tests/ errors on collection and is excluded.
 testpaths = ["quoteforge_tests"]
+# Run in parallel by default (pytest-xdist): the suite is process-parallel-safe
+# (per-test tmp_path + monkeypatched DB/OUTPUT_DIR), cutting wall-clock ~22min ->
+# ~4.5min on a multi-core box. Override for a single serial run with `-n 0`.
+addopts = "-n auto"
 
 [tool.coverage.run]
 source = ["quoteforge"]
