@@ -49,7 +49,6 @@ def _day_of(iso: str) -> str:
 def build_ledger(period: str = "month") -> dict:
     """Compute the P&L by day for the period + totals."""
     from quoteforge.db.database import init_db, get_all_orders, get_api_costs
-    from quoteforge.etsy.profit_calculator import calculate_order_profit
     init_db()
     start, end = _range_for(period)
     # Orders/API costs are timestamped in UTC; allow +1 day so a late-evening
@@ -70,12 +69,16 @@ def build_ledger(period: str = "month") -> dict:
         sale = o.get("sale_price")
         if sale in (None, 0):
             continue                          # no confirmed sale price yet
-        cost = o.get("gelato_cost") or 0.0
-        p = calculate_order_profit(float(sale), float(cost))
+        # Use order_financials (ONE source of truth) so the ledger agrees with the
+        # reconciliation summary: tax-EXCLUSIVE product revenue, and ACTUAL Etsy
+        # fees when imported (was: re-estimated fees on tax-inclusive revenue, so
+        # the two reporting layers disagreed once real figures were imported).
+        from quoteforge.etsy.financials import order_financials
+        fin = order_financials(o)
         r = _row(d)
-        r["revenue"] += p["sale_price"]
-        r["cogs"] += p["gelato_cost"]
-        r["etsy_fees"] += p["total_fees"]
+        r["revenue"] += fin["product_revenue"]
+        r["cogs"] += fin["gelato_cost"]
+        r["etsy_fees"] += fin["etsy_fees"]
         r["orders"] += 1
 
     for c in get_api_costs(start.isoformat(), (end + timedelta(days=1)).isoformat()):
