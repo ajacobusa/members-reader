@@ -396,7 +396,7 @@ ESTIMATED_SALES_TAX_RATE: float = float(os.getenv("ESTIMATED_SALES_TAX_RATE", "0
 # myaccount.google.com -> Security -> App passwords (requires 2FA).
 GMAIL_ADDRESS: str = os.getenv("GMAIL_ADDRESS", "")
 GMAIL_APP_PASSWORD: str = os.getenv("GMAIL_APP_PASSWORD", "")
-REPORT_RECIPIENT: str = os.getenv("REPORT_RECIPIENT", "ajacobusa@gmail.com")
+REPORT_RECIPIENT: str = os.getenv("REPORT_RECIPIENT", "joffielsc@gmail.com")
 
 # Phase 1 priority niches to validate first (20-30 manual listings)
 PHASE1_NICHES: list[str] = [
