@@ -512,9 +512,28 @@ if FLASK_AVAILABLE and app:
             qdecision = _q2d.get(quality["verdict"], decision)
             if _rank.get(qdecision, 0) > _rank.get(decision, 0):
                 decision = qdecision           # the score caught what DPI alone missed
+            # Auto-enhance a borderline UPSCALABLE photo end-to-end so the buyer
+            # doesn't have to re-shoot: upscale (LANCZOS now, or the external AI
+            # super-res provider when AI_UPSCALE_API_* is set) then RE-SCORE. Only a
+            # result that now PASSES is used + published; otherwise the original and
+            # its warning stand. We never ship a worse file than the buyer uploaded.
+            enhanced = False
+            src_for_print = saved or tmp
+            if (quality["verdict"] == "warn" and quality.get("recommend_enhance")
+                    and quality.get("weakest") == "resolution"):
+                try:
+                    from quoteforge.images.photo_enhance import enhance_to_print
+                    enh = enhance_to_print(saved or tmp, size)
+                    if enh.get("ok") and enh.get("path"):
+                        re_q = score_photo(str(enh["path"]), size)
+                        if re_q["verdict"] == "pass":
+                            src_for_print, quality, decision, enhanced = \
+                                str(enh["path"]), re_q, "approve", True
+                except Exception:  # noqa: BLE001 - enhancement is best-effort
+                    pass
             # Publish a public, Gelato-fetchable URL (Drive / public dir / local).
             from quoteforge.automation.file_host import publish_print_file
-            pub = publish_print_file(saved or tmp)
+            pub = publish_print_file(src_for_print)
             if order_id:
                 from quoteforge.db.database import get_order, update_order
                 # IDOR guard: only mutate an order that belongs to THIS email.
@@ -523,7 +542,7 @@ if FLASK_AVAILABLE and app:
                 # guessing its id. The photo is still saved to the email's own folder.
                 _o = get_order(order_id)
                 if _o and (_o.get("customer_email") or "").strip().lower() == email.lower():
-                    fields = {"print_file": str(saved or ""), "print_quality": decision,
+                    fields = {"print_file": str(src_for_print), "print_quality": decision,
                               "artwork_url": pub["url"]}
                     if decision == "reject":
                         fields["status"] = "hold_photo"
@@ -543,8 +562,12 @@ if FLASK_AVAILABLE and app:
                    "quality_score": quality["score"], "stars": quality["stars"],
                    "quality_verdict": quality["verdict"],
                    "quality_message": quality["message"],
-                   "recommend_enhance": quality["recommend_enhance"]}
-            if decision != "approve":
+                   "recommend_enhance": quality["recommend_enhance"],
+                   "enhanced": enhanced}
+            if enhanced:
+                out["message"] = ("We automatically enhanced your photo to print "
+                                  "quality - it's ready to go.")
+            elif decision != "approve":
                 out["message"] = quality["message"] or reupload_request(assessment)
             resp = jsonify(out)
         except Exception as exc:  # noqa: BLE001

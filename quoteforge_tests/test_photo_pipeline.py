@@ -126,6 +126,27 @@ def test_upload_flow_blocks_bad_photo(tmp_path, monkeypatch):
     assert j["quality_verdict"] == "reject" and "quality_message" in j
 
 
+def test_upload_auto_enhances_borderline_photo(tmp_path, monkeypatch):
+    # A sharp-but-undersized photo (ENHANCE) is auto-upscaled (LANCZOS now, or the
+    # external AI super-res provider if configured), RE-SCORED, and only used if it
+    # now passes - the buyer gets an enhanced approve without re-shooting.
+    pytest.importorskip("flask")
+    import quoteforge.db.database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr(db, "OUTPUT_DIR", tmp_path)
+    db.init_db()
+    from quoteforge.automation.webhook_server import app
+    import io
+    buf = io.BytesIO()
+    _photo(2000, 2500).save(buf, "JPEG", quality=92)   # ~125 DPI @ 16x20, sharp
+    buf.seek(0)
+    r = app.test_client().post("/upload", content_type="multipart/form-data",
+                               data={"email": "b@x.com", "size": "16x20",
+                                     "file": (buf, "small.jpg")})
+    j = r.get_json()
+    assert r.status_code == 200 and j["enhanced"] is True and j["decision"] == "approve"
+
+
 # ── 5. report shape (the QA report contract) ───────────────────────────────
 def test_quality_report_shape(library):
     r = quality_report(library["good_300dpi"], "16x20", run_ai=False)
