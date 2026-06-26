@@ -522,6 +522,16 @@ def run_full_pipeline(
                 _log(order_id, "gelato_order", "success",
                      f"{resp.get('vendor')}: {status} {gelato_order_id}")
                 _notify("gelato_order", f"{resp.get('vendor')} {status}")
+            elif status == "submit_unconfirmed":
+                # Ambiguous post-send (timeout/5xx after POST): the vendor MAY have
+                # the order. Do not advance to shipped/follow-up and do not overwrite
+                # the 'submit_unconfirmed' status the router persisted - the owner
+                # reconciles before any re-send. Skip follow-up like an error.
+                routing_failed = True
+                log_pipeline_stage(order_id, "gelato_order", "error",
+                                   resp.get("detail", "send unconfirmed"))
+                _notify("gelato_order",
+                        resp.get("detail", "vendor send unconfirmed - reconcile"))
             elif status == "error":
                 # A real routing failure (vendor down / network) must NOT pass
                 # silently into follow-up as if shipped. Log WITHOUT _log (which
@@ -607,6 +617,12 @@ def resume_after_proof_approval(order_id: str,
             log_pipeline_stage(order_id, "gelato_order",
                                "duplicate" if status == "duplicate" else "success",
                                f"{resp.get('vendor')}: {status} {gelato_order_id}")
+        elif status == "submit_unconfirmed":
+            # Ambiguous post-send: vendor may already have it. Keep the router's
+            # submit_unconfirmed status (don't overwrite/advance) so the owner
+            # reconciles before re-sending; surface it like an error.
+            log_pipeline_stage(order_id, "gelato_order", "error",
+                               resp.get("detail", "send unconfirmed"))
         elif status == "error":
             # Real fulfillment failure - flag it so it surfaces (healthcheck /
             # order monitor alert on errored orders); never proceed silently.

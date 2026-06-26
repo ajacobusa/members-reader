@@ -68,6 +68,12 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             return {"status": "duplicate", "vendor": vendor,
                     "id": existing["vendor_order_id"],
                     "detail": "order already routed - duplicate submission blocked"}
+        if existing and existing.get("status") == "submit_unconfirmed":
+            # A prior send timed out AFTER the POST - the vendor may already have
+            # this order. Never blindly re-submit; hold for manual reconciliation.
+            return {"status": "manual", "vendor": vendor, "id": "",
+                    "detail": "previous send was unconfirmed (possible duplicate at "
+                              "the vendor) - reconcile before re-sending"}
 
     if vendor == "gelato":
         from quoteforge.config import TEST_MODE
@@ -125,6 +131,28 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             return {"status": "submitted", "vendor": "gelato",
                     "id": vid, "raw": resp}
         except Exception as exc:  # noqa: BLE001
+            # Distinguish a CONFIRMED non-submission (safe to retry) from an
+            # AMBIGUOUS post-send failure: a timeout / dropped connection / 5xx
+            # AFTER the POST means Gelato may already have the order, so a blind
+            # re-run would double-print + double-charge. Mark those
+            # 'submit_unconfirmed' + persist it, so a re-run holds for manual
+            # reconciliation (below) instead of re-creating.
+            import requests as _rq
+            ambiguous = isinstance(exc, (_rq.exceptions.Timeout,
+                                         _rq.exceptions.ConnectionError))
+            if isinstance(exc, _rq.exceptions.HTTPError) \
+                    and getattr(getattr(exc, "response", None), "status_code", 0) >= 500:
+                ambiguous = True
+            if ambiguous:
+                try:
+                    from quoteforge.db.database import update_order, get_order
+                    if get_order(order_id):
+                        update_order(order_id, status="submit_unconfirmed")
+                except Exception:  # noqa: BLE001
+                    pass
+                return {"status": "submit_unconfirmed", "vendor": "gelato", "id": "",
+                        "detail": "vendor send unconfirmed (may already be received) - "
+                                  f"reconcile before re-sending: {exc}"}
             return {"status": "error", "vendor": "gelato", "detail": str(exc), "id": ""}
 
     if vendor == "printful":
