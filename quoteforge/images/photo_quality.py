@@ -173,6 +173,31 @@ def _ai_score(image_path, run_ai: bool) -> tuple[float, str]:
         return 75.0, "AI review unavailable"
 
 
+def _face_fraction(image_path) -> float | None:
+    """Largest detected face as a fraction of the image area; None when face
+    detection is unavailable (OpenCV not installed), 0.0 when no face is found.
+    Uses OpenCV's bundled Haar cascade - offline, no network. Never raises. A small
+    face (< ~15% of frame) on a portrait product warns the buyer to crop closer."""
+    try:
+        import cv2
+        from PIL import Image
+        with Image.open(image_path) as im:
+            im = im.convert("L")
+            im.thumbnail((1024, 1024))
+            arr = np.asarray(im, dtype=np.uint8)
+        cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+        faces = cascade.detectMultiScale(arr, scaleFactor=1.1, minNeighbors=5,
+                                         minSize=(24, 24))
+        if len(faces) == 0:
+            return 0.0
+        h, w = arr.shape
+        largest = max(fw * fh for (_x, _y, fw, fh) in faces)
+        return round(largest / float(w * h), 3)
+    except Exception:  # noqa: BLE001 - cv2 missing / any failure -> skip face check
+        return None
+
+
 def score_photo(image_path, product_size: str = "", run_ai: bool = True) -> dict:
     """Full print-quality score for a buyer photo at the ordered size.
 
@@ -222,11 +247,14 @@ def score_photo(image_path, product_size: str = "", run_ai: bool = True) -> dict
         verdict = "reject"
     elif fatal < 40 and verdict == "pass":
         verdict = "warn"
-    # Absolute print-size floor (effective DPI), independent of the score: far below
-    # the floor a photo prints terribly no matter how clean.
+    # Effective-DPI floor (absolute, by print size): far below the floor a photo
+    # prints terribly no matter how clean; below the floor it can't be a clean PASS
+    # (it becomes a warn/enhance candidate).
     floor = float(CUSTOMER_PHOTO_MIN_DPI or 150)
     if eff_dpi and eff_dpi < floor * 0.67:
         verdict = "reject"
+    elif eff_dpi and eff_dpi < floor and verdict == "pass":
+        verdict = "warn"
     stars = max(1, min(5, round(score / 20.0)))
 
     # Customer message keyed to the ACTUAL weakest factor (not always "soft").
@@ -258,3 +286,66 @@ def score_photo(image_path, product_size: str = "", run_ai: bool = True) -> dict
             "recommend_enhance": verdict == "warn",
             "actual_px": res.get("actual_px", (0, 0)),
             "required_px": res.get("required_px", (0, 0))}
+
+
+def _compression_label(s: float) -> str:
+    """Human label for a compression sub-score."""
+    return "excellent" if s >= 85 else "good" if s >= 60 else "fair" if s >= 35 else "poor"
+
+
+def quality_report(image_path, product_size: str = "", run_ai: bool = True) -> dict:
+    """The full per-upload print-quality REPORT + a 4-tier status.
+
+    Wraps score_photo and resolves a customer-facing status + action:
+      PASS    - proceed                              (action NONE)
+      ENHANCE - borderline but the ONLY weakness is resolution and AI upscale can
+                lift it to spec                       (action AI_UPSCALE_REQUIRED)
+      WARN    - borderline for a reason enhancement can't reliably fix; show the
+                buyer the note                        (action SHOW_WARNING)
+      FAIL    - won't print well; ask for a better photo (action RESEND)
+    Includes effective vs required vs recommended DPI, each sub-score, the detected
+    face fraction (best-effort), and human reasons. Never raises.
+    """
+    from quoteforge.config import (CUSTOMER_PHOTO_MIN_DPI, PREFLIGHT_TARGET_DPI,
+                                   AI_PHOTO_ENHANCE)
+    q = score_photo(image_path, product_size, run_ai=run_ai)
+    comp = q.get("components", {})
+    eff = float(q.get("effective_dpi") or 0)
+    floor = float(CUSTOMER_PHOTO_MIN_DPI or 150)
+    face = _face_fraction(image_path) if run_ai else None
+
+    verdict, weak = q["verdict"], q.get("weakest", "resolution")
+    if verdict == "reject":
+        status, action = "FAIL", "RESEND"
+    elif verdict == "pass":
+        status, action = "PASS", "NONE"
+    else:  # warn -> ENHANCE only if the SOLE limiter is upscalable resolution
+        upscalable = (weak == "resolution" and eff >= floor * 0.5
+                      and comp.get("blur", 0) >= 50 and comp.get("noise", 0) >= 50)
+        if upscalable and AI_PHOTO_ENHANCE:
+            status, action = "ENHANCE", "AI_UPSCALE_REQUIRED"
+        else:
+            status, action = "WARN", "SHOW_WARNING"
+
+    reasons = []
+    if comp:
+        names = {"resolution": "resolution low for this size", "blur": "soft / blurry",
+                 "noise": "grainy / noisy", "compression": "heavily compressed",
+                 "exposure": "poor lighting / contrast", "ai": "flagged by AI review"}
+        reasons = [names[k] for k in names if comp.get(k, 100) < 50]
+    if face is not None and face < 0.15:
+        reasons.append("face too small in frame")
+        if status == "PASS":
+            status, action = "WARN", "SHOW_WARNING"
+
+    return {
+        "status": status, "action": action, "score": q["score"], "stars": q["stars"],
+        "effective_dpi": round(eff), "required_dpi": round(floor),
+        "recommended_dpi": int(PREFLIGHT_TARGET_DPI or 300),
+        "blur_score": comp.get("blur"), "noise_score": comp.get("noise"),
+        "compression_score": _compression_label(comp.get("compression", 80)),
+        "exposure_score": comp.get("exposure"),
+        "face_detected": (face is not None and face > 0), "face_fraction": face,
+        "reasons": reasons, "message": q["message"],
+        "actual_px": q.get("actual_px"), "required_px": q.get("required_px"),
+    }

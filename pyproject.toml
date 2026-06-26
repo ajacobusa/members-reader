@@ -48,6 +48,10 @@ dev = [
     "google-api-python-client>=2.100",
     "google-auth>=2.30",
     "google-auth-httplib2>=0.2",
+    # Print-quality photo gate: OpenCV (headless) for face detection (Haar cascade)
+    # in photo_quality. The other metrics are numpy-only; the gate degrades safely if
+    # this is absent (face check skipped).
+    "opencv-python-headless>=4.8",
 ]
 
 [project.scripts]
