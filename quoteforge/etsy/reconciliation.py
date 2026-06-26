@@ -93,10 +93,12 @@ def export_reconciliation(year: int, month: int,
 
     # Reconciliation notes
     note_row = row + 2
+    _expected_payout = data.get("net_payout",
+                                round(data['revenue'] - data['etsy_fees'], 2))
     notes = [
         "How to reconcile:",
-        f"1. Etsy deposits (money IN) should match: Revenue − Etsy Fees = "
-        f"${round(data['revenue'] - data['etsy_fees'], 2)}",
+        f"1. Etsy deposits (money IN) to your bank should match your net payout = "
+        f"${_expected_payout}  (uses imported actual payouts when available)",
         f"2. Gelato charges (money OUT) should match: ${data['gelato_cost']}",
         f"3. Your true profit for the month: ${data['net_profit']}",
         "Sales tax is collected AND remitted by Etsy — it is not your income or a cost.",

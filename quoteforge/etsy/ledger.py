@@ -69,15 +69,22 @@ def build_ledger(period: str = "month") -> dict:
         sale = o.get("sale_price")
         if sale in (None, 0):
             continue                          # no confirmed sale price yet
+        # REFUND/RETURN PARITY: only EARNED revenue counts. A refunded / cancelled
+        # order keeps a sale_price but is not billable, so it must NOT sit in the
+        # daily P&L as profit (it did in the old code, while summarize() + BI already
+        # excluded it - the two layers reported different net profit for the month).
+        from quoteforge.etsy.financials import order_financials, BILLABLE_STATUSES
+        if o.get("status") not in BILLABLE_STATUSES:
+            continue
         # Use order_financials (ONE source of truth) so the ledger agrees with the
         # reconciliation summary: tax-EXCLUSIVE product revenue, and ACTUAL Etsy
         # fees when imported (was: re-estimated fees on tax-inclusive revenue, so
         # the two reporting layers disagreed once real figures were imported).
-        from quoteforge.etsy.financials import order_financials
         fin = order_financials(o)
         r = _row(d)
         r["revenue"] += fin["product_revenue"]
-        r["cogs"] += fin["gelato_cost"]
+        # COGS = Gelato product cost + Gelato's shipping charge to you.
+        r["cogs"] += fin["gelato_cost"] + fin.get("gelato_shipping", 0)
         r["etsy_fees"] += fin["etsy_fees"]
         r["orders"] += 1
 

@@ -36,7 +36,9 @@ def test_ledger_uses_one_source_of_truth(tmp_path, monkeypatch):
     db.init_db()
     db.create_order({"order_id": "L1", "occasion": "B", "status": "delivered",
                      "sale_price": 52.21, "gelato_cost": 10.0})
-    db.update_order("L1", tax_collected=3.22, etsy_fees_actual=5.0)
+    # create_order forces status='received'; move it to a BILLABLE (earned) status so
+    # it counts - the ledger now excludes non-billable orders, exactly like summarize.
+    db.update_order("L1", status="delivered", tax_collected=3.22, etsy_fees_actual=5.0)
     from quoteforge.etsy.ledger import build_ledger
     tot = build_ledger("all")["totals"]
     assert tot["revenue"] == 48.99                # tax excluded, matches summarize
