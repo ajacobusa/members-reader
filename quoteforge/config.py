@@ -34,10 +34,14 @@ ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 UNSPLASH_ACCESS_KEY: str = os.getenv("UNSPLASH_ACCESS_KEY", "")
 BANNERBEAR_API_KEY: str = os.getenv("BANNERBEAR_API_KEY", "")
 
-# Output / data directory. Override with OUTPUT_DIR env on a server (e.g. a
-# persistent disk like /data) so the SQLite DB + assets survive redeploys.
+# Output / data directory. Defaults to <project>/data so it lives NEXT TO the code
+# and is therefore drive-letter-independent - critical when the project runs from a
+# USB drive whose letter can change when another device is plugged in. Computed from
+# this file's location, so it resolves to whatever drive the code is actually on.
+# Override with OUTPUT_DIR env on a server (e.g. a persistent disk like /data).
+_PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 OUTPUT_DIR: Path = (Path(os.environ["OUTPUT_DIR"]) if os.getenv("OUTPUT_DIR")
-                    else Path.home() / "Desktop" / "QuoteForge-Output")
+                    else _PROJECT_ROOT / "data")
 
 # Claude models.
 # Quote/message/SEO generation is short and simple — Haiku 4.5 does it well at

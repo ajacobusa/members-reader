@@ -33,10 +33,32 @@ always uses **this drive's** interpreter + packages, never `C:`.
   C: user-site. `requirements-lock.txt` can recreate the exact set on any machine.
 - **Code + data** — both on this drive; `data\` holds the SQLite DB and assets.
 
-## The one thing tied to a drive letter
-`.env` sets `OUTPUT_DIR="D:/…/data"`. If you ever plug this drive into another
-machine where it mounts as a **different letter** (e.g. `E:`), update that one line
-to the new letter. Everything else is drive-letter-independent.
+## Drive-letter independence (USB-safe)
+This drive is a USB stick — its letter can change when another device is plugged
+in. The project handles that automatically:
+- **`.env`** is found relative to the code (`config.py`'s own path), not a fixed path.
+- **`OUTPUT_DIR`** defaults to `<project>\data` (next to the code), so the data dir
+  follows the drive to whatever letter it gets — no `.env` edit needed.
+- **`run.bat` / `test.bat`** use `%~dp0`, so they target this drive regardless of letter.
+
+So you can move the USB to another machine / port and everything still resolves.
+
+## Daily High-Availability (no single point of failure)
+A USB can be lost or unplugged, so the durable copies live elsewhere:
+- **GitHub** — code + DB snapshot + a full git bundle (`backup-all`), offsite.
+- **C:** — a full local mirror of the project + data (the persistent internal disk).
+
+Install the daily job once (it self-locates the USB by marker, not letter, and runs
+from C: so it works even when the USB letter changed or it's unplugged):
+```bat
+run.bat ha-install            :: schedule it daily at 07:30 (default)
+run.bat ha-install --at 22:00 :: pick a time the USB is usually connected
+run.bat ha-install --run      :: schedule AND run one sync now
+```
+It writes `C:\QuoteForge-HA\` (mirror + logs) and logs each run to
+`C:\QuoteForge-HA\logs\ha-sync.log`. If the USB isn't connected when it fires, it
+logs that and exits cleanly. The order DB is mirrored to C: + (optionally) Google
+Drive, but kept OUT of GitHub for privacy.
 
 ## Rebuild the environment from scratch (e.g. on a fresh machine)
 If you ever need to recreate the packages (or move to a new Python):

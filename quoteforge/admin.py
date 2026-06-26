@@ -80,6 +80,56 @@ def _cmd_backup_all(args: list[str]) -> int:
     return 0 if "fail" not in str(r.get("push", "")) else 1
 
 
+def _cmd_ha_install(args: list[str]) -> int:
+    """Install the daily High-Availability sync so a lost/unplugged USB is never a
+    single point of failure: deploys the self-locating orchestrator to C: (the
+    persistent drive) and schedules it daily. `ha-install [--at HH:MM] [--run]`.
+
+    The orchestrator finds the project on whatever drive it's on (by marker, not
+    letter), pushes code+DB+bundle to GitHub (backup-all), and mirrors everything
+    to C:. It lives on C: so it runs even when the USB letter changed or it's
+    unplugged (then it logs + exits cleanly). `--run` also runs it once now."""
+    import os
+    import shutil
+    import subprocess
+    if os.name != "nt":
+        print("ha-install is Windows-only (Scheduled Tasks).")
+        return 1
+    at = "07:30"
+    if "--at" in args:
+        try:
+            at = args[args.index("--at") + 1]
+        except IndexError:
+            pass
+    from quoteforge.config import _PROJECT_ROOT
+    src = _PROJECT_ROOT / "scripts" / "qf-ha-sync.ps1"
+    if not src.exists():
+        print(f"missing orchestrator script: {src}")
+        return 1
+    ha_root = Path(r"C:\QuoteForge-HA")
+    ha_root.mkdir(parents=True, exist_ok=True)
+    dst = ha_root / "qf-ha-sync.ps1"
+    shutil.copyfile(src, dst)                       # deploy to the persistent drive
+    print(f"deployed orchestrator -> {dst}")
+    # Schedule it daily (idempotent: /F overwrites an existing task).
+    task = "QuoteForge-HA-Sync"
+    cmd = ["schtasks", "/Create", "/TN", task, "/SC", "DAILY", "/ST", at, "/F",
+           "/TR", f'powershell -NoProfile -ExecutionPolicy Bypass -File "{dst}"']
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode == 0:
+        print(f"scheduled daily task '{task}' at {at} (updates C: + GitHub).")
+    else:
+        print(f"schtasks failed: {r.stderr.strip() or r.stdout.strip()}")
+        print(f"manual: schtasks /Create /TN {task} /SC DAILY /ST {at} /F "
+              f'/TR "powershell -NoProfile -ExecutionPolicy Bypass -File \\"{dst}\\""')
+        return 1
+    if "--run" in args:
+        print("running one sync now...")
+        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                        "-File", str(dst)])
+    return 0
+
+
 def _cmd_verify_backup(args: list[str]) -> int:
     """Verify backups are present + fresh WITHOUT creating one: recent DB
     snapshot, a valid bundle containing HEAD, and off-site status. Exits non-zero
@@ -2755,6 +2805,7 @@ COMMANDS = {
     "gen-secret": lambda args: _cmd_gen_secret(),
     "backup": lambda args: _cmd_backup(),
     "backup-all": _cmd_backup_all,
+    "ha-install": _cmd_ha_install,
     "verify-backup": _cmd_verify_backup,
     "restore": _cmd_restore,
     "restore-all": _cmd_restore_all,
