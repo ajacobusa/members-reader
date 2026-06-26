@@ -52,6 +52,22 @@ def test_full_backup_does_db_commit_push_bundle(tmp_path):
     assert {"add", "commit", "push", "bundle"} <= set(git.calls)
 
 
+def test_no_commit_mode_skips_autocommit_but_still_pushes(tmp_path):
+    # REGRESSION: the unattended daily HA job runs backup-all with auto_commit=False
+    # so it NEVER sweeps in-progress edits into a commit on the current branch (that
+    # once committed WIP as a chore commit). It still pushes COMMITTED work + bundles;
+    # uncommitted work is preserved by the C: mirror.
+    import quoteforge.db.database as db
+    git = FakeGit()
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2:
+        db.init_db()
+        r = run_full_backup(push=True, auto_commit=False, runner=git)
+    assert "add" not in git.calls and "commit" not in git.calls   # no WIP auto-commit
+    assert r["push"] == "pushed" and r["bundle"].endswith(".bundle")
+    assert "auto_commit" not in r                                 # step skipped
+
+
 def test_nothing_to_commit_still_pushes(tmp_path):
     import quoteforge.db.database as db
     git = FakeGit(has_staged=False)

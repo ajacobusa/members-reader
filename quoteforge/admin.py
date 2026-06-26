@@ -73,9 +73,13 @@ def _cmd_gen_secret() -> int:
 
 
 def _cmd_backup_all(args: list[str]) -> int:
-    """Full backup: DB snapshot + auto-commit + push to GitHub + bundle."""
+    """Full backup: DB snapshot + (auto-commit) + push to GitHub + bundle.
+    `--no-push` skips the push; `--no-commit` skips auto-committing tracked edits -
+    use it for the unattended daily HA job so it pushes only COMMITTED work and
+    never sweeps in-progress edits into a commit (the C: mirror captures WIP)."""
     from quoteforge.automation.full_backup import run_full_backup, format_backup_text
-    r = run_full_backup(push="--no-push" not in args)
+    r = run_full_backup(push="--no-push" not in args,
+                        auto_commit="--no-commit" not in args)
     print(format_backup_text(r))
     return 0 if "fail" not in str(r.get("push", "")) else 1
 
