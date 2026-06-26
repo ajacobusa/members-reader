@@ -276,15 +276,17 @@ def sync_tracking(limit: int = 500) -> dict:
             if fields:
                 update_order(o["order_id"], **fields)
                 o.setdefault("shipped_at", fields.get("shipped_at"))
+        _cancelled = gstatus in ("canceled", "cancelled", "failed", "error")
         if tn:
             o["tracking_number"] = tn
-            _retry_buyer_push(o, pushed, carrier=status.get("carrier", ""))
+            if not _cancelled:        # never fire a "shipped" push for a cancelled
+                _retry_buyer_push(o, pushed, carrier=status.get("carrier", ""))
 
         if gstatus == "delivered":   # vendor (Gelato) reported delivery directly
             update_order(o["order_id"], status="delivered", delivery_confirmed=1,
                          delivered_at=o.get("delivered_at") or _now_iso())
             delivered_confirmed.append(o["order_id"])
-        elif gstatus in ("canceled", "cancelled", "failed", "error"):
+        elif _cancelled:
             # Gelato spells it "canceled" (one L); normalize to the terminal
             # "cancelled" every downstream consumer checks (_TERMINAL, reports,
             # delight). The webhook path mapped this; the poll path did not, so a

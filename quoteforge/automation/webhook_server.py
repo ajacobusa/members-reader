@@ -227,8 +227,14 @@ def process_webhook_payload(payload: dict) -> dict:
     try:
         # ── Multi-item order ────────────────────────────────────
         if isinstance(items, list) and items:
+            # Propagate only shared CUSTOMER fields to each line - NEVER the basket
+            # TOTALS. If a line inherited the order total, _build_order_data's
+            # sale_price fallthrough would record the full basket total on EVERY
+            # row, counting revenue N times. Each line prices from its OWN per-item
+            # field (or stays unpriced) instead.
+            _basket_totals = {"sale_price", "price", "total", "order_total", "grandtotal"}
             order_level = {k: payload.get(k) for k in _ORDER_LEVEL
-                           if payload.get(k) is not None}
+                           if k not in _basket_totals and payload.get(k) is not None}
             results = []
             for i, raw in enumerate(items, 1):
                 merged = {**order_level, **raw}      # item overrides order-level
