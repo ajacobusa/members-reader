@@ -45,5 +45,6 @@ def test_live_readiness_passes_when_live_and_keys_present():
          patch.object(config, "ANTHROPIC_API_KEY", "x"), \
          patch.object(config, "GELATO_API_KEY", "x"), \
          patch.object(config, "ETSY_API_KEY", "x"), \
-         patch.object(config, "ETSY_WEBHOOK_SECRET", "x"):
+         patch.object(config, "ETSY_WEBHOOK_SECRET", "x"), \
+         patch.object(config, "GELATO_WEBHOOK_SECRET", "x"):   # now required (fail-closed callback)
         assert _live_readiness_result().status == "PASS"

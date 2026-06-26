@@ -40,9 +40,16 @@ def verify_gelato_signature(payload_bytes: bytes, provided_signature: str,
 
 
 def _verify(payload_bytes: bytes, provided_signature: str, secret: str) -> bool:
-    """Constant-time HMAC check; skipped (True) when no secret is configured."""
+    """Constant-time HMAC check.
+
+    No secret configured: SKIP (True) only in dev (TEST_MODE) for parity; in LIVE
+    mode FAIL CLOSED (False) so a misconfigured production deploy with a blank
+    secret can't silently accept unsigned / spoofed webhooks (order injection,
+    delivered/cancelled status spoofing). A configured secret is always enforced.
+    """
     if not secret:
-        return True  # no secret configured — verification disabled (dev mode)
+        from quoteforge.config import TEST_MODE
+        return bool(TEST_MODE)   # dev: skip; live: reject (fail closed)
     if not provided_signature:
         return False
     expected = compute_signature(payload_bytes, secret)

@@ -249,6 +249,12 @@ def check_product_mappings() -> list[CheckResult]:
 # providers (Bannerbear/Unsplash/Printify/Printful/Airtable) are not gated.
 REQUIRED_LIVE_KEYS = (
     "ANTHROPIC_API_KEY", "GELATO_API_KEY", "ETSY_API_KEY", "ETSY_WEBHOOK_SECRET",
+    # GELATO_WEBHOOK_SECRET gates the Gelato status/tracking callback. Without it
+    # the callback verifier fails CLOSED in live (rejects everything), so go-live
+    # must hard-fail until it's configured (set the same secret in Gelato's webhook
+    # settings + .env) - otherwise an unauthenticated POST could spoof orders to
+    # delivered/cancelled.
+    "GELATO_WEBHOOK_SECRET",
 )
 
 
