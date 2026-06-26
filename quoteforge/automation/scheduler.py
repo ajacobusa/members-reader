@@ -76,6 +76,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Wave for sign-off (1st of month). Never pushes - run wave-sync --live "
         "manually after reviewing."),
     ScheduledJob(
+        "QuoteForge Wave Daily Transactions", "wave-csv today email",
+        ["/SC", "DAILY", "/ST", "23:55"],
+        "Writes the day's Wave 'Upload transactions' CSV to the wave/ folder and "
+        "emails it (income + all costs: Etsy fees, Gelato, shipping, infrastructure) "
+        "for Wave's free CSV import. No email on a zero-activity day."),
+    ScheduledJob(
         "QuoteForge Yearly Report", "report yearly email",
         # Yearly = Jan 1. schtasks MONTHLY names the month with /M (/MO expects a
         # NUMBER, so the old "/MO JAN" was rejected as an invalid /MO value).
