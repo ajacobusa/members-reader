@@ -23,17 +23,25 @@ def order_financials(order: dict) -> dict:
     sale_price = float(sale_price) if sale_price is not None else DEFAULT_SALE_PRICE
     gelato_cost = float(gelato_cost) if gelato_cost is not None else DEFAULT_GELATO_COST
 
-    p = calculate_order_profit(sale_price, gelato_cost)
+    # Sales tax is Etsy's PASS-THROUGH (collected + remitted, $0 net to you). When
+    # the order carries an ACTUAL tax figure, the recorded sale_price (Etsy grand
+    # total) INCLUDES it, so revenue + margin must be computed on the tax-EXCLUSIVE
+    # product revenue or both are overstated by the tax. Subtract only the ACTUAL
+    # tax: a direct/storefront sale_price is the product subtotal (tax added later
+    # at external checkout), so subtracting an estimate there would understate it.
+    actual_tax = order.get("tax_collected")
+    tax_in_sale = round(float(actual_tax), 2) if actual_tax is not None else 0.0
+    product_revenue = round(sale_price - tax_in_sale, 2)
+
+    p = calculate_order_profit(product_revenue, gelato_cost)
     # Fully-loaded view (contribution MINUS packaging/reprint reserve/marketing),
     # consistent with the TCO + operating-cost reporting. Period overhead stays
     # in the ledger (it's a time cost, not a per-order one).
     from quoteforge.etsy.profit_calculator import operating_order_profit
-    op = operating_order_profit(sale_price, gelato_cost)
+    op = operating_order_profit(product_revenue, gelato_cost)
 
-    # Prefer ACTUAL Etsy figures (imported from the Etsy receipt / Orders CSV)
-    # over estimates. Etsy is the marketplace facilitator: sales tax is its
-    # pass-through (collected + remitted; $0 net to you), shown for visibility.
-    actual_tax = order.get("tax_collected")
+    # Prefer ACTUAL Etsy figures (imported from the Etsy receipt / Orders CSV) over
+    # estimates.
     actual_fees = order.get("etsy_fees_actual")
     actual_payout = order.get("net_payout")
     shipping_collected = round(float(order.get("shipping_collected") or 0), 2)
@@ -54,7 +62,8 @@ def order_financials(order: dict) -> dict:
         "occasion": order.get("occasion", ""),
         "status": order.get("status", ""),
         "created_at": (order.get("created_at", "") or "")[:10],
-        "sale_price": sale_price,                 # order total
+        "sale_price": sale_price,                 # order grand total (for payout recon)
+        "product_revenue": product_revenue,       # tax-EXCLUSIVE revenue (the real top line)
         "shipping_collected": shipping_collected,
         "etsy_fees": etsy_fees,
         "sales_tax_collected": sales_tax_collected,  # remitted by Etsy, $0 net to you
@@ -84,14 +93,18 @@ def summarize(orders: list[dict], billable_only: bool = True) -> dict:
             continue
         rows.append(order_financials(o))
 
-    revenue = round(sum(r["sale_price"] for r in rows), 2)
+    # Revenue is the tax-EXCLUSIVE product revenue (sales tax is a pass-through,
+    # not income). Grand total is summed separately for payout reconciliation.
+    revenue = round(sum(r["product_revenue"] for r in rows), 2)
+    gross_total = round(sum(r["sale_price"] for r in rows), 2)
     etsy_fees = round(sum(r["etsy_fees"] for r in rows), 2)
     tax = round(sum(r["sales_tax_collected"] for r in rows), 2)
     gelato = round(sum(r["gelato_cost"] for r in rows), 2)
     profit = round(sum(r["net_profit"] for r in rows), 2)
     return {
         "order_count": len(rows),
-        "revenue": revenue,
+        "revenue": revenue,                       # tax-exclusive product revenue
+        "gross_total": gross_total,               # grand total incl. tax (payout recon)
         "etsy_fees": etsy_fees,
         "sales_tax_collected": tax,
         "gelato_cost": gelato,

@@ -7,6 +7,42 @@ from openpyxl import load_workbook
 from quoteforge.etsy.financials import order_financials, summarize, month_financials
 
 
+def test_revenue_and_margin_exclude_pass_through_tax():
+    # REGRESSION: sale_price (Etsy grand total) INCLUDES sales tax, a pass-through
+    # ($0 net). Revenue + margin must be tax-EXCLUSIVE or both are overstated by
+    # the tax. The grand total is kept separately for payout reconciliation.
+    etsy = {"order_id": "T1", "status": "delivered", "sale_price": 52.21,
+            "tax_collected": 3.22, "shipping_collected": 5.99, "gelato_cost": 10.0}
+    r = order_financials(etsy)
+    assert r["sale_price"] == 52.21               # grand total kept (payout recon)
+    assert r["product_revenue"] == 48.99          # 52.21 - 3.22 tax
+    s = summarize([etsy])
+    assert s["revenue"] == 48.99                  # tax-exclusive top line
+    assert s["gross_total"] == 52.21              # grand total preserved
+    # A direct order (no ACTUAL tax) must NOT be reduced by an estimate - its
+    # sale_price is already the product subtotal.
+    direct = {"order_id": "W1", "status": "delivered", "sale_price": 40.0,
+              "gelato_cost": 10.0}
+    assert order_financials(direct)["product_revenue"] == 40.0
+
+
+def test_ledger_uses_one_source_of_truth(tmp_path, monkeypatch):
+    # REGRESSION: build_ledger recomputed economics with ESTIMATED fees on
+    # tax-inclusive revenue, disagreeing with the reconciliation summary. It now
+    # uses order_financials - tax-exclusive revenue + ACTUAL fees when imported.
+    import quoteforge.db.database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr(db, "OUTPUT_DIR", tmp_path)
+    db.init_db()
+    db.create_order({"order_id": "L1", "occasion": "B", "status": "delivered",
+                     "sale_price": 52.21, "gelato_cost": 10.0})
+    db.update_order("L1", tax_collected=3.22, etsy_fees_actual=5.0)
+    from quoteforge.etsy.ledger import build_ledger
+    tot = build_ledger("all")["totals"]
+    assert tot["revenue"] == 48.99                # tax excluded, matches summarize
+    assert tot["etsy_fees"] == 5.0               # ACTUAL fee, not a re-estimate
+
+
 # ── Per-order financials ─────────────────────────────────────────
 
 def test_order_financials_with_real_numbers():
