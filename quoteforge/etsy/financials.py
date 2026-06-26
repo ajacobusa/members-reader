@@ -9,6 +9,14 @@ from quoteforge.config import (
 )
 from quoteforge.etsy.profit_calculator import calculate_order_profit
 
+# Statuses that represent EARNED revenue. A refunded / cancelled / pending / error
+# order is excluded from every revenue + profit total so the books can't book a
+# sale that didn't (or no longer) stands. The ledger imports this so the daily P&L
+# and the period summary can never disagree on what counts.
+BILLABLE_STATUSES = {"in_production", "shipped", "delivered",
+                     "awaiting_customer_approval", "approved_ready_to_print",
+                     "artwork_done"}
+
 
 def order_financials(order: dict) -> dict:
     """Compute the full financial breakdown for one order.
@@ -33,7 +41,13 @@ def order_financials(order: dict) -> dict:
     tax_in_sale = round(float(actual_tax), 2) if actual_tax is not None else 0.0
     product_revenue = round(sale_price - tax_in_sale, 2)
 
-    p = calculate_order_profit(product_revenue, gelato_cost)
+    # Gelato also bills YOU for shipping the item to the buyer (separate from what
+    # the customer paid, which is already inside product_revenue). Deduct it as COGS
+    # when recorded - never add shipping_collected here or it double-counts (it is
+    # already part of the tax-exclusive product_revenue).
+    gelato_shipping = round(float(order.get("shipping_cost") or 0), 2)
+    p = calculate_order_profit(product_revenue, gelato_cost,
+                               shipping_cost=gelato_shipping)
     # Fully-loaded view (contribution MINUS packaging/reprint reserve/marketing),
     # consistent with the TCO + operating-cost reporting. Period overhead stays
     # in the ledger (it's a time cost, not a per-order one).
@@ -51,10 +65,16 @@ def order_financials(order: dict) -> dict:
     etsy_fees = round(float(actual_fees), 2) if actual_fees is not None else p["total_fees"]
     if actual_payout is not None:
         net_payout = round(float(actual_payout), 2)
+    elif actual_tax is not None:
+        # Etsy grand-total sale_price already INCLUDES shipping + tax. The deposit is
+        # the tax-exclusive product revenue (item + shipping) minus Etsy fees; tax is
+        # remitted by Etsy and shipping is already inside product_revenue, so re-adding
+        # shipping_collected here (the old code) double-counted it and left tax in.
+        net_payout = round(product_revenue - etsy_fees, 2)
     else:
-        # What lands in your account: order total + shipping - Etsy fees (tax is
-        # collected & remitted by Etsy, so it is NOT part of your payout).
-        net_payout = round(sale_price + shipping_collected - etsy_fees, 2)
+        # Direct/storefront: sale_price is the pre-shipping subtotal, so shipping
+        # collected is separate income that lands in your account.
+        net_payout = round(product_revenue + shipping_collected - etsy_fees, 2)
 
     return {
         "order_id": order.get("order_id", ""),
@@ -68,6 +88,7 @@ def order_financials(order: dict) -> dict:
         "etsy_fees": etsy_fees,
         "sales_tax_collected": sales_tax_collected,  # remitted by Etsy, $0 net to you
         "gelato_cost": gelato_cost,
+        "gelato_shipping": gelato_shipping,       # Gelato's shipping charge to YOU (COGS)
         "net_payout": net_payout,                 # what actually lands in your account
         "net_profit": p["net_profit"],            # contribution (prices/floor)
         "margin_pct": p["margin_pct"],
@@ -84,12 +105,9 @@ def summarize(orders: list[dict], billable_only: bool = True) -> dict:
     billable_only: count only orders that represent real revenue (status in
     production/shipped/delivered) — pending/error orders haven't earned money.
     """
-    billable_statuses = {"in_production", "shipped", "delivered",
-                         "awaiting_customer_approval", "approved_ready_to_print",
-                         "artwork_done"}
     rows = []
     for o in orders:
-        if billable_only and o.get("status") not in billable_statuses:
+        if billable_only and o.get("status") not in BILLABLE_STATUSES:
             continue
         rows.append(order_financials(o))
 
@@ -100,6 +118,8 @@ def summarize(orders: list[dict], billable_only: bool = True) -> dict:
     etsy_fees = round(sum(r["etsy_fees"] for r in rows), 2)
     tax = round(sum(r["sales_tax_collected"] for r in rows), 2)
     gelato = round(sum(r["gelato_cost"] for r in rows), 2)
+    gelato_ship = round(sum(r.get("gelato_shipping", 0) for r in rows), 2)
+    net_payout = round(sum(r["net_payout"] for r in rows), 2)
     profit = round(sum(r["net_profit"] for r in rows), 2)
     return {
         "order_count": len(rows),
@@ -108,6 +128,8 @@ def summarize(orders: list[dict], billable_only: bool = True) -> dict:
         "etsy_fees": etsy_fees,
         "sales_tax_collected": tax,
         "gelato_cost": gelato,
+        "gelato_shipping": gelato_ship,           # Gelato shipping COGS
+        "net_payout": net_payout,                 # real cash-in (for bank reconciliation)
         "net_profit": profit,
         "avg_profit_per_order": round(profit / len(rows), 2) if rows else 0.0,
         "rows": rows,

@@ -1440,6 +1440,30 @@ def _cmd_ledger(args: list[str]) -> int:
     return 0
 
 
+def _cmd_books_export(args: list[str]) -> int:
+    """Accountant-ready CSV for QuickBooks / Xero / Wave / a bookkeeper.
+    `books-export [today|week|month|year|all] [out.csv]`. One row per billable
+    order (tax-exclusive income, Etsy fees, Gelato COGS incl. shipping, pass-through
+    sales tax, real net payout, net profit) plus a TOTAL row."""
+    from quoteforge.etsy.books_export import write_books_csv, books_summary
+    period = next((a for a in args if a in
+                   ("today", "week", "month", "year", "all")), "month")
+    out = next((a for a in args if a.lower().endswith(".csv")),
+               f"books_{period}.csv")
+    path = write_books_csv(out, period)
+    s = books_summary(period)
+    print(f"Wrote {path} - {s['order_count']} orders ({period})")
+    print(f"  Sales income       {s['sales_income']:>12.2f}")
+    print(f"  Shipping income    {s['shipping_income']:>12.2f}")
+    print(f"  Etsy fees          {s['etsy_fees']:>12.2f}")
+    print(f"  Gelato COGS        {s['gelato_cogs']:>12.2f}")
+    print(f"  Sales tax (p/thru) {s['sales_tax_passthrough']:>12.2f}  (Etsy remits; $0 to you)")
+    print(f"  Net payout (bank)  {s['net_payout']:>12.2f}")
+    print(f"  Net profit         {s['net_profit']:>12.2f}")
+    print(f"  Books balance      {'OK' if s['balances'] else 'CHECK'}")
+    return 0
+
+
 def _cmd_ledger_breakdown(args: list[str]) -> int:
     """P&L split by channel, vendor & product type. `ledger-breakdown [period]`."""
     from quoteforge.etsy.ledger import build_breakdown, format_breakdown_text
@@ -2747,6 +2771,7 @@ COMMANDS = {
     "ledger": _cmd_ledger,
     "ledger-excel": _cmd_ledger_excel,
     "ledger-breakdown": _cmd_ledger_breakdown,
+    "books-export": _cmd_books_export,
     "clv": _cmd_clv,
     "quote-performance": _cmd_quote_performance,
     "dynamic-pricing": _cmd_dynamic_pricing,

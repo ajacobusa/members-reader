@@ -15,8 +15,9 @@ def _seed_db(tmp_path, monkeypatch):
 def test_ledger_pnl_math(tmp_path, monkeypatch):
     db = _seed_db(tmp_path, monkeypatch)
     oid = db.create_order({"order_id": "L1", "customer_name": "A"})
-    # $100 sale, $30 Gelato cost -> fees = 6.5%+3%+0.20 = 9.70 ; net = 60.30
-    db.update_order(oid, sale_price=100.0, gelato_cost=30.0)
+    # $100 sale, $30 Gelato cost -> fees = 6.5%+3%+0.20 = 9.70 ; net = 60.30.
+    # status must be billable (earned) - the ledger excludes non-billable orders.
+    db.update_order(oid, sale_price=100.0, gelato_cost=30.0, status="shipped")
     from quoteforge.etsy.ledger import build_ledger
     led = build_ledger("all")
     t = led["totals"]
