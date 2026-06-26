@@ -1442,14 +1442,16 @@ def _cmd_ledger(args: list[str]) -> int:
 
 def _cmd_books_export(args: list[str]) -> int:
     """Accountant-ready CSV for QuickBooks / Xero / Wave / a bookkeeper.
-    `books-export [today|week|month|year|all] [out.csv]`. One row per billable
-    order (tax-exclusive income, Etsy fees, Gelato COGS incl. shipping, pass-through
-    sales tax, real net payout, net profit) plus a TOTAL row."""
+    `books-export [today|week|month|year|all] [out.csv] [email] [address]`. One row
+    per billable order (tax-exclusive income, Etsy fees, Gelato COGS incl. shipping,
+    pass-through sales tax, real net payout, net profit) plus a TOTAL row. Give an
+    email address (or the word `email`) to send the CSV to your accounting inbox."""
     from quoteforge.etsy.books_export import write_books_csv, books_summary
     period = next((a for a in args if a in
                    ("today", "week", "month", "year", "all")), "month")
     out = next((a for a in args if a.lower().endswith(".csv")),
                f"books_{period}.csv")
+    addr = next((a for a in args if "@" in a), "")
     path = write_books_csv(out, period)
     s = books_summary(period)
     print(f"Wrote {path} - {s['order_count']} orders ({period})")
@@ -1461,6 +1463,28 @@ def _cmd_books_export(args: list[str]) -> int:
     print(f"  Net payout (bank)  {s['net_payout']:>12.2f}")
     print(f"  Net profit         {s['net_profit']:>12.2f}")
     print(f"  Books balance      {'OK' if s['balances'] else 'CHECK'}")
+    # Email the CSV to your accounting inbox (e.g. Wave) when asked.
+    if addr or "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        to = addr or REPORT_RECIPIENT
+        body = (f"<p>Joffiels books for <b>{period}</b> - {s['order_count']} billable "
+                f"orders. The attached CSV imports straight into Wave / QuickBooks / "
+                f"Xero.</p><ul>"
+                f"<li>Sales income: ${s['sales_income']:.2f}</li>"
+                f"<li>Shipping income: ${s['shipping_income']:.2f}</li>"
+                f"<li>Etsy fees: ${s['etsy_fees']:.2f}</li>"
+                f"<li>Gelato COGS: ${s['gelato_cogs']:.2f}</li>"
+                f"<li>Net payout (to bank): ${s['net_payout']:.2f}</li>"
+                f"<li>Net profit: ${s['net_profit']:.2f}</li></ul>"
+                f"<p>Sales tax ${s['sales_tax_passthrough']:.2f} is collected AND "
+                f"remitted by the marketplace - not your income or a cost.</p>")
+        res = _send_email(f"Joffiels books - {period}", body, to=to,
+                          attachments=[str(path)])
+        if res.get("status") == "sent":
+            print(f"  Emailed to {res['to']} (bcc {res.get('bcc')})")
+        else:
+            print(f"  Email {res.get('status')}: {res.get('message', '')}")
     return 0
 
 
