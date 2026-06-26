@@ -237,6 +237,14 @@ AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
 AI_PHOTO_ENHANCE: bool = _env_bool("AI_PHOTO_ENHANCE", True)
 AI_UPSCALE_API_KEY: str = os.getenv("AI_UPSCALE_API_KEY", "")
 AI_UPSCALE_API_URL: str = os.getenv("AI_UPSCALE_API_URL", "")
+# Which provider the URL+key speak to:
+#   "generic"   - a sync endpoint (your own Real-ESRGAN/GFPGAN server) that takes the
+#                 image as multipart and returns the upscaled image bytes (or JSON
+#                 with an output URL). This is the default.
+#   "replicate" - Replicate's async API (Real-ESRGAN). Set AI_UPSCALE_MODEL to the
+#                 model version id; URL defaults to https://api.replicate.com/v1/predictions.
+AI_UPSCALE_PROVIDER: str = os.getenv("AI_UPSCALE_PROVIDER", "generic").strip().lower()
+AI_UPSCALE_MODEL: str = os.getenv("AI_UPSCALE_MODEL", "")
 
 # ── UAT / feedback collection ────────────────────────────────────
 # Optional Google Form (or any survey) URL. When set, the UAT shop-home page
