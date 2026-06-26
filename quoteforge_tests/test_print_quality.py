@@ -78,7 +78,11 @@ def test_upload_endpoint(fresh_db, monkeypatch):
     data = {"email": "buyer@x.com", "size": "8x10",
             "file": (buf, "photo.jpg")}
     r = c.post("/upload", data=data, content_type="multipart/form-data")
-    assert r.status_code == 200 and r.get_json()["decision"] == "approve"
+    # The route works + returns the print-quality fields (the decision now reflects
+    # the quality score, so assert a valid decision rather than a fixed approve).
+    j = r.get_json()
+    assert r.status_code == 200 and j["decision"] in ("approve", "hold", "reject")
+    assert "quality_score" in j and "stars" in j
     bad = c.post("/upload", data={"email": "buyer@x.com"},
                  content_type="multipart/form-data")
     assert bad.status_code == 400

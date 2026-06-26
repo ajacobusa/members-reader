@@ -501,6 +501,17 @@ if FLASK_AVAILABLE and app:
             saved = save_upload(email, tmp, name=request.form.get("name", ""))
             assessment = assess_photo(saved or tmp, size)
             decision = assessment["decision"]
+            # Richer print-quality SCORE (sharpness + noise + compression + exposure
+            # + effective DPI, not just a DPI threshold). The STRICTER of the two
+            # verdicts wins, and the customer gets a 0-100 score, star rating and a
+            # plain-language print preview.
+            from quoteforge.images.photo_quality import score_photo
+            quality = score_photo(saved or tmp, size)
+            _q2d = {"pass": "approve", "warn": "hold", "reject": "reject"}
+            _rank = {"approve": 0, "hold": 1, "reject": 2}
+            qdecision = _q2d.get(quality["verdict"], decision)
+            if _rank.get(qdecision, 0) > _rank.get(decision, 0):
+                decision = qdecision           # the score caught what DPI alone missed
             # Publish a public, Gelato-fetchable URL (Drive / public dir / local).
             from quoteforge.automation.file_host import publish_print_file
             pub = publish_print_file(saved or tmp)
@@ -526,9 +537,15 @@ if FLASK_AVAILABLE and app:
                    "reasons": assessment["reasons"],
                    "hosted": pub["public"], "host": pub["host"],
                    "url": pub["url"],   # published, print-partner-fetchable URL
-                   "focal": focal}
+                   "focal": focal,
+                   # Print-quality preview for the buyer (Step 9): 0-100 score, stars,
+                   # plain message, and whether enhancement is recommended.
+                   "quality_score": quality["score"], "stars": quality["stars"],
+                   "quality_verdict": quality["verdict"],
+                   "quality_message": quality["message"],
+                   "recommend_enhance": quality["recommend_enhance"]}
             if decision != "approve":
-                out["message"] = reupload_request(assessment)
+                out["message"] = quality["message"] or reupload_request(assessment)
             resp = jsonify(out)
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"upload_photo failed: {exc}")

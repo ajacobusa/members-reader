@@ -220,6 +220,14 @@ PREFLIGHT_ASPECT_TOLERANCE: float = float(
 # 150 = the Gelato-safe floor (matches PREFLIGHT_MIN_DPI). Was 120, which let
 # visibly-soft photos pass and print blurry with no block.
 CUSTOMER_PHOTO_MIN_DPI: int = int(os.getenv("CUSTOMER_PHOTO_MIN_DPI", "150"))
+# Print-quality SCORE gate (photo_quality.score_photo): a 0-100 score that blends
+# resolution, sharpness, noise, compression, exposure + an optional AI pass - so a
+# blurry-but-large photo is caught, not just an under-resolution one.
+#   score >= PASS   -> proceed
+#   REJECT..PASS    -> warn (offer enhancement / "may look soft")
+#   score <  REJECT -> reject (ask for a better photo)
+PHOTO_QUALITY_PASS: float = float(os.getenv("PHOTO_QUALITY_PASS", "80"))
+PHOTO_QUALITY_REJECT: float = float(os.getenv("PHOTO_QUALITY_REJECT", "60"))
 # Auto-email the buyer (when their email is known) on a bad photo.
 AUTO_EMAIL_CUSTOMER: bool = _env_bool("AUTO_EMAIL_CUSTOMER", True)
 # AI-assisted photo enhancement: before bouncing a too-low-res buyer photo, try

@@ -4,7 +4,7 @@ approval persistence, and checkout gating."""
 import io
 import json
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 def _seed(tmp_path, monkeypatch):
@@ -49,7 +49,15 @@ def test_multiple_uploads_kept_per_customer(tmp_path, monkeypatch):
 def test_transparent_png_accepted(tmp_path, monkeypatch):
     c = _client(tmp_path, monkeypatch)
     buf = io.BytesIO()
-    Image.new("RGBA", (3000, 3000), (10, 10, 10, 0)).save(buf, "PNG")
+    # A transparent PNG WITH real content (shapes/edges) - the point is that the
+    # gate handles alpha, not that a featureless image passes. A solid transparent
+    # image is correctly rejected (no detail to print).
+    img = Image.new("RGBA", (3000, 3000), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(img)
+    for i in range(10):
+        dr.ellipse([i * 240, i * 200, i * 240 + 900, i * 200 + 900],
+                   fill=(60 + i * 15, 110, 160, 255), outline=(20, 20, 20, 255), width=10)
+    img.save(buf, "PNG")
     buf.seek(0)
     r = c.post("/upload", data={"email": "t@b.com", "size": "8x10",
                                 "file": (buf, "transparent.png")})
