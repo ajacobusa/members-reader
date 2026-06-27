@@ -344,6 +344,14 @@ AIRTABLE_BASE_ID: str = os.getenv("AIRTABLE_BASE_ID", "")
 # Gelato API (for programmatic order creation)
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
 GELATO_BASE_URL: str = os.getenv("GELATO_BASE_URL", "https://order.gelatoapis.com")
+# WHO submits orders to Gelato - exactly one source may, or orders double-print +
+# double-charge. "native" (DEFAULT, safe): Gelato fulfils via its native Etsy
+# integration (it pulls the order from Etsy, charges your card, prints, ships, and
+# returns tracking to Etsy); QuoteForge records/analyses/tracks but NEVER submits.
+# "quoteforge": QuoteForge submits each order to Gelato via the API (use only when you
+# are NOT using Gelato's native Etsy integration). The safe default fails toward
+# "an order sits unprinted" (recoverable) rather than "double-charged" (not).
+GELATO_FULFILLMENT_MODE: str = os.getenv("GELATO_FULFILLMENT_MODE", "native").strip().lower()
 
 # Google Drive (for artwork storage)
 GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")

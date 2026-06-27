@@ -76,7 +76,24 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
                               "the vendor) - reconcile before re-sending"}
 
     if vendor == "gelato":
-        from quoteforge.config import TEST_MODE
+        from quoteforge.config import TEST_MODE, GELATO_FULFILLMENT_MODE
+        # NATIVE Etsy<->Gelato fulfilment (default): Gelato pulls the order from Etsy,
+        # charges your card, prints + ships, and returns tracking to Etsy. QuoteForge
+        # must NOT also submit - that would double-print + double-charge on EVERY
+        # order. Record it as natively fulfilled (so the monitor doesn't flag a
+        # missing vendor id) and stop here. QuoteForge stays the design / analytics /
+        # financials / tracking layer.
+        if (GELATO_FULFILLMENT_MODE or "native") == "native":
+            try:
+                from quoteforge.db.database import update_order, get_order
+                if order_id and get_order(order_id):
+                    update_order(order_id, vendor="gelato-native",
+                                 status="in_production")
+            except Exception:  # noqa: BLE001 - record is best-effort
+                pass
+            return {"status": "native", "vendor": "gelato-native", "id": "",
+                    "detail": "fulfilled by Gelato's native Etsy integration "
+                              "(QuoteForge does not submit)"}
         product_uid = order.get("gelato_product_uid") or order.get("product_uid")
         # Defence in depth: a GEL-* seed placeholder must NEVER be submitted to
         # production. Route to manual so the owner maps the real Gelato UID first
