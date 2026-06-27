@@ -2829,7 +2829,10 @@
        const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      } else {
        drawGarment(ctx,x,y,w,h);
-       const b=_placeBound(x,y,w,h); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+       // BOX-driven frame (same as mockup mode + mug/branded/calendar) so the green
+       // corner actually RESIZES on a drawn garment too - the old _placeBound was
+       // garment-fixed, so the resize handle changed BOX.s but the frame never moved.
+       const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      }
    } else if(spec){ const t=spec.t*w;
      ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame
