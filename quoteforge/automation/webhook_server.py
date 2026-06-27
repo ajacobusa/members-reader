@@ -296,6 +296,10 @@ _GELATO_STATUS_MAP = {
     "printed": "in_production",
     "shipped": "shipped",
     "delivered": "delivered",
+    # Gelato paused production (out-of-stock, content review, payment hold). Surface
+    # it promptly as an attention status (daily_order_report.needs_attention) instead
+    # of letting it fall through to "ignored" and wait on the 6h stuck heuristic.
+    "on_hold": "on_hold",
     # Normalize BOTH spellings to "cancelled" (two Ls) - the spelling every
     # downstream consumer checks (tracker _TERMINAL, order_monitor, financial
     # reports, delight loop). "canceled" silently stranded the order otherwise.

@@ -105,8 +105,12 @@ def update_gelato_shipping_address(gelato_order_id: str, address: dict) -> dict:
     if TEST_MODE or not GELATO_API_KEY:
         return {"status": "mock_updated", "gelato_order_id": gelato_order_id,
                 "shippingAddress": address}
+    # Honor the same version as create/status (was hardcoded /v3, which would hit a
+    # v3 path while create/status run on v4 for a v4-only account).
+    from quoteforge.config import GELATO_API_VERSION
+    ver = GELATO_API_VERSION or "v4"
     resp = requests.put(
-        f"{GELATO_BASE_URL}/v3/orders/{gelato_order_id}/shipping-address",
+        f"{GELATO_BASE_URL}/{ver}/orders/{gelato_order_id}/shipping-address",
         headers=_gelato_headers(), json=address, timeout=30)
     resp.raise_for_status()
     return {"status": "updated", "gelato_order_id": gelato_order_id,

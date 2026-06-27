@@ -6,8 +6,9 @@ against the ordered product's print spec and BLOCKS the order if it would print
 poorly, so the failure is caught before money is spent on a bad print.
 
 Checks: file type, colour mode, pixel dimensions vs. the product's 300-DPI spec,
-effective DPI, aspect-ratio match, safe-margin breathing room, and non-empty/
-not-corrupt. Returns a pass/fail report with a reason per check.
+effective DPI, aspect-ratio match, non-empty/not-corrupt, and a non-blocking
+opacity warning (transparent areas print with the background showing through).
+Returns a pass/fail report with a reason per check.
 """
 from pathlib import Path
 
@@ -45,6 +46,8 @@ def run_preflight(image_path, product_identifier: str = "") -> dict:
             mode = im.mode
             width, height = im.size
             dpi = im.info.get("dpi", (0, 0))
+            # Any non-opaque pixel? (alpha min < 255). Only meaningful for RGBA.
+            alpha_min = im.getchannel("A").getextrema()[0] if mode == "RGBA" else 255
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "blocking": True,
                 "checks": [_check("readable image", False,
@@ -55,6 +58,14 @@ def run_preflight(image_path, product_identifier: str = "") -> dict:
                          f"({'allowed' if im_format in _ALLOWED_FORMATS else 'use PNG/JPG'})"))
     checks.append(_check("colour mode", mode in _ALLOWED_MODES,
                          f"{mode} ({'ok' if mode in _ALLOWED_MODES else 'convert to RGB'})"))
+
+    # Opacity (NON-blocking): Gelato flattens transparency, so unintended
+    # transparent areas print with the background showing through. Warn, don't block.
+    if mode == "RGBA":
+        checks.append(_check("opacity", alpha_min == 255,
+                             "fully opaque" if alpha_min == 255 else
+                             "has transparent areas - will print with background "
+                             "showing through"))
 
     # Non-empty / not effectively blank.
     file_kb = path.stat().st_size / 1024

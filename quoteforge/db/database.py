@@ -1563,8 +1563,10 @@ def daily_order_report() -> dict:
             dict(r) for r in conn.execute(
                 "SELECT order_id, recipient_name, occasion, status FROM orders "
                 # hold_validation is a money-gate failure that previously had no
-                # owner-facing surfacing; hold_photo waits on a re-upload.
-                "WHERE status IN ('proof_sent','error','hold_validation','hold_photo') "
+                # owner-facing surfacing; hold_photo waits on a re-upload; on_hold is
+                # a vendor-side production pause (Gelato) that needs a human chase.
+                "WHERE status IN ('proof_sent','error','hold_validation','hold_photo',"
+                "'on_hold') "
                 "ORDER BY created_at"
             ).fetchall()
         ]

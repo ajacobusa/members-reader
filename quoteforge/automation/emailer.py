@@ -219,5 +219,3 @@ def send_daily_report() -> dict:
                 "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}
     subject, body = build_report_html()
     return _send_email(subject, body)
-
-    return {"status": "sent", "to": REPORT_RECIPIENT, "subject": subject}
