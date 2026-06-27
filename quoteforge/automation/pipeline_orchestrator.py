@@ -300,6 +300,17 @@ def run_full_pipeline(
                 render_size = branded_dimensions_for(_pid)
                 photo_size = size_key
             else:
+                # The else-branch is the WALL-ART poster path. A product_type we have
+                # no render-size branch for would otherwise render at the poster default
+                # (~5400x7200) and silently auto-submit a wrong-sized print. Fail loudly
+                # so a future family can't ship cropped/stretched (audit: future-family
+                # render fallthrough). Wall-art types render correctly at the default.
+                _WALLART_TYPES = {"", "print", "poster", "canvas", "framed",
+                                  "metal", "acrylic", "wall_art", "wallart"}
+                if (_pt or "").lower() not in _WALLART_TYPES:
+                    raise ValueError(
+                        f"no render-size branch for product_type '{_pt}' - add one "
+                        f"before fulfilling this family (would have used poster size)")
                 render_size = dimensions_for(size_key)
                 photo_size = size_key
             bg_url = None

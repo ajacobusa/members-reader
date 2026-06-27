@@ -924,12 +924,24 @@ def link_design_to_order(email: str, order_id: str) -> int:
     if "@" not in email or not order_id:
         return 0
     with _conn() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             "SELECT id, design_json FROM saved_designs WHERE email=? "
             "AND (order_id IS NULL OR order_id='') "
-            "ORDER BY updated_at DESC LIMIT 1", (email,)).fetchone()
-        if not row:
+            "ORDER BY updated_at DESC", (email,)).fetchall()
+        if not rows:
             return 0
+        if len(rows) == 1:
+            row = rows[0]                         # unambiguous - the common case
+        else:
+            # MULTIPLE unlinked designs: blindly taking the most recent (the old
+            # behaviour) could attach the WRONG artwork to this order line, since the
+            # Etsy line order and the save-recency order are unrelated. Match by the
+            # order's product identity; link ONLY on an unambiguous single match -
+            # otherwise link nothing (a missing design is recoverable; a wrong,
+            # already-printed made-to-order item is not).
+            row = _match_unlinked_design(order_id, rows)
+            if row is None:
+                return 0
         conn.execute(
             "UPDATE saved_designs SET order_id=?, updated_at=datetime('now') WHERE id=?",
             (order_id, row["id"]))
@@ -941,6 +953,37 @@ def link_design_to_order(email: str, order_id: str) -> int:
     except Exception:  # noqa: BLE001
         pass
     return row["id"]
+
+
+def _design_tokens(design_json: str) -> set:
+    """Product-identity tokens (format/size/type) found in a saved design, top-level
+    or in its first cart line - for correlating a design to an order line."""
+    import json as _json
+    try:
+        d = _json.loads(design_json or "{}") or {}
+    except (TypeError, ValueError):
+        return set()
+    src = dict(d)
+    lines = ((d.get("cart") or {}).get("lines")) or []
+    if lines and isinstance(lines[0], dict):
+        src.update({k: v for k, v in lines[0].items() if k not in src})
+    toks = {str(src.get(k) or "").strip().lower()
+            for k in ("product_type", "fmt", "format", "material", "size")}
+    toks.discard("")
+    return toks
+
+
+def _match_unlinked_design(order_id: str, rows: list):
+    """Pick the saved design whose product identity matches the order, or None when
+    the match is ambiguous (0 or 2+ candidates) - never guess on a print."""
+    o = get_order(order_id) or {}
+    o_toks = {str(o.get(k) or "").strip().lower()
+              for k in ("product_type", "material", "size")}
+    o_toks.discard("")
+    if not o_toks:
+        return None
+    matches = [r for r in rows if o_toks & _design_tokens(r["design_json"])]
+    return matches[0] if len(matches) == 1 else None
 
 
 def _propagate_design_artwork(order_id: str, design_json: str) -> None:
@@ -1594,9 +1637,12 @@ def daily_order_report() -> dict:
                 "SELECT order_id, recipient_name, occasion, status FROM orders "
                 # hold_validation is a money-gate failure that previously had no
                 # owner-facing surfacing; hold_photo waits on a re-upload; on_hold is
-                # a vendor-side production pause (Gelato) that needs a human chase.
+                # a vendor-side production pause (Gelato) that needs a human chase;
+                # submit_unconfirmed is an ambiguous send (vendor MAY have charged +
+                # started producing) that is intentionally never auto-retried, so it
+                # MUST be surfaced for manual reconciliation or it sits invisible.
                 "WHERE status IN ('proof_sent','error','hold_validation','hold_photo',"
-                "'on_hold') "
+                "'on_hold','submit_unconfirmed') "
                 "ORDER BY created_at"
             ).fetchall()
         ]
