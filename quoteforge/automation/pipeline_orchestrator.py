@@ -400,8 +400,10 @@ def run_full_pipeline(
         # Best-effort: a mockup failure must never block the print itself.
         # Apparel is skipped - a room-on-wall mockup is meaningless for a garment
         # (the customer already previews the garment live in the design editor).
-        if (GENERATE_ROOM_MOCKUP and png_path and png_path.exists()
-                and order_data.get("product_type") != "apparel"):
+        from quoteforge.etsy.families import family_for as _family_for
+        _mfam = _family_for(order_data.get("product_type"))
+        _wants_mockup = _mfam is None or _mfam.room_mockup   # wall art (None) or a family that fits
+        if (GENERATE_ROOM_MOCKUP and png_path and png_path.exists() and _wants_mockup):
             try:
                 from quoteforge.images.room_mockup import render_room_mockup
                 mockup_path = render_room_mockup(
@@ -427,11 +429,14 @@ def run_full_pipeline(
         # deterministic print preflight with an optional Claude vision review.
         if PREFLIGHT_ENABLED and not TEST_MODE and png_path and png_path.exists():
             from quoteforge.images.final_qc import final_qc
-            # Apparel renders to the garment chest area (3600x4800 = "12x16 in");
-            # QC must check against THAT, not the buyer's garment size ("M").
-            size_key = ("12x16 in" if order_data.get("product_type") == "apparel"
-                        else (order_data.get("product_size")
-                              or order_data.get("size") or gelato_product_uid))
+            from quoteforge.etsy.families import family_for as _qc_family_for
+            # QC must check the file against the size it was RENDERED at (e.g. apparel
+            # renders to the garment chest area "12x16 in", not the buyer's "M"). The
+            # family registry's photo_size is exactly that render-size -> reuse it.
+            _qc_base = (order_data.get("product_size")
+                        or order_data.get("size") or gelato_product_uid)
+            _qfam = _qc_family_for(order_data.get("product_type"))
+            size_key = _qfam.photo_size(order_data, _qc_base) if _qfam else _qc_base
             qc = final_qc(png_path, size_key)
             if not qc["ok"]:
                 fails = qc["fails"]
@@ -544,6 +549,11 @@ def run_full_pipeline(
             log_pipeline_stage(order_id, "gelato_order", "error", str(exc))
             update_order(order_id, status="error")
             _notify("gelato_order", f"Fulfillment error: {exc}")
+            try:    # report to Sentry (no-op unless SENTRY_DSN is set)
+                from quoteforge.automation.monitoring import capture
+                capture(exc)
+            except Exception:  # noqa: BLE001
+                pass
 
         # ── Stage 7: Follow-up (persist messages, upsell, review) ──
         # Skip when routing failed - an errored order is not "shipped" and must

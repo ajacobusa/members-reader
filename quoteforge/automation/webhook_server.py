@@ -305,6 +305,13 @@ def _process_in_background(payload: dict) -> None:
         process_webhook_payload(payload)
     except Exception as exc:  # pragma: no cover - defensive
         logger.error(f"Background order processing failed: {exc}")
+        # This runs in a daemon thread whose crash would otherwise vanish - report it
+        # to Sentry (no-op unless SENTRY_DSN is set) so real failures are visible.
+        try:
+            from quoteforge.automation.monitoring import capture
+            capture(exc)
+        except Exception:  # noqa: BLE001 - monitoring must never mask the real error
+            pass
 
 
 # Gelato fulfillment status → our internal order status

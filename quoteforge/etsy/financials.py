@@ -172,3 +172,41 @@ def year_gross_1099k(year: int) -> dict:
         "etsy_fees": round(sum(r["etsy_fees"] for r in rows), 2),
         "net_payout": round(sum(r["net_payout"] for r in rows), 2),
     }
+
+
+def line_financials(order: dict) -> list:
+    """Per-LINE profit & loss for a multi-item order, parsed from line_items (each
+    line's unit price, qty, and PER-UNIT gelato_cost). Revenue + COGS both scale by
+    qty, so this shows the true margin of each item in a basket (the order-level
+    figures are basket totals). Returns [] for a single-item order (use
+    order_financials there). Never raises - a malformed line is skipped.
+    """
+    import json
+    raw = order.get("line_items")
+    if not raw:
+        return []
+    try:
+        lines = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    out = []
+    for ln in lines:
+        if not isinstance(ln, dict):
+            continue
+        try:
+            qty = int(ln.get("qty", 1) or 1)
+            unit = float(ln.get("unit") or 0)
+            cost = round(float(ln.get("gelato_cost") or 0) * qty, 2)
+        except (TypeError, ValueError):
+            continue
+        revenue = round(unit * qty, 2)
+        gross = round(revenue - cost, 2)
+        out.append({
+            "title": ln.get("title", ""),
+            "qty": qty,
+            "revenue": revenue,
+            "gelato_cost": cost,                 # line total (per-unit x qty)
+            "gross_profit": gross,
+            "gross_margin_pct": round(gross / revenue * 100, 1) if revenue else 0.0,
+        })
+    return out

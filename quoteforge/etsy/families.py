@@ -26,6 +26,7 @@ class Family:
     enrich: Callable            # enrich(order_data: dict) -> dict of fields to merge
     render_size: Callable       # (order_data, size_key) -> (width_px, height_px)
     photo_size: Callable        # (order_data, size_key) -> physical size str for the DPI gate
+    room_mockup: bool = True    # does a styled-room (wall scene) gallery mockup fit it?
 
 
 def _build() -> list:
@@ -40,7 +41,8 @@ def _build() -> list:
     return [
         Family("apparel", enrich_apparel_order,
                lambda od, sk: apparel_dimensions_for(od.get("garment_id", "")),
-               lambda od, sk: "12x16 in"),          # garment chest area for the DPI gate
+               lambda od, sk: "12x16 in",           # garment chest area for the DPI gate
+               room_mockup=False),                  # a room-on-wall mockup is meaningless for a garment
         Family("mug", enrich_mug_order,
                lambda od, sk: mug_dimensions_for(od.get("product_id", "")),
                lambda od, sk: sk),
