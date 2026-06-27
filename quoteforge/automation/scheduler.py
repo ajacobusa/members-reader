@@ -76,11 +76,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Wave for sign-off (1st of month). Never pushes - run wave-sync --live "
         "manually after reviewing."),
     ScheduledJob(
-        "QuoteForge Wave Daily Transactions", "wave-csv today email",
+        "QuoteForge Wave Daily Transactions", "wave-sync today --auto",
         ["/SC", "DAILY", "/ST", "23:55"],
-        "Writes the day's Wave 'Upload transactions' CSV to the wave/ folder and "
-        "emails it (income + all costs: Etsy fees, Gelato, shipping, infrastructure) "
-        "for Wave's free CSV import. No email on a zero-activity day."),
+        "Automatically posts the day's transactions to Wave (income + ALL costs: "
+        "Etsy fees, Gelato, shipping, infrastructure, and the sales-tax pass-through "
+        "pair). Pushes live only when WAVE_AUTO_SYNC is on; otherwise emails the "
+        "dry-run review. Also writes the CSV via `wave-csv` for the manual path."),
     ScheduledJob(
         "QuoteForge Yearly Report", "report yearly email",
         # Yearly = Jan 1. schtasks MONTHLY names the month with /M (/MO expects a

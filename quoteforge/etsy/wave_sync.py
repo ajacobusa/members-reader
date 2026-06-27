@@ -1,64 +1,78 @@
-"""Push per-order Etsy payouts into Wave as money transactions.
+"""Push the FULL money picture into Wave as money transactions - automatically.
 
-Each billable order becomes ONE Wave transaction that mirrors the corrected books:
-  anchor : Bank/Clearing account, amount = net_payout, direction = DEPOSIT
-  lines  : Sales income (INCREASE) + Shipping income (INCREASE) + Etsy fees (INCREASE)
-so it BALANCES by construction (net_payout = sales + shipping - fees). Sales tax is
-pass-through and never appears. externalId = "joffiels-<order>" makes the push
-idempotent. Gelato COGS is intentionally NOT pushed - vendor charges arrive on your
-bank/card feed in Wave; pushing the catalog estimate too would double-count.
+Each signed line from wave_upload.wave_rows (income AND every cost: Etsy fees, Gelato
+print + shipping, infrastructure/software, and the sales-tax pass-through pair)
+becomes one categorized Wave transaction:
+  anchor    : Bank/Clearing account, amount = |line|, DEPOSIT (+) or WITHDRAWAL (-)
+  line item : the mapped category account, amount = |line|, balance INCREASE/DECREASE
+externalId = "joffiels-<ref>" makes the push idempotent (re-running never duplicates).
+Sales tax is recorded as a collected/remitted pair that nets to $0 - tracked, never
+profit. Run a dry-run first; the daily job only pushes live when WAVE_AUTO_SYNC is on.
 
-For a real bank account, the API entry can duplicate the Etsy deposit your bank feed
-imports. Best practice: point WAVE_ACCT_BANK at a dedicated "Etsy Clearing" account,
-then record one transfer Clearing -> Bank per actual deposit. Run with dry_run first.
+Tip: point WAVE_ACCT_BANK at a dedicated "Etsy Clearing" account so these don't
+duplicate the deposits a connected bank feed would import.
 """
 from __future__ import annotations
 
+# wave_upload account key -> config attribute holding the Wave account id.
+_ACCOUNT_KEYS = {
+    "sales": "WAVE_ACCT_SALES", "shipping": "WAVE_ACCT_SHIPPING",
+    "fees": "WAVE_ACCT_FEES", "cogs": "WAVE_ACCT_COGS",
+    "infra": "WAVE_ACCT_INFRA", "tax": "WAVE_ACCT_TAX", "other": "WAVE_ACCT_SALES",
+}
+
+
+def _accounts() -> dict:
+    """Resolve each category key to its configured Wave account id (shipping/other
+    fall back to the sales account when unset)."""
+    import quoteforge.config as cfg
+    out = {k: (getattr(cfg, attr, "") or "") for k, attr in _ACCOUNT_KEYS.items()}
+    if not out["shipping"]:
+        out["shipping"] = out["sales"]
+    return out
+
 
 def sync_period(period: str = "month", dry_run: bool = True) -> dict:
-    """Build (and unless dry_run, push) a Wave transaction per billable order."""
-    from quoteforge.config import (WAVE_BUSINESS_ID, WAVE_ACCT_BANK, WAVE_ACCT_SALES,
-                                   WAVE_ACCT_SHIPPING, WAVE_ACCT_FEES)
-    from quoteforge.etsy.books_export import bookkeeper_rows
+    """Build (and unless dry_run, push) one Wave transaction per income/cost line."""
+    import quoteforge.config as cfg
+    from quoteforge.etsy.wave_upload import wave_rows
     from quoteforge.etsy.wave_api import create_money_transaction
 
-    rows = bookkeeper_rows(period)
-    missing = [n for n, v in (("WAVE_BUSINESS_ID", WAVE_BUSINESS_ID),
-                              ("WAVE_ACCT_BANK", WAVE_ACCT_BANK),
-                              ("WAVE_ACCT_SALES", WAVE_ACCT_SALES),
-                              ("WAVE_ACCT_FEES", WAVE_ACCT_FEES)) if not v]
-    out = {"period": period, "orders": len(rows), "created": 0, "failed": 0,
-           "dry_run": dry_run, "missing_config": missing, "errors": [], "txns": []}
-    if missing and not dry_run:
+    rows = wave_rows(period)
+    acct = _accounts()
+    bank = getattr(cfg, "WAVE_ACCT_BANK", "") or ""
+    used = {r["account"] for r in rows}
+    missing = []
+    if not (getattr(cfg, "WAVE_BUSINESS_ID", "") or ""):
+        missing.append("WAVE_BUSINESS_ID")
+    if not bank:
+        missing.append("WAVE_ACCT_BANK")
+    for k in sorted(used):
+        if not acct.get(k):
+            missing.append(_ACCOUNT_KEYS[k])
+    out = {"period": period, "lines": len(rows), "created": 0, "failed": 0,
+           "dry_run": dry_run, "missing_config": sorted(set(missing)),
+           "errors": [], "txns": []}
+    if out["missing_config"] and not dry_run:
         return out
 
     for r in rows:
-        sales = round(float(r["sales_income"]), 2)
-        ship = round(float(r["shipping_income"]), 2)
-        fees = round(float(r["etsy_fees"]), 2)
-        lines = [{"accountId": WAVE_ACCT_SALES, "amount": sales, "balance": "INCREASE"}]
-        if ship > 0:
-            if WAVE_ACCT_SHIPPING:
-                lines.append({"accountId": WAVE_ACCT_SHIPPING, "amount": ship,
-                              "balance": "INCREASE"})
-            else:                                  # no shipping account -> fold into sales
-                lines[0]["amount"] = round(lines[0]["amount"] + ship, 2)
-        if fees > 0:
-            lines.append({"accountId": WAVE_ACCT_FEES, "amount": fees,
-                          "balance": "INCREASE"})
-        anchor = {"accountId": WAVE_ACCT_BANK, "amount": round(float(r["net_payout"]), 2),
-                  "direction": "DEPOSIT"}
-        ext = f"joffiels-{r['order']}"
-        desc = f"Etsy order {r['order']}"
-        out["txns"].append({"externalId": ext, "date": r["date"], "anchor": anchor,
-                            "lineItems": lines})
+        amt = round(abs(r["Amount"]), 2)
+        direction = "DEPOSIT" if r["Amount"] > 0 else "WITHDRAWAL"
+        anchor = {"accountId": bank, "amount": amt, "direction": direction}
+        line = {"accountId": acct.get(r["account"]) or acct["sales"], "amount": amt,
+                "balance": r.get("balance", "INCREASE")}
+        ext = f"joffiels-{r['ext']}"
+        out["txns"].append({"externalId": ext, "date": r["Date"],
+                            "account": r["account"], "anchor": anchor,
+                            "lineItems": [line]})
         if dry_run:
             continue
-        res = create_money_transaction(WAVE_BUSINESS_ID, ext, r["date"], desc,
-                                       anchor, lines)
+        res = create_money_transaction(cfg.WAVE_BUSINESS_ID, ext, r["Date"],
+                                       r["Description"], anchor, [line])
         if res["ok"]:
             out["created"] += 1
         else:
             out["failed"] += 1
-            out["errors"].append({"order": r["order"], "errors": res["errors"]})
+            out["errors"].append({"ext": ext, "errors": res["errors"]})
     return out

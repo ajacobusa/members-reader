@@ -12,9 +12,15 @@ def _cfg(monkeypatch, **kw):
     monkeypatch.setattr(c, "WAVE_API_TOKEN", kw.get("token", "tok"))
     monkeypatch.setattr(c, "WAVE_BUSINESS_ID", kw.get("bid", "B1"))
     monkeypatch.setattr(c, "WAVE_ACCT_BANK", kw.get("bank", "ACC_BANK"))
-    monkeypatch.setattr(c, "WAVE_ACCT_SALES", kw.get("sales", "ACC_SALES"))
-    monkeypatch.setattr(c, "WAVE_ACCT_SHIPPING", kw.get("ship", "ACC_SHIP"))
-    monkeypatch.setattr(c, "WAVE_ACCT_FEES", kw.get("fees", "ACC_FEES"))
+    monkeypatch.setattr(c, "WAVE_ACCT_SALES", "ACC_SALES")
+    monkeypatch.setattr(c, "WAVE_ACCT_SHIPPING", "ACC_SHIP")
+    monkeypatch.setattr(c, "WAVE_ACCT_FEES", "ACC_FEES")
+    monkeypatch.setattr(c, "WAVE_ACCT_COGS", "ACC_COGS")
+    monkeypatch.setattr(c, "WAVE_ACCT_INFRA", "ACC_INFRA")
+    monkeypatch.setattr(c, "WAVE_ACCT_TAX", "ACC_TAX")
+    monkeypatch.setattr(c, "WAVE_AUTO_SYNC", kw.get("auto", False))
+    monkeypatch.setattr(c, "USE_MAKE_COM", False, raising=False)
+    monkeypatch.setattr(c, "MONTHLY_FIXED_COSTS", 0.0, raising=False)
 
 
 def test_not_configured_is_safe(monkeypatch):
@@ -114,19 +120,28 @@ def _insert(d, oid, status, sale, **extra):
     conn.close()
 
 
-def test_sync_builds_balanced_transaction(db, monkeypatch):
+def test_sync_pushes_every_cost_line(db, monkeypatch):
+    # REGRESSION: the push covers ALL costs (sales, fees, COGS) + the tax pair, each
+    # as a categorized one-line transaction.
     _cfg(monkeypatch)
-    _insert(db, "E1", "shipped", 43.20)
+    _insert(db, "E1", "shipped", 43.20)         # tax_collected 3.20 -> tax pair
     from quoteforge.etsy.wave_sync import sync_period
     res = sync_period("month", dry_run=True)
-    assert res["orders"] == 1 and res["missing_config"] == []
-    t = res["txns"][0]
-    # Etsy order: product_revenue 40 (item+ship, tax excl); fees 2.60; net 37.40
-    assert t["anchor"]["amount"] == 37.40 and t["anchor"]["direction"] == "DEPOSIT"
-    sales = [li for li in t["lineItems"] if li["accountId"] == "ACC_SALES"][0]["amount"]
-    fees = [li for li in t["lineItems"] if li["accountId"] == "ACC_FEES"][0]["amount"]
-    assert round(sales - fees, 2) == t["anchor"]["amount"]      # balances
-    assert t["externalId"] == "joffiels-E1"                     # idempotent ref
+    assert res["missing_config"] == [] and res["lines"] >= 5
+    by = {}
+    for t in res["txns"]:
+        by.setdefault(t["account"], []).append(t)
+    # income -> DEPOSIT to sales (tax-exclusive product revenue 40.00)
+    assert by["sales"][0]["anchor"]["direction"] == "DEPOSIT"
+    assert by["sales"][0]["anchor"]["amount"] == 40.00
+    # Gelato COGS + Etsy fees -> WITHDRAWAL
+    assert by["cogs"][0]["anchor"]["direction"] == "WITHDRAWAL"
+    assert by["fees"][0]["anchor"]["direction"] == "WITHDRAWAL"
+    # tax pass-through PAIR with a DECREASE (remittance) line, nets to $0
+    tax = by["tax"]
+    assert len(tax) == 2
+    assert any(t["lineItems"][0]["balance"] == "DECREASE" for t in tax)
+    assert all(t["externalId"].startswith("joffiels-") for t in res["txns"])
 
 
 def test_sync_missing_config_blocks_live(db, monkeypatch):
@@ -137,19 +152,18 @@ def test_sync_missing_config_blocks_live(db, monkeypatch):
     assert "WAVE_ACCT_BANK" in res["missing_config"] and res["created"] == 0
 
 
-def test_sync_live_pushes(db, monkeypatch):
+def test_sync_live_pushes_all_lines(db, monkeypatch):
     _cfg(monkeypatch)
     _insert(db, "E1", "shipped", 43.20)
     import quoteforge.etsy.wave_sync as ws
     monkeypatch.setattr("quoteforge.etsy.wave_api.create_money_transaction",
-                        lambda *a, **k: {"ok": True, "id": "T1", "errors": []})
+                        lambda *a, **k: {"ok": True, "id": "T", "errors": []})
     res = ws.sync_period("month", dry_run=False)
-    assert res["created"] == 1 and res["failed"] == 0
+    assert res["created"] == res["lines"] and res["failed"] == 0
 
 
 def test_wave_sync_email_is_dry_run_review(db, monkeypatch):
-    # REGRESSION: the scheduled monthly `wave-sync month email` emails a DRY-RUN
-    # review and NEVER pushes (no --live).
+    # `wave-sync month email` emails a DRY-RUN review and NEVER pushes.
     _cfg(monkeypatch)
     _insert(db, "E1", "shipped", 43.20)
     import quoteforge.automation.emailer as em
@@ -157,15 +171,31 @@ def test_wave_sync_email_is_dry_run_review(db, monkeypatch):
     seen = {}
     monkeypatch.setattr(em, "_send_email",
                         lambda subj, body, to="", attachments=None: seen.update(
-                            to=to, subj=subj, body=body) or {"status": "sent", "to": to})
+                            to=to, body=body) or {"status": "sent", "to": to})
     pushed = {"n": 0}
     monkeypatch.setattr(w, "create_money_transaction",
                         lambda *a, **k: pushed.__setitem__("n", pushed["n"] + 1))
     from quoteforge import admin
     rc = admin.main(["wave-sync", "month", "email"])
-    assert rc == 0
-    assert pushed["n"] == 0                      # never pushed (dry-run)
-    assert seen["to"] and "DRY-RUN" in seen["body"]
+    assert rc == 0 and pushed["n"] == 0 and "DRY-RUN" in seen["body"]
+
+
+def test_auto_pushes_only_when_flag_enabled(db, monkeypatch):
+    # REGRESSION: `wave-sync --auto` pushes live ONLY when WAVE_AUTO_SYNC is on.
+    _cfg(monkeypatch, auto=False)
+    _insert(db, "E1", "shipped", 43.20)
+    import quoteforge.etsy.wave_api as w, quoteforge.automation.emailer as em
+    pushed = {"n": 0}
+    monkeypatch.setattr(w, "create_money_transaction",
+                        lambda *a, **k: pushed.__setitem__("n", pushed["n"] + 1)
+                        or {"ok": True, "id": "T", "errors": []})
+    monkeypatch.setattr(em, "_send_email", lambda *a, **k: {"status": "skipped"})
+    from quoteforge import admin
+    admin.main(["wave-sync", "month", "--auto"])      # flag OFF -> review only
+    assert pushed["n"] == 0
+    monkeypatch.setattr("quoteforge.config.WAVE_AUTO_SYNC", True)
+    admin.main(["wave-sync", "month", "--auto"])      # flag ON -> auto push
+    assert pushed["n"] >= 1
 
 
 def test_monthly_wave_review_job_registered():

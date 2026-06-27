@@ -40,8 +40,9 @@ def test_rows_capture_income_and_all_costs(db):
     assert by["Etsy fees"] == -2.60
     assert by["Gelato print"] == -13.00
     assert by["Gelato shipping"] == -6.25
-    # sales tax (3.20) is pass-through -> NEVER appears
-    assert not any("tax" in r["Description"].lower() for r in rows)
+    # sales tax (3.20) is recorded as a PASS-THROUGH pair that nets to $0
+    tax = [r for r in rows if r["account"] == "tax"]
+    assert len(tax) == 2 and round(sum(t["Amount"] for t in tax), 2) == 0.0
 
 
 def test_infrastructure_costs_are_captured(db, monkeypatch):
@@ -79,8 +80,8 @@ def test_write_csv_into_wave_folder(db, tmp_path, monkeypatch):
     assert any(a > 0 for a in amounts) and any(a < 0 for a in amounts)
 
 
-def test_daily_wave_csv_job_registered():
+def test_daily_wave_job_auto_syncs():
     from quoteforge.automation.scheduler import SCHEDULED_JOBS
     job = next((j for j in SCHEDULED_JOBS
                 if j.name == "QuoteForge Wave Daily Transactions"), None)
-    assert job and job.admin_args == "wave-csv today email"
+    assert job and job.admin_args == "wave-sync today --auto"

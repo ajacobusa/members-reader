@@ -410,6 +410,12 @@ WAVE_ACCT_BANK: str = os.getenv("WAVE_ACCT_BANK", "")        # anchor (Cash/Bank
 WAVE_ACCT_SALES: str = os.getenv("WAVE_ACCT_SALES", "")      # Sales income
 WAVE_ACCT_SHIPPING: str = os.getenv("WAVE_ACCT_SHIPPING", "")  # Shipping income (optional)
 WAVE_ACCT_FEES: str = os.getenv("WAVE_ACCT_FEES", "")        # Etsy/selling fees expense
+WAVE_ACCT_COGS: str = os.getenv("WAVE_ACCT_COGS", "")        # Gelato print + shipping (COGS)
+WAVE_ACCT_INFRA: str = os.getenv("WAVE_ACCT_INFRA", "")      # Software/AI/hosting expense
+WAVE_ACCT_TAX: str = os.getenv("WAVE_ACCT_TAX", "")          # Sales Tax Payable (liability)
+# Flip ON only after a clean `wave-sync month` dry-run: the daily job then pushes
+# transactions to Wave automatically (otherwise it just emails the dry-run review).
+WAVE_AUTO_SYNC: bool = _env_bool("WAVE_AUTO_SYNC", False)
 
 # Phase 1 priority niches to validate first (20-30 manual listings)
 PHASE1_NICHES: list[str] = [
