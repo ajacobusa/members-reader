@@ -145,3 +145,30 @@ def month_financials(year: int, month: int) -> dict:
     summary = summarize(orders)
     summary["period"] = prefix
     return summary
+
+
+def year_gross_1099k(year: int) -> dict:
+    """Year-end 1099-K reconciliation.
+
+    Etsy issues a 1099-K reporting GROSS payment volume processed (box 1a) - the
+    grand total (incl. tax + shipping) of every transaction it settled, BEFORE fees
+    and BEFORE refunds. So this sums the grand total of every order Etsy actually
+    processed in the calendar year - billable orders AND refunded ones (the gross
+    was still processed) - so the owner can tie it to the issued form instead of
+    being surprised at tax time. Returns the gross plus fee/payout context.
+    """
+    from quoteforge.db.database import get_all_orders
+    prefix = f"{year:04d}-"
+    processed = [
+        o for o in get_all_orders(limit=1000000)
+        if (o.get("created_at", "") or "").startswith(prefix)
+        and (o.get("status") in BILLABLE_STATUSES or o.get("status") == "refunded")
+    ]
+    rows = [order_financials(o) for o in processed]
+    return {
+        "year": year,
+        "gross_1099k": round(sum(r["sale_price"] for r in rows), 2),  # match box 1a
+        "transactions": len(rows),
+        "etsy_fees": round(sum(r["etsy_fees"] for r in rows), 2),
+        "net_payout": round(sum(r["net_payout"] for r in rows), 2),
+    }
