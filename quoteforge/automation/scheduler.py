@@ -131,6 +131,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "tracking number to the Etsy buyer - which also lets the "
         "post-delivery review/delight loop fire."),
     ScheduledJob(
+        "QuoteForge Fulfillment Retry", "retry-fulfillment",
+        ["/SC", "HOURLY", "/MO", "1"],
+        "Every hour: re-drives errored, never-submitted orders through the "
+        "idempotent router so a Gelato outage longer than the in-process retries "
+        "self-heals (bounded by a per-order retry cap; can't double-submit)."),
+    ScheduledJob(
         "QuoteForge Weekly API Costs", "costs week email",
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:50"],
         "Emails a detailed WEEKLY breakdown of API (Claude) spend. The daily "
