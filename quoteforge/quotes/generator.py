@@ -112,12 +112,15 @@ def _invoke(client, operation: str = "quote_generation", **kwargs):
 
 
 def _clean_lines(raw: str, count: int) -> list[str]:
-    """Split the model's raw output into exactly ``count`` clean quote lines."""
+    """Split the model's raw output into exactly ``count`` clean quote lines.
+    Drops empty lines and any line containing profanity (safety net over the
+    prompt-level rules). No min-length here - short quotes are legitimate."""
+    from quoteforge.quotes.moderation import is_clean
     lines = raw.strip().split("\n")
     quotes = []
     for line in lines:
         cleaned = re.sub(r"^\d+[\.\)]\s*", "", line).strip().strip('"').strip("'")
-        if cleaned:
+        if cleaned and is_clean(cleaned):
             quotes.append(cleaned)
     return quotes[:count]
 
@@ -235,13 +238,26 @@ def generate_personal_message(
         f"Separate each variation with '---'\n"
         f"Output only the variations, nothing else."
     )
-    message = _invoke(client,
-        model=CLAUDE_MODEL,
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = message.content[0].text.strip()
+    try:
+        message = _invoke(client,
+            model=CLAUDE_MODEL,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+    except Exception:  # noqa: BLE001 - a live API error must never hard-crash the
+        # caller; degrade to the deterministic mock instead of raising.
+        return _mock_personal_message(
+            recipient_name, sender_name, occasion, output_style, count)
     variations = [v.strip() for v in raw.split("---") if v.strip()]
+    # Safety net over the prompt rules: drop profane / too-short (truncated)
+    # variations. If everything is filtered out, fall back to the safe mock rather
+    # than handing the customer empty or unusable text.
+    from quoteforge.quotes.moderation import filter_variations
+    variations = filter_variations(variations)
+    if not variations:
+        return _mock_personal_message(
+            recipient_name, sender_name, occasion, output_style, count)
     return variations[:count]
 
 
