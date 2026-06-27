@@ -50,6 +50,10 @@ def create_gelato_order(
             "test_mode": True,
         }
 
+    # Gelato Create Order. v4 (current) additionally requires orderType +
+    # shipmentMethodUid; the rest of the contract matches v3.
+    from quoteforge.config import GELATO_API_VERSION, GELATO_SHIPMENT_METHOD
+    ver = GELATO_API_VERSION or "v4"
     payload = {
         "orderReferenceId": order_id,
         "customerReferenceId": order_id,
@@ -64,8 +68,11 @@ def create_gelato_order(
         ],
         "shippingAddress": recipient,
     }
+    if ver == "v4":
+        payload["orderType"] = "order"                       # not a draft
+        payload["shipmentMethodUid"] = GELATO_SHIPMENT_METHOD or "normal"
     resp = requests.post(
-        f"{GELATO_BASE_URL}/v3/orders",
+        f"{GELATO_BASE_URL}/{ver}/orders",
         headers=_gelato_headers(),
         json=payload,
         timeout=30,
