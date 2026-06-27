@@ -18,6 +18,18 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_calendar_photos_queue_until_email(tmp_path):
+    # REGRESSION: a buyer who designs a calendar BEFORE entering their email lost
+    # every month photo - the old _calUpload returned early with no email, so the
+    # bytes were never uploaded and the order got empty URLs. They must now queue and
+    # flush the moment the email is known (at checkout / the proof-email step).
+    h = _page(tmp_path)
+    assert "let CAL_QUEUE=" in h
+    assert "CAL_QUEUE.push({i:i,f:f})" in h                 # queued while no email
+    assert "function _flushCalQueue()" in h
+    assert h.count("_flushCalQueue==='function'") >= 2      # wired at both email points
+
+
 def test_confirm_step_shows_proof_thumbnail(tmp_path):
     """REGRESSION: the buyer authorizes 'I approve this print exactly as shown', so
     the actual artwork must be SHOWN at review + confirm - not just a text line. A
