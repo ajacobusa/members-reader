@@ -19,13 +19,16 @@ def test_render_specs_per_department():
     assert (mw, mh) != poster and (cw, ch) != poster
     assert mw > mh          # a mug wrap is a wide landscape panel
     assert ch > cw          # a wall calendar is a portrait page
-    # the pipeline actually wires each department's helper (regression lock)
+    # each department's render-size helper is wired via the family registry, and the
+    # pipeline resolves render size through it (regression lock - stronger than a name
+    # check: it confirms the registry returns the SAME per-department spec).
+    from quoteforge.etsy.families import family_for
+    assert family_for("mug").render_size({"product_id": "classic_mug"}, "") == (mw, mh)
+    assert family_for("calendar").render_size({"product_id": "wall_cal"}, "") == (cw, ch)
+    assert family_for("branded") is not None
     import inspect
     import quoteforge.automation.pipeline_orchestrator as po
-    src = inspect.getsource(po)
-    assert "mug_dimensions_for" in src
-    assert "calendar_dimensions_for" in src
-    assert "branded_dimensions_for" in src
+    assert "family_for" in inspect.getsource(po)
 
 
 def test_route_order_holds_calendar_for_manual():

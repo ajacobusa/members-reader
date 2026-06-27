@@ -129,17 +129,13 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
         "material": item.get("material") or item.get("fmt")
         or item.get("product_format") or item.get("format", ""),
     }
-    # Apparel: turn the "{garment} - {colour}" format + size into product_type,
-    # garment_id, colour and the resolved Gelato apparel UID. No-op for wall art,
-    # so the working print flow is completely unaffected.
-    from quoteforge.etsy.apparel_catalog import enrich_apparel_order
-    data.update(enrich_apparel_order(data))
-    from quoteforge.etsy.branded_catalog import enrich_branded_order
-    data.update(enrich_branded_order(data))
-    from quoteforge.etsy.mug_catalog import enrich_mug_order
-    data.update(enrich_mug_order(data))
-    from quoteforge.etsy.calendar_catalog import enrich_calendar_order
-    data.update(enrich_calendar_order(data))
+    # Resolve each family's product_type/UID/colour/cost via the single ENRICH registry
+    # (apparel/mug/calendar/branded). Each enricher is a no-op for an order that isn't
+    # its family, so the wall-art print flow is unaffected. One registry = both ingest
+    # seams stay in lock-step (was hand-duplicated here AND in run_full_pipeline).
+    from quoteforge.etsy.families import enrichers
+    for _enrich in enrichers():
+        data.update(_enrich(data))
     # Wall art has no enrich step, so its gelato_cost stayed None and the order-time
     # margin gate could never evaluate the shop's primary product line. Backfill the
     # cost from the material+size when nothing else resolved a product cost, so a
@@ -290,12 +286,17 @@ def process_webhook_payload(payload: dict) -> dict:
 
 
 def _is_duplicate(etsy_order_id: str) -> bool:
-    """Fast synchronous idempotency check (used before async dispatch)."""
+    """Fast synchronous idempotency check (used before async dispatch). Also recognises
+    a multi-item basket: its lines are stored as '{id}-1','{id}-2',... so the bare id is
+    never a row - check the first line id too, else a redelivered multi-item basket is
+    needlessly re-dispatched to a worker thread (the per-line guard still prevents any
+    duplicate order/charge, so this only saves wasted work + a misleading 202 ACK)."""
     if not etsy_order_id:
         return False
     from quoteforge.db.database import init_db, get_order_by_etsy_id
     init_db()
-    return get_order_by_etsy_id(etsy_order_id) is not None
+    return (get_order_by_etsy_id(etsy_order_id) is not None
+            or get_order_by_etsy_id(f"{etsy_order_id}-1") is not None)
 
 
 def _process_in_background(payload: dict) -> None:
