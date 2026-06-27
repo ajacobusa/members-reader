@@ -345,13 +345,15 @@ AIRTABLE_BASE_ID: str = os.getenv("AIRTABLE_BASE_ID", "")
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
 GELATO_BASE_URL: str = os.getenv("GELATO_BASE_URL", "https://order.gelatoapis.com")
 # WHO submits orders to Gelato - exactly one source may, or orders double-print +
-# double-charge. "native" (DEFAULT, safe): Gelato fulfils via its native Etsy
-# integration (it pulls the order from Etsy, charges your card, prints, ships, and
-# returns tracking to Etsy); QuoteForge records/analyses/tracks but NEVER submits.
-# "quoteforge": QuoteForge submits each order to Gelato via the API (use only when you
-# are NOT using Gelato's native Etsy integration). The safe default fails toward
-# "an order sits unprinted" (recoverable) rather than "double-charged" (not).
-GELATO_FULFILLMENT_MODE: str = os.getenv("GELATO_FULFILLMENT_MODE", "native").strip().lower()
+# double-charge. "quoteforge" (DEFAULT): QuoteForge is the personalization engine - it
+# GENERATES the artwork (AI quote -> template -> layout -> 300 DPI render) and submits
+# it to Gelato with that artwork URL. This is the product's purpose; Gelato's native
+# Etsy integration can't render personalized art, so it must NOT be connected (it would
+# print the static listing image AND duplicate). "native": for a seller who is NOT
+# using QuoteForge's artwork - Gelato fulfils via its Etsy integration and QuoteForge
+# only records/analyses/tracks. With "quoteforge", DO NOT also connect Gelato's native
+# Etsy app, or every order is submitted twice.
+GELATO_FULFILLMENT_MODE: str = os.getenv("GELATO_FULFILLMENT_MODE", "quoteforge").strip().lower()
 
 # Google Drive (for artwork storage)
 GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
