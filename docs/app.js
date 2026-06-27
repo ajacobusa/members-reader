@@ -862,6 +862,7 @@
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':'',
+     design:_fullDesign(),                 // FULL per-item design (both sides, cal, wording)
      thumb:_proofThumb()}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -1118,6 +1119,31 @@
      tpos:TPOS, tsize:TSIZE, trot:TROT,
      cal:_calMeta(),
      photo:{has:!!PHOTO, zoom:PHOTO_ZOOM, fx:PHOTO_FX, fy:PHOTO_FY}};
+ }
+ // Drop raw data-URL photo BYTES from a snapshot (the photo is hosted separately by
+ // the upload; the design only needs the intent + a marker) so a multi-line basket's
+ // saved designs stay small.
+ function _stripPhoto(s){
+   if(!s) return s;
+   var c=JSON.parse(JSON.stringify(s));
+   if(c.photoSrc && c.photoSrc.indexOf('data:')===0) c.photoSrc='[uploaded]';
+   if(c.collage) c.collage=c.collage.map(function(x){
+     return (x&&x.indexOf('data:')===0)?'[uploaded]':x; });
+   return c;
+ }
+ // FULL per-item design snapshot saved on each basket line so EVERY item's wording,
+ // size, layout, calendar months AND apparel front+back survive a multi-item order
+ // (the thin cart line kept only {title,fmt,size,unit,qty}, so all but the last
+ // design was lost). Raw photo bytes are stripped (photos are hosted separately).
+ function _fullDesign(){
+   var d=_designState();
+   if(IS_APPAREL){
+     try{ SIDES[APPLACEMENT]=_captureSide(); }catch(e){}
+     d.sides={front:_stripPhoto(SIDES.front), back:_stripPhoto(SIDES.back)};
+     d.placement=APPLACEMENT;
+     d.logo=(typeof LOGO_ON!=='undefined'&&LOGO_ON)?'front+back':'';
+   }
+   return d;
  }
  function _toast(t){ const n=document.getElementById('maicheck');
    if(n){ n.innerHTML='💾 '+t; } }
@@ -1595,8 +1621,12 @@
      // real revenue + a correct count - not sale_price=None / one flat row.
      dsn.cart={ subtotal:+_cartTotal().toFixed(2),
        items:CART.reduce((s,l)=>s+(l.qty||1),0),
+       // Each line carries its OWN full design (wording, size, apparel front+back,
+       // calendar months) so EVERY item in a multi-item basket is persisted - not
+       // just the last-open editor design.
        lines:CART.map(l=>({title:l.title||'',fmt:l.fmt,size:l.size,
-         unit:l.unit,qty:l.qty})) };
+         unit:l.unit,qty:l.qty,placement:l.placement||'',sides:l.sides||null,
+         cal:l.cal||null,logo:l.logo||'',design:l.design||null})) };
      fetch(CONFIRM_API,{method:'POST',headers:{'Content-Type':'application/json'},
        body:JSON.stringify({email:email, summary:summary, design:dsn,
          design_id:'cart-'+Date.now(), proof:_composedProofURL()})})
