@@ -464,6 +464,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE orders ADD COLUMN carrier TEXT")
     if "estimated_delivery" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN estimated_delivery TEXT")
+    # Durable fulfillment retry: how many times the scheduled retry job has
+    # re-attempted a previously-errored submission. Bounds futile retries on a
+    # permanent failure (bad product UID) while recovering from a transient outage.
+    if "fulfillment_retries" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN fulfillment_retries "
+                     "INTEGER DEFAULT 0")
     # Delivery integrity: a 'delivered' order is NOT automatically problem-free.
     #   delivery_disputed         : a case/refund/complaint arrived after delivery
     #   do_not_request_review     : owner says never ask this buyer for a review

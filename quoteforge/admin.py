@@ -2239,6 +2239,22 @@ def _cmd_track_orders(args: list[str]) -> int:
     return 0
 
 
+def _cmd_retry_fulfillment(args: list[str]) -> int:
+    """Re-drive errored, never-submitted orders through the idempotent router so a
+    Gelato outage longer than the in-process retries self-heals. `retry-fulfillment`."""
+    from quoteforge.automation.fulfillment_retry import retry_failed_fulfillments
+    r = retry_failed_fulfillments()
+    print(f"retry-fulfillment: retried={r['retried']} "
+          f"recovered={len(r['recovered'])} still_failing={len(r['still_failing'])} "
+          f"exhausted={len(r['exhausted'])}")
+    # Orders that hit the retry cap (permanent failure) need a human.
+    if r["exhausted"]:
+        _alert("⚠️ Orders failed to submit after retries",
+               "<pre>exhausted: " + ", ".join(r["exhausted"]) + "</pre>",
+               what="fulfillment")
+    return 0
+
+
 def _cmd_order_by(args: list[str]) -> int:
     """Show the next gift order-by deadline. `order-by`."""
     from quoteforge.etsy.shipping_cutoff import upcoming_cutoff, banner_text
@@ -2943,6 +2959,7 @@ COMMANDS = {
     "collage": _cmd_collage,
     "order-by": _cmd_order_by,
     "track-orders": _cmd_track_orders,
+    "retry-fulfillment": _cmd_retry_fulfillment,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
     "import-etsy-finance": _cmd_import_etsy_finance,
