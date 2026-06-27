@@ -137,6 +137,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "idempotent router so a Gelato outage longer than the in-process retries "
         "self-heals (bounded by a per-order retry cap; can't double-submit)."),
     ScheduledJob(
+        "QuoteForge Daily QA", "daily-qa",
+        ["/SC", "DAILY", "/ST", "06:30"],
+        "Daily: aggregate Gelato SKU/UID currency + a net-margin-floor sweep across "
+        "every product variation + order-book health, and email the owner if any "
+        "product is unmapped/below-floor or any order is stuck."),
+    ScheduledJob(
         "QuoteForge Customer Notifications", "notify-customers",
         ["/SC", "HOURLY", "/MO", "6"],
         "Every 6h: sends the opt-in transactional order updates (Order Received / "

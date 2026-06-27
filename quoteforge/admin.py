@@ -2255,6 +2255,23 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
     return 0
 
 
+def _cmd_daily_qa(args: list[str]) -> int:
+    """Daily QA agent: aggregate SKU/UID currency + margin-floor sweep + order-book
+    health; email the owner if anything needs attention. `daily-qa`."""
+    from quoteforge.automation.daily_qa import run_daily_qa
+    r = run_daily_qa(send=True)
+    sku = r["sku_audit"]
+    print(f"daily-qa: orders={r['total_orders']} routed={r['routed']} "
+          f"tracked={r['with_tracking']} delivered={r['delivered']} "
+          f"claims={r['claims']} needs_attention={r['needs_attention']}")
+    print(f"  SKU: placeholders={sku['placeholder_uids']} "
+          f"below_floor={len(sku['below_floor'])} -> "
+          f"{'OK' if sku['ok'] else 'ACTION NEEDED'}")
+    for i in r["issues"]:
+        print(f"  - {i}")
+    return 0
+
+
 def _cmd_reconcile_unconfirmed(args: list[str]) -> int:
     """Reconcile an ambiguous 'submit_unconfirmed' order after checking the Gelato
     dashboard. `reconcile-unconfirmed <order_id> landed <gelato_order_id> | not-landed`.
@@ -3006,6 +3023,7 @@ COMMANDS = {
     "track-orders": _cmd_track_orders,
     "retry-fulfillment": _cmd_retry_fulfillment,
     "reconcile-unconfirmed": _cmd_reconcile_unconfirmed,
+    "daily-qa": _cmd_daily_qa,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,

@@ -8,11 +8,12 @@ from quoteforge import admin
 
 
 def test_all_jobs_defined_with_unique_names():
-    assert len(SCHEDULED_JOBS) == 44   # + fulfillment-retry + customer-notifications
+    assert len(SCHEDULED_JOBS) == 45   # + fulfillment-retry, customer-notifications, daily-qa
     assert "QuoteForge Wave Books Review" in EXPECTED_TASK_NAMES
     assert "QuoteForge Wave Daily Transactions" in EXPECTED_TASK_NAMES
     assert "QuoteForge Fulfillment Retry" in EXPECTED_TASK_NAMES
     assert "QuoteForge Customer Notifications" in EXPECTED_TASK_NAMES
+    assert "QuoteForge Daily QA" in EXPECTED_TASK_NAMES
     # All names are unique
     assert len(EXPECTED_TASK_NAMES) == len({j.name for j in SCHEDULED_JOBS})
     assert "QuoteForge Daily Maintenance" in EXPECTED_TASK_NAMES
