@@ -28,9 +28,40 @@ def _parse_contact(design_json: str) -> dict:
     return _parse_design(design_json).get("contact") or {}
 
 
+def _enrich_lines(lines: list) -> list:
+    """Resolve each cart line's product IDENTITY (product_type, material, size,
+    Gelato UID, gelato_cost) by reusing the marketplace path's enrichment, so a
+    direct (/confirm) order is a COMPLETE, fulfillable, margin-checkable record - not
+    a bare stub. The heavy per-line `design` is kept out of here (it lives on the
+    saved design). Never raises; lazy import avoids a circular dependency."""
+    out = []
+    for line in lines:
+        d = line.get("design") or {}
+        item = {"recipient_name": "x", "occasion": "x",
+                "material": line.get("fmt", ""),
+                "product_size": line.get("size", ""), "size": line.get("size", ""),
+                "custom_text": (d.get("wording") or "")}
+        try:
+            from quoteforge.automation.webhook_server import _build_order_data
+            ed = _build_order_data(item, "")
+        except Exception:  # noqa: BLE001
+            ed = {}
+        out.append({
+            "title": line.get("title", ""), "fmt": line.get("fmt", ""),
+            "size": ed.get("size") or line.get("size", ""), "unit": line.get("unit"),
+            "qty": line.get("qty", 1), "placement": line.get("placement", ""),
+            "logo": line.get("logo", ""), "cal": line.get("cal"),
+            "product_type": ed.get("product_type"), "material": ed.get("material"),
+            "product_uid": ed.get("gelato_product_uid"),
+            "gelato_cost": ed.get("gelato_cost"), "color": ed.get("color")})
+    return out
+
+
 def _cart_money(design_json: str) -> dict:
-    """The recorded basket money: sale_price, item_count, line_items (JSON).
-    Empty when the storefront sent no cart (older clients) so nothing breaks."""
+    """The recorded basket money + product identity: sale_price, item_count, the
+    enriched per-line list, AND the order's primary product fields (material, size,
+    product_type, gelato_cost) so the direct order is fulfillable. Empty when the
+    storefront sent no cart (older clients) so nothing breaks."""
     cart = _parse_design(design_json).get("cart") or {}
     lines = cart.get("lines") or []
     money: dict = {}
@@ -47,11 +78,19 @@ def _cart_money(design_json: str) -> dict:
     elif lines:
         money["item_count"] = sum(int(l.get("qty", 1) or 1) for l in lines)
     if lines:
-        # Keep the order's line_items THIN (title/size/qty for display + financials);
-        # the heavy per-line `design` (apparel front+back, calendar months, wording)
-        # is persisted in full on the saved design_json, retrievable per order.
-        thin = [{k: v for k, v in line.items() if k != "design"} for line in lines]
-        money["line_items"] = json.dumps(thin)
+        # Enrich each line with its resolved product identity (NOT the heavy design,
+        # which lives on the saved design_json). This makes the direct order a
+        # complete, fulfillable, margin-checkable record.
+        enriched = _enrich_lines(lines)
+        money["line_items"] = json.dumps(enriched)
+        # Primary product fields from the first line so the ORDER row itself carries
+        # product identity (was a bare stub: no material/size/type/cost -> unroutable
+        # and invisible to the margin gate). Storefront orders are NOT routed to
+        # Gelato here - the buyer pays on Etsy, whose webhook fulfils them.
+        first = enriched[0]
+        for k in ("material", "size", "product_type", "gelato_cost", "color"):
+            if first.get(k) is not None:
+                money[k] = first[k]
     return money
 
 

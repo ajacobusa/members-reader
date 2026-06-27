@@ -40,6 +40,26 @@ def test_every_line_design_is_saved(tmp_path, monkeypatch):
     assert lines[1]["design"]["sides"]["back"]["quote"] == "Back text"
 
 
+def test_confirm_order_is_enriched_not_a_bare_stub(tmp_path, monkeypatch):
+    # REGRESSION: the storefront /confirm order used to be a BARE stub (no material/
+    # size/product_type) - un-fulfillable + invisible to the margin gate. It must now
+    # carry resolved product identity. It must still NOT route to Gelato (the buyer
+    # pays on Etsy, whose webhook fulfils) - so status stays 'received', channel direct.
+    import quoteforge.db.database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr(db, "OUTPUT_DIR", tmp_path)
+    db.init_db()
+    from quoteforge.automation.design_confirm import confirm_design
+    res = confirm_design("buyer@x.com", summary="2 items",
+                         design_json=_design_json(), design_id="cart-1")
+    o = db.get_order(res["order_id"])
+    assert o["material"] == "Framed" and o["size"] == "16x20"
+    assert o["product_type"]                      # resolved, not blank
+    assert o["channel"] == "direct" and o["status"] == "received"   # NOT routed
+    li = json.loads(o["line_items"])
+    assert all("product_type" in line for line in li)               # per-line identity
+
+
 def test_order_line_items_stay_thin(tmp_path, monkeypatch):
     # The order's line_items keep display/financial fields only; the heavy per-line
     # design lives in the saved design, not duplicated onto the order row.
