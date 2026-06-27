@@ -1513,52 +1513,62 @@ def _cmd_wave_test(args: list[str]) -> int:
 
 
 def _cmd_wave_sync(args: list[str]) -> int:
-    """Push per-order Etsy payouts into Wave. `wave-sync [period] [--live]`.
-    Dry-run by default (prints what WOULD be pushed); --live actually creates them."""
+    """Push EVERY income/cost line into Wave. `wave-sync [period] [--live|--auto] [email]`.
+    Dry-run by default; --live pushes now; --auto pushes only when WAVE_AUTO_SYNC is
+    on (otherwise emails the dry-run review). The daily job uses --auto."""
     from quoteforge.etsy.wave_sync import sync_period
+    from quoteforge.config import WAVE_AUTO_SYNC, REPORT_RECIPIENT
     period = next((a for a in args if a in
                    ("today", "week", "month", "year", "all")), "month")
-    live = "--live" in args
     addr = next((a for a in args if "@" in a), "")
+    auto = "--auto" in args
+    live = ("--live" in args) or (auto and bool(WAVE_AUTO_SYNC))
     res = sync_period(period, dry_run=not live)
-    if res["missing_config"] and live:
-        print("Missing config (run wave-test for IDs): "
+    if live and res["missing_config"]:
+        print("Cannot push - missing config (run wave-test for IDs): "
               + ", ".join(res["missing_config"]))
-        return 1
+        if not auto:
+            return 1
+        res = sync_period(period, dry_run=True)      # auto: degrade to a review
+        live = False
     mode = "LIVE - pushed to Wave" if live else "DRY-RUN (use --live to push)"
-    print(f"Wave sync {period} [{mode}]: {res['orders']} orders")
+    print(f"Wave sync {period} [{mode}]: {res['lines']} lines")
     if live:
         print(f"  created {res['created']}, failed {res['failed']}")
         for e in res["errors"][:10]:
-            print(f"  ! {e['order']}: {'; '.join(e['errors'])}")
+            print(f"  ! {e['ext']}: {'; '.join(e['errors'])}")
     else:
         for t in res["txns"][:8]:
-            inc = sum(li["amount"] for li in t["lineItems"])
-            print(f"  {t['date']} {t['externalId']}: deposit "
-                  f"{t['anchor']['amount']:.2f} <- {len(t['lineItems'])} lines "
-                  f"(sum {inc:.2f})")
+            print(f"  {t['date']} {t['externalId']}: {t['anchor']['direction']} "
+                  f"{t['anchor']['amount']:.2f} -> {t['account']}")
         if len(res["txns"]) > 8:
             print(f"  ... +{len(res['txns']) - 8} more")
-    # Email the DRY-RUN review for sign-off (never auto-pushes; the scheduled monthly
-    # job uses this). No email when there is nothing to review.
-    if (addr or "email" in args) and not live and res["orders"] > 0:
+    # Email a confirmation (live) or the dry-run review (otherwise). The daily --auto
+    # job lands one or the other in your inbox. No email when there's nothing.
+    if (addr or "email" in args or auto) and res["lines"] > 0:
         from quoteforge.automation.emailer import _send_email
-        from quoteforge.config import REPORT_RECIPIENT
         to = addr or REPORT_RECIPIENT
-        rows = "".join(
-            f"<tr><td>{t['date']}</td><td>{t['externalId']}</td>"
-            f"<td style='text-align:right'>${t['anchor']['amount']:.2f}</td>"
-            f"<td style='text-align:right'>{len(t['lineItems'])}</td></tr>"
-            for t in res["txns"][:300])
-        body = (f"<p><b>Wave books review - {period}</b> ({res['orders']} orders). "
-                f"DRY-RUN preview of what WOULD post to Wave - nothing was pushed. "
-                f"To sync, run <code>wave-sync {period} --live</code>.</p>"
-                f"<table border='1' cellpadding='5' style='border-collapse:collapse'>"
-                f"<tr><th>Date</th><th>Ref</th><th>Deposit</th><th>Lines</th></tr>"
-                f"{rows}</table>"
-                f"<p style='color:#666'>Tip: point WAVE_ACCT_BANK at a dedicated "
-                f"'Etsy Clearing' account so these don't duplicate your bank feed.</p>")
-        r = _send_email(f"Wave books review - {period}", body, to=to)
+        if live:
+            head = (f"<p><b>Wave sync - {period}</b>: pushed <b>{res['created']}</b> "
+                    f"transactions to Wave ({res['failed']} failed).</p>")
+        else:
+            head = (f"<p><b>Wave books review - {period}</b> ({res['lines']} lines). "
+                    f"DRY-RUN preview - nothing was pushed. Enable WAVE_AUTO_SYNC "
+                    f"(after a clean review) for the daily job to post automatically, "
+                    f"or run <code>wave-sync {period} --live</code>.</p>")
+        trows = "".join(
+            f"<tr><td>{t['date']}</td><td>{t['account']}</td>"
+            f"<td>{t['anchor']['direction']}</td>"
+            f"<td style='text-align:right'>${t['anchor']['amount']:.2f}</td></tr>"
+            for t in res["txns"][:400])
+        body = (head
+                + "<table border='1' cellpadding='5' style='border-collapse:collapse'>"
+                "<tr><th>Date</th><th>Category</th><th>Dir</th><th>Amount</th></tr>"
+                + trows + "</table>"
+                + "<p style='color:#666'>Sales tax is recorded as a collected/remitted "
+                "pair that nets to $0. Point WAVE_ACCT_BANK at a dedicated 'Etsy "
+                "Clearing' account so these don't duplicate a bank feed.</p>")
+        r = _send_email(f"Wave {'sync' if live else 'review'} - {period}", body, to=to)
         print(f"  Email {r.get('status')}"
               + (f" -> {to}" if r.get("status") == "sent"
                  else f": {r.get('message', '')}"))
