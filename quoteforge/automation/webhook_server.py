@@ -107,6 +107,9 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
         "memory": item.get("memory", ""),
         "output_style": item.get("output_style", "Personal Letter"),
         "product_size": item.get("product_size") or item.get("size", ""),
+        # create_order persists the `size` column from data["size"] - without this
+        # the ordered size never reached the order row (Gelato couldn't size it).
+        "size": item.get("product_size") or item.get("size", ""),
         "quantity": int(item.get("quantity", 1) or 1),
         # Buyer-provided custom content (verbatim text + their own photo).
         "custom_text": item.get("custom_text") or item.get("custom_quote", ""),

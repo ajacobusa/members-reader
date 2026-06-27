@@ -79,30 +79,71 @@ def receipt_to_order_payload(receipt: dict) -> dict:
     """
     rid = str(receipt.get("receipt_id") or receipt.get("order_id") or "")
     name = receipt.get("name", "")
-    # Personalization may live under transactions[].variations / personalization.
-    personalization = {}
-    for tx in receipt.get("transactions", []):
+    txns = receipt.get("transactions", []) or []
+
+    def _person(tx: dict) -> dict:
+        """Per-transaction personalization (variations + personalization note)."""
+        p = {}
         for v in tx.get("variations", []):
-            personalization[v.get("formatted_name", "").lower()] = \
-                v.get("formatted_value", "")
+            p[(v.get("formatted_name", "") or "").lower()] = v.get("formatted_value", "")
         if tx.get("personalization"):
-            personalization["personalization"] = tx["personalization"]
-    return {
+            p["personalization"] = tx["personalization"]
+        return p
+
+    def _line(tx: dict) -> dict:
+        """One purchased Etsy transaction -> one order line (its OWN personalization,
+        size, quantity and PRE-TAX line price - so each item is fulfilled separately
+        and priced from its own field, never the basket total)."""
+        p = _person(tx)
+        qty = int(tx.get("quantity", 1) or 1)
+        unit = _money(tx.get("price") or {})
+        line = {
+            "recipient_name": p.get("recipient name") or p.get("name", "") or name,
+            "occasion": p.get("occasion", ""),
+            "relationship": p.get("relationship", ""),
+            "memory": p.get("story") or p.get("personalization", ""),
+            "scenery": p.get("scenery", "Mountains"),
+            "product_size": p.get("size", "") or p.get("format", ""),
+            "quantity": qty,
+            "listing_title": tx.get("title", ""),
+            "_raw_personalization": p,
+        }
+        if unit:
+            line["sale_price"] = round(unit * qty, 2)
+        return line
+
+    # Order-level financials (the WHOLE receipt) - used for payout reconciliation.
+    # Only customer + address propagate to lines (see _ORDER_LEVEL); totals do not.
+    payload = {
         "order_id": rid,
         "etsy_order_id": rid,
         "customer_name": name,
-        "recipient_name": personalization.get("recipient name")
-                          or personalization.get("name", ""),
-        "occasion": personalization.get("occasion", ""),
-        "relationship": personalization.get("relationship", ""),
-        "memory": personalization.get("story")
-                  or personalization.get("personalization", ""),
-        "scenery": personalization.get("scenery", "Mountains"),
         "sale_price": _money(receipt.get("grandtotal") or {}),
         "shipping_collected": _money(receipt.get("total_shipping_cost") or {}),
         "tax_collected": _money(receipt.get("total_tax_cost") or {})
                          + _money(receipt.get("total_vat_cost") or {}),
         "country": receipt.get("country_iso", ""),
         "state": receipt.get("state", ""),
-        "_raw_personalization": personalization,
     }
+    if len(txns) > 1:
+        # MULTI-ITEM: one line per transaction so EVERY purchased product is created
+        # + fulfilled. The old code merged all transactions into one personalization
+        # (last wins) and returned a single flat order at the full grand total, so
+        # every item but the last was silently dropped.
+        payload["items"] = [_line(tx) for tx in txns]
+        first = payload["items"][0]
+        payload["recipient_name"] = first["recipient_name"]
+        payload["occasion"] = first["occasion"]
+        payload["_raw_personalization"] = _person(txns[0]) if txns else {}
+    else:
+        # SINGLE-ITEM: unchanged flat shape (back-compat).
+        p = _person(txns[0]) if txns else {}
+        payload.update({
+            "recipient_name": p.get("recipient name") or p.get("name", ""),
+            "occasion": p.get("occasion", ""),
+            "relationship": p.get("relationship", ""),
+            "memory": p.get("story") or p.get("personalization", ""),
+            "scenery": p.get("scenery", "Mountains"),
+            "_raw_personalization": p,
+        })
+    return payload
