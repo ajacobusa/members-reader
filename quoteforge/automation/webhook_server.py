@@ -514,6 +514,26 @@ if FLASK_AVAILABLE and app:
                                                              reupload_request)
             tmp = _os.path.join(tempfile.gettempdir(), safe_name)
             f.save(tmp)
+            # Content hardening: a file that passed the extension check must still be a
+            # REAL, decodable image within PIL's decompression-bomb limit (a tiny file
+            # can decode to a huge bitmap -> memory DoS). Reject cleanly if not. We do
+            # NOT enforce a strict format==extension match, so legit phone formats (MPO)
+            # are never false-rejected. PDFs are validated downstream, not by PIL here.
+            if not safe_name.lower().endswith(".pdf"):
+                from PIL import Image as _PILImage
+                try:
+                    with _PILImage.open(tmp) as _im:
+                        _im.verify()     # integrity; raises DecompressionBombError if huge
+                except Exception:  # noqa: BLE001 - any decode failure = not a usable image
+                    try:
+                        _os.remove(tmp)
+                    except OSError:
+                        pass
+                    resp = jsonify({"status": "error",
+                                    "message": "that file isn't a usable image - please "
+                                               "upload a clear JPG, PNG or TIFF"})
+                    resp.headers["Access-Control-Allow-Origin"] = "*"
+                    return resp, 400
             # Always keep the LOCAL copy in the customer folder.
             saved = save_upload(email, tmp, name=request.form.get("name", ""))
             assessment = assess_photo(saved or tmp, size)

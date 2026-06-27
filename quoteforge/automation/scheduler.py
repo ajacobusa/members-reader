@@ -137,6 +137,11 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "idempotent router so a Gelato outage longer than the in-process retries "
         "self-heals (bounded by a per-order retry cap; can't double-submit)."),
     ScheduledJob(
+        "QuoteForge Customer Notifications", "notify-customers",
+        ["/SC", "HOURLY", "/MO", "6"],
+        "Every 6h: sends the opt-in transactional order updates (Order Received / "
+        "In Production) to buyers. No-op unless CUSTOMER_AUTO_NOTIFY is enabled."),
+    ScheduledJob(
         "QuoteForge Weekly API Costs", "costs week email",
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:50"],
         "Emails a detailed WEEKLY breakdown of API (Claude) spend. The daily "

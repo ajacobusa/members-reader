@@ -11,6 +11,16 @@ import pytest
 from quoteforge.automation import webhook_security as ws
 
 
+def _real_jpg() -> io.BytesIO:
+    """A genuinely decodable JPEG (the /upload decode-integrity guard rejects bytes
+    that aren't a real image, so these IDOR tests must send a true image)."""
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (64, 64), (20, 80, 60)).save(buf, "JPEG")
+    buf.seek(0)
+    return buf
+
+
 # ── signature verification fails CLOSED in live, dev-parity in TEST_MODE ──────
 def test_verify_fails_closed_in_live_without_secret(monkeypatch):
     # REGRESSION: _verify returned True when no secret was set - a blank secret in
@@ -62,7 +72,7 @@ def test_upload_cannot_mutate_another_users_order(monkeypatch, tmp_path):
     client = app.test_client()
     resp = client.post("/upload", content_type="multipart/form-data", data={
         "email": "attacker@x.com", "order_id": "OID1",
-        "file": (io.BytesIO(b"\xff\xd8\xff\xe0jpeg"), "evil.jpg")})
+        "file": (_real_jpg(), "evil.jpg")})
     assert resp.status_code == 200            # upload itself still processes
     o = db.get_order("OID1")
     assert not o.get("print_file")            # but the victim's order is UNTOUCHED
@@ -91,7 +101,7 @@ def test_upload_does_mutate_the_owners_order(monkeypatch, tmp_path):
     client = app.test_client()
     resp = client.post("/upload", content_type="multipart/form-data", data={
         "email": "owner@x.com", "order_id": "OID2",
-        "file": (io.BytesIO(b"\xff\xd8\xff\xe0jpeg"), "ok.jpg")})
+        "file": (_real_jpg(), "ok.jpg")})
     assert resp.status_code == 200
     assert db.get_order("OID2").get("artwork_url") == "http://x/y.jpg"
 
