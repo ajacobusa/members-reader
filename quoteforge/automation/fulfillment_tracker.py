@@ -24,6 +24,10 @@ the legacy fallback for old rows. Scheduled; TEST_MODE-safe.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Printify/Printful don't report delivery; assume it this many days after the
 # ship date (domestic parcels arrive in 2-8 days; 14 is a safe outer bound).
 ASSUME_DELIVERED_DAYS = 14
@@ -276,6 +280,10 @@ def sync_tracking(limit: int = 500) -> dict:
             if fields:
                 update_order(o["order_id"], **fields)
                 o.setdefault("shipped_at", fields.get("shipped_at"))
+            # Record the shipped milestone in the per-order trail (the poll path
+            # previously left pipeline_log silent between gelato_order and any error).
+            log_pipeline_stage(o["order_id"], "tracking_sync", "shipped",
+                               f"{carrier or 'carrier'} {tn}".strip())
         _cancelled = gstatus in ("canceled", "cancelled", "failed", "error")
         if tn:
             o["tracking_number"] = tn
@@ -285,6 +293,8 @@ def sync_tracking(limit: int = 500) -> dict:
         if gstatus == "delivered":   # vendor (Gelato) reported delivery directly
             update_order(o["order_id"], status="delivered", delivery_confirmed=1,
                          delivered_at=o.get("delivered_at") or _now_iso())
+            log_pipeline_stage(o["order_id"], "delivery", "delivered",
+                               "vendor-confirmed")
             delivered_confirmed.append(o["order_id"])
         elif _cancelled:
             # Gelato spells it "canceled" (one L); normalize to the terminal
@@ -302,6 +312,8 @@ def sync_tracking(limit: int = 500) -> dict:
         elif not tn and _is_stuck(o):
             stuck.append(o["order_id"])
 
+    logger.info("tracking sync: shipped=%d delivered=%d stuck=%d errors=%d",
+                len(newly_shipped), len(delivered_confirmed), len(stuck), errors)
     return {
         "checked": True,
         "newly_shipped": newly_shipped,
