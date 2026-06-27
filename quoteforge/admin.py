@@ -2255,6 +2255,39 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
     return 0
 
 
+def _cmd_reconcile_unconfirmed(args: list[str]) -> int:
+    """Reconcile an ambiguous 'submit_unconfirmed' order after checking the Gelato
+    dashboard. `reconcile-unconfirmed <order_id> landed <gelato_order_id> | not-landed`.
+    'landed' promotes it to in_production; 'not-landed' marks it error so the retry job
+    safely re-submits it. (The daily report surfaces these for you to action.)"""
+    from quoteforge.db.database import get_order, update_order
+    if len(args) < 2:
+        print("usage: reconcile-unconfirmed <order_id> landed <gelato_order_id> | not-landed")
+        return 2
+    oid, verdict = args[0], args[1].strip().lower()
+    o = get_order(oid)
+    if not o:
+        print(f"no such order: {oid}")
+        return 2
+    if o.get("status") != "submit_unconfirmed":
+        print(f"order {oid} is '{o.get('status')}', not submit_unconfirmed - nothing to do")
+        return 0
+    if verdict == "landed":
+        vid = args[2] if len(args) > 2 else ""
+        if not vid:
+            print("'landed' needs the Gelato order id: ... landed <gelato_order_id>")
+            return 2
+        update_order(oid, status="in_production", vendor_order_id=vid, gelato_order_id=vid)
+        print(f"{oid} -> in_production (vendor {vid})")
+    elif verdict in ("not-landed", "notlanded", "no"):
+        update_order(oid, status="error")   # the retry-fulfillment job re-submits it
+        print(f"{oid} -> error (the retry-fulfillment job will re-submit it)")
+    else:
+        print("verdict must be 'landed' or 'not-landed'")
+        return 2
+    return 0
+
+
 def _cmd_notify_customers(args: list[str]) -> int:
     """Send opt-in transactional order updates (Order Received / In Production) to
     buyers. No-op unless CUSTOMER_AUTO_NOTIFY is set. `notify-customers`."""
@@ -2972,6 +3005,7 @@ COMMANDS = {
     "order-by": _cmd_order_by,
     "track-orders": _cmd_track_orders,
     "retry-fulfillment": _cmd_retry_fulfillment,
+    "reconcile-unconfirmed": _cmd_reconcile_unconfirmed,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
