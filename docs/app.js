@@ -310,13 +310,31 @@
  // Upload one month's photo to the server (same endpoint as the single print photo),
  // tagged cal-<month>, and remember the hosted URL it returns. Fire-and-forget; the
  // on-screen preview never waits on it. No-ops if not hosted / not signed in.
+ // Month photos waiting for an email before they can be hosted. Without this a buyer
+ // who designs a calendar BEFORE entering their email lost every month photo: the old
+ // _calUpload returned early with no email, so the bytes were never uploaded and the
+ // order received empty URLs. Now they queue and flush the moment we know the email.
+ let CAL_QUEUE=[];
+ function _calUploadNow(i,f,email){
+   var fd=new FormData(); fd.append('file',f); fd.append('email',email);
+   fd.append('name','cal-'+(i+1)); fd.append('size','calendar');
+   fetch(UPLOAD_API,{method:'POST',body:fd}).then(function(r){return r.json();})
+     .then(function(d){ if(d&&d.url) CAL_PHOTO_URLS[i]=d.url; }).catch(function(){});
+ }
  function _calUpload(i,f){
    try{
-     var email=knownEmail(); if(!UPLOAD_API||!email||!f) return;
-     var fd=new FormData(); fd.append('file',f); fd.append('email',email);
-     fd.append('name','cal-'+(i+1)); fd.append('size','calendar');
-     fetch(UPLOAD_API,{method:'POST',body:fd}).then(function(r){return r.json();})
-       .then(function(d){ if(d&&d.url) CAL_PHOTO_URLS[i]=d.url; }).catch(function(){});
+     if(!UPLOAD_API||!f) return;
+     var email=knownEmail();
+     if(!email){ CAL_QUEUE=CAL_QUEUE.filter(function(x){return x.i!==i;});
+       CAL_QUEUE.push({i:i,f:f}); return; }     // queue until we have an email
+     _calUploadNow(i,f,email);
+   }catch(e){}
+ }
+ // Upload every queued month photo once an email is known (called at checkout/sign-in).
+ function _flushCalQueue(){
+   try{ var email=knownEmail(); if(!email||!CAL_QUEUE.length) return;
+     var q=CAL_QUEUE; CAL_QUEUE=[];
+     q.forEach(function(x){ _calUploadNow(x.i,x.f,email); });
    }catch(e){}
  }
  function setCalYear(v){ CAL_YEAR=parseInt(v)||CAL_YEAR; }
@@ -1378,7 +1396,8 @@
  }
  function _saveContact(){
    try{ localStorage.setItem('jf_contact', JSON.stringify(CONTACT));
-     if(CONTACT.email) localStorage.setItem('jf_email', CONTACT.email);
+     if(CONTACT.email){ localStorage.setItem('jf_email', CONTACT.email);
+       if(typeof _flushCalQueue==='function') _flushCalQueue(); }  // host queued cal photos
    }catch(e){}
  }
  function _fv(v){ return (v||'').replace(/"/g,'&quot;'); }
@@ -1599,6 +1618,7 @@
    const v=((i&&i.value)||'').trim();
    if(v.indexOf('@')<1){ if(ok)ok.textContent='Please enter a valid email.'; return; }
    try{ localStorage.setItem('jf_email', v); }catch(e){}
+   if(typeof _flushCalQueue==='function') _flushCalQueue();   // host queued cal photos
    if(CONFIRM_API){
      fetch(CONFIRM_API,{method:'POST',headers:{'Content-Type':'application/json'},
        body:JSON.stringify({email:v, summary:_basketSummary(), design:_designState()})})
