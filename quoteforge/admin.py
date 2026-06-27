@@ -2255,6 +2255,18 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
     return 0
 
 
+def _cmd_notify_customers(args: list[str]) -> int:
+    """Send opt-in transactional order updates (Order Received / In Production) to
+    buyers. No-op unless CUSTOMER_AUTO_NOTIFY is set. `notify-customers`."""
+    from quoteforge.automation.customer_notify import send_pending_notifications
+    r = send_pending_notifications()
+    if not r["enabled"]:
+        print("notify-customers: disabled (set CUSTOMER_AUTO_NOTIFY=true to enable)")
+    else:
+        print(f"notify-customers: sent={len(r['sent'])} skipped={len(r['skipped'])}")
+    return 0
+
+
 def _cmd_order_by(args: list[str]) -> int:
     """Show the next gift order-by deadline. `order-by`."""
     from quoteforge.etsy.shipping_cutoff import upcoming_cutoff, banner_text
@@ -2960,6 +2972,7 @@ COMMANDS = {
     "order-by": _cmd_order_by,
     "track-orders": _cmd_track_orders,
     "retry-fulfillment": _cmd_retry_fulfillment,
+    "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
     "import-etsy-finance": _cmd_import_etsy_finance,

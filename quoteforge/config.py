@@ -362,6 +362,12 @@ GELATO_SHIPMENT_METHOD: str = os.getenv("GELATO_SHIPMENT_METHOD", "normal").stri
 # Etsy app, or every order is submitted twice.
 GELATO_FULFILLMENT_MODE: str = os.getenv("GELATO_FULFILLMENT_MODE", "quoteforge").strip().lower()
 
+# Auto-send TRANSACTIONAL lifecycle updates ("Order Received", "In Production") to the
+# buyer by email. OFF by default: the marketplace already sends an order confirmation,
+# and these are a personal touch the marketplace doesn't (the shipped+tracking notice
+# and the post-delivery review ask are already automatic regardless of this flag).
+CUSTOMER_AUTO_NOTIFY: bool = os.getenv("CUSTOMER_AUTO_NOTIFY", "false").strip().lower() in ("1", "true", "yes")
+
 # Google Drive (for artwork storage)
 GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 GOOGLE_SERVICE_ACCOUNT_FILE: str = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")

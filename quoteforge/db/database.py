@@ -770,6 +770,25 @@ def mark_message_sent(message_id: int) -> None:
         conn.execute("UPDATE customer_messages SET sent=1 WHERE id=?", (message_id,))
 
 
+def pending_customer_messages(types: tuple) -> list[dict]:
+    """Unsent customer messages of the given types, joined with the buyer's email
+    (for the transactional auto-notifier). Skips orders with no email on file."""
+    if not types:
+        return []
+    qs = ",".join("?" * len(types))
+    with _conn() as conn:
+        rows = conn.execute(
+            f"""SELECT m.id, m.order_id, m.message_type, m.message_body,
+                       o.customer_email, o.recipient_name
+                FROM customer_messages m JOIN orders o ON o.order_id = m.order_id
+                WHERE m.sent = 0 AND m.message_type IN ({qs})
+                  AND o.customer_email LIKE '%@%'
+                ORDER BY m.created_at""",
+            tuple(types),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
 # ── Upsell persistence ───────────────────────────────────────────
 
 def save_upsell(order_id: str, offer_type: str, offer_body: str) -> int:
