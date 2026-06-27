@@ -3,10 +3,13 @@
 Replaces the manual Gelato dashboard upload workflow.
 API docs: developers.gelato.com
 """
+import logging
 import os
 import time
 import requests
 from quoteforge.config import TEST_MODE
+
+logger = logging.getLogger(__name__)
 
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
 GELATO_BASE_URL = "https://order.gelatoapis.com"
@@ -77,6 +80,13 @@ def create_gelato_order(
         json=payload,
         timeout=30,
     )
+    if resp.status_code >= 400:
+        # Log Gelato's ACTUAL error (e.g. "productUid not found", bad address) -
+        # raise_for_status alone carries only the status line, so the real reason
+        # was passing silently. The caller (router) turns the raise into a held
+        # 'error'/'submit_unconfirmed' order; this line preserves the why.
+        logger.error("Gelato create order %s -> HTTP %s: %s",
+                     order_id, resp.status_code, (resp.text or "")[:800])
     resp.raise_for_status()
     return resp.json()
 

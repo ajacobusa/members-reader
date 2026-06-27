@@ -114,6 +114,13 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",
                     "id": ""}
+        # Artwork must be a PUBLIC http(s) URL Gelato can fetch - a local file:// or a
+        # data: URL would be accepted here and then fail at Gelato. Hold for manual.
+        # Only enforced for a REAL submission (TEST_MODE mocks the call, no fetch).
+        if not TEST_MODE and not str(artwork_url).lower().startswith(("http://", "https://")):
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "artwork is not a public URL Gelato can fetch "
+                              f"({str(artwork_url)[:40]}...) - host it first"}
         # Normalise + validate the ship-to BEFORE creating the order, so a bad
         # address is fixed/flagged here instead of returning-to-sender later.
         from quoteforge.fulfillment.gelato_returns import normalize_recipient

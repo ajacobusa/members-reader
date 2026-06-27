@@ -54,3 +54,44 @@ def test_v3_back_compat_has_no_v4_only_fields(monkeypatch):
     assert seen["url"].endswith("/v3/orders")
     assert "orderType" not in seen["payload"]
     assert "shipmentMethodUid" not in seen["payload"]
+
+
+def test_gelato_error_body_is_logged(monkeypatch, caplog):
+    # #5: a Gelato failure must surface its REASON, not pass silently.
+    import quoteforge.automation.gelato_api as ga
+    import requests
+    import pytest
+    monkeypatch.setattr(ga, "TEST_MODE", False)
+    monkeypatch.setattr(ga, "GELATO_API_KEY", "k")
+
+    class _R:
+        status_code = 400
+        text = '{"error":"productUid not found"}'
+
+        def raise_for_status(self):
+            raise requests.exceptions.HTTPError("400 Bad Request")
+
+        def json(self):
+            return {}
+    monkeypatch.setattr(ga.requests, "post", lambda *a, **k: _R())
+    with caplog.at_level("ERROR"):
+        with pytest.raises(requests.exceptions.HTTPError):
+            ga.create_gelato_order("O1", {"country": "US"}, "http://x/a.png", "uid")
+    assert "productUid not found" in caplog.text and "O1" in caplog.text
+
+
+def test_non_public_artwork_url_is_held(tmp_path, monkeypatch):
+    # #7: a non-public artwork URL (file://) Gelato can't fetch must NOT be submitted.
+    import quoteforge.config as cfg
+    import quoteforge.db.database as db
+    monkeypatch.setattr(cfg, "GELATO_FULFILLMENT_MODE", "quoteforge")
+    monkeypatch.setattr(cfg, "TEST_MODE", False)          # enforce real-submit guards
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    from quoteforge.fulfillment.router import route_order
+    res = route_order(
+        {"order_id": "O1", "gelato_product_uid": "uid"},
+        recipient={"name": "R", "addressLine1": "1 St", "city": "X",
+                   "postCode": "30901", "country": "US"},
+        artwork_url="file:///local/a.png")
+    assert res["status"] == "manual" and "public URL" in res["detail"]
