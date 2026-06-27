@@ -191,6 +191,39 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
     return out
 
 
+def _ns(s: str) -> str:
+    """Normalise a size label for matching: lowercase, drop a trailing ' in'
+    unit and all spaces, so '8x10 in', '8x10', and '8 x 10' all compare equal."""
+    s = str(s or "").strip().lower()
+    if s.endswith(" in"):
+        s = s[:-3]
+    return s.replace(" ", "")
+
+
+def wallart_uid_for(material: str, size: str) -> "str | None":
+    """Resolve an UNFRAMED wall-art order's Gelato productUid (the catalog
+    gelato_sku) from material+size, so a poster/canvas/metal/acrylic order can
+    auto-submit instead of being held as manual for a missing UID. FRAMED orders
+    use a composite '{poster}+{frame}' SKU that is not a single Gelato productUid,
+    so they return None (held for the operator) rather than risk an invalid submit."""
+    if not material or not size:
+        return None
+    mat = str(material).lower()
+    if "framed" in mat and "unframed" not in mat:   # 'unframed' contains 'framed'
+        return None
+    key = next((k for k in ("poster", "canvas", "acrylic", "metal")
+                if k in mat), None)
+    if key is None:
+        return None
+    try:
+        for v in build_variations():
+            if v.material == key and _ns(v.size) == _ns(size) and not v.frame_color:
+                return v.gelato_sku
+    except Exception:  # noqa: BLE001 - catalog blip: leave unresolved (held manual)
+        return None
+    return None
+
+
 def wallart_cost_for(material: str, size: str) -> float | None:
     """Resolve a wall-art order's gelato_cost from its material + size label by
     matching the priced variation table, so the margin gate can actually evaluate
@@ -204,14 +237,16 @@ def wallart_cost_for(material: str, size: str) -> float | None:
     if not material or not size:
         return None
     mat = str(material).lower()
-    size_n = str(size).strip().lower()
     key = next((k for k in ("poster", "framed", "canvas", "acrylic", "metal")
                 if k in mat), None)
     if key is None:
         return None
     try:
+        # Match on a NORMALISED size: the storefront sends a bare token ("8x10")
+        # while the catalog label carries a unit ("8x10 in"). Comparing them raw
+        # never matched, so wall-art - the primary line - recorded NO cost.
         cands = [v for v in build_variations()
-                 if v.material == key and v.size.strip().lower() == size_n]
+                 if v.material == key and _ns(v.size) == _ns(size)]
     except Exception:  # noqa: BLE001 - catalog/pricing blip: skip the check
         return None
     if not cands:

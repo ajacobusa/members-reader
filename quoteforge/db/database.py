@@ -470,6 +470,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "fulfillment_retries" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN fulfillment_retries "
                      "INTEGER DEFAULT 0")
+    # Units of THIS product ordered (distinct from item_count = basket size). It must
+    # reach the supplier submission or a qty>1 order ships only one unit.
+    if "quantity" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN quantity INTEGER DEFAULT 1")
     # Delivery integrity: a 'delivered' order is NOT automatically problem-free.
     #   delivery_disputed         : a case/refund/complaint arrived after delivery
     #   do_not_request_review     : owner says never ask this buyer for a review
@@ -522,8 +526,8 @@ def create_order(data: dict) -> str:
              sale_price, gelato_cost, channel, vendor, product_type,
              material, size, color, listing, acquisition_source,
              line_items, item_count, country, state,
-             shipping_cost, shipping_collected)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             shipping_cost, shipping_collected, quantity)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -554,6 +558,7 @@ def create_order(data: dict) -> str:
             data.get("state"),
             data.get("shipping_cost"),
             data.get("shipping_collected"),
+            int(data.get("quantity") or 1),
         ))
     # Attach the customer's most-recent confirmed design (incl. any 12-month calendar
     # photo URLs) to this order, so the personalization travels with it to production.

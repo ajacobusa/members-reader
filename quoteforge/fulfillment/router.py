@@ -141,8 +141,16 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             pass
         try:
             from quoteforge.automation.gelato_api import create_gelato_order
+            # Submit the ORDERED quantity (was defaulting to 1 -> a qty>1 order
+            # shipped only one unit: silent under-delivery / chargeback risk). The
+            # orchestrator passes a thin order dict, so fall back to the persisted row.
+            qty = order.get("quantity")
+            if qty is None and order_id:
+                from quoteforge.db.database import get_order as _get_order
+                qty = (_get_order(order_id) or {}).get("quantity")
             resp = create_gelato_order(order_id=order_id, recipient=recipient,
-                                       artwork_url=artwork_url, product_uid=product_uid)
+                                       artwork_url=artwork_url, product_uid=product_uid,
+                                       quantity=int(qty or 1))
             vid = resp.get("id", "")
             # Self-store the supplier order id on success so the idempotency guard
             # is robust even if the caller forgets to persist it.

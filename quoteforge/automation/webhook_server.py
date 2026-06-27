@@ -149,6 +149,16 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
         wc = wallart_cost_for(data.get("material", ""), data.get("product_size", ""))
         if wc:
             data["gelato_cost"] = wc
+    # Wall art also had no UID resolution, so an unframed poster reached the router
+    # with product_uid='' and was held as 'manual' instead of submitting. Resolve the
+    # catalog UID for unframed wall art (framed stays manual - composite SKU). The
+    # placeholder-UID guard still holds it until the operator sets real Gelato UIDs.
+    if not data.get("gelato_product_uid") \
+            and (data.get("product_type") or "print") in ("print", ""):
+        from quoteforge.etsy.variations import wallart_uid_for
+        uid = wallart_uid_for(data.get("material", ""), data.get("product_size", ""))
+        if uid:
+            data["gelato_product_uid"] = uid
     return data
 
 
