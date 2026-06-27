@@ -130,14 +130,34 @@ def decide_claim(order_id: str, decision: str, note: str = "",
                  claim_resolution=note or order.get("claim_resolution") or "")
     result = {"ok": True, "status": decision, "replacement": None, "email": None}
 
+    reprint_failed = False
     if decision == "approved_reprint":
         rep = create_replacement_order(order)
         result["replacement"] = rep
         if rep.get("status") == "submitted" and rep.get("id"):
             update_order(order_id, replacement_order_id=rep["id"])
+        else:
+            # The reprint did NOT submit (missing ship_to/artwork, or a vendor outage).
+            # Do NOT leave the claim in the terminal 'approved_reprint' (which no job
+            # watches) and do NOT tell the buyer it shipped. Send it back to an
+            # ACTIONABLE state so run_claims_digest resurfaces it, and alert the owner.
+            reprint_failed = True
+            update_order(order_id, claim_status="supplier_review")
+            result["status"] = "supplier_review"
+            try:
+                from quoteforge.automation.emailer import _send_email
+                _send_email(
+                    "⚠️ Reprint failed to submit - reconcile",
+                    f"<pre>Order {order_id}: approved reprint did NOT submit "
+                    f"({rep.get('status')}: {rep.get('detail', '')}). Held for manual "
+                    f"action - no replacement exists yet.</pre>")
+            except Exception:  # noqa: BLE001 - alert must never block the decision
+                pass
 
-    if send and decision in ("approved_reprint", "approved_refund", "denied",
-                             "needs_more_info"):
+    # Only email the customer when the message is TRUE: suppress the "your replacement
+    # is on the way" note if the reprint did not actually submit.
+    if send and not reprint_failed and decision in (
+            "approved_reprint", "approved_refund", "denied", "needs_more_info"):
         subject, body = _decision_email(order, decision, note)
         result["email"] = _email_customer(order, subject, body)
     return result

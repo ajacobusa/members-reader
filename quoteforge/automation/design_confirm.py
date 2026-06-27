@@ -88,9 +88,25 @@ def _cart_money(design_json: str) -> dict:
         # and invisible to the margin gate). Storefront orders are NOT routed to
         # Gelato here - the buyer pays on Etsy, whose webhook fulfils them.
         first = enriched[0]
-        for k in ("material", "size", "product_type", "gelato_cost", "color"):
+        for k in ("material", "size", "product_type", "color"):
             if first.get(k) is not None:
                 money[k] = first[k]
+        # COGS is the WHOLE-BASKET total (sum of each line's per-unit cost x its qty),
+        # NOT just the first line. sale_price above is the full basket subtotal, so a
+        # first-line-only cost overstated margin for every multi-line / qty>1 direct
+        # order - and direct orders are never repriced from a live charge, so it never
+        # self-corrected.
+        total_cost, have_cost = 0.0, False
+        for ln in enriched:
+            c = ln.get("gelato_cost")
+            if c is not None:
+                try:
+                    total_cost += float(c) * int(ln.get("qty", 1) or 1)
+                    have_cost = True
+                except (TypeError, ValueError):
+                    pass
+        if have_cost:
+            money["gelato_cost"] = round(total_cost, 2)
     return money
 
 

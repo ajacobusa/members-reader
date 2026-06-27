@@ -159,6 +159,16 @@ def _build_order_data(item: dict, etsy_order_id: str) -> dict:
         uid = wallart_uid_for(data.get("material", ""), data.get("product_size", ""))
         if uid:
             data["gelato_product_uid"] = uid
+    # The catalog enrichers + wall-art backfill resolve a PER-UNIT gelato_cost, but
+    # sale_price is the qty-scaled LINE TOTAL. Store gelato_cost as the line total
+    # (xquantity) so the margin gate, financials, books and Wave all see true COGS for
+    # a qty>1 order (without this, COGS was understated by (qty-1)x and profit inflated).
+    try:
+        _q = int(data.get("quantity") or 1)
+    except (TypeError, ValueError):
+        _q = 1
+    if _q > 1 and data.get("gelato_cost"):
+        data["gelato_cost"] = round(float(data["gelato_cost"]) * _q, 2)
     return data
 
 
