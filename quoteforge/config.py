@@ -344,6 +344,13 @@ AIRTABLE_BASE_ID: str = os.getenv("AIRTABLE_BASE_ID", "")
 # Gelato API (for programmatic order creation)
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
 GELATO_BASE_URL: str = os.getenv("GELATO_BASE_URL", "https://order.gelatoapis.com")
+# Gelato Order API version (current = v4; v3 is the older API). v4 additionally
+# requires orderType + shipmentMethodUid on create.
+GELATO_API_VERSION: str = os.getenv("GELATO_API_VERSION", "v4").strip().lower()
+# Shipping method submitted to Gelato. "normal" = standard; a comma list (e.g.
+# "normal,express") tells Gelato to pick the CHEAPEST of those. The buyer already
+# paid Etsy shipping; this is what Gelato uses to fulfil + what it charges you.
+GELATO_SHIPMENT_METHOD: str = os.getenv("GELATO_SHIPMENT_METHOD", "normal").strip()
 # WHO submits orders to Gelato - exactly one source may, or orders double-print +
 # double-charge. "quoteforge" (DEFAULT): QuoteForge is the personalization engine - it
 # GENERATES the artwork (AI quote -> template -> layout -> 300 DPI render) and submits
