@@ -113,10 +113,44 @@ def update_gelato_shipping_address(gelato_order_id: str, address: dict) -> dict:
             **(resp.json() if resp.content else {})}
 
 
+def _extract_gelato_cost(data: dict) -> "float | None":
+    """The ACTUAL amount Gelato charges YOU (product + shipping + tax) from an order
+    response - the real COGS, vs the catalog estimate. Tries the common shapes (a
+    top-level total, or summed receipts). Returns None when no cost is present yet
+    (the estimate then stands). Never raises."""
+    try:
+        for k in ("totalInclVat", "total", "totalAmount"):
+            v = data.get(k)
+            if v not in (None, ""):
+                return round(float(v), 2)
+        receipts = data.get("receipts") or []
+        tot, found = 0.0, False
+        for r in receipts:
+            picked = False
+            for k in ("totalInclVat", "total", "totalAmount"):
+                v = r.get(k)
+                if v not in (None, ""):
+                    tot += float(v); found = picked = True
+                    break
+            if not picked:
+                parts = sum(float(r.get(k, 0) or 0) for k in
+                            ("productsPriceInclVat", "shippingPriceInclVat",
+                             "packagingPriceInclVat"))
+                if parts:
+                    tot += parts; found = True
+        if found:
+            return round(tot, 2)
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
 def get_gelato_order_status(gelato_order_id: str) -> dict:
-    """Poll Gelato for order status and tracking number."""
+    """Poll Gelato for order status, tracking number, and the ACTUAL charged cost."""
+    from quoteforge.config import GELATO_API_VERSION
+    ver = GELATO_API_VERSION or "v4"
     resp = requests.get(
-        f"{GELATO_BASE_URL}/v3/orders/{gelato_order_id}",
+        f"{GELATO_BASE_URL}/{ver}/orders/{gelato_order_id}",
         headers=_gelato_headers(),
         timeout=15,
     )
@@ -130,6 +164,7 @@ def get_gelato_order_status(gelato_order_id: str) -> dict:
         "carrier": _extract_shipment_field(data, "shipmentMethodName", "carrier"),
         "estimated_delivery": _extract_shipment_field(
             data, "expectedDeliveryDate", "estimated_delivery_date"),
+        "cost": _extract_gelato_cost(data),   # actual print+ship cost charged to you
         "raw": data,
     }
 
@@ -192,14 +227,18 @@ def check_and_update_tracking(order_id: str, gelato_order_id: str) -> dict:
     poll_until_shipped for production (call it from /backup-style scheduled hits).
     """
     status = get_gelato_order_status(gelato_order_id)
+    from quoteforge.db.database import get_order, update_order
+    o = get_order(order_id) or {}
     tn = status.get("tracking_number", "")
-    if tn:
-        from quoteforge.db.database import get_order, update_order
-        # Write only on first appearance / change - re-polls must not rewrite
-        # (and fsync) the row every 6 hours for already-tracked orders.
-        existing = (get_order(order_id) or {}).get("tracking_number") or ""
-        if tn != existing:
-            update_order(order_id, tracking_number=tn, status="shipped")
+    # Write only on first appearance / change - re-polls must not rewrite (and fsync)
+    # the row every 6 hours for already-tracked orders.
+    if tn and tn != (o.get("tracking_number") or ""):
+        update_order(order_id, tracking_number=tn, status="shipped")
+    # Capture the ACTUAL Gelato cost (real COGS) once the order is priced, overwriting
+    # the catalog estimate so financials + the Wave books use the real number.
+    cost = status.get("cost")
+    if cost is not None and round(float(o.get("gelato_cost") or 0), 2) != round(float(cost), 2):
+        update_order(order_id, gelato_cost=round(float(cost), 2))
     return status
 
 

@@ -80,6 +80,37 @@ def test_gelato_error_body_is_logged(monkeypatch, caplog):
     assert "productUid not found" in caplog.text and "O1" in caplog.text
 
 
+def test_extract_gelato_cost_handles_common_shapes():
+    # #8: parse the ACTUAL charged cost from a Gelato order response.
+    from quoteforge.automation.gelato_api import _extract_gelato_cost
+    assert _extract_gelato_cost({"totalInclVat": "19.25"}) == 19.25
+    assert _extract_gelato_cost(
+        {"receipts": [{"totalInclVat": 10.0}, {"totalInclVat": 9.25}]}) == 19.25
+    assert _extract_gelato_cost(
+        {"receipts": [{"productsPriceInclVat": 13.0,
+                       "shippingPriceInclVat": 6.25}]}) == 19.25
+    assert _extract_gelato_cost({}) is None        # not priced yet -> estimate stands
+
+
+def test_actual_gelato_cost_overwrites_estimate(tmp_path, monkeypatch):
+    # #8: when Gelato has priced the order, store the REAL cost (COGS) over the catalog
+    # estimate, so financials + the Wave books use actuals.
+    import sqlite3
+    import quoteforge.db.database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    conn = sqlite3.connect(db.DB_PATH)
+    conn.execute("INSERT INTO orders (order_id,recipient_name,occasion,gelato_cost) "
+                 "VALUES (?,?,?,?)", ("O1", "R", "B", 13.0))     # estimate
+    conn.commit()
+    conn.close()
+    import quoteforge.automation.gelato_api as ga
+    monkeypatch.setattr(ga, "get_gelato_order_status",
+                        lambda gid: {"tracking_number": "", "cost": 19.25})
+    ga.check_and_update_tracking("O1", "GLT-1")
+    assert db.get_order("O1")["gelato_cost"] == 19.25            # actual, not 13.0
+
+
 def test_non_public_artwork_url_is_held(tmp_path, monkeypatch):
     # #7: a non-public artwork URL (file://) Gelato can't fetch must NOT be submitted.
     import quoteforge.config as cfg
