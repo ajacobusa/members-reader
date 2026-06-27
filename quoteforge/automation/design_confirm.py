@@ -47,7 +47,11 @@ def _cart_money(design_json: str) -> dict:
     elif lines:
         money["item_count"] = sum(int(l.get("qty", 1) or 1) for l in lines)
     if lines:
-        money["line_items"] = json.dumps(lines)
+        # Keep the order's line_items THIN (title/size/qty for display + financials);
+        # the heavy per-line `design` (apparel front+back, calendar months, wording)
+        # is persisted in full on the saved design_json, retrievable per order.
+        thin = [{k: v for k, v in line.items() if k != "design"} for line in lines]
+        money["line_items"] = json.dumps(thin)
     return money
 
 
