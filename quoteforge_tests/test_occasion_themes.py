@@ -9,8 +9,9 @@ TXTCOLORS = {"#f4efe6", "#ffffff", "#c9a84c", "#1b1b1f", "#103d2e", "#7a2e2e"}
 def test_known_occasion_returns_its_pairing():
     from quoteforge.etsy.occasion_themes import theme_for
     assert theme_for("memorial") == {"bg": "#f4efe6", "text": "#103d2e"}
-    assert theme_for("birthday") == {"bg": "#c9a84c", "text": "#1b1b1f"}
-    assert theme_for("wedding") == {"bg": "#dcd6c8", "text": "#7a2e2e"}
+    assert theme_for("birthday") == {"bg": "#f4efe6", "text": "#c9a84c"}
+    assert theme_for("wedding") == {"bg": "#f4efe6", "text": "#7a2e2e"}
+    assert theme_for("father's day") == {"bg": "#3a2e24", "text": "#f4efe6"}
 
 
 def test_unknown_or_empty_returns_default():

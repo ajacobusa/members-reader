@@ -16,12 +16,12 @@ OCCASION_TINTS: dict[str, dict] = {
     "new baby":        {"bg": "#dcd6c8", "text": "#103d2e"},
     "housewarming":    {"bg": "#dcd6c8", "text": "#103d2e"},
     "mother's day":    {"bg": "#dcd6c8", "text": "#103d2e"},
-    "wedding":         {"bg": "#dcd6c8", "text": "#7a2e2e"},
+    "wedding":         {"bg": "#f4efe6", "text": "#7a2e2e"},
     "anniversary":     {"bg": "#dcd6c8", "text": "#7a2e2e"},
     "valentine's day": {"bg": "#dcd6c8", "text": "#7a2e2e"},
-    "birthday":        {"bg": "#c9a84c", "text": "#1b1b1f"},
+    "birthday":        {"bg": "#f4efe6", "text": "#c9a84c"},
     "graduation":      {"bg": "#2e3a55", "text": "#f4efe6"},
-    "father's day":    {"bg": "#2e3a55", "text": "#f4efe6"},
+    "father's day":    {"bg": "#3a2e24", "text": "#f4efe6"},
     "christmas":       {"bg": "#103d2e", "text": "#c9a84c"},
 }
 
