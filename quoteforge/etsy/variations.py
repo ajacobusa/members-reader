@@ -72,6 +72,26 @@ def tier_discount(qty: int) -> float:
     return 0.0
 
 
+def line_subtotal(unit_price: float, qty: int, discount: float) -> float:
+    """One basket line's subtotal: the discounted unit price (rounded to cents) times
+    qty, rounded to cents - the SAME round-then-multiply order as the storefront
+    _lineSub, so the Python canonical and the browser agree to the penny."""
+    return round(round(unit_price * (1 - discount), 2) * int(qty), 2)
+
+
+def basket_subtotal(lines: list) -> float:
+    """Basket subtotal (the canonical Python source of the storefront cart math).
+
+    The quantity discount keys off the TOTAL basket quantity - not per line - then each
+    line's subtotal is summed. ``lines`` = [{"unit": float, "qty": int}, ...]. Mirrors
+    _totalQty/qdisc/_lineSub/_cartTotal exactly.
+    """
+    total_qty = sum(int(l.get("qty", 1) or 1) for l in lines)
+    d = tier_discount(total_qty)
+    return round(sum(line_subtotal(float(l["unit"]), l.get("qty", 1) or 1, d)
+                     for l in lines), 2)
+
+
 def floor_price(cost: float, tier: str = "entry") -> float:
     """Lowest price that still clears the tier's net-margin floor (60%)."""
     return min_price_for_margin(cost, floor_for_tier(tier))

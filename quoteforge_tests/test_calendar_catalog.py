@@ -41,9 +41,15 @@ def test_enrich_calendar_order_merges_fields_or_empty():
 
 
 def test_pipeline_and_webhook_call_calendar_enrich():
-    import quoteforge.automation.pipeline_orchestrator as po, quoteforge.automation.webhook_server as ws, inspect
-    assert "enrich_calendar_order" in inspect.getsource(po)
-    assert "enrich_calendar_order" in inspect.getsource(ws)
+    # Enrich is now wired via the single family registry (etsy/families.py); BOTH ingest
+    # seams iterate enrichers(), so the calendar enricher is reachable from both.
+    import inspect
+    import quoteforge.automation.pipeline_orchestrator as po
+    import quoteforge.automation.webhook_server as ws
+    from quoteforge.etsy.families import enrichers
+    from quoteforge.etsy.calendar_catalog import enrich_calendar_order
+    assert enrich_calendar_order in enrichers()
+    assert "enrichers" in inspect.getsource(po) and "enrichers" in inspect.getsource(ws)
 
 
 def test_verify_calendar_mappings_reports_placeholders():

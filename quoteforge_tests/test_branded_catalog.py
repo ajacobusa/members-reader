@@ -41,11 +41,15 @@ def test_enrich_branded_order_merges_fields_or_empty():
 
 
 def test_pipeline_and_webhook_call_branded_enrich():
+    # Enrich is now wired via the single family registry (etsy/families.py); BOTH ingest
+    # seams iterate enrichers(), so the branded enricher is reachable from both.
+    import inspect
     import quoteforge.automation.pipeline_orchestrator as po
     import quoteforge.automation.webhook_server as ws
-    import inspect
-    assert "enrich_branded_order" in inspect.getsource(po)
-    assert "enrich_branded_order" in inspect.getsource(ws)
+    from quoteforge.etsy.families import enrichers
+    from quoteforge.etsy.branded_catalog import enrich_branded_order
+    assert enrich_branded_order in enrichers()
+    assert "enrichers" in inspect.getsource(po) and "enrichers" in inspect.getsource(ws)
 
 
 def test_verify_branded_mappings_reports_placeholders():

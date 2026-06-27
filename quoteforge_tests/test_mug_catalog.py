@@ -48,9 +48,15 @@ def test_verify_mug_mappings_reports_placeholders():
 
 
 def test_pipeline_and_webhook_call_mug_enrich():
-    import quoteforge.automation.pipeline_orchestrator as po, quoteforge.automation.webhook_server as ws, inspect
-    assert "enrich_mug_order" in inspect.getsource(po)
-    assert "enrich_mug_order" in inspect.getsource(ws)
+    # Enrich is now wired via the single family registry (etsy/families.py); BOTH ingest
+    # seams iterate enrichers(), so the mug enricher is reachable from both.
+    import inspect
+    import quoteforge.automation.pipeline_orchestrator as po
+    import quoteforge.automation.webhook_server as ws
+    from quoteforge.etsy.families import enrichers
+    from quoteforge.etsy.mug_catalog import enrich_mug_order
+    assert enrich_mug_order in enrichers()
+    assert "enrichers" in inspect.getsource(po) and "enrichers" in inspect.getsource(ws)
 
 
 def test_margin_guard_includes_mugs():

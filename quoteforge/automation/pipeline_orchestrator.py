@@ -202,17 +202,13 @@ def run_full_pipeline(
         log_pipeline_stage(order_id, stage, status, msg)
         update_order(order_id, status=STATUS_MAP.get(stage, stage))
 
-    # Apparel-enrich at the pipeline entry so EVERY ingest path (webhook, direct,
-    # resume) gets product_type/garment/colour/cost/UID. Idempotent (re-deriving
-    # the same fields) and a no-op for wall art, so it never disturbs prints.
-    from quoteforge.etsy.apparel_catalog import enrich_apparel_order
-    order_data = {**order_data, **enrich_apparel_order(order_data)}
-    from quoteforge.etsy.branded_catalog import enrich_branded_order
-    order_data = {**order_data, **enrich_branded_order(order_data)}
-    from quoteforge.etsy.mug_catalog import enrich_mug_order
-    order_data = {**order_data, **enrich_mug_order(order_data)}
-    from quoteforge.etsy.calendar_catalog import enrich_calendar_order
-    order_data = {**order_data, **enrich_calendar_order(order_data)}
+    # Enrich at the pipeline entry so EVERY ingest path (webhook, direct, resume) gets
+    # product_type/garment/colour/cost/UID. Idempotent + a no-op for wall art. Driven by
+    # the single family ENRICH registry (same list the webhook seam uses), so a new
+    # family is wired in ONE place instead of here AND in _build_order_data.
+    from quoteforge.etsy.families import enrichers
+    for _enrich in enrichers():
+        order_data = {**order_data, **_enrich(order_data)}
 
     # ── Stage 1: Order Intake ────────────────────────────────────
     _notify("order_intake", "Storing order in database...")
@@ -282,37 +278,23 @@ def run_full_pipeline(
             # A4 calendar at the poster default (5400x7200) would hand Gelato a wrongly
             # sized file (cropped/stretched on the physical product).
             _pt = order_data.get("product_type")
-            _pid = order_data.get("product_id", "")
-            if _pt == "apparel":
-                from quoteforge.etsy.apparel_catalog import apparel_dimensions_for
-                render_size = apparel_dimensions_for(order_data.get("garment_id", ""))
-                photo_size = "12x16 in"      # garment chest area for the DPI gate
-            elif _pt == "mug":
-                from quoteforge.etsy.mug_catalog import mug_dimensions_for
-                render_size = mug_dimensions_for(_pid)
-                photo_size = size_key
-            elif _pt == "calendar":
-                from quoteforge.etsy.calendar_catalog import calendar_dimensions_for
-                render_size = calendar_dimensions_for(_pid)
-                photo_size = size_key
-            elif _pt == "branded":
-                from quoteforge.etsy.branded_catalog import branded_dimensions_for
-                render_size = branded_dimensions_for(_pid)
+            # Render-size + DPI-gate size come from the single family registry. A new
+            # family adds ONE Family() entry instead of a branch here.
+            from quoteforge.etsy.families import family_for, WALLART_TYPES
+            _fam = family_for(_pt)
+            if _fam is not None:
+                render_size = _fam.render_size(order_data, size_key)
+                photo_size = _fam.photo_size(order_data, size_key)
+            elif (_pt or "").lower() in WALLART_TYPES:
+                render_size = dimensions_for(size_key)   # wall-art poster default
                 photo_size = size_key
             else:
-                # The else-branch is the WALL-ART poster path. A product_type we have
-                # no render-size branch for would otherwise render at the poster default
-                # (~5400x7200) and silently auto-submit a wrong-sized print. Fail loudly
-                # so a future family can't ship cropped/stretched (audit: future-family
-                # render fallthrough). Wall-art types render correctly at the default.
-                _WALLART_TYPES = {"", "print", "poster", "canvas", "framed",
-                                  "metal", "acrylic", "wall_art", "wallart"}
-                if (_pt or "").lower() not in _WALLART_TYPES:
-                    raise ValueError(
-                        f"no render-size branch for product_type '{_pt}' - add one "
-                        f"before fulfilling this family (would have used poster size)")
-                render_size = dimensions_for(size_key)
-                photo_size = size_key
+                # Unknown product_type: rendering at the poster default would silently
+                # auto-submit a wrong-sized print. Fail loudly so a future family can't
+                # ship cropped before its Family() entry exists.
+                raise ValueError(
+                    f"no render-size branch for product_type '{_pt}' - add a Family() "
+                    f"entry in etsy/families.py before fulfilling this family")
             bg_url = None
             bg_path = None
             if custom_image:
