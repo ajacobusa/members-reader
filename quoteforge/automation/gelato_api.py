@@ -145,6 +145,31 @@ def _extract_gelato_cost(data: dict) -> "float | None":
     return None
 
 
+def _extract_gelato_shipping(data: dict) -> "float | None":
+    """The SHIPPING portion Gelato charges YOU, from the order response - so the
+    shipping-variance audit (customer shipping vs what Gelato charges) runs on real
+    numbers. Sums shippingPriceInclVat across receipts (or a top-level field).
+    None when absent. Never raises."""
+    try:
+        receipts = data.get("receipts") or []
+        ship, found = 0.0, False
+        for r in receipts:
+            for k in ("shippingPriceInclVat", "shippingPrice", "shipmentPriceInclVat"):
+                v = r.get(k)
+                if v not in (None, ""):
+                    ship += float(v); found = True
+                    break
+        if found:
+            return round(ship, 2)
+        for k in ("shippingPriceInclVat", "shippingPrice"):
+            v = data.get(k)
+            if v not in (None, ""):
+                return round(float(v), 2)
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
 def get_gelato_order_status(gelato_order_id: str) -> dict:
     """Poll Gelato for order status, tracking number, and the ACTUAL charged cost."""
     from quoteforge.config import GELATO_API_VERSION
@@ -164,7 +189,8 @@ def get_gelato_order_status(gelato_order_id: str) -> dict:
         "carrier": _extract_shipment_field(data, "shipmentMethodName", "carrier"),
         "estimated_delivery": _extract_shipment_field(
             data, "expectedDeliveryDate", "estimated_delivery_date"),
-        "cost": _extract_gelato_cost(data),   # actual print+ship cost charged to you
+        "cost": _extract_gelato_cost(data),       # actual TOTAL charged to you
+        "shipping_cost": _extract_gelato_shipping(data),  # its shipping portion
         "raw": data,
     }
 
@@ -234,11 +260,20 @@ def check_and_update_tracking(order_id: str, gelato_order_id: str) -> dict:
     # the row every 6 hours for already-tracked orders.
     if tn and tn != (o.get("tracking_number") or ""):
         update_order(order_id, tracking_number=tn, status="shipped")
-    # Capture the ACTUAL Gelato cost (real COGS) once the order is priced, overwriting
-    # the catalog estimate so financials + the Wave books use the real number.
-    cost = status.get("cost")
-    if cost is not None and round(float(o.get("gelato_cost") or 0), 2) != round(float(cost), 2):
-        update_order(order_id, gelato_cost=round(float(cost), 2))
+    # Capture the ACTUAL Gelato charge once the order is priced, overwriting the
+    # catalog estimate so financials + the Wave books use real COGS. Split product vs
+    # shipping: financials add gelato_cost + shipping_cost, so gelato_cost must be the
+    # PRODUCT portion (total - shipping) or shipping would be double-counted; the
+    # shipping portion populates shipping_cost so the shipping-variance audit runs on
+    # real numbers.
+    total = status.get("cost")
+    ship = status.get("shipping_cost")
+    if total is not None:
+        product = round(float(total) - float(ship or 0), 2)
+        if round(float(o.get("gelato_cost") or 0), 2) != product:
+            update_order(order_id, gelato_cost=product)
+    if ship is not None and round(float(o.get("shipping_cost") or 0), 2) != round(float(ship), 2):
+        update_order(order_id, shipping_cost=round(float(ship), 2))
     return status
 
 
