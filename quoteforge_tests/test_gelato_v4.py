@@ -111,6 +111,35 @@ def test_actual_gelato_cost_overwrites_estimate(tmp_path, monkeypatch):
     assert db.get_order("O1")["gelato_cost"] == 19.25            # actual, not 13.0
 
 
+def test_extract_gelato_shipping():
+    from quoteforge.automation.gelato_api import _extract_gelato_shipping
+    assert _extract_gelato_shipping({"receipts": [{"shippingPriceInclVat": 6.25}]}) == 6.25
+    assert _extract_gelato_shipping({"shippingPriceInclVat": 5.0}) == 5.0
+    assert _extract_gelato_shipping({}) is None
+
+
+def test_actual_cost_splits_product_and_shipping(tmp_path, monkeypatch):
+    # Shipping is broken out: gelato_cost = PRODUCT (total - shipping), shipping_cost =
+    # shipping. COGS (gelato_cost + shipping_cost) still totals correctly (no double-
+    # count), and the shipping-variance audit gets a real Gelato shipping figure.
+    import sqlite3
+    import quoteforge.db.database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    conn = sqlite3.connect(db.DB_PATH)
+    conn.execute("INSERT INTO orders (order_id,recipient_name,occasion,gelato_cost) "
+                 "VALUES (?,?,?,?)", ("O1", "R", "B", 13.0))
+    conn.commit()
+    conn.close()
+    import quoteforge.automation.gelato_api as ga
+    monkeypatch.setattr(ga, "get_gelato_order_status",
+                        lambda gid: {"tracking_number": "", "cost": 19.25,
+                                     "shipping_cost": 6.25})
+    ga.check_and_update_tracking("O1", "GLT-1")
+    o = db.get_order("O1")
+    assert o["gelato_cost"] == 13.0 and o["shipping_cost"] == 6.25     # product + ship
+
+
 def test_non_public_artwork_url_is_held(tmp_path, monkeypatch):
     # #7: a non-public artwork URL (file://) Gelato can't fetch must NOT be submitted.
     import quoteforge.config as cfg
