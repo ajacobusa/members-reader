@@ -31,3 +31,23 @@ def test_every_tint_is_in_the_existing_palette():
 def test_tints_json_round_trips():
     from quoteforge.etsy.occasion_themes import tints_json, OCCASION_TINTS
     assert json.loads(tints_json()) == OCCASION_TINTS
+
+
+def _page(tmp_path):
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"
+    g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path, out_path=tmp_path / "h.html")
+    return out.read_text(encoding="utf-8")
+
+
+def test_page_embeds_tint_map_and_applies_it(tmp_path):
+    html = _page(tmp_path)
+    assert "const OCCASION_TINT = " in html                 # map embedded
+    assert '"memorial":{"bg":"#f4efe6","text":"#103d2e"}' in html
+    # editor-open applies the tint from the product's occasion key
+    assert "OCCASION_TINT[d.occ]" in html

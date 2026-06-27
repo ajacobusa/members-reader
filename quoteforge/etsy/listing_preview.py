@@ -1756,6 +1756,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # Re-order so synthesized cards slot into showcase position with the rest.
     _reorder_by_occasion(listings)
     data_json = json.dumps(listings)
+    from quoteforge.etsy.occasion_themes import tints_json
+    occ_tint_json = tints_json()
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
         from quoteforge.etsy.gift_finder import quiz_config
@@ -3961,6 +3963,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 
 <script>
  const DATA = {data_json};
+ const OCCASION_TINT = {occ_tint_json};
  const OWNER = "{owner}";
  const PRICE_HI = "{price_hi}";
  const MAT_SHORT = "{mat_short}";
@@ -4154,6 +4157,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    WALLART_DESC = document.getElementById('mdesc').innerHTML;  // baseline for restore
    document.getElementById('mratemsg').textContent = "";
    CURQUOTE = d.quote || ""; SELBG = BGCOLORS[0]; SELTXT = TXTCOLORS[0]; TXT_USER_SET=false; APPLACEMENT='front';
+   var _ot=(typeof OCCASION_TINT!=='undefined'&&d.occ)?OCCASION_TINT[d.occ]:null; if(_ot){{SELBG=_ot.bg; SELTXT=_ot.text;}}
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
    TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; setDragMode('text');
    var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
