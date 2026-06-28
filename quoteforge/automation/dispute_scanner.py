@@ -48,7 +48,13 @@ def scan_etsy_disputes(receipts: list = None, limit: int = 100) -> dict:
         if not _credentials_ready():
             return {"status": "disabled", "disputed": []}
         from quoteforge.automation.etsy_api import get_shop_receipts
-        feed = get_shop_receipts(was_paid=True, was_shipped=True, limit=limit)
+        try:
+            feed = get_shop_receipts(was_paid=True, was_shipped=True, limit=limit)
+        except Exception as exc:  # noqa: BLE001 - an Etsy API blip must DEGRADE, not
+            # crash the scheduled job (the poller is hardened against exactly this).
+            import logging
+            logging.getLogger(__name__).error("dispute scan fetch failed: %s", exc)
+            return {"status": "error", "disputed": [], "error": str(exc)}
         receipts = feed.get("results", []) if isinstance(feed, dict) else (feed or [])
 
     from quoteforge.db.database import get_order_by_etsy_id

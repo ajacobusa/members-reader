@@ -26,10 +26,10 @@ def poll_once(limit: int = 25) -> dict:
         logger.error(f"Etsy receipt fetch failed: {exc}")
         return {"polled": 0, "imported": [], "skipped": 0, "error": str(exc)}
     receipts = data.get("results", []) if isinstance(data, dict) else []
-    imported, skipped = [], []
+    imported, skipped, failed = [], [], []
     for r in receipts:
-        # Isolate each receipt: a single un-convertible/failing receipt (the convert was
-        # OUTSIDE the try) must not wedge the rest of the batch.
+        # Isolate each receipt: a single un-convertible/failing receipt must not wedge
+        # the rest of the batch.
         oid = ""
         try:
             payload = receipt_to_order_payload(r)
@@ -40,9 +40,18 @@ def poll_once(limit: int = 25) -> dict:
             process_webhook_payload(payload)
             imported.append(oid)
         except Exception as exc:  # noqa: BLE001
+            # A FAILED import (not a duplicate skip) strands a PAID order with no DB row,
+            # so it must be SURFACED, not just logged: report it + capture to Sentry so
+            # the poll job can alert the owner (the failure happens before create_order,
+            # so no downstream DB monitor can see it).
             logger.error(f"Failed to import Etsy receipt {oid or '?'}: {exc}")
-            skipped.append(oid)
-    logger.info("etsy poll: polled=%d imported=%d skipped=%d", len(receipts),
-                len(imported), len(skipped))
-    return {"polled": len(receipts), "imported": imported,
-            "skipped": len(skipped), "mock": bool(data.get("mock"))}
+            failed.append(oid or "?")
+            try:
+                from quoteforge.automation.monitoring import capture
+                capture(exc)
+            except Exception:  # noqa: BLE001
+                pass
+    logger.info("etsy poll: polled=%d imported=%d skipped=%d failed=%d",
+                len(receipts), len(imported), len(skipped), len(failed))
+    return {"polled": len(receipts), "imported": imported, "skipped": len(skipped),
+            "failed": failed, "mock": bool(data.get("mock"))}

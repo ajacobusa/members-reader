@@ -1641,8 +1641,10 @@ def daily_order_report() -> dict:
                 # submit_unconfirmed is an ambiguous send (vendor MAY have charged +
                 # started producing) that is intentionally never auto-retried, so it
                 # MUST be surfaced for manual reconciliation or it sits invisible.
+                # approved_ready_to_print is a manual-flow order awaiting the owner's
+                # upload to the print partner - it had no follow-up surfacing.
                 "WHERE status IN ('proof_sent','error','hold_validation','hold_photo',"
-                "'on_hold','submit_unconfirmed') "
+                "'on_hold','submit_unconfirmed','approved_ready_to_print') "
                 "ORDER BY created_at"
             ).fetchall()
         ]
