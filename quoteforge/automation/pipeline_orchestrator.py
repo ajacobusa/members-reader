@@ -230,6 +230,22 @@ def run_full_pipeline(
         if custom_text:
             _notify("quote_generation", "Using buyer's custom text (verbatim)...")
             quote = custom_text
+            # The buyer's VERBATIM text bypasses the moderation that AI output gets.
+            # Screen it; on a profanity hit, flag for owner review (non-blocking - made-
+            # to-order, the buyer approved their own words; just surface it so the owner
+            # isn't blindsided printing offensive text).
+            try:
+                from quoteforge.quotes.moderation import is_clean
+                if not is_clean(custom_text):
+                    from quoteforge.db.database import enqueue_approval
+                    enqueue_approval(kind="text_review",
+                                     summary=f"Buyer personalization flagged for review: "
+                                             f"{custom_text[:80]}",
+                                     ref=order_id, risk="medium")
+                    _log(order_id, "quote_generation", "warn",
+                         "buyer custom text flagged for owner review")
+            except Exception:  # noqa: BLE001 - moderation must never block intake
+                pass
         else:
             _notify("quote_generation", "Generating personalized quote...")
             from quoteforge.automation.retry import retry_call

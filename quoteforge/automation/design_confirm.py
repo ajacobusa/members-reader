@@ -28,6 +28,15 @@ def _parse_contact(design_json: str) -> dict:
     return _parse_design(design_json).get("contact") or {}
 
 
+def _safe_qty(v) -> int:
+    """A cart line's quantity coerced to a positive int; a malformed qty defaults to 1
+    so one bad line never crashes the whole checkout confirmation."""
+    try:
+        return max(1, int(v or 1))
+    except (TypeError, ValueError):
+        return 1
+
+
 def _enrich_lines(lines: list) -> list:
     """Resolve each cart line's product IDENTITY (product_type, material, size,
     Gelato UID, gelato_cost) by reusing the marketplace path's enrichment, so a
@@ -76,7 +85,7 @@ def _cart_money(design_json: str) -> dict:
         except (TypeError, ValueError):
             pass
     elif lines:
-        money["item_count"] = sum(int(l.get("qty", 1) or 1) for l in lines)
+        money["item_count"] = sum(_safe_qty(l.get("qty")) for l in lines)
     if lines:
         # Enrich each line with its resolved product identity (NOT the heavy design,
         # which lives on the saved design_json). This makes the direct order a
@@ -101,7 +110,7 @@ def _cart_money(design_json: str) -> dict:
             c = ln.get("gelato_cost")
             if c is not None:
                 try:
-                    total_cost += float(c) * int(ln.get("qty", 1) or 1)
+                    total_cost += float(c) * _safe_qty(ln.get("qty"))
                     have_cost = True
                 except (TypeError, ValueError):
                     pass

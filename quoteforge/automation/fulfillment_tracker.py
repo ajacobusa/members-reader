@@ -221,7 +221,10 @@ def _stale_in_transit(order: dict) -> bool:
         return False
     domestic = (order.get("country") or "US").upper() in _DOMESTIC
     limit = STALE_DOMESTIC_DAYS if domestic else STALE_INTL_DAYS
-    age = _age_days(order.get("shipped_at") or "")
+    # Fall back to created_at when shipped_at is missing (a webhook-shipped Gelato order
+    # used to have NULL shipped_at, so the stale SLA clock could never start - the alert
+    # silently never fired). created_at is a conservative anchor (only earlier).
+    age = _age_days(order.get("shipped_at") or order.get("created_at") or "")
     return age is not None and age >= limit
 
 

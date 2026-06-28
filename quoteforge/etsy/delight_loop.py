@@ -103,6 +103,11 @@ def delight_due(orders: list[dict], now: datetime | None = None,
             continue
         if o.get("delivery_disputed") or o.get("do_not_request_review"):
             continue
+        # A buyer who filed an in-app claim (damage/defect/lost/wrong-item) - regardless
+        # of its outcome - must never get a 'leave a review' nudge. Only Etsy cases were
+        # suppressed before (delivery_disputed), not our own claim flow.
+        if (o.get("claim_status") or "").strip():
+            continue
         # Owner manual confirmation counts as a confirmed delivery.
         manual = bool(o.get("manual_delivery_confirmed"))
         # A review is NEVER asked before delivery is confirmed. A bare "shipped"
