@@ -137,6 +137,12 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "idempotent router so a Gelato outage longer than the in-process retries "
         "self-heals (bounded by a per-order retry cap; can't double-submit)."),
     ScheduledJob(
+        "QuoteForge Safety Check", "safety-check",
+        ["/SC", "DAILY", "/ST", "06:15"],
+        "Daily: verify the safety guardrails (no auto-refund, margin-floor hold, order "
+        "lock, claims human-only, address-fix gate, no auto-retry of an unconfirmed "
+        "send) and ALERT the owner if any has weakened (e.g. a misconfigured cap)."),
+    ScheduledJob(
         "QuoteForge Daily QA", "daily-qa",
         ["/SC", "DAILY", "/ST", "06:30"],
         "Daily: aggregate Gelato SKU/UID currency + a net-margin-floor sweep across "
