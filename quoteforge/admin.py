@@ -2233,7 +2233,8 @@ def _cmd_track_orders(args: list[str]) -> int:
     # Anything needing a human - stuck, missing tracking, stale in transit,
     # wrong-destination delivery, or poll errors - is the owner's to chase.
     if (r.get("stuck") or r.get("errors") or r.get("tracking_missing")
-            or r.get("stale_in_transit") or r.get("address_mismatch")):
+            or r.get("stale_in_transit") or r.get("address_mismatch")
+            or r.get("delivery_exception")):
         _alert("⚠️ Fulfillment needs attention", "<pre>" + text + "</pre>",
                what="fulfillment")
     return 0
@@ -2252,6 +2253,23 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
         _alert("⚠️ Orders failed to submit after retries",
                "<pre>exhausted: " + ", ".join(r["exhausted"]) + "</pre>",
                what="fulfillment")
+    return 0
+
+
+def _cmd_daily_qa(args: list[str]) -> int:
+    """Daily QA agent: aggregate SKU/UID currency + margin-floor sweep + order-book
+    health; email the owner if anything needs attention. `daily-qa`."""
+    from quoteforge.automation.daily_qa import run_daily_qa
+    r = run_daily_qa(send=True)
+    sku = r["sku_audit"]
+    print(f"daily-qa: orders={r['total_orders']} routed={r['routed']} "
+          f"tracked={r['with_tracking']} delivered={r['delivered']} "
+          f"claims={r['claims']} needs_attention={r['needs_attention']}")
+    print(f"  SKU: placeholders={sku['placeholder_uids']} "
+          f"below_floor={len(sku['below_floor'])} -> "
+          f"{'OK' if sku['ok'] else 'ACTION NEEDED'}")
+    for i in r["issues"]:
+        print(f"  - {i}")
     return 0
 
 
@@ -3006,6 +3024,7 @@ COMMANDS = {
     "track-orders": _cmd_track_orders,
     "retry-fulfillment": _cmd_retry_fulfillment,
     "reconcile-unconfirmed": _cmd_reconcile_unconfirmed,
+    "daily-qa": _cmd_daily_qa,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,

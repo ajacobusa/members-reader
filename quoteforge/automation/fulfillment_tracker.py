@@ -128,7 +128,7 @@ def mark_delivery_disputed(order_id: str, reason: str = "") -> None:
 
 
 def _carrier_confirm(order: dict, delivered_confirmed: list,
-                     address_mismatch: list = None) -> str:
+                     address_mismatch: list = None, exceptions: list = None) -> str:
     """Poll the carrier (tracking API) for a tracked order of ANY vendor. On a
     real 'delivered' scan, mark the order carrier-confirmed (delivery_confirmed
     =1) and append it - AND sanity-check the delivered country against the
@@ -156,6 +156,15 @@ def _carrier_confirm(order: dict, delivered_confirmed: list,
                 log_pipeline_stage(order["order_id"], "delivery",
                                    "address_mismatch",
                                    f"delivered to {got}, ordered to {want}")
+    elif st == "exception" and exceptions is not None:
+        # A carrier exception (return-to-sender / failed delivery / expired tracking)
+        # needs the owner NOW - not in 10-21 days when stale-in-transit eventually
+        # catches it. Surface it immediately. (It is never falsely marked delivered -
+        # only a real 'delivered' scan does that.)
+        exceptions.append(order["order_id"])
+        from quoteforge.db.database import log_pipeline_stage
+        log_pipeline_stage(order["order_id"], "delivery", "exception",
+                           d.get("detail") or "carrier exception")
     return st or ""
 
 
@@ -167,10 +176,11 @@ def _iso2_country(country: str) -> str:
 
 def _confirm_or_assume_delivery(order: dict, delivered_confirmed: list,
                                 delivered_assumed: list,
-                                address_mismatch: list = None) -> None:
+                                address_mismatch: list = None,
+                                exceptions: list = None) -> None:
     """Resolve delivery for a Printify/Printful order (which never report
     delivery themselves): carrier-confirm first, else the timer ASSUMPTION."""
-    st = _carrier_confirm(order, delivered_confirmed, address_mismatch)
+    st = _carrier_confirm(order, delivered_confirmed, address_mismatch, exceptions)
     if st in ("delivered", "in_transit", "exception"):
         return                      # carrier is authoritative - trust it
     # No carrier data -> timer assumption (these vendors have no signal at all).
@@ -233,6 +243,7 @@ def sync_tracking(limit: int = 500) -> dict:
     newly_shipped, pushed, stuck = [], [], []
     delivered_confirmed, delivered_assumed = [], []
     tracking_missing, stale_in_transit, address_mismatch = [], [], []
+    delivery_exception = []   # carrier exception / return-to-sender -> alert NOW
     errors = 0
     for o in get_all_orders(limit):
         gid = o.get("vendor_order_id") or o.get("gelato_order_id")
@@ -252,7 +263,8 @@ def sync_tracking(limit: int = 500) -> dict:
             _backfill_shipped_at(o)
             _retry_buyer_push(o, pushed)
             _confirm_or_assume_delivery(o, delivered_confirmed,
-                                        delivered_assumed, address_mismatch)
+                                        delivered_assumed, address_mismatch,
+                                        delivery_exception)
             continue
 
         try:
@@ -308,7 +320,8 @@ def sync_tracking(limit: int = 500) -> dict:
             # Has tracking but the vendor hasn't confirmed delivery (Gelato often
             # only reports 'shipped') -> ask the CARRIER. No timer for Gelato:
             # it stays shipped until a real delivered scan, never falsely +.
-            _carrier_confirm(o, delivered_confirmed, address_mismatch)
+            _carrier_confirm(o, delivered_confirmed, address_mismatch,
+                             delivery_exception)
         elif not tn and _is_stuck(o):
             stuck.append(o["order_id"])
 
@@ -326,6 +339,7 @@ def sync_tracking(limit: int = 500) -> dict:
         "tracking_missing": tracking_missing,
         "stale_in_transit": stale_in_transit,
         "address_mismatch": address_mismatch,
+        "delivery_exception": delivery_exception,
         "errors": errors,
     }
 
@@ -348,6 +362,9 @@ def format_tracking_text(r: dict) -> str:
     if r.get("address_mismatch"):
         lines.append(f"  WRONG DESTINATION: {len(r['address_mismatch'])} -> "
                      f"{', '.join(r['address_mismatch'][:5])}")
+    if r.get("delivery_exception"):
+        lines.append(f"  CARRIER EXCEPTION: {len(r['delivery_exception'])} -> "
+                     f"{', '.join(r['delivery_exception'][:5])}")
     if r.get("errors"):
         lines.append(f"  Poll errors      : {r['errors']}")
     return "\n".join(lines)
