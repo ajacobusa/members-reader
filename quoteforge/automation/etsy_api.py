@@ -18,28 +18,40 @@ from quoteforge.config import (
 
 
 def _headers() -> dict:
-    """Build Etsy v3 auth headers (API key + OAuth bearer token)."""
+    """Build Etsy v3 auth headers (API key + the FRESHEST OAuth bearer token - the
+    static env token expires hourly, so use the auto-refreshed one)."""
+    from quoteforge.automation.etsy_auth import current_access_token
     return {"x-api-key": ETSY_API_KEY,
-            "Authorization": f"Bearer {ETSY_OAUTH_TOKEN}",
+            "Authorization": f"Bearer {current_access_token()}",
             "Content-Type": "application/json"}
 
 
 def _credentials_ready() -> bool:
-    """Check whether the Etsy API key, OAuth token, and shop ID are all set."""
-    return bool(ETSY_API_KEY and ETSY_OAUTH_TOKEN and ETSY_SHOP_ID)
+    """Check whether the Etsy API key, shop id, and a usable token (the live access
+    token OR a refresh token to mint one) are all set."""
+    from quoteforge.automation.etsy_auth import (current_access_token,
+                                                 current_refresh_token)
+    return bool(ETSY_API_KEY and ETSY_SHOP_ID
+                and (current_access_token() or current_refresh_token()))
 
 
 def get_shop_receipts(was_paid: bool = True, was_shipped: bool = False,
                       limit: int = 25) -> dict:
-    """Fetch shop receipts (orders). Defaults to paid-but-not-yet-shipped."""
+    """Fetch shop receipts (orders). Defaults to paid-but-not-yet-shipped.
+    Auto-refreshes the OAuth token on a 401 (expired ~hourly) and retries once."""
     if TEST_MODE or not _credentials_ready():
         return {"mock": True, "count": 0, "results": []}
     url = f"{ETSY_API_BASE}/application/shops/{ETSY_SHOP_ID}/receipts"
     params = {"was_paid": str(was_paid).lower(),
               "was_shipped": str(was_shipped).lower(), "limit": limit}
-    resp = requests.get(url, headers=_headers(), params=params, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+
+    def _do():
+        """The receipts GET, run (and retried once on a 401) by with_refresh."""
+        resp = requests.get(url, headers=_headers(), params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    from quoteforge.automation.etsy_auth import with_refresh
+    return with_refresh(_do)
 
 
 def create_receipt_shipment(receipt_id: str, tracking_code: str,
@@ -56,9 +68,14 @@ def create_receipt_shipment(receipt_id: str, tracking_code: str,
            f"/receipts/{receipt_id}/tracking")
     body = {"tracking_code": tracking_code, "carrier_name": carrier_name,
             "send_bcc": send_bcc}
-    resp = requests.post(url, headers=_headers(), json=body, timeout=30)
-    resp.raise_for_status()
-    return {"status": "shipped", **resp.json()}
+
+    def _do():
+        """The tracking POST, run (and retried once on a 401) by with_refresh."""
+        resp = requests.post(url, headers=_headers(), json=body, timeout=30)
+        resp.raise_for_status()
+        return {"status": "shipped", **resp.json()}
+    from quoteforge.automation.etsy_auth import with_refresh
+    return with_refresh(_do)
 
 
 def _money(m: dict) -> float:

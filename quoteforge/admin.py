@@ -1052,9 +1052,19 @@ def _cmd_poll_etsy(args: list[str]) -> int:
               "pulled. Set ETSY_OAUTH_TOKEN + ETSY_SHOP_ID to go live.")
         return 0
     print(f"Polled {res['polled']} receipt(s): imported {len(res['imported'])}, "
-          f"skipped {res['skipped']}.")
+          f"skipped {res['skipped']}, failed {len(res.get('failed', []))}.")
     for oid in res["imported"]:
         print(f"  + imported order {oid}")
+    # A FAILED import (paid order with no DB row) or an auth/API error is invisible to
+    # every downstream DB monitor - alert the owner, like track-orders/retry-fulfillment.
+    if res.get("failed") or res.get("error"):
+        detail = ""
+        if res.get("error"):
+            detail += f"intake fetch error (check Etsy auth/token): {res['error']}\n"
+        if res.get("failed"):
+            detail += f"failed to import receipt(s): {', '.join(res['failed'][:10])}\n"
+        _alert("⚠️ Etsy order intake needs attention", "<pre>" + detail + "</pre>",
+               what="intake")
     return 0
 
 
@@ -2256,6 +2266,26 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
     return 0
 
 
+def _cmd_infra_check(args: list[str]) -> int:
+    """Infrastructure review agent: re-verify the automation invariants (scheduled-job
+    wiring, Etsy OAuth refresh, poller failure-surfacing, dispute-scan resilience,
+    digest coverage, safety guardrails) and ALERT on any regression. `infra-check`."""
+    from quoteforge.automation.infra_check import check_infrastructure
+    r = check_infrastructure()
+    for c in r["checks"]:
+        print(f"  {'OK  ' if c['ok'] else 'FAIL'} {c['name']}: {c['detail']}")
+    if not r["ok"]:
+        broken = [c for c in r["checks"] if not c["ok"]]
+        _alert("🛑 INFRASTRUCTURE CHECK FAILED",
+               "<pre>An automation invariant regressed:\n\n"
+               + "\n".join(f"- {c['name']}: {c['detail']}" for c in broken) + "</pre>",
+               what="infra")
+        print(f"\n{len(broken)} check(s) FAILED - owner alerted.")
+        return 1
+    print("\nAll infrastructure checks pass.")
+    return 0
+
+
 def _cmd_safety_check(args: list[str]) -> int:
     """Verify the safety guardrails (no auto-refund, margin-floor hold, order lock,
     claims human-only, address-fix gate, no auto-retry of unconfirmed) and ALERT the
@@ -3067,6 +3097,7 @@ COMMANDS = {
     "reconcile-unconfirmed": _cmd_reconcile_unconfirmed,
     "daily-qa": _cmd_daily_qa,
     "safety-check": _cmd_safety_check,
+    "infra-check": _cmd_infra_check,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
