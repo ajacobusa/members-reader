@@ -256,10 +256,23 @@ def process_webhook_payload(payload: dict) -> dict:
                            if k not in _basket_totals and payload.get(k) is not None}
             results = []
             for i, raw in enumerate(items, 1):
-                merged = {**order_level, **raw}      # item overrides order-level
                 line_id = f"{base_id}-{i}" if base_id else f"item-{i}"
-                merged["order_id"] = line_id
-                results.append(_run_one(merged, line_id))
+                # Isolate each line: one bad/throwing line must NOT abort the rest of the
+                # paid basket. On failure, record a per-line error and continue so every
+                # other line still enters fulfilment (per-line idempotency prevents dups).
+                try:
+                    if not isinstance(raw, dict):
+                        raise TypeError(f"line is not an object: {type(raw).__name__}")
+                    merged = {**order_level, **raw}  # item overrides order-level
+                    merged["order_id"] = line_id
+                    results.append(_run_one(merged, line_id))
+                except Exception as exc:  # noqa: BLE001 - one line's failure is isolated
+                    logger.error("basket line %s failed: %s", line_id, exc)
+                    _append_webhook_log({"timestamp": datetime.now().isoformat(),
+                                         "order_id": line_id, "status": "error",
+                                         "error": str(exc)})
+                    results.append({"status": "error", "etsy_order_id": line_id,
+                                    "message": str(exc)})
             ok = [r for r in results if r["status"] == "success"]
             return {"status": "success" if ok else "error",
                     "order_id": base_id, "items": len(items),
@@ -372,6 +385,11 @@ def process_gelato_callback(payload: dict) -> dict:
                 or payload.get("trackingNumber") or "")
     if tracking:
         fields["tracking_number"] = tracking
+        # Stamp the ship time the FIRST time tracking appears, so the stale-in-transit
+        # SLA clock can start (a webhook-shipped Gelato order had NULL shipped_at).
+        if not (get_order(ref) or {}).get("shipped_at"):
+            from datetime import datetime
+            fields["shipped_at"] = datetime.now().isoformat()
     if not fields:
         return {"status": "ignored", "reason": "no actionable fields",
                 "reference": ref}
@@ -851,14 +869,21 @@ if FLASK_AVAILABLE and app:
             logger.warning("Rejected webhook — invalid signature")
             return jsonify({"status": "error", "message": "Invalid signature"}), 401
 
-        payload = request.get_json(force=True, silent=True) or {}
+        payload = request.get_json(force=True, silent=True)
+        if not isinstance(payload, dict):   # a JSON array/string/number is not an order
+            return jsonify({"status": "error", "message": "invalid payload"}), 400
         etsy_order_id = str(payload.get("order_id") or payload.get("etsy_order_id") or "")
         logger.info(f"Received order webhook: order_id={etsy_order_id}")
 
-        # Validate required fields synchronously (fast feedback to sender)
-        missing = [f for f in ("recipient_name", "occasion") if not payload.get(f)]
-        if missing:
-            return jsonify({"status": "error", "message": f"Missing fields: {missing}"}), 400
+        # Validate synchronously (fast feedback to sender). A MULTI-item payload carries
+        # recipient/occasion PER LINE (items[]), so only gate the top level for a single-
+        # item order - else a valid basket whose first line lacks an occasion is wrongly
+        # rejected. The per-line _run_one validates + safely defaults each line itself.
+        if not isinstance(payload.get("items"), list):
+            missing = [f for f in ("recipient_name", "occasion") if not payload.get(f)]
+            if missing:
+                return jsonify({"status": "error",
+                                "message": f"Missing fields: {missing}"}), 400
 
         # Idempotency check synchronously — duplicates never spawn work
         if _is_duplicate(etsy_order_id):
