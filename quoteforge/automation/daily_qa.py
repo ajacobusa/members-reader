@@ -33,6 +33,7 @@ _SANITY_MARGIN_FLOOR = 45.0
 
 
 def _load(module: str, name: str):
+    """Import ``module.name`` (a catalog verifier/builder), or None if unavailable."""
     try:
         mod = __import__(module, fromlist=[name])
         return getattr(mod, name, None)

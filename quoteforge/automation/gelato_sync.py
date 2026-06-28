@@ -19,7 +19,47 @@ In TEST_MODE or without a key, this is a safe no-op.
 from __future__ import annotations
 
 import json
+import logging
 import os
+
+logger = logging.getLogger(__name__)
+
+# The selling locale. Gelato's /prices endpoint returns one row PER currency PER country
+# PER quantity tier, so the cost MUST be read for this locale (a blind global min could
+# record a foreign-currency numeral and under-price the listing).
+_SELL_CURRENCY = "USD"
+_SELL_COUNTRY = "US"
+
+
+def _usd_unit_cost(rows) -> "float | None":
+    """The US/USD unit (quantity-1) cost from Gelato's multi-currency /prices rows.
+
+    Gelato returns one row per currency/country/quantity tier; taking a blind min across
+    all of them could record a non-USD or wrong-region numeral and silently under-price
+    the retail listing below the margin floor (which audits against this same cost).
+    Prefer USD/US qty-1, fall back through USD/qty-1 then any-USD; if there is no USD row
+    at all, record nothing (don't store a foreign-currency cost) and log it.
+    """
+    if not isinstance(rows, list):
+        return None
+
+    def _priced(pred):
+        """Prices of the rows that are priced AND satisfy ``pred``."""
+        return [r["price"] for r in rows
+                if isinstance(r, dict) and r.get("price") and pred(r)]
+    for pred in (
+        lambda r: (r.get("currency") == _SELL_CURRENCY
+                   and r.get("country") in (None, _SELL_COUNTRY)
+                   and int(r.get("quantity", 1) or 1) == 1),
+        lambda r: r.get("currency") == _SELL_CURRENCY and int(r.get("quantity", 1) or 1) == 1,
+        lambda r: r.get("currency") == _SELL_CURRENCY,
+    ):
+        vals = _priced(pred)
+        if vals:
+            return round(min(vals), 2)
+    logger.warning("Gelato /prices returned no %s row; leaving cost unchanged",
+                   _SELL_CURRENCY)
+    return None
 
 
 def _uid_map() -> dict:
@@ -82,9 +122,7 @@ def _fetch_one(uid: str) -> dict:
             headers=headers, timeout=15)
         cost = None
         if prices.status_code == 200:
-            rows = prices.json()
-            vals = [r.get("price") for r in rows if isinstance(r, dict) and r.get("price")]
-            cost = round(min(vals), 2) if vals else None
+            cost = _usd_unit_cost(prices.json())   # US/USD qty-1 cost, not a global min
         return {"available": True, "cost": cost}
     except Exception:  # noqa: BLE001 — network blip: don't change state
         return {}

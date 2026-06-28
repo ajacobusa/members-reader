@@ -2233,7 +2233,8 @@ def _cmd_track_orders(args: list[str]) -> int:
     # Anything needing a human - stuck, missing tracking, stale in transit,
     # wrong-destination delivery, or poll errors - is the owner's to chase.
     if (r.get("stuck") or r.get("errors") or r.get("tracking_missing")
-            or r.get("stale_in_transit") or r.get("address_mismatch")):
+            or r.get("stale_in_transit") or r.get("address_mismatch")
+            or r.get("delivery_exception")):
         _alert("⚠️ Fulfillment needs attention", "<pre>" + text + "</pre>",
                what="fulfillment")
     return 0
