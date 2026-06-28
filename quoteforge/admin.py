@@ -2256,6 +2256,26 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
     return 0
 
 
+def _cmd_safety_check(args: list[str]) -> int:
+    """Verify the safety guardrails (no auto-refund, margin-floor hold, order lock,
+    claims human-only, address-fix gate, no auto-retry of unconfirmed) and ALERT the
+    owner if any has weakened. `safety-check`."""
+    from quoteforge.safety_rails import check_safety_rails
+    r = check_safety_rails()
+    for rail in r["rails"]:
+        print(f"  {'OK  ' if rail['ok'] else 'FAIL'} {rail['name']}: {rail['detail']}")
+    if not r["ok"]:
+        broken = [x for x in r["rails"] if not x["ok"]]
+        _alert("🛑 SAFETY GUARDRAIL WEAKENED",
+               "<pre>A decision that must stay HUMAN may now be automatable:\n\n"
+               + "\n".join(f"- {x['name']}: {x['detail']}" for x in broken) + "</pre>",
+               what="safety")
+        print(f"\n{len(broken)} guardrail(s) WEAKENED - owner alerted.")
+        return 1
+    print("\nAll safety guardrails intact.")
+    return 0
+
+
 def _cmd_daily_qa(args: list[str]) -> int:
     """Daily QA agent: aggregate SKU/UID currency + margin-floor sweep + order-book
     health; email the owner if anything needs attention. `daily-qa`."""
@@ -3046,6 +3066,7 @@ COMMANDS = {
     "retry-fulfillment": _cmd_retry_fulfillment,
     "reconcile-unconfirmed": _cmd_reconcile_unconfirmed,
     "daily-qa": _cmd_daily_qa,
+    "safety-check": _cmd_safety_check,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
