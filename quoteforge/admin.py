@@ -2620,6 +2620,26 @@ def _cmd_gelato_automap(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_uid_template(args: list[str]) -> int:
+    """Write/merge the starter Gelato UID-map file with a blank entry for every product
+    SKU not yet mapped, so you just paste in the real Gelato productUids. Safe + re-
+    runnable (preserves real values; never clobbers wallart-automap's work).
+    Usage: gelato-uid-template [path]."""
+    from quoteforge.automation.gelato_uid_template import write_template
+    path = next((a for a in args if not a.startswith("--")), None)
+    r = write_template(path)
+    print(f"UID map written -> {r['path']}")
+    print(f"  {r['mapped']} of {r['total']} mapped, {r['remaining']} still blank "
+          f"(placeholder, held as 'manual' until filled)")
+    print("\nNext:")
+    print("  1. `wallart-automap` auto-fills the wall-art UIDs from Gelato (do this first).")
+    print("  2. Fill the remaining blanks with real productUids from your Gelato catalog.")
+    print("     (For apparel/mug/branded, mapping the product/family key covers its variants.)")
+    print(f"  3. Set GELATO_UID_MAP_FILE={r['path']} in your env.")
+    print("  4. `daily-qa` shows the live placeholder count; `gelato-sync` validates.")
+    return 0
+
+
 def _cmd_wallart_automap(args: list[str]) -> int:
     """Map the Wall-Art products (poster/canvas/framed/acrylic/metal) to REAL Gelato
     UIDs (read-only catalog API) and merge them into the static UID map
@@ -2980,6 +3000,7 @@ COMMANDS = {
     "map-gelato": _cmd_map_gelato,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
+    "gelato-uid-template": _cmd_gelato_uid_template,
     "gelato-draft": _cmd_gelato_draft,
     "gelato-draft-delete": _cmd_gelato_draft_delete,
     "gelato-review": _cmd_gelato_review,
