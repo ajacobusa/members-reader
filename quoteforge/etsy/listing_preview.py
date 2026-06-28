@@ -1758,6 +1758,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     data_json = json.dumps(listings)
     from quoteforge.etsy.occasion_themes import tints_json
     occ_tint_json = tints_json()
+    # Estimated days to the customer's door (production + shipping) - the editor turns
+    # this into a concrete 'arrives by <date>' so a gift buyer knows it lands in time.
+    from quoteforge.config import PRODUCTION_DAYS, SHIPPING_DAYS
+    ship_days_total = int(PRODUCTION_DAYS) + int(SHIPPING_DAYS)
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
         from quoteforge.etsy.gift_finder import quiz_config
@@ -3396,6 +3400,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .bpmore:hover{{background:var(--green);color:#fff}}
  .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
  .mprice{{font-weight:700;color:var(--green);font-size:24px;margin:6px 0}}
+ .marrive{{font-size:13.5px;color:var(--muted);margin:0 0 8px;font-weight:600}}
+ .marrive b{{color:var(--green)}}
  .mdescbox{{margin-top:12px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px 14px;text-align:left}}
  .mdescbox .lbl{{font-size:13px;color:var(--green);font-weight:700;
@@ -3809,6 +3815,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
+       <div class="marrive" id="marrive"></div>
        <div id="mavail" style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
@@ -3964,6 +3971,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
 <script>
  const DATA = {data_json};
  const OCCASION_TINT = {occ_tint_json};
+ const SHIP_DAYS_TOTAL = {ship_days_total};
  const OWNER = "{owner}";
  const PRICE_HI = "{price_hi}";
  const MAT_SHORT = "{mat_short}";
@@ -4122,6 +4130,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      return '<div class="dsl">'+esc(l)+'</div>';
    }}).join('');
  }}
+ function _arriveBy(){{
+   var d = new Date(Date.now() + (SHIP_DAYS_TOTAL||9)*86400000);
+   return d.toLocaleDateString('en-US', {{weekday:'short', month:'short', day:'numeric'}});
+ }}
+ function _setArrival(){{
+   var el = document.getElementById('marrive');
+   if(el) el.innerHTML = '\\uD83D\\uDE9A Order now \\u2014 arrives by <b>' + _arriveBy() + '</b>';
+ }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
    WORD_DONE=false;
@@ -4153,6 +4169,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    document.getElementById('mtitle').textContent = d.full_title;
    document.getElementById('mprice').textContent =
      "from $" + ((fmts[0] && fmts[0].price) ? fmts[0].price : d.price);
+   _setArrival();
    document.getElementById('mdesc').innerHTML = fmtDesc(d.desc);
    WALLART_DESC = document.getElementById('mdesc').innerHTML;  // baseline for restore
    document.getElementById('mratemsg').textContent = "";

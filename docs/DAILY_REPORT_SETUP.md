@@ -1,6 +1,6 @@
 # Daily Sales Report Email — Setup
 
-A daily email to **ajacobusa@gmail.com** with order counts, follow-ups needed,
+A daily email to **joffielsc@gmail.com** with order counts, follow-ups needed,
 and **demand-based tier upgrade alerts**. Runs unattended via Windows Task
 Scheduler — no need to keep any app open.
 
@@ -21,7 +21,7 @@ Add to `.env`:
 ```env
 GMAIL_ADDRESS=your_sending_gmail@gmail.com
 GMAIL_APP_PASSWORD=the_16_char_app_password
-REPORT_RECIPIENT=ajacobusa@gmail.com
+REPORT_RECIPIENT=joffielsc@gmail.com
 ```
 
 ## Step 2 — Test it once

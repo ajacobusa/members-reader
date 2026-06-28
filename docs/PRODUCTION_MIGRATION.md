@@ -21,7 +21,7 @@ _Auto-generated 2026-06-08T00:23:24.125380. Running locally for UAT; this lists 
 | Claude API (ANTHROPIC_API_KEY) | ready | set | Set ANTHROPIC_API_KEY for AI quote/vision/quality features. |
 | Gelato (GELATO_API_KEY) | ready | set | Set GELATO_API_KEY to place real print orders. |
 | Etsy (ETSY_API_KEY) | todo | missing | Set ETSY_API_KEY + token for order polling, tracking push, competitor pulls. |
-| Report recipient | ready | ajacobusa@gmail.com | Confirm REPORT_RECIPIENT is your email for daily/Friday reports. |
+| Report recipient | ready | joffielsc@gmail.com | Confirm REPORT_RECIPIENT is your email for daily/Friday reports. |
 | Google Analytics (GA_MEASUREMENT_ID) | optional | (unset) | Optional: set for GA traffic stats. |
 | Clarity (CLARITY_PROJECT_ID/API) | optional | (unset) | Optional: set CLARITY_PROJECT_ID + CLARITY_API_TOKEN for heatmaps/rage clicks. |
 | Pinterest (PINTEREST_ACCESS_TOKEN) | optional | (unset) | Optional: set to auto-publish pins + enrich trend predictions. |
