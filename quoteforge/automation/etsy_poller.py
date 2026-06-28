@@ -42,5 +42,7 @@ def poll_once(limit: int = 25) -> dict:
         except Exception as exc:  # noqa: BLE001
             logger.error(f"Failed to import Etsy receipt {oid or '?'}: {exc}")
             skipped.append(oid)
+    logger.info("etsy poll: polled=%d imported=%d skipped=%d", len(receipts),
+                len(imported), len(skipped))
     return {"polled": len(receipts), "imported": imported,
             "skipped": len(skipped), "mock": bool(data.get("mock"))}

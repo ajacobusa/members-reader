@@ -62,7 +62,10 @@ def _enrich_lines(lines: list) -> list:
             "logo": line.get("logo", ""), "cal": line.get("cal"),
             "product_type": ed.get("product_type"), "material": ed.get("material"),
             "product_uid": ed.get("gelato_product_uid"),
-            "gelato_cost": ed.get("gelato_cost"), "color": ed.get("color")})
+            "gelato_cost": ed.get("gelato_cost"), "color": ed.get("color"),
+            # Lightweight fulfilment hint: is this a two-sided (front+back) apparel
+            # print? Lets fulfilment know without loading the full saved design.
+            "twosided": bool((line.get("sides") or {}).get("back"))})
     return out
 
 
@@ -276,6 +279,12 @@ def confirm_design(email: str, summary: str = "", design_json: str = "",
     accept_design(email, design_id)
     if created:                      # only alert on a NEW order, not a duplicate
         _alert_owner(email, summary or "(no summary)", contact)   # confirm of the same basket
+    elif not order_id:
+        # Approved on screen but NO shippable contact -> no order was created. This was
+        # silent before (a lost sale). Alert the owner to follow up for a ship-to.
+        _alert_owner(email, (summary or "(no summary)") + "\n\n⚠️ NO SHIP-TO "
+                     "ON FILE - the buyer approved but left no address; follow up to "
+                     "collect it before the sale is lost.", contact)
     # Final approval EVIDENCE: store the on-screen approved proof as a PDF under
     # the order id. This is the record the made-to-order policy rests on; it is
     # stored, never emailed. No customer email is sent from this flow.

@@ -312,8 +312,22 @@ def _is_duplicate(etsy_order_id: str) -> bool:
             or get_order_by_etsy_id(f"{etsy_order_id}-1") is not None)
 
 
+# Cap concurrent background pipelines. The 202-ACK dispatch is still per-request, but
+# only this many run at once - a burst of orders queues on the semaphore instead of
+# thrashing the single SQLite writer (the real contention point at scale).
+_PIPELINE_SEM = threading.BoundedSemaphore(
+    max(1, int(os.getenv("WEBHOOK_CONCURRENCY", "6"))))
+
+
 def _process_in_background(payload: dict) -> None:
-    """Run the (slow) full pipeline off the request thread."""
+    """Run the (slow) full pipeline off the request thread, bounded so a burst can't
+    overwhelm the single SQLite writer."""
+    with _PIPELINE_SEM:
+        _process_payload_guarded(payload)
+
+
+def _process_payload_guarded(payload: dict) -> None:
+    """Run process_webhook_payload, swallowing + reporting any error (defensive)."""
     try:
         process_webhook_payload(payload)
     except Exception as exc:  # pragma: no cover - defensive
