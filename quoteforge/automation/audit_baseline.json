@@ -135,9 +135,6 @@
  "fulfillment/claim_workflow.py": {
   "silent_except": 1
  },
- "fulfillment/router.py": {
-  "silent_except": 4
- },
  "images/final_qc.py": {
   "silent_except": 1
  },
