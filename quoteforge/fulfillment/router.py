@@ -11,7 +11,10 @@ the relevant vendor key - then non-Gelato products auto-route too.
 """
 from __future__ import annotations
 
+import logging
 import threading
+
+logger = logging.getLogger(__name__)
 
 # Per-order routing locks: two concurrent duplicate webhooks each spawn a daemon
 # thread that runs the pipeline and reaches route_order. Without serialization both
@@ -89,8 +92,10 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
                 if order_id and get_order(order_id):
                     update_order(order_id, vendor="gelato-native",
                                  status="in_production")
-            except Exception:  # noqa: BLE001 - record is best-effort
-                pass
+            except Exception as exc:  # noqa: BLE001 - best-effort, but never silent
+                logger.warning("route_order native-record failed for %s "
+                               "(status may not advance to in_production): %s",
+                               order_id, exc)
             return {"status": "native", "vendor": "gelato-native", "id": "",
                     "detail": "fulfilled by Gelato's native Etsy integration "
                               "(QuoteForge does not submit)"}
@@ -137,8 +142,10 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             from quoteforge.db.database import update_order, get_order
             if get_order(order_id):
                 update_order(order_id, ship_to=json.dumps(recipient))
-        except Exception:  # noqa: BLE001 - persistence is best-effort, never block routing
-            pass
+        except Exception as exc:  # noqa: BLE001 - best-effort, never block routing, never silent
+            logger.warning("route_order ship_to persist failed for %s "
+                           "(a later reprint will re-collect the address): %s",
+                           order_id, exc)
         try:
             from quoteforge.automation.gelato_api import create_gelato_order
             # Submit the ORDERED quantity (was defaulting to 1 -> a qty>1 order
@@ -158,8 +165,13 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
                 from quoteforge.db.database import update_order, get_order
                 if vid and get_order(order_id):
                     update_order(order_id, vendor_order_id=vid)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001 - log LOUDLY: a silent failure here
+                # leaves the order submitted but without a stored vendor_order_id, so
+                # the idempotency guard (above) can't see it and a re-run could
+                # double-submit. Surface it; the caller is still expected to persist vid.
+                logger.warning("route_order could NOT self-store vendor_order_id %s "
+                               "for %s - dedup now relies on the caller persisting "
+                               "it: %s", vid, order_id, exc)
             return {"status": "submitted", "vendor": "gelato",
                     "id": vid, "raw": resp}
         except Exception as exc:  # noqa: BLE001
@@ -180,8 +192,12 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
                     from quoteforge.db.database import update_order, get_order
                     if get_order(order_id):
                         update_order(order_id, status="submit_unconfirmed")
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as exc:  # noqa: BLE001 - log LOUDLY: if this status
+                    # doesn't persist, a re-run won't see 'submit_unconfirmed' and may
+                    # blindly re-submit an order the vendor may already have.
+                    logger.warning("route_order could NOT persist submit_unconfirmed "
+                                   "for %s - a re-run may re-submit a possibly-received "
+                                   "order: %s", order_id, exc)
                 return {"status": "submit_unconfirmed", "vendor": "gelato", "id": "",
                         "detail": "vendor send unconfirmed (may already be received) - "
                                   f"reconcile before re-sending: {exc}"}

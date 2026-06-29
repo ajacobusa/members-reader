@@ -291,6 +291,24 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("no_supplier_name_leak", False, str(exc)))
 
+    # 14) The fulfillment router surfaces every error (risk #2/#14). A silently
+    #     swallowed DB write in the routing path (storing the vendor_order_id, or
+    #     the submit_unconfirmed status) defeats the duplicate-submission guard, so
+    #     a re-run could double-charge. (behavioral: the real AST smell detector
+    #     finds zero silently-swallowed excepts in the router.)
+    try:
+        from quoteforge.automation.code_auditor import audit_module
+        silent = [s for s in audit_module("fulfillment/router.py")["smells"]
+                  if s["kind"] == "silent_except"]
+        checks.append(_c("router_surfaces_errors", not silent,
+                         "fulfillment router never swallows an error"
+                         if not silent
+                         else f"{len(silent)} silent except in router "
+                              f"(dedup guard at risk): lines "
+                              f"{[s['line'] for s in silent]}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("router_surfaces_errors", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

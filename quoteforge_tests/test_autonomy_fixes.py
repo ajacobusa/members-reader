@@ -140,6 +140,38 @@ def _check(r, name):
     return next(c for c in r["checks"] if c["name"] == name)
 
 
+# REGRESSION: the fulfillment router must surface every error. A swallowed DB write
+# in the routing path (vendor_order_id / submit_unconfirmed) defeats the
+# duplicate-submission guard, so a re-run could double-charge.
+def test_router_has_no_silent_except():
+    from quoteforge.automation.code_auditor import audit_module
+    silent = [s for s in audit_module("fulfillment/router.py")["smells"]
+              if s["kind"] == "silent_except"]
+    assert silent == [], f"silent except(s) in router at lines " \
+                         f"{[s['line'] for s in silent]}"
+
+
+def test_infra_check_guards_router_silent_except():
+    from quoteforge.automation.infra_check import check_infrastructure
+    r = check_infrastructure()
+    assert _check(r, "router_surfaces_errors")["ok"] is True
+
+
+# GROUNDING: prove the new invariant CATCHES a re-introduced silent except (it
+# runs the real AST detector, so a decoy with a swallowed except must fail it).
+def test_infra_check_catches_a_router_silent_except(monkeypatch):
+    from quoteforge.automation.infra_check import check_infrastructure
+    # The check does `from ...code_auditor import audit_module` at call time, so
+    # patching the module attribute makes it see the decoy.
+    import quoteforge.automation.code_auditor as ca
+    monkeypatch.setattr(ca, "audit_module", lambda m, protected=None: {
+        "module": m, "smells": [{"kind": "silent_except", "line": 99,
+                                 "detail": "swallowed"}],
+        "coverage_gaps": [], "public_defs": [], "ok": False})
+    r = check_infrastructure()
+    assert _check(r, "router_surfaces_errors")["ok"] is False and r["ok"] is False
+
+
 # GROUNDING: prove the AST structural check CATCHES a back-door, and isn't fooled
 # by the router name merely appearing in a comment. The decoy calls
 # create_gelato_order directly (and only NAMES route_order in a comment).
