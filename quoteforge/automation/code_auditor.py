@@ -113,8 +113,8 @@ def _smells(source: str) -> list[dict]:
             if tok.type == tokenize.COMMENT and _MARKER_RE.search(tok.string):
                 found.append({"kind": "todo_marker", "line": tok.start[0],
                               "detail": tok.string.strip()[:120]})
-    except (tokenize.TokenError, IndentationError):
-        pass                      # an unparseable tail just yields no markers
+    except (tokenize.TokenError, IndentationError) as exc:
+        logger.debug("marker scan skipped an unparseable tail: %s", exc)
     return found
 
 

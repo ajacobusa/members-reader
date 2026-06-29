@@ -68,8 +68,9 @@ def sku_price_audit() -> dict:
                         below_floor.append({"family": name,
                                             "sku": getattr(v, "gelato_sku", "?"),
                                             "margin_pct": round(float(mp), 1)})
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001 - never break the sweep, but log
+                logger.warning("daily-qa: margin sweep failed for family %s: %s",
+                               name, exc)
     return {"ok": placeholder_total == 0 and not below_floor,
             "families": families, "placeholder_uids": placeholder_total,
             "below_floor": below_floor}
@@ -117,8 +118,8 @@ def run_daily_qa(send: bool = False) -> dict:
             from quoteforge.automation.emailer import _send_email
             _send_email("⚠️ Daily QA found issues",
                         "<pre>" + "\n".join("- " + i for i in issues) + "</pre>")
-        except Exception:  # noqa: BLE001 - alert must never break the check
-            pass
+        except Exception as exc:  # noqa: BLE001 - never break the check, but log
+            logger.warning("daily-qa alert email failed: %s", exc)
     logger.info("daily-qa: ok=%s issues=%d orders=%d", dash["ok"], len(issues),
                 dash["total_orders"])
     return dash

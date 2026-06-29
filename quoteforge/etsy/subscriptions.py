@@ -6,7 +6,10 @@ Idempotent: a subscription is only reminded once per end_date.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 
 def _days_left(end_date: str) -> int:
@@ -40,8 +43,9 @@ def send_expiry_reminders(within_days: int = 7, record: bool = True) -> dict:
                 _send_email(f"Your {SHOP_NAME} subscription is ending soon",
                             html, to=s.get("customer_email", ""))
                 mark_subscription_reminded(s["id"])
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001 - never break the loop, but log
+                logger.warning("subscription reminder failed for %s: %s",
+                               s.get("id"), exc)
         sent.append({"email": s.get("customer_email"), "days_left": days})
     return {"due": len(due), "sent": sent}
 

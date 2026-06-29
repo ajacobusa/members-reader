@@ -6,8 +6,11 @@ the plan) and send an AI welcome email. The expiry-reminder job handles renewal.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -95,6 +98,6 @@ def start_subscription_from_order(payload: dict) -> dict:
                 f"white-space:pre-wrap'>{body}</pre></body></html>")
         _send_email(f"Welcome to the {SHOP_NAME} membership!", html, to=email)
         out["welcomed"] = True
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - welcome is best-effort, but log
+        logger.warning("subscription welcome email failed: %s", exc)
     return out

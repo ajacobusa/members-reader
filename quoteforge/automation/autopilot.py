@@ -20,6 +20,7 @@ What is NEVER automated (by design, regardless of settings):
   * flipping TEST_MODE / going live and physical sample sign-off
 """
 import json
+import logging
 from dataclasses import dataclass, asdict, field
 
 from quoteforge.config import (
@@ -28,6 +29,8 @@ from quoteforge.config import (
     DEFAULT_SALE_PRICE,
 )
 from quoteforge.etsy.resolution import resolve_issue, ISSUE_CASES, _ALIASES
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -274,8 +277,9 @@ def _execute(d: AutoDecision, order_id: str | None) -> None:
         from quoteforge.automation.gelato_api import file_replacement_claim
         try:
             file_replacement_claim(order_id, reason=d.category)
-        except Exception:  # noqa: BLE001 - never block on the claim
-            pass
+        except Exception as exc:  # noqa: BLE001 - never block, but never silent
+            logger.warning("auto replacement claim filing failed for %s: %s",
+                           order_id, exc)
         update_order(order_id, status="replacement_filed")
     elif d.action == "auto_decline":
         update_order(order_id, status="issue_declined")

@@ -14,35 +14,14 @@
  "automation/ai_ops_review.py": {
   "silent_except": 1
  },
- "automation/autopilot.py": {
-  "silent_except": 1
- },
- "automation/code_auditor.py": {
-  "silent_except": 1
- },
  "automation/cost_tracker.py": {
   "silent_except": 1
- },
- "automation/customization_recovery.py": {
-  "silent_except": 2
- },
- "automation/daily_qa.py": {
-  "silent_except": 2
  },
  "automation/design_confirm.py": {
   "silent_except": 5
  },
- "automation/emailer.py": {
-  "silent_except": 2
- },
- "automation/etsy_poller.py": {
-  "silent_except": 1
- },
  "automation/file_host.py": {
   "silent_except": 4
- },
- "automation/gelato_api.py": {
-  "silent_except": 2
  },
  "automation/gelato_opportunities.py": {
   "silent_except": 3
@@ -60,11 +39,7 @@
   "silent_except": 1
  },
  "automation/healthcheck.py": {
-  "silent_except": 1,
   "todo_marker": 1
- },
- "automation/infra_check.py": {
-  "silent_except": 1
  },
  "automation/journey_analysis.py": {
   "silent_except": 1
@@ -74,12 +49,6 @@
  },
  "automation/mockup_sync.py": {
   "silent_except": 2
- },
- "automation/monitoring.py": {
-  "silent_except": 1
- },
- "automation/order_monitor.py": {
-  "silent_except": 1
  },
  "automation/print_quality.py": {
   "silent_except": 2
@@ -105,29 +74,11 @@
  "etsy/gelato_catalog.py": {
   "silent_except": 3
  },
- "etsy/gift_ecard.py": {
-  "silent_except": 2
- },
- "etsy/gift_finder.py": {
-  "silent_except": 1
- },
  "etsy/ledger.py": {
   "silent_except": 2
  },
  "etsy/listing_preview.py": {
   "silent_except": 7
- },
- "etsy/subscription_product.py": {
-  "silent_except": 1
- },
- "etsy/subscriptions.py": {
-  "silent_except": 1
- },
- "fulfillment/claim_workflow.py": {
-  "silent_except": 1
- },
- "images/final_qc.py": {
-  "silent_except": 1
  },
  "images/supplier_mockup.py": {
   "silent_except": 1,

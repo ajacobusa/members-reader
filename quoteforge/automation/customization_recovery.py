@@ -7,7 +7,10 @@ still waiting" recovery email (AI-personalized when available, deterministic
 otherwise). Idempotent: a customization is only recovered once unless reopened.
 """
 from __future__ import annotations
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # Wait this long after the last edit before a customization counts as abandoned.
 ABANDON_AFTER_MINUTES = 60
@@ -51,8 +54,8 @@ def _recovery_message(item: dict) -> str:
         text = ai_text(prompt, "customization_recovery", max_tokens=160)
         if text and text.strip():
             return text.strip()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI copy is optional, deterministic fallback
+        logger.debug("customization-recovery AI copy skipped: %s", exc)
     bits = f" ({material})" if material else ""
     extra = f' Your words “{wording[:60]}” are saved.' if wording else ""
     return (f"Your custom artwork{bits} is still waiting. Pick up right where you "
@@ -99,8 +102,9 @@ def run_recovery(older_than_minutes: int = ABANDON_AFTER_MINUTES,
                         f"<p>{msg}</p></body></html>")
                 _send_email(_STAGE_SUBJECT.get(stage, _STAGE_SUBJECT[1]),
                             html, to=it["email"])
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001 - advance regardless, but log
+                logger.warning("customization-recovery email failed for %s: %s",
+                               it.get("email"), exc)
             # Advance regardless of email outcome so a stage never repeats
             # forever on a transient send failure.
             advance_recovery_stage(it["email"], it.get("listing", ""), stage)
