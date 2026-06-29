@@ -149,6 +149,14 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "lock, claims human-only, address-fix gate, no auto-retry of an unconfirmed "
         "send) and ALERT the owner if any has weakened (e.g. a misconfigured cap)."),
     ScheduledJob(
+        "QuoteForge Code Audit Sweep", "audit",
+        ["/SC", "DAILY", "/ST", "06:25"],
+        "Daily: auto-sweep ALL modules (one consistent pass) for grounded outcome "
+        "smells (silently-swallowed exceptions, bare except, TODO/FIXME) + "
+        "infra-check coverage gaps, and email the owner if any module has a smell. "
+        "Feeds the infra-check agent: the owner then runs the code-outcome-auditor "
+        "subagent on a flagged module to confirm fixes and add grounded checks."),
+    ScheduledJob(
         "QuoteForge Daily QA", "daily-qa",
         ["/SC", "DAILY", "/ST", "06:30"],
         "Daily: aggregate Gelato SKU/UID currency + a net-margin-floor sweep across "

@@ -2286,6 +2286,48 @@ def _cmd_infra_check(args: list[str]) -> int:
     return 0
 
 
+def _cmd_audit(args: list[str]) -> int:
+    """Recurring code-outcome auditor: sweep ALL modules (one consistent daily pass)
+    for grounded outcome smells (silent except, bare except, TODO) + infra-check
+    coverage gaps, and ALERT the owner if any module has a smell. Feeds the
+    infra-check agent.
+
+      audit                 # sweep EVERY module (daily job; emails on a NEW smell)
+      audit <path|module>   # audit a specific module, e.g. audit automation/router.py
+      audit --coverage      # whole-repo: modules with no infra-check coverage
+      audit --baseline      # accept the current smell inventory as the ratchet
+    `audit`."""
+    from quoteforge.automation import code_auditor as ca
+    if args and args[0] == "--baseline":
+        protected = ca._infra_referenced_names()
+        results = [ca.audit_module(m, protected) for m in ca.list_modules()]
+        counts = ca.write_baseline(results)
+        total = sum(sum(per.values()) for per in counts.values())
+        print(f"Baseline accepted: {total} smell(s) across {len(counts)} module(s).")
+        print("The daily sweep now alerts only on NEW smells beyond this.")
+        return 0
+    if args and args[0] == "--coverage":
+        protected = ca._infra_referenced_names()
+        uncovered = []
+        for m in ca.list_modules():
+            res = ca.audit_module(m, protected)
+            if res["public_defs"] and not (set(res["public_defs"]) & protected):
+                uncovered.append((m, len(res["public_defs"])))
+        print(f"Modules with NO infra-check coverage ({len(uncovered)}):")
+        for m, n in uncovered:
+            print(f"  {m}  ({n} public fn)")
+        return 0
+    if args and not args[0].startswith("-"):
+        r = ca.audit_module(args[0])
+        print(ca.format_audit_text(r))
+        return 1 if r["smells"] else 0
+    summary = ca.run_full_audit(send=True)
+    print(ca.format_full_audit_text(summary))
+    if summary.get("alerted"):
+        print("\nowner alerted (outcome smell found).")
+    return 1 if summary["flagged"] else 0
+
+
 def _cmd_safety_check(args: list[str]) -> int:
     """Verify the safety guardrails (no auto-refund, margin-floor hold, order lock,
     claims human-only, address-fix gate, no auto-retry of unconfirmed) and ALERT the
@@ -3098,6 +3140,7 @@ COMMANDS = {
     "daily-qa": _cmd_daily_qa,
     "safety-check": _cmd_safety_check,
     "infra-check": _cmd_infra_check,
+    "audit": _cmd_audit,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
     "winback": _cmd_winback,
