@@ -67,8 +67,8 @@ def _auto_email_customer(order_data: dict, message: str) -> None:
         _send_email("A quick note about your Joffiels order",
                     f"<html><body style='font-family:Arial'><pre>{message}</pre>"
                     f"</body></html>", to=email)
-    except Exception:  # noqa: BLE001 - never fail the pipeline on an email
-        pass
+    except Exception as exc:  # noqa: BLE001 - never fail the pipeline on an email
+        logger.warning("customer auto-reply email failed: %s", exc)
 
 
 def _render_test_artwork(order_id: str, quote: str, recipient: str) -> Optional[Path]:
@@ -172,8 +172,8 @@ def validate_for_fulfillment(order: dict, recipient_address,
                     f"margin {m['margin_pct']:.1f}% below {m['floor_pct']:.0f}% floor "
                     f"(sale ${float(sale_price):.2f} / cost ${float(gelato_cost):.2f}) "
                     f"- held for owner review before vendor submission"]}
-        except (TypeError, ValueError):
-            pass   # unparseable economics -> defer to print-quality result
+        except (TypeError, ValueError) as exc:   # unparseable economics -> defer
+            logger.debug("margin check skipped (unparseable economics): %s", exc)
     return result
 
 
@@ -244,8 +244,9 @@ def run_full_pipeline(
                                      ref=order_id, risk="medium")
                     _log(order_id, "quote_generation", "warn",
                          "buyer custom text flagged for owner review")
-            except Exception:  # noqa: BLE001 - moderation must never block intake
-                pass
+            except Exception as exc:  # noqa: BLE001 - never block intake, but log it
+                logger.warning("moderation flagging failed for %s "
+                               "(text-review may be missed): %s", order_id, exc)
         else:
             _notify("quote_generation", "Generating personalized quote...")
             from quoteforge.automation.retry import retry_call
@@ -360,8 +361,9 @@ def run_full_pipeline(
                                         f"- auto-reply sent asking for a better one",
                                 proposed_action="await_better_photo", risk="medium",
                                 status="pending")
-                        except Exception:  # noqa: BLE001
-                            pass
+                        except Exception as exc:  # noqa: BLE001 - log the lost approval
+                            logger.warning("could not enqueue low-res-photo approval "
+                                           "for %s: %s", order_id, exc)
                         return get_order(order_id) or {}
                     bg_path = local
                     _notify("artwork_generation", "Buyer photo verified - using it.")
@@ -466,8 +468,9 @@ def run_full_pipeline(
                         summary=f"Final QC failed ({', '.join(fails)}) - fix before "
                                 f"sending the customer proof",
                         proposed_action="fix_artwork", risk="high", status="pending")
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as exc:  # noqa: BLE001 - log the lost HIGH-risk approval
+                    logger.warning("could not enqueue final-QC-fail approval for %s "
+                                   "(owner may not see it): %s", order_id, exc)
                 return get_order(order_id) or {}
             _log(order_id, "preflight", "pass",
                  "Final QC passed - safe to send proof")
@@ -568,8 +571,8 @@ def run_full_pipeline(
             try:    # report to Sentry (no-op unless SENTRY_DSN is set)
                 from quoteforge.automation.monitoring import capture
                 capture(exc)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as mon_exc:  # noqa: BLE001 - routing error already logged
+                logger.debug("monitoring capture failed: %s", mon_exc)
 
         # ── Stage 7: Follow-up (persist messages, upsell, review) ──
         # Skip when routing failed - an errored order is not "shipped" and must

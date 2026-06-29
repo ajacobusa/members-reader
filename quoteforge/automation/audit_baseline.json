@@ -81,9 +81,6 @@
  "automation/order_monitor.py": {
   "silent_except": 1
  },
- "automation/pipeline_orchestrator.py": {
-  "silent_except": 6
- },
  "automation/print_quality.py": {
   "silent_except": 2
  },
