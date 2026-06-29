@@ -72,15 +72,15 @@ def _uid_map() -> dict:
     if raw:
         try:
             out.update(json.loads(raw))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - malformed env JSON ignored
+            logger.debug("GELATO_UID_MAP parse failed: %s", exc)
     path = os.getenv("GELATO_UID_MAP_FILE", "").strip()
     if path:
         try:
             with open(path, encoding="utf-8") as fh:
                 out.update(json.load(fh))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - unreadable map file ignored
+            logger.debug("GELATO_UID_MAP_FILE load failed: %s", exc)
     return out
 
 

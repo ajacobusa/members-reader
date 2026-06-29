@@ -11,8 +11,11 @@ unmapped, exactly like the go-live guard).
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _PRODUCT_API = "https://product.gelatoapis.com/v3/products"
 
@@ -40,8 +43,8 @@ def _save_cache(cache: dict) -> None:
         path = _cache_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(cache, indent=2, sort_keys=True), encoding="utf-8")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - cache is best-effort
+        logger.debug("supplier-mockup cache write failed: %s", exc)
 
 
 def _extract_image_url(data: dict) -> str | None:

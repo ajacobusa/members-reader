@@ -18,7 +18,10 @@ without live calls. It never overwrites an existing (approved) tile unless told 
 from __future__ import annotations
 
 import csv
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REQUIRED_COLUMNS = [
     "product_id", "product_name", "gelato_product_url", "mockup_image_url",
@@ -164,20 +167,20 @@ def build_template_rows(family_map: dict | None = None) -> list[dict]:
         from quoteforge.etsy.mug_catalog import MUG_CATALOG
         for p in MUG_CATALOG:
             add(p.product_id, p.name, f"mug:{p.product_id}")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("mug catalog skipped in photo-agent rows: %s", exc)
     try:
         from quoteforge.etsy.calendar_catalog import CALENDAR_CATALOG
         for p in CALENDAR_CATALOG:
             add(p.product_id, p.name, f"calendar:{p.product_id}")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("calendar catalog skipped in photo-agent rows: %s", exc)
     try:
         from quoteforge.etsy.branded_catalog import BRANDED_CATALOG
         for p in BRANDED_CATALOG:
             add(p.product_id, p.name, f"branded:{p.product_id}")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("branded catalog skipped in photo-agent rows: %s", exc)
     try:
         from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
         seen = set()
@@ -186,6 +189,6 @@ def build_template_rows(family_map: dict | None = None) -> list[dict]:
                 continue
             seen.add(g.garment_id)
             add(g.garment_id, g.name)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("apparel catalog skipped in photo-agent rows: %s", exc)
     return rows

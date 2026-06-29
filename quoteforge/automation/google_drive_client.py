@@ -2,9 +2,12 @@
 
 Setup: Google Cloud Console → Enable Drive API → Service Account → Download JSON key
 """
+import logging
 import os
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 GOOGLE_SERVICE_ACCOUNT_FILE: str = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
@@ -121,8 +124,8 @@ def upload_single_copy(file_path: Path, filename: str,
             for dup in existing[1:]:
                 try:
                     service.files().delete(fileId=dup["id"]).execute()
-                except Exception:  # noqa: BLE001 - dedupe is best-effort
-                    pass
+                except Exception as exc:  # noqa: BLE001 - dedupe is best-effort
+                    logger.debug("drive dedupe delete skipped: %s", exc)
             return uploaded.get("webViewLink", "")
 
         uploaded = service.files().create(

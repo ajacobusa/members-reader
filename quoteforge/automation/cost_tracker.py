@@ -6,7 +6,10 @@ report. Gives you exact visibility into what the automation is spending.
 
 Anthropic pricing is per 1M tokens (USD), input/output separately.
 """
+import logging
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 # USD per 1,000,000 tokens (input, output). Keep in sync with current pricing.
 ANTHROPIC_PRICING = {
@@ -47,8 +50,8 @@ def record_flat_cost(provider: str, cost_usd: float, operation: str = "",
         from quoteforge.db.database import record_api_cost
         record_api_cost(provider, cost_usd, operation=operation, units=units,
                         order_id=order_id)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block on cost logging, but surface it
+        logger.warning("could not record %s cost ($%.4f): %s", provider, cost_usd, exc)
 
 
 # ── Reporting ────────────────────────────────────────────────────

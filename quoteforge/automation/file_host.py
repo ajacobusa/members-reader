@@ -10,8 +10,11 @@ The LOCAL copy in the customer folder is always kept regardless - publishing onl
 adds an off-machine, fetchable URL. Never raises; returns a result dict.
 """
 from __future__ import annotations
+import logging
 from pathlib import Path
 import shutil
+
+logger = logging.getLogger(__name__)
 
 _MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
          ".pdf": "application/pdf", ".tif": "image/tiff", ".tiff": "image/tiff"}
@@ -25,15 +28,15 @@ def active_backend() -> dict:
         if is_configured():
             return {"backend": "google_drive", "public": True,
                     "detail": "Google Drive (direct-download links)"}
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - probe only, fall through to next backend
+        logger.debug("drive backend probe failed: %s", exc)
     try:
         from quoteforge.config import PUBLIC_FILE_BASE_URL, PUBLIC_FILE_DIR
         if PUBLIC_FILE_BASE_URL and PUBLIC_FILE_DIR:
             return {"backend": "public_dir", "public": True,
                     "detail": f"public dir -> {PUBLIC_FILE_BASE_URL}"}
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - probe only, fall through to local
+        logger.debug("public-dir backend probe failed: %s", exc)
     return {"backend": "local", "public": False,
             "detail": "local file:// only (not fetchable by Gelato - set Drive or "
                       "PUBLIC_FILE_DIR before go-live)"}
@@ -56,8 +59,8 @@ def publish_print_file(local_path) -> dict:
             if url:
                 out.update({"url": url, "host": "google_drive", "public": True})
                 return out
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never raise; try the next backend
+        logger.warning("Google Drive publish failed, trying next backend: %s", exc)
 
     # 2) Local public directory served at PUBLIC_FILE_BASE_URL
     try:
@@ -71,8 +74,8 @@ def publish_print_file(local_path) -> dict:
             out.update({"url": f"{PUBLIC_FILE_BASE_URL}/{p.name}",
                         "host": "public_dir", "public": True})
             return out
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never raise; fall back to local file://
+        logger.warning("public-dir publish failed, falling back to local: %s", exc)
 
     # 3) Local-only fallback (not publicly fetchable)
     out.update({"url": p.as_uri(), "host": "local", "public": False})

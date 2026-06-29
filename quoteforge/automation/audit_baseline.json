@@ -2,9 +2,6 @@
  "admin.py": {
   "silent_except": 5
  },
- "ai/design_assistant.py": {
-  "silent_except": 1
- },
  "analytics/crm.py": {
   "silent_except": 1
  },
@@ -14,65 +11,20 @@
  "automation/ai_ops_review.py": {
   "silent_except": 1
  },
- "automation/cost_tracker.py": {
-  "silent_except": 1
- },
- "automation/design_confirm.py": {
-  "silent_except": 5
- },
- "automation/file_host.py": {
-  "silent_except": 4
- },
- "automation/gelato_opportunities.py": {
-  "silent_except": 3
- },
- "automation/gelato_sync.py": {
-  "silent_except": 2
- },
- "automation/gelato_uid_template.py": {
-  "silent_except": 4
- },
- "automation/gelato_variant_resolver.py": {
-  "silent_except": 3
- },
- "automation/google_drive_client.py": {
-  "silent_except": 1
- },
  "automation/healthcheck.py": {
   "todo_marker": 1
  },
  "automation/journey_analysis.py": {
   "silent_except": 1
  },
- "automation/maintenance.py": {
-  "silent_except": 2
- },
- "automation/mockup_sync.py": {
-  "silent_except": 2
- },
- "automation/print_quality.py": {
-  "silent_except": 2
- },
- "automation/product_photo_agent.py": {
-  "silent_except": 4
- },
- "automation/site_doctor.py": {
-  "silent_except": 2
- },
  "automation/weekly_review.py": {
   "silent_except": 21
- },
- "catalog/registry.py": {
-  "silent_except": 2
  },
  "config.py": {
   "silent_except": 1
  },
  "etsy/exec_report.py": {
   "silent_except": 2
- },
- "etsy/gelato_catalog.py": {
-  "silent_except": 3
  },
  "etsy/ledger.py": {
   "silent_except": 2
@@ -81,7 +33,6 @@
   "silent_except": 7
  },
  "images/supplier_mockup.py": {
-  "silent_except": 1,
   "todo_marker": 1
  },
  "marketing/affiliate_programs.py": {
