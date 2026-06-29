@@ -14,7 +14,10 @@ recipient until consent='yes'.
 """
 from __future__ import annotations
 
+import logging
 import urllib.parse
+
+logger = logging.getLogger(__name__)
 
 
 def gift_fields(payload: dict) -> dict:
@@ -105,15 +108,15 @@ def send_gift_ecard(payload: dict) -> dict:
         init_db()
         result["captured"] = add_subscriber(
             g["to_email"], source="gift_recipient", consent="pending")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - capture is best-effort, but log
+        logger.debug("gift recipient capture failed: %s", exc)
     # Free AI-written personal note (uses the buyer's words if they left any).
     try:
         from quoteforge.ai.assistant import gift_note
         g["message"] = gift_note(g["to_name"], g["from_name"],
                                  g["occasion"], g["message"])
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI note is optional, keep buyer's words
+        logger.debug("gift_note generation skipped: %s", exc)
     try:
         from quoteforge.config import SHOP_NAME, SIGNUP_URL
         from quoteforge.automation.emailer import _send_email

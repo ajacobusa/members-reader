@@ -49,8 +49,8 @@ def poll_once(limit: int = 25) -> dict:
             try:
                 from quoteforge.automation.monitoring import capture
                 capture(exc)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as mon_exc:  # noqa: BLE001 - the import failure is logged
+                logger.debug("monitoring capture failed: %s", mon_exc)
     logger.info("etsy poll: polled=%d imported=%d skipped=%d failed=%d",
                 len(receipts), len(imported), len(skipped), len(failed))
     return {"polled": len(receipts), "imported": imported, "skipped": len(skipped),

@@ -144,8 +144,8 @@ def _extract_gelato_cost(data: dict) -> "float | None":
                     tot += parts; found = True
         if found:
             return round(tot, 2)
-    except (TypeError, ValueError):
-        pass
+    except (TypeError, ValueError) as exc:
+        logger.debug("gelato cost parse skipped (unparseable): %s", exc)
     return None
 
 
@@ -169,8 +169,8 @@ def _extract_gelato_shipping(data: dict) -> "float | None":
             v = data.get(k)
             if v not in (None, ""):
                 return round(float(v), 2)
-    except (TypeError, ValueError):
-        pass
+    except (TypeError, ValueError) as exc:
+        logger.debug("gelato shipping parse skipped (unparseable): %s", exc)
     return None
 
 

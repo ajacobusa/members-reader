@@ -44,7 +44,10 @@ from __future__ import annotations
 
 import ast
 import inspect
+import logging
 import textwrap
+
+logger = logging.getLogger(__name__)
 
 
 def _c(name: str, ok: bool, detail: str) -> dict:
@@ -303,7 +306,14 @@ def check_infrastructure() -> dict:
         ORDER_PATH_SILENT_FREE = ("fulfillment/router.py",
                                   "automation/webhook_server.py",
                                   "automation/pipeline_orchestrator.py",
-                                  "db/database.py")
+                                  "db/database.py",
+                                  "automation/order_monitor.py",
+                                  "automation/autopilot.py",
+                                  "automation/etsy_poller.py",
+                                  "automation/gelato_api.py",
+                                  "fulfillment/claim_workflow.py",
+                                  "images/final_qc.py",
+                                  "etsy/subscription_product.py")
         offenders = {}
         for m in ORDER_PATH_SILENT_FREE:
             lines = [s["line"] for s in audit_module(m)["smells"]
@@ -342,8 +352,8 @@ def _supplier_name_leaks() -> list:
     try:
         from quoteforge.ai import ange
         sources["ange.py"] = ange
-    except Exception:  # noqa: BLE001 - the storefront assistant is optional
-        pass
+    except Exception as exc:  # noqa: BLE001 - the storefront assistant is optional
+        logger.debug("optional ange import skipped in leak scan: %s", exc)
     for label, mod in sources.items():
         text = inspect.getsource(mod).lower()
         leaks += [f"{label}:{n}" for n in _SUPPLIER_NAMES if n in text]

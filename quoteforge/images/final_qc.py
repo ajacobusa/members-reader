@@ -7,6 +7,10 @@ Nothing reaches the customer until this passes.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def final_qc(artwork_path, size_key: str = "") -> dict:
     """Return {'ok': bool, 'checks': [...], 'ai': {...}, 'fails': [...]}."""
@@ -23,6 +27,6 @@ def final_qc(artwork_path, size_key: str = "") -> dict:
         if not ai.get("ok", True):
             ok = False
             fails.append("AI vision: " + ai.get("note", "flagged"))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI vision is an optional add-on flag
+        logger.debug("AI vision check skipped: %s", exc)
     return {"ok": ok, "checks": checks, "ai": ai, "fails": fails}

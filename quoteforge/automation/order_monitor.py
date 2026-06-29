@@ -102,8 +102,8 @@ def audit_order(order: dict) -> dict:
                     f"margin {m['margin_pct']:.1f}% is below the "
                     f"{m['floor_pct']:.0f}% floor (sale ${float(sale_price):.2f} / "
                     f"cost ${float(gelato_cost):.2f}) - review pricing")
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as exc:
+            logger.debug("order margin check skipped (unparseable economics): %s", exc)
 
     return {"order_id": order.get("order_id", ""), "status": status,
             "issues": issues, "review": review, "compliant": not issues}

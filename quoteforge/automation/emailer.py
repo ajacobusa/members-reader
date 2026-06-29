@@ -5,10 +5,13 @@ recommendations) and emails it to REPORT_RECIPIENT. Designed to be run once
 a day via Windows Task Scheduler / cron:  python -m quoteforge.admin email-report
 """
 import html
+import logging
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+logger = logging.getLogger(__name__)
 
 from quoteforge.config import (
     GMAIL_ADDRESS, GMAIL_APP_PASSWORD, REPORT_RECIPIENT, RENDERER,
@@ -86,8 +89,8 @@ def build_report_html() -> tuple[str, str]:
     try:
         from quoteforge.reminders import reminders_html
         cost_block += reminders_html()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - reminders are best-effort, but log
+        logger.debug("reminders_html failed: %s", exc)
 
     body = f"""\
 <html><body style="font-family:Arial,sans-serif;color:#222">
@@ -183,8 +186,8 @@ def _send_email(subject: str, body: str, to: str = "", attachments=None) -> dict
             part.add_header("Content-Disposition",
                             f'attachment; filename="{p.name}"')
             msg.attach(part)
-        except Exception:  # noqa: BLE001 — never let an attachment block the email
-            pass
+        except Exception as exc:  # noqa: BLE001 - never block the email, but log
+            logger.warning("email attachment skipped: %s", exc)
     # The owner (REPORT_RECIPIENT) is BCC'd on EVERY email — including
     # customer-facing auto-replies — so all communications are visible to you.
     envelope = [recipient]

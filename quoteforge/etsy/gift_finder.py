@@ -7,6 +7,10 @@ the same logic on the site so the quiz works client-side.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Quiz options (value, label).
 OCCASIONS = ["Birthday", "Anniversary", "Wedding", "Mother's Day", "Father's Day",
              "Valentine's Day", "Graduation", "New Baby", "Housewarming",
@@ -50,8 +54,8 @@ def recommend(occasion: str = "", relationship: str = "", budget: str = "",
                 score += 2
             if score > best_score:
                 best_score, best_n = score, l.n
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - scoring is best-effort, falls back
+        logger.debug("gift-finder listing scoring skipped: %s", exc)
 
     quote_angle = (f"A heartfelt {occasion or 'gift'} message for your "
                    f"{relationship or 'loved one'}, in your own words.")

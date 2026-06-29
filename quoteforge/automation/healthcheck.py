@@ -5,11 +5,14 @@ every few hours and email an alert ONLY when something is wrong.
 Run:  python -m quoteforge.admin healthcheck [email]
 """
 import json
+import logging
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional
+
+logger = logging.getLogger(__name__)
 
 from quoteforge.config import OUTPUT_DIR
 
@@ -174,8 +177,8 @@ def _append_health_log(result: dict) -> None:
         entries.append(result)
         # keep the last 200 runs
         HEALTH_LOG.write_text(json.dumps(entries[-200:], indent=2))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - history is best-effort, but log it
+        logger.debug("health log write failed: %s", exc)
 
 
 def format_health_text(result: dict) -> str:

@@ -10,6 +10,10 @@ VPS). For the local single-operator setup it stays dormant.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 _initialised = False
 
 
@@ -44,5 +48,5 @@ def capture(exc: BaseException) -> None:
     try:
         import sentry_sdk
         sentry_sdk.capture_exception(exc)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as cap_exc:  # noqa: BLE001 - monitoring must never raise
+        logger.debug("sentry capture failed: %s", cap_exc)
