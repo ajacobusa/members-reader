@@ -149,6 +149,14 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "lock, claims human-only, address-fix gate, no auto-retry of an unconfirmed "
         "send) and ALERT the owner if any has weakened (e.g. a misconfigured cap)."),
     ScheduledJob(
+        "QuoteForge Runtime Health", "runtime-health",
+        ["/SC", "DAILY", "/ST", "06:18"],
+        "Daily: proactively verify the worker daemons, ports, hooks and plugins the "
+        "toolchain depends on are healthy (e.g. an enabled plugin whose worker is "
+        "down would block the IDE's Read/Edit), and surface the tracked "
+        "infrastructure issues. ALERTS the owner on any failure. Skips dev-tooling "
+        "checks cleanly where they're not present (e.g. the Render host)."),
+    ScheduledJob(
         "QuoteForge Code Audit Sweep", "audit",
         ["/SC", "DAILY", "/ST", "06:25"],
         "Daily: auto-sweep ALL modules (one consistent pass) for grounded outcome "

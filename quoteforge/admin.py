@@ -2328,6 +2328,26 @@ def _cmd_audit(args: list[str]) -> int:
     return 1 if summary["flagged"] else 0
 
 
+def _cmd_runtime_health(args: list[str]) -> int:
+    """Runtime/environment health agent: proactively verify the worker daemons,
+    ports, hooks and plugins the toolchain depends on are healthy - e.g. an ENABLED
+    plugin whose worker is down would block the IDE's Read/Edit. Also lists the
+    tracked infrastructure issues. ALERTS the owner on any failure. `runtime-health`."""
+    from quoteforge.automation.runtime_health import (
+        check_runtime_health, format_runtime_health_text)
+    r = check_runtime_health()
+    print(format_runtime_health_text(r))
+    if not r["ok"]:
+        bad = [c for c in r["checks"] if not c["ok"]]
+        _alert("\U0001f6d1 RUNTIME HEALTH degraded",
+               "<pre>" + format_runtime_health_text(r) + "</pre>",
+               what="runtime-health")
+        print(f"\n{len(bad)} runtime check(s) FAILED - owner alerted.")
+        return 1
+    print("\nRuntime/environment health OK.")
+    return 0
+
+
 def _cmd_safety_check(args: list[str]) -> int:
     """Verify the safety guardrails (no auto-refund, margin-floor hold, order lock,
     claims human-only, address-fix gate, no auto-retry of unconfirmed) and ALERT the
@@ -3140,6 +3160,7 @@ COMMANDS = {
     "daily-qa": _cmd_daily_qa,
     "safety-check": _cmd_safety_check,
     "infra-check": _cmd_infra_check,
+    "runtime-health": _cmd_runtime_health,
     "audit": _cmd_audit,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,
