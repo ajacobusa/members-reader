@@ -143,23 +143,23 @@ def _check(r, name):
 # REGRESSION: the fulfillment router must surface every error. A swallowed DB write
 # in the routing path (vendor_order_id / submit_unconfirmed) defeats the
 # duplicate-submission guard, so a re-run could double-charge.
-def test_router_has_no_silent_except():
+def test_order_path_modules_have_no_silent_except():
     from quoteforge.automation.code_auditor import audit_module
-    silent = [s for s in audit_module("fulfillment/router.py")["smells"]
-              if s["kind"] == "silent_except"]
-    assert silent == [], f"silent except(s) in router at lines " \
-                         f"{[s['line'] for s in silent]}"
+    for m in ("fulfillment/router.py", "automation/webhook_server.py"):
+        silent = [s["line"] for s in audit_module(m)["smells"]
+                  if s["kind"] == "silent_except"]
+        assert silent == [], f"silent except(s) in {m} at lines {silent}"
 
 
-def test_infra_check_guards_router_silent_except():
+def test_infra_check_guards_order_path_silent_except():
     from quoteforge.automation.infra_check import check_infrastructure
     r = check_infrastructure()
-    assert _check(r, "router_surfaces_errors")["ok"] is True
+    assert _check(r, "order_path_surfaces_errors")["ok"] is True
 
 
-# GROUNDING: prove the new invariant CATCHES a re-introduced silent except (it
-# runs the real AST detector, so a decoy with a swallowed except must fail it).
-def test_infra_check_catches_a_router_silent_except(monkeypatch):
+# GROUNDING: prove the invariant CATCHES a re-introduced silent except (it runs the
+# real AST detector, so a decoy with a swallowed except must fail it).
+def test_infra_check_catches_an_order_path_silent_except(monkeypatch):
     from quoteforge.automation.infra_check import check_infrastructure
     # The check does `from ...code_auditor import audit_module` at call time, so
     # patching the module attribute makes it see the decoy.
@@ -169,7 +169,7 @@ def test_infra_check_catches_a_router_silent_except(monkeypatch):
                                  "detail": "swallowed"}],
         "coverage_gaps": [], "public_defs": [], "ok": False})
     r = check_infrastructure()
-    assert _check(r, "router_surfaces_errors")["ok"] is False and r["ok"] is False
+    assert _check(r, "order_path_surfaces_errors")["ok"] is False and r["ok"] is False
 
 
 # GROUNDING: prove the AST structural check CATCHES a back-door, and isn't fooled

@@ -215,16 +215,16 @@ def process_webhook_payload(payload: dict) -> dict:
         if email:
             from quoteforge.db.database import add_subscriber
             add_subscriber(email, source="etsy")
-    except Exception:  # noqa: BLE001 — list-building must never block an order
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block an order, but never silent
+        logger.warning("subscriber enroll failed for an order: %s", exc)
 
     # Gift e-card: notify the recipient + capture their email (growth loop).
     try:
         if payload.get("gift_recipient_email"):
             from quoteforge.etsy.gift_ecard import send_gift_ecard
             send_gift_ecard(payload)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block an order, but never silent
+        logger.warning("gift e-card send failed: %s", exc)
 
     # Per-customer folder: persist this customer's info under their customer ID.
     try:
@@ -232,16 +232,17 @@ def process_webhook_payload(payload: dict) -> dict:
         if cust_email:
             from quoteforge.customers import record_order
             record_order(cust_email, payload, payload.get("customer_name", ""))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block an order, but never silent
+        logger.warning("per-customer record_order failed: %s", exc)
 
     # Subscription order: create the membership record + welcome email.
     try:
         if payload.get("subscription_plan"):
             from quoteforge.etsy.subscription_product import start_subscription_from_order
             start_subscription_from_order(payload)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block an order; a paid subscription
+        # whose membership silently failed to create is real lost value - surface it.
+        logger.warning("subscription membership creation failed for a paid order: %s", exc)
 
     try:
         # ── Multi-item order ────────────────────────────────────
@@ -337,8 +338,8 @@ def _process_payload_guarded(payload: dict) -> None:
         try:
             from quoteforge.automation.monitoring import capture
             capture(exc)
-        except Exception:  # noqa: BLE001 - monitoring must never mask the real error
-            pass
+        except Exception as mon_exc:  # noqa: BLE001 - the real error is already logged
+            logger.debug("monitoring capture failed: %s", mon_exc)
 
 
 # Gelato fulfillment status → our internal order status
@@ -577,8 +578,8 @@ if FLASK_AVAILABLE and app:
                 except Exception:  # noqa: BLE001 - any decode failure = not a usable image
                     try:
                         _os.remove(tmp)
-                    except OSError:
-                        pass
+                    except OSError as rm_exc:
+                        logger.debug("temp upload cleanup failed: %s", rm_exc)
                     resp = jsonify({"status": "error",
                                     "message": "that file isn't a usable image - please "
                                                "upload a clear JPG, PNG or TIFF"})
@@ -616,8 +617,8 @@ if FLASK_AVAILABLE and app:
                         if re_q["verdict"] == "pass":
                             src_for_print, quality, decision, enhanced = \
                                 str(enh["path"]), re_q, "approve", True
-                except Exception:  # noqa: BLE001 - enhancement is best-effort
-                    pass
+                except Exception as exc:  # noqa: BLE001 - best-effort, but never silent
+                    logger.debug("photo auto-enhance failed (original stands): %s", exc)
             # Publish a public, Gelato-fetchable URL (Drive / public dir / local).
             from quoteforge.automation.file_host import publish_print_file
             pub = publish_print_file(src_for_print)
@@ -697,8 +698,8 @@ if FLASK_AVAILABLE and app:
                     tmp = _os.path.join(tempfile.gettempdir(), nm)
                     fobj.save(tmp)
                     save_upload(email, tmp, name=form.get("name", ""))
-                except Exception:  # noqa: BLE001 - a save hiccup must not drop the claim
-                    pass
+                except Exception as exc:  # noqa: BLE001 - never drop the claim, but log it
+                    logger.warning("claim photo save failed (claim still proceeds): %s", exc)
                 if label not in photos:
                     photos.append(label)
 
@@ -992,8 +993,8 @@ def run_server(host: str = "0.0.0.0", port: int = None, debug: bool = False) -> 
         from quoteforge.automation.monitoring import init_monitoring
         if init_monitoring():
             logger.info("Sentry error monitoring active")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - monitoring is optional, but never silent
+        logger.debug("Sentry init skipped: %s", exc)
 
     # Prefer a production WSGI server. waitress works on Windows (gunicorn does
     # not). Falls back to the Flask dev server only if waitress isn't installed.

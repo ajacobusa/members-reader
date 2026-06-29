@@ -291,23 +291,29 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("no_supplier_name_leak", False, str(exc)))
 
-    # 14) The fulfillment router surfaces every error (risk #2/#14). A silently
-    #     swallowed DB write in the routing path (storing the vendor_order_id, or
-    #     the submit_unconfirmed status) defeats the duplicate-submission guard, so
-    #     a re-run could double-charge. (behavioral: the real AST smell detector
-    #     finds zero silently-swallowed excepts in the router.)
+    # 14) The critical order-path modules never SILENTLY swallow an error (risk
+    #     #2/#14). A swallowed DB write / side-effect there strands an order or
+    #     defeats a guard invisibly (e.g. the router's vendor_order_id / unconfirmed
+    #     status -> a re-run double-charges). Each module below was audited clean by
+    #     the code-outcome-auditor and is pinned here so it can't regress. As more
+    #     modules are cleared from the smell backlog, add them to ORDER_PATH_SILENT_FREE.
+    #     (behavioral: the real AST smell detector finds zero swallowed excepts.)
     try:
         from quoteforge.automation.code_auditor import audit_module
-        silent = [s for s in audit_module("fulfillment/router.py")["smells"]
-                  if s["kind"] == "silent_except"]
-        checks.append(_c("router_surfaces_errors", not silent,
-                         "fulfillment router never swallows an error"
-                         if not silent
-                         else f"{len(silent)} silent except in router "
-                              f"(dedup guard at risk): lines "
-                              f"{[s['line'] for s in silent]}"))
+        ORDER_PATH_SILENT_FREE = ("fulfillment/router.py",
+                                  "automation/webhook_server.py")
+        offenders = {}
+        for m in ORDER_PATH_SILENT_FREE:
+            lines = [s["line"] for s in audit_module(m)["smells"]
+                     if s["kind"] == "silent_except"]
+            if lines:
+                offenders[m] = lines
+        checks.append(_c("order_path_surfaces_errors", not offenders,
+                         f"{len(ORDER_PATH_SILENT_FREE)} order-path modules never "
+                         f"swallow an error" if not offenders
+                         else f"silent except returned: {offenders}"))
     except Exception as exc:  # noqa: BLE001
-        checks.append(_c("router_surfaces_errors", False, str(exc)))
+        checks.append(_c("order_path_surfaces_errors", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

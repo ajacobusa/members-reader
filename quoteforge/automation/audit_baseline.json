@@ -93,9 +93,6 @@
  "automation/site_doctor.py": {
   "silent_except": 2
  },
- "automation/webhook_server.py": {
-  "silent_except": 9
- },
  "automation/weekly_review.py": {
   "silent_except": 21
  },
