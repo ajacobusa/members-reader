@@ -9,6 +9,10 @@ Run: admin ai-review [email]   |   scheduled weekly.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def collect_signals() -> dict:
     """Gather health + business signals from every subsystem. Never raises."""
@@ -144,8 +148,8 @@ def ai_review(email: bool = False) -> dict:
             _send_email("Joffiels AI Ops Review", format_review_html(report),
                         to=REPORT_RECIPIENT)
             report["emailed"] = True
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - never block the review, but log
+            logger.warning("AI ops review email failed: %s", exc)
     return report
 
 

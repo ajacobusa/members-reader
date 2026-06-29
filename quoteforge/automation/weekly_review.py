@@ -6,6 +6,10 @@ status to the owner. Scheduled every Friday. AI is TEST_MODE-safe.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def collect_metrics() -> dict:
     """Gather P&L, TCO, AOV, counts, and margin metrics. Never raises."""
@@ -103,8 +107,8 @@ def weekly_review(email: bool = False) -> dict:
                         format_review_html(report), to=REPORT_RECIPIENT,
                         attachments=report.get("archive") or None)
             report["emailed_to"] = REPORT_RECIPIENT
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - never block the report, but log
+            logger.warning("Friday review email failed: %s", exc)
     return report
 
 
@@ -132,8 +136,8 @@ def archive_cost_report(report: dict) -> list:
         rec_dest = folder / f"reconciliation_{d.year}-{d.month:02d}.xlsx"
         shutil.copy2(rec, rec_dest)
         paths.append(str(rec_dest))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional archive section
+        logger.debug("reconciliation archive skipped: %s", exc)
 
     (folder / f"business_review_{today}.txt").write_text(
         format_review_text(report), encoding="utf-8")
@@ -161,26 +165,26 @@ def monthly_review(email: bool = False) -> dict:
         rec = export_reconciliation(y, m)
         dest = folder / f"reconciliation_{tag}.xlsx"; shutil.copy2(rec, dest)
         paths.append(str(dest))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional monthly section
+        logger.debug("monthly reconciliation archive skipped: %s", exc)
     try:
         led = export_ledger_excel("all")
         dest = folder / f"general_ledger_{tag}.xlsx"; shutil.copy2(led, dest)
         paths.append(str(dest))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional monthly section
+        logger.debug("monthly ledger archive skipped: %s", exc)
     try:
         ex = build_exec_report("all")
         dest = folder / f"executive_report_{tag}.xlsx"; shutil.copy2(ex, dest)
         paths.append(str(dest))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional monthly section
+        logger.debug("monthly exec report archive skipped: %s", exc)
 
     fin = {}
     try:
         fin = month_financials(y, m)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - report renders with zeros if unavailable
+        logger.debug("month_financials unavailable for report: %s", exc)
     body = (f"<html><body style='font-family:Arial'>"
             f"<h2>{SHOP_NAME} - Monthly Report ({tag})</h2>"
             f"<p>Revenue ${fin.get('revenue', 0):.2f} &middot; Gelato cost "
@@ -198,8 +202,8 @@ def monthly_review(email: bool = False) -> dict:
             _send_email(f"{SHOP_NAME} - Monthly Report ({tag})", body,
                         to=REPORT_RECIPIENT, attachments=paths or None)
             out["emailed_to"] = REPORT_RECIPIENT
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - never block the report, but log
+            logger.warning("monthly report email failed: %s", exc)
     return out
 
 
@@ -238,73 +242,73 @@ def format_review_text(r: dict) -> str:
     try:
         from quoteforge.analytics.clv import format_clv_text
         lines.append("\n" + format_clv_text(orders=_orders))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (clv) skipped: %s", exc)
     try:
         from quoteforge.quotes.performance import format_performance_text
         lines.append("\n" + format_performance_text(orders=_orders))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (performance) skipped: %s", exc)
     try:
         from quoteforge.analytics.profit_optimizer import format_profit_text
         lines.append("\n" + format_profit_text(orders=_orders))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (profit) skipped: %s", exc)
     try:
         from quoteforge.automation.customization_recovery import format_recovery_text
         lines.append("\n" + format_recovery_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (recovery) skipped: %s", exc)
     try:
         from quoteforge.analytics.preference_graph import format_graph_text
         lines.append("\n" + format_graph_text(orders=_orders))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (preference graph) skipped: %s", exc)
     try:
         from quoteforge.automation.journey_analysis import format_journey_text
         lines.append("\n" + format_journey_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (journey) skipped: %s", exc)
     try:
         from quoteforge.analytics.crm import format_crm_overview
         lines.append("\n" + format_crm_overview())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (crm) skipped: %s", exc)
     try:
         from quoteforge.analytics.referrals import format_leaderboard_text
         lines.append("\n" + format_leaderboard_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (referrals) skipped: %s", exc)
     try:
         from quoteforge.automation.capacity_monitor import format_capacity_text
         lines.append("\n" + format_capacity_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (capacity) skipped: %s", exc)
     try:
         from quoteforge.analytics.ab_testing import format_ab_text
         lines.append("\n" + format_ab_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (ab testing) skipped: %s", exc)
     try:
         from quoteforge.analytics.competitor_intel import format_competitor_text
         lines.append("\n" + format_competitor_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (competitor intel) skipped: %s", exc)
     try:
         from quoteforge.analytics.trend_engine import format_trend_text
         lines.append("\n" + format_trend_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (trend) skipped: %s", exc)
     try:
         from quoteforge.etsy.dynamic_pricing import format_dynamic_text
         lines.append("\n" + format_dynamic_text())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (dynamic pricing) skipped: %s", exc)
     try:
         from quoteforge.marketing.gift_profiles import format_reminders_text
         lines.append("\n" + format_reminders_text(30))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional review section
+        logger.debug("review section (gift reminders) skipped: %s", exc)
     lines.append("=" * 62)
     return "\n".join(lines)
 

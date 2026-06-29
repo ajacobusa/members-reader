@@ -7,6 +7,10 @@ empty.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def _all_orders():
     """All orders from the DB (initializes the schema first)."""
@@ -60,8 +64,8 @@ def customer_360(email: str) -> dict:
     for oid in order_ids:
         try:
             support.extend(get_customer_messages(oid))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - a missing message thread is skipped
+            logger.debug("support messages skipped for order %s: %s", oid, exc)
     # reviews tie by customer name (reviews aren't keyed by email)
     reviews = [r for r in get_published_reviews(200)
                if (r.get("customer_name") or "").strip().lower() in names]

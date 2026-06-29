@@ -10,7 +10,10 @@ then search the brand inside it and grab your tracking link.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 NETWORK_SIGNUP = {
     "Amazon": "https://affiliate-program.amazon.com",
@@ -95,8 +98,8 @@ def configured_links() -> dict:
             for k, v in extra.items():
                 if v:
                     links[str(k)] = str(v)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - malformed override JSON ignored
+            logger.debug("AFFILIATE_LINKS_JSON parse failed: %s", exc)
     return links
 
 

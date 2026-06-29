@@ -12,7 +12,10 @@ AI sections use Claude with a strong deterministic fallback (works in TEST_MODE)
 """
 from __future__ import annotations
 
+import logging
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 
 def _kpis(period: str) -> dict:
@@ -51,8 +54,8 @@ def _infra_facts() -> dict:
         from quoteforge.catalog.registry import VENDORS, list_products
         facts["vendors"] = len(VENDORS)
         facts["catalog_items"] = len(list_products())
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - registry facts optional
+        logger.debug("registry facts skipped in exec report: %s", exc)
     import glob
     facts["test_files"] = len(glob.glob("quoteforge_tests/test_*.py"))
     return facts
@@ -261,8 +264,8 @@ def build_exec_report(period: str = "month", out_path=None):
         for row in wf.iter_rows(min_row=2):
             for cc in row:
                 cc.alignment = Alignment(wrap_text=True, vertical="top")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - cosmetic formatting optional
+        logger.debug("exec-report cell formatting skipped: %s", exc)
 
     from pathlib import Path
     out = Path(out_path) if out_path else (OUTPUT_DIR / "executive_report.xlsx")

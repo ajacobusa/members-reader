@@ -12,7 +12,10 @@ sequence - a re-activated customer is no longer targeted and can lapse fresh
 later. send=False is a read-only preview.
 """
 from __future__ import annotations
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # (days_since_last threshold, stage, coupon_code, discount_pct). Stage 1 has no
 # coupon - it's a soft "new designs" nudge before discounting.
@@ -112,8 +115,8 @@ def run_winback(send: bool = False, now: datetime | None = None) -> dict:
                 html = (f"<html><body style='font-family:Arial'>"
                         f"<p>{it['message']}</p></body></html>")
                 _send_email(it["subject"], html, to=it["email"])
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001 - stage still advances, but log
+                logger.warning("winback email failed for %s: %s", it.get("email"), exc)
             set_winback_stage(it["email"], it["stage"], it["last_order_at"])
             sent_items.append(it)
     return {"candidates": len(items), "sent": len(sent_items),

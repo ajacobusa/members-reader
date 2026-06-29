@@ -1,7 +1,10 @@
 """Claude-powered personal message generator with a TEST_MODE mock fallback."""
+import logging
 import re
 import anthropic
 from quoteforge.config import ANTHROPIC_API_KEY, CLAUDE_MODEL, TEST_MODE
+
+logger = logging.getLogger(__name__)
 
 
 def _mock_personal_message(recipient_name: str, sender_name: str,
@@ -106,8 +109,8 @@ def _invoke(client, operation: str = "quote_generation", **kwargs):
         record_anthropic_usage(kwargs.get("model", CLAUDE_MODEL),
                                getattr(message, "usage", None),
                                operation=operation)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block generation, but surface cost gaps
+        logger.warning("could not record Anthropic usage cost: %s", exc)
     return message
 
 

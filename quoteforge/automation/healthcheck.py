@@ -130,7 +130,7 @@ def check_scheduled_jobs(query_fn: Optional[Callable[[], dict]] = None) -> Check
 
 def check_file_hosting() -> Check:
     """Which print-file hosting backend is active (Drive / public dir / local)."""
-    # Informational only: local hosting is valid during UAT. The go-live TODO is
+    # Informational only: local hosting is valid during UAT. The go-live action is
     # tracked by `admin deploy-status`, so this never downgrades operational health.
     try:
         from quoteforge.automation.file_host import active_backend

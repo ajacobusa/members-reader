@@ -11,7 +11,10 @@ Outputs holiday recommendations, new listing ideas, and new quote themes, with a
 AI-written narrative when Claude is configured and a deterministic fallback.
 """
 from __future__ import annotations
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def seasonal_signals(now: datetime | None = None, horizon_days: int = 60) -> list[dict]:
@@ -111,8 +114,8 @@ def _narrative(data: dict) -> str:
             max_tokens=180)
         if text and text.strip():
             return text.strip()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI summary optional, deterministic fallback
+        logger.debug("trend AI summary skipped: %s", exc)
     if data["seasonal"]:
         nxt = data["seasonal"][0]
         return (f"Prioritize {nxt['occasion']} ({nxt['days_away']} days out) - list "
