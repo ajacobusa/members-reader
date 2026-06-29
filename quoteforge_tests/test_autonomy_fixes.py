@@ -115,11 +115,15 @@ def test_approved_ready_to_print_in_needs_attention(tmp_path, monkeypatch):
 def test_infra_check_all_pass():
     from quoteforge.automation.infra_check import check_infrastructure
     r = check_infrastructure()
-    assert r["ok"] is True
+    # Every CODE-invariant check must pass. runtime_health probes the LIVE machine
+    # (daemons/ports/plugins), which varies per host/CI, so it's asserted only to be
+    # PRESENT here and tested deterministically in test_runtime_health.py.
+    non_env = [c for c in r["checks"] if c["name"] != "runtime_health"]
+    assert all(c["ok"] for c in non_env), [c for c in non_env if not c["ok"]]
     names = {c["name"] for c in r["checks"]}
     assert {"scheduled_jobs_wired", "etsy_oauth_refresh_wired",
             "poller_surfaces_failures", "dispute_scan_guarded",
-            "approved_ready_surfaced", "safety_guardrails"} <= names
+            "approved_ready_surfaced", "safety_guardrails", "runtime_health"} <= names
 
 
 # REGRESSION: the 6 critical order-lifecycle risks that previously had only a

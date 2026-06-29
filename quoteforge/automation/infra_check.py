@@ -327,6 +327,22 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("order_path_surfaces_errors", False, str(exc)))
 
+    # 15) Runtime / environment health (daemons, ports, workers, hooks, plugins).
+    #     A code-invariant check can't see an enabled plugin whose worker daemon is
+    #     down blocking the IDE's Read/Edit - the runtime_health agent does, and
+    #     tracks known infra issues. Skip-friendly: ok where the dev tooling isn't
+    #     present (e.g. the Render host), so this never false-alarms in production.
+    try:
+        from quoteforge.automation.runtime_health import check_runtime_health
+        rh = check_runtime_health()
+        bad = [c["name"] for c in rh["checks"] if not c["ok"]]
+        checks.append(_c("runtime_health", rh["ok"],
+                         f"daemons/ports/hooks/plugins healthy; "
+                         f"{len(rh['open_issues'])} tracked issue(s)" if rh["ok"]
+                         else f"DEGRADED: {bad}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("runtime_health", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

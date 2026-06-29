@@ -1,0 +1,12 @@
+[
+  {
+    "id": "claude-mem-worker-deps",
+    "title": "claude-mem plugin worker can fail to start (node_modules not installed), and its hooks then block the IDE",
+    "severity": "low",
+    "status": "monitored",
+    "area": "dev-tooling",
+    "first_seen": "2026-06-29",
+    "detail": "On Windows the claude-mem plugin shipped without node_modules installed in its marketplace dirs, so the worker daemon could never bind port 37777. Because the plugin's PreToolUse hooks fail closed, every Read/Edit was blocked and the Stop hook looped. Root cause fixed by `bun install` in ~/.claude/plugins/marketplaces/thedotmack and .../plugin (npx claude-mem repair). The runtime_health check now probes this proactively (deps present + port 37777 answering) so an enabled-but-broken worker is caught before it blocks the IDE.",
+    "remediation": "npx claude-mem doctor  ->  npx claude-mem repair  ->  bun install in ~/.claude/plugins/marketplaces/thedotmack[/plugin]  ->  restart Claude Code  ->  re-enable claude-mem@thedotmack in ~/.claude/settings.json. Verify: npx claude-mem doctor shows the worker daemon OK."
+  }
+]
