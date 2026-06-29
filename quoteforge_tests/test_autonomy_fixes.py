@@ -146,7 +146,7 @@ def _check(r, name):
 def test_order_path_modules_have_no_silent_except():
     from quoteforge.automation.code_auditor import audit_module
     for m in ("fulfillment/router.py", "automation/webhook_server.py",
-              "automation/pipeline_orchestrator.py"):
+              "automation/pipeline_orchestrator.py", "db/database.py"):
         silent = [s["line"] for s in audit_module(m)["smells"]
                   if s["kind"] == "silent_except"]
         assert silent == [], f"silent except(s) in {m} at lines {silent}"

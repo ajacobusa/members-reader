@@ -1,4 +1,5 @@
 """SQLite database — local mirror of Airtable. Products / Orders / Templates tables."""
+import logging
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -7,6 +8,8 @@ from pathlib import Path
 from typing import Optional
 
 from quoteforge.config import OUTPUT_DIR
+
+logger = logging.getLogger(__name__)
 
 DB_PATH: Path = OUTPUT_DIR / "quoteforge.db"
 
@@ -346,8 +349,9 @@ def init_db() -> None:
         ):
             try:
                 conn.execute(f"CREATE INDEX IF NOT EXISTS {_idx} ON {_tbl}({_col})")
-            except sqlite3.OperationalError:
-                pass  # table not present in an older snapshot - safe to skip
+            except sqlite3.OperationalError as exc:
+                # table not present in an older snapshot - safe to skip, but log it
+                logger.debug("index %s skipped (%s not present?): %s", _idx, _tbl, exc)
 
 
 def upsert_ledger_snapshot(day: str, row: dict) -> None:
@@ -564,8 +568,9 @@ def create_order(data: dict) -> str:
     # photo URLs) to this order, so the personalization travels with it to production.
     try:
         link_design_to_order(data.get("customer_email", ""), order_id)
-    except Exception:  # noqa: BLE001 - linking is best-effort, never block an order
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block an order, but never silent:
+        # a failed link means the personalization/design may not reach production.
+        logger.warning("link_design_to_order failed for %s: %s", order_id, exc)
     return order_id
 
 
@@ -950,8 +955,9 @@ def link_design_to_order(email: str, order_id: str) -> int:
     # for a Pro Designer / calendar order (best-effort; never blocks the link).
     try:
         _propagate_design_artwork(order_id, design_json)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block the link, but never silent:
+        # a failed propagation means production may lack the design's print file.
+        logger.warning("_propagate_design_artwork failed for %s: %s", order_id, exc)
     return row["id"]
 
 
