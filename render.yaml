@@ -137,3 +137,19 @@ services:
     startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync ; python -m quoteforge.admin catalog-sync email ; python -m quoteforge.admin gelato-review email ; python -m quoteforge.admin rebuild-site ; python -m quoteforge.admin backup-all"
     envVars:
       - fromGroup: joffiels-env
+  - type: cron
+    name: daily-guards
+    runtime: python
+    schedule: "15 6 * * *"        # 06:15 UTC daily: the self-monitoring agents
+    buildCommand: pip install -r requirements.txt -r requirements-server.txt
+    # The daily self-monitoring agents, run together so a regression is caught
+    # every day on the hosted path too (not only on the Windows scheduler).
+    # `;` (not `&&`) so each still runs even when an earlier one exits non-zero on
+    # an alert. Each EMAILS the owner only on a problem:
+    #   safety-check  - a never-automate guardrail weakened
+    #   infra-check   - an automation/order-lifecycle invariant regressed
+    #   audit         - a NEW outcome smell beyond the committed baseline
+    #   daily-qa      - a product (SKU/UID/margin) or order needs attention
+    startCommand: sh -c "python -m quoteforge.admin safety-check ; python -m quoteforge.admin infra-check ; python -m quoteforge.admin audit ; python -m quoteforge.admin daily-qa"
+    envVars:
+      - fromGroup: joffiels-env
