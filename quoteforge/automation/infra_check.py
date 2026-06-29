@@ -24,6 +24,12 @@ The per-PRODUCT/per-item sweep (SKU<->UID currency, net-margin-floor across ever
 variation, order-book health) is the sibling daily `daily-qa` agent; this agent
 verifies the code invariants that protect every product the same way.
 
+GROWTH PATH: new invariants are DISCOVERED by the code-outcome-auditor (the daily
+`audit` sweep flags a module's outcome smells + coverage gaps; the
+.claude/agents/code-outcome-auditor subagent then does the deep line-by-line audit
+and hands the owner a grounded check to append here). That is how this list grows
+without ever lowering the grounding bar below.
+
 GROUNDING (no hallucination): every check is one of three grounded kinds - it RUNS
 the real code and observes the outcome (behavioral), it PARSES the real code's AST
 (structural, immune to comments/docstrings/dead strings), or it READS real file
