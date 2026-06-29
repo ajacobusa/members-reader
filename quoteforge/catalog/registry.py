@@ -12,7 +12,10 @@ Fulfillment types:
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -49,8 +52,8 @@ def floor_for_vendor(vendor: str) -> float:
         try:
             floors.update({k: float(v) for k, v in
                            json.loads(VENDOR_MARGIN_FLOORS_JSON).items()})
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - malformed override JSON ignored
+            logger.debug("VENDOR_MARGIN_FLOORS_JSON parse failed: %s", exc)
     return max(float(floors.get(vendor, TARGET_MARGIN_PCT)), TARGET_MARGIN_PCT)
 
 
@@ -80,8 +83,8 @@ def list_products(include_builtin: bool = True) -> list[dict]:
                     "cost": p.gelato_cost_usd, "price": p.suggested_price.get("mid", 0),
                     "source": "builtin",
                 })
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - built-in catalog optional
+            logger.debug("built-in gelato catalog skipped in list_products: %s", exc)
     for it in get_catalog_items():
         items.append({
             "vendor": it["vendor"], "sku": it.get("sku", ""), "name": it["name"],

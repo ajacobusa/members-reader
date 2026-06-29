@@ -23,7 +23,10 @@ confirm against a live Gelato account.
 from __future__ import annotations
 
 import json
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 _PRODUCT_API = "https://product.gelatoapis.com/v3"
 
@@ -38,15 +41,15 @@ def _family_map() -> dict:
     if raw:
         try:
             out.update(json.loads(raw))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - malformed env JSON ignored
+            logger.debug("GELATO_PRODUCT_FAMILY_MAP parse failed: %s", exc)
     path = os.getenv("GELATO_PRODUCT_FAMILY_FILE", "").strip()
     if path:
         try:
             with open(path, encoding="utf-8") as fh:
                 out.update(json.load(fh))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - unreadable family file ignored
+            logger.debug("GELATO_PRODUCT_FAMILY_FILE load failed: %s", exc)
     return out
 
 
@@ -152,8 +155,8 @@ def _save_cache(cache: dict) -> None:
         p = _cache_path()
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(cache, indent=2, sort_keys=True), encoding="utf-8")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - cache is best-effort
+        logger.debug("variant cache write failed: %s", exc)
 
 
 def _attr(value: str) -> str:

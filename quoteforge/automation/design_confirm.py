@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -80,13 +83,13 @@ def _cart_money(design_json: str) -> dict:
     try:
         if cart.get("subtotal") is not None:
             money["sale_price"] = round(float(cart["subtotal"]), 2)
-    except (TypeError, ValueError):
-        pass
+    except (TypeError, ValueError) as exc:
+        logger.debug("cart subtotal unparseable, sale_price unset: %s", exc)
     if cart.get("items") is not None:
         try:
             money["item_count"] = int(cart["items"])
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as exc:
+            logger.debug("cart items unparseable, item_count from lines: %s", exc)
     elif lines:
         money["item_count"] = sum(_safe_qty(l.get("qty")) for l in lines)
     if lines:
@@ -115,8 +118,8 @@ def _cart_money(design_json: str) -> dict:
                 try:
                     total_cost += float(c) * _safe_qty(ln.get("qty"))
                     have_cost = True
-                except (TypeError, ValueError):
-                    pass
+                except (TypeError, ValueError) as exc:
+                    logger.debug("line cost unparseable, skipped: %s", exc)
         if have_cost:
             money["gelato_cost"] = round(total_cost, 2)
     return money
@@ -140,8 +143,8 @@ def _alert_owner(email: str, summary: str, contact: dict) -> None:
                 "takes it from here (see the daily report / pipeline).</p>"
                 "</body></html>")
         _send_email("\U0001F4B0 New storefront order - action: fulfil", html)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - never block the order, but log
+        logger.warning("new-order owner email failed: %s", exc)
 
 
 def _intake_order(email: str, design_id: str, contact: dict,
@@ -295,7 +298,7 @@ def confirm_design(email: str, summary: str = "", design_json: str = "",
             try:
                 from quoteforge.db.database import update_order
                 update_order(order_id, proof_pdf=proof_pdf)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001 - proof link is best-effort, but log
+                logger.warning("could not persist proof_pdf for %s: %s", order_id, exc)
     return {"ok": True, "emailed": False, "order_id": order_id,
             "proof_pdf": proof_pdf}

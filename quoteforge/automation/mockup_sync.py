@@ -26,9 +26,12 @@ catalog), not a rewrite of this engine.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Callable, Iterable
+
+logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = 1
 
@@ -134,8 +137,8 @@ def load_catalog() -> dict:
         data = json.loads(catalog_path().read_text(encoding="utf-8"))
         if isinstance(data, dict) and isinstance(data.get("products"), dict):
             return data
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - missing/corrupt -> safe empty default
+        logger.debug("mockup catalog load failed, using empty default: %s", exc)
     return {"version": SCHEMA_VERSION, "updated_utc": None, "products": {}}
 
 
@@ -151,8 +154,8 @@ def save_catalog(cat: dict, *, stamp: str | None = None) -> None:
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(cat, indent=2, sort_keys=True), encoding="utf-8")
         tmp.replace(path)
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.warning("mockup catalog save failed: %s", exc)
 
 
 # ── Guard-rail helpers ────────────────────────────────────────────────────────

@@ -15,6 +15,10 @@ The daily-qa agent reports how many remain placeholder, giving a live 'X of N ma
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def all_skus() -> set:
     """Every mappable Gelato SKU across all product families + frames (GEL-* only,
@@ -28,8 +32,8 @@ def all_skus() -> set:
                 s = getattr(v, "gelato_sku", "") or ""
                 if s and "+" not in s:
                     skus.add(s)
-        except Exception:  # noqa: BLE001 - a missing optional catalog is not fatal
-            pass
+        except Exception as exc:  # noqa: BLE001 - a missing optional catalog is not fatal
+            logger.debug("optional catalog skipped in SKU scan: %s", exc)
     from quoteforge.etsy.variations import build_variations
     _collect(build_variations)
     for module, fn in (("apparel_catalog", "build_apparel_variations"),
@@ -39,16 +43,16 @@ def all_skus() -> set:
         try:
             m = __import__(f"quoteforge.etsy.{module}", fromlist=[fn])
             _collect(getattr(m, fn))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - optional family catalog
+            logger.debug("optional catalog %s skipped: %s", module, exc)
     try:
         from quoteforge.etsy.frames import all_frames
         for f in all_frames():
             s = getattr(f, "gelato_sku", "") or ""
             if s:
                 skus.add(s)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - frames catalog optional
+        logger.debug("frames catalog skipped in SKU scan: %s", exc)
     return {s for s in skus if str(s).upper().startswith("GEL-")}
 
 
@@ -79,8 +83,8 @@ def write_template(path: str | None = None) -> dict:
     if out.exists():
         try:
             existing.update(json.loads(out.read_text(encoding="utf-8")) or {})
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - a corrupt file just starts fresh
+            logger.debug("could not parse existing UID map, starting fresh: %s", exc)
     tmpl = build_template(existing)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(tmpl, indent=2, sort_keys=True), encoding="utf-8")

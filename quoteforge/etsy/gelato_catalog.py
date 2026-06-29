@@ -1,5 +1,8 @@
 """Gelato product catalog with pricing and profit calculations."""
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -588,8 +591,8 @@ def _family_print_dimensions(identifier: str) -> "tuple[int, int] | None":
                 cc = get_calendar(v.product_id)
                 if cc:
                     return (cc.width_px, cc.height_px)
-    except Exception:  # noqa: BLE001 - resolution is best-effort
-        pass
+    except Exception as exc:  # noqa: BLE001 - resolution is best-effort
+        logger.debug("calendar dimension resolution skipped: %s", exc)
     # Branded - family tag or product id (tote / bottle / tumbler / mousepad ...).
     try:
         from quoteforge.etsy.branded_catalog import (get_product as _bget,
@@ -599,8 +602,8 @@ def _family_print_dimensions(identifier: str) -> "tuple[int, int] | None":
         b = _bget(key)
         if b:
             return (b.width_px, b.height_px)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - branded dims optional
+        logger.debug("branded dimension resolution skipped: %s", exc)
     # Apparel - family tag or garment id (the print field is constant across S-5XL).
     try:
         from quoteforge.etsy.apparel_catalog import get_garment, DEFAULT_APPAREL_DIMS
@@ -610,8 +613,8 @@ def _family_print_dimensions(identifier: str) -> "tuple[int, int] | None":
         g = get_garment(key)
         if g:
             return (g.width_px, g.height_px)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - apparel dims optional
+        logger.debug("apparel dimension resolution skipped: %s", exc)
     return None
 
 

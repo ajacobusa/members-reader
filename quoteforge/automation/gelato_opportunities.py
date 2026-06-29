@@ -9,6 +9,10 @@ catalog; the owner decides what to add. All network is injected for tests.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # department -> (catalogUid, size attribute) used to read the partner's offered sizes
 DEPT_SIZE_ATTR: dict[str, tuple[str, str]] = {
     "mug": ("mugs", "MugSize"),
@@ -80,20 +84,20 @@ def our_inventory() -> dict:
     try:
         from quoteforge.etsy.mug_catalog import MUG_CATALOG
         inv["mug"] = {s for m in MUG_CATALOG for s in getattr(m, "sizes", [])}
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("mug catalog unavailable for opportunity scan: %s", exc)
     try:
         from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
         inv["apparel"] = {s for g in APPAREL_CATALOG for s in getattr(g, "sizes", [])}
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("apparel catalog unavailable for opportunity scan: %s", exc)
     try:
         from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
         for p in GELATO_CATALOG:
             if p.category in ("poster", "canvas", "acrylic", "metal"):
                 inv.setdefault(p.category, set()).add(str(p.size).split()[0])
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - optional catalog
+        logger.debug("gelato catalog unavailable for opportunity scan: %s", exc)
     return inv
 
 

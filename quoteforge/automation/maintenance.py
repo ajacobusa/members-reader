@@ -24,9 +24,12 @@ Run:  python -m quoteforge.admin maintenance          # heal + print digest
       python -m quoteforge.admin maintenance email     # also email the digest
       python -m quoteforge.admin maintenance --check    # report only, fix nothing
 """
+import logging
 import time
 from datetime import datetime
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ── Performance measurement ──────────────────────────────────────
@@ -142,8 +145,8 @@ def suggest_enhancements(perf: dict, health: dict) -> list[str]:
                         f"{audit['floor_pct']:.0f}% margin floor "
                         f"(worst: {worst['name']} at {worst['margin_pct']:.0f}%) — "
                         f"run `admin margins` and reprice.")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - tip-gathering is best-effort
+        logger.debug("margin-floor tip skipped: %s", exc)
     # Autopilot — surface anything waiting on a human decision.
     try:
         from quoteforge.automation.autopilot import autopilot_status
@@ -152,8 +155,8 @@ def suggest_enhancements(perf: dict, health: dict) -> list[str]:
             tips.append(f"{ap['pending_human']} decision(s) awaiting your approval "
                         f"— run `admin approvals` (autopilot auto-handled "
                         f"{ap['auto_last_24h']} in the last 24h).")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - tip-gathering is best-effort
+        logger.debug("autopilot tip skipped: %s", exc)
     if not tips:
         tips.append("No issues found. Infra is healthy and within performance "
                     "targets - no action needed today.")

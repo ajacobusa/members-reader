@@ -11,7 +11,10 @@ attached, and quality not rejected. Gelato's v3/orders accepts the customer file
 by URL (items[].files[].url), so the approved JPG is sent straight to print.
 """
 from __future__ import annotations
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 MIN_DPI = 150                       # Gelato-safe minimum for a crisp print
 SUPPORTED = (".jpg", ".jpeg", ".png", ".pdf", ".tif", ".tiff")
@@ -125,8 +128,8 @@ def ai_focal_point(path) -> dict:
             x = min(1.0, max(0.0, float(m.group(1))))
             y = min(1.0, max(0.0, float(m.group(2))))
             return {"x": round(x, 3), "y": round(y, 3), "source": "ai"}
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI focal point optional, uses default
+        logger.debug("AI focal-point detection skipped: %s", exc)
     return default
 
 
@@ -141,8 +144,8 @@ def reupload_request(assessment: dict, recipient: str = "") -> str:
             f"Reason(s): {reasons}.", "reupload_request", max_tokens=120)
         if txt and txt.strip():
             return txt.strip()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI copy optional, deterministic fallback
+        logger.debug("AI reupload-request copy skipped: %s", exc)
     return ("To make sure your print looks crisp, we need a higher-quality photo - "
             f"{reasons}. Please reply with a higher-resolution original and we'll "
             "send your free proof right away.")

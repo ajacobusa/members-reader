@@ -13,6 +13,10 @@ Nothing here places an order, touches pricing, or exposes a vendor name.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 PRINT_DPI = 150          # the resolution below which a print starts to look soft
 
 # Approx PRINTABLE aspect ratio (width/height) per product family, so the crop
@@ -37,8 +41,8 @@ def _target_aspect(product_kind: str, size_label: str):
         w, h = float(parts[0]), float(parts[1])
         if w > 0 and h > 0:
             return w / h
-    except (ValueError, IndexError):
-        pass
+    except (ValueError, IndexError) as exc:
+        logger.debug("aspect parse skipped for size label: %s", exc)
     return None
 
 

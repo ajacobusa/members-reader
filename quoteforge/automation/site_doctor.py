@@ -37,10 +37,13 @@ Run:  python -m quoteforge.admin site-doctor            # check + heal + print
 Scheduled daily at 02:30 (after the 01:50 rebuild and the 02:00 backup).
 """
 import json
+import logging
 import os
 import re
 import subprocess
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 
 # Repo root (…/quoteforge/automation/site_doctor.py -> two levels up).
@@ -82,8 +85,8 @@ def _read_page() -> str:
         appjs = (DOCS / "app.js")
         if appjs.exists():
             html += "\n" + appjs.read_text(encoding="utf-8")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - app.js is optional in the scan
+        logger.debug("app.js read skipped in site-doctor scan: %s", exc)
     return html
 
 
@@ -353,8 +356,8 @@ def heal_prune_orphans(orphans: list) -> str:
         try:
             (ASSETS / f).unlink()
             removed += 1
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - best-effort prune
+            logger.debug("orphan asset unlink skipped for %s: %s", f, exc)
     return f"pruned {removed}/{len(orphans)} orphaned asset(s)"
 
 
