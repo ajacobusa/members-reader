@@ -302,7 +302,8 @@ def check_infrastructure() -> dict:
         from quoteforge.automation.code_auditor import audit_module
         ORDER_PATH_SILENT_FREE = ("fulfillment/router.py",
                                   "automation/webhook_server.py",
-                                  "automation/pipeline_orchestrator.py")
+                                  "automation/pipeline_orchestrator.py",
+                                  "db/database.py")
         offenders = {}
         for m in ORDER_PATH_SILENT_FREE:
             lines = [s["line"] for s in audit_module(m)["smells"]

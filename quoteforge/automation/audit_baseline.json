@@ -99,9 +99,6 @@
  "config.py": {
   "silent_except": 1
  },
- "db/database.py": {
-  "silent_except": 3
- },
  "etsy/exec_report.py": {
   "silent_except": 2
  },
