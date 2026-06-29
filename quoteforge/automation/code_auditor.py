@@ -58,11 +58,18 @@ def _package_root() -> Path:
 def list_modules() -> list[str]:
     """Every auditable module, as a POSIX path relative to the package root
     (e.g. 'automation/code_auditor.py'), deterministically sorted. Excludes
-    package __init__ files and bytecode caches."""
+    package __init__ files, bytecode caches, and anything under a hidden dir -
+    notably the harness's nested git worktrees under .claude/worktrees, which
+    would otherwise let a stale checkout's smells leak into the sweep."""
     root = _package_root()
-    mods = [p.relative_to(root).as_posix()
-            for p in root.rglob("*.py")
-            if "__pycache__" not in p.parts and p.name != "__init__.py"]
+    mods = []
+    for p in root.rglob("*.py"):
+        if p.name == "__init__.py":
+            continue
+        rel = p.relative_to(root)
+        if any(seg == "__pycache__" or seg.startswith(".") for seg in rel.parts):
+            continue
+        mods.append(rel.as_posix())
     return sorted(mods)
 
 

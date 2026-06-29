@@ -309,7 +309,11 @@ def check_docs_ratchet(modules: list = None, root: Path = None) -> dict:
         # An entry may be a single file or a package directory (scanned fully).
         files = [p] if p.is_file() else sorted(p.rglob("*.py"))
         for f in files:
-            if "__pycache__" in f.parts:
+            # Skip bytecode caches AND anything under a hidden dir (notably the
+            # harness's nested git worktrees under .claude/worktrees, which would
+            # otherwise flood the ratchet with a stale checkout's undocumented code).
+            if "__pycache__" in f.parts or any(
+                    seg.startswith(".") for seg in f.relative_to(root).parts):
                 continue
             relname = f.relative_to(root).as_posix()
             try:

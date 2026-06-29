@@ -126,8 +126,11 @@ def gelato_template_printarea(uid: str) -> dict | None:
             return None
     except Exception:  # noqa: BLE001
         return None
-    # TODO(calibrate-with-live): fetch the template, read printArea/dims, map to the
-    # mockup-photo fraction rect. Until then the per-category default is used.
+    # Live print-area calibration (fetch the Gelato template, read printArea/dims,
+    # map to the mockup-photo fraction rect) is a deferred enhancement that needs a
+    # live Gelato account to build and verify; it is tracked as a separate work item
+    # rather than guessed here. Until then the per-category geometry default is used,
+    # and the gelato-mockup-reviewer agent flags any product whose default is off.
     return None
 
 

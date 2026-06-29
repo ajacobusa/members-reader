@@ -15,6 +15,21 @@ def test_list_modules_covers_the_package():
     assert len(mods) > 50                                  # the whole package
 
 
+def test_list_modules_excludes_hidden_dirs(tmp_path, monkeypatch):
+    # REGRESSION: the harness pre-provisions nested git worktrees under
+    # .claude/worktrees; the sweep must NOT recurse into them (a stale checkout's
+    # smells once leaked into the live baseline and the docs ratchet).
+    (tmp_path / "real.py").write_text("x = 1\n", encoding="utf-8")
+    wt = tmp_path / ".claude" / "worktrees" / "x" / "quoteforge"
+    wt.mkdir(parents=True)
+    (wt / "leaked.py").write_text("try:\n    pass\nexcept Exception:\n    pass\n",
+                                  encoding="utf-8")
+    monkeypatch.setattr(ca, "_package_root", lambda: tmp_path)
+    mods = ca.list_modules()
+    assert "real.py" in mods
+    assert not any(".claude" in m for m in mods)           # worktree never scanned
+
+
 # ───────────────────────────────────────────── grounded smells
 def test_smells_flags_silent_and_bare_except_and_todo():
     src = (
