@@ -5,7 +5,10 @@ Ahead of each saved date we surface a reminder so the buyer can re-gift in one
 click. Reminders fire only for real saved profiles; nothing is invented.
 """
 from __future__ import annotations
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def _days_until_anniversary(event_date: str, now: datetime) -> int | None:
@@ -58,8 +61,8 @@ def upcoming_gift_reminders(days_ahead: int = 21,
                 last = datetime.fromisoformat(rem.replace("Z", ""))
                 if (now - last).days < 330:
                     continue
-            except ValueError:
-                pass
+            except ValueError as exc:
+                logger.debug("unparseable last-reminded date, will remind: %s", exc)
         out.append({
             "id": p["id"], "owner_email": p["owner_email"],
             "recipient_name": p["recipient_name"],

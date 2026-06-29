@@ -4,8 +4,11 @@ variables (and an optional .env file) with safe defaults.
 Covers API keys, pricing/margin policy, pipeline behavior, autopilot limits,
 backup retention, and the product/size catalog.
 """
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Load .env file if present (python-dotenv optional — degrade gracefully)
 try:
@@ -17,7 +20,7 @@ try:
         # the value in .env and keys appear "not set".
         load_dotenv(_env_path, override=True)
 except ImportError:
-    pass  # dotenv not installed — environment variables still work
+    logger.debug("python-dotenv not installed; using OS environment variables only")
 
 
 def _env_bool(name: str, default: bool = False) -> bool:

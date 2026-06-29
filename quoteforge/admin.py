@@ -104,8 +104,8 @@ def _cmd_ha_install(args: list[str]) -> int:
     if "--at" in args:
         try:
             at = args[args.index("--at") + 1]
-        except IndexError:
-            pass
+        except IndexError as exc:
+            logger.debug("--at had no value, using default %s: %s", at, exc)
     from quoteforge.config import _PROJECT_ROOT
     src = _PROJECT_ROOT / "scripts" / "qf-ha-sync.ps1"
     if not src.exists():
@@ -2847,8 +2847,8 @@ def _cmd_gelato_review(args: list[str]) -> int:
         try:
             _alert("\U0001f6d2 Gelato catalog review - action needed",
                    "<pre>" + report + "</pre>", what="gelato-review")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - alert is non-blocking
+            logger.debug("gelato-review alert send failed: %s", exc)
     return 0
 
 
@@ -2866,8 +2866,8 @@ def _cmd_gelato_opportunities(args: list[str]) -> int:
         try:
             _alert("\U0001f4a1 New product opportunities from the print partner",
                    "<pre>" + report + "</pre>", what="gelato-opportunities")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - alert is non-blocking
+            logger.debug("gelato-opportunities alert send failed: %s", exc)
     return 0
 
 
@@ -2938,8 +2938,8 @@ def _cmd_product_photos(args: list[str]) -> int:
             _alert("\U0001f5bc️ Product-photo agent - downloads need attention",
                    "<pre>" + "\n".join(summary["log"]) + "</pre>",
                    what="product-photos")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - alert is non-blocking
+            logger.debug("product-photos alert send failed: %s", exc)
     return 0
 
 
@@ -3249,8 +3249,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from quoteforge.automation.monitoring import init_monitoring
         init_monitoring()
-    except Exception:  # noqa: BLE001 — monitoring is never load-bearing
-        pass
+    except Exception as exc:  # noqa: BLE001 - monitoring is never load-bearing
+        logger.debug("monitoring init skipped: %s", exc)
     argv = argv if argv is not None else sys.argv[1:]
     if not argv or argv[0] not in COMMANDS:
         print(__doc__)

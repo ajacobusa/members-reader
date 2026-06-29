@@ -1,50 +1,5 @@
 {
- "admin.py": {
-  "silent_except": 5
- },
- "analytics/crm.py": {
-  "silent_except": 1
- },
- "analytics/trend_engine.py": {
-  "silent_except": 1
- },
- "automation/ai_ops_review.py": {
-  "silent_except": 1
- },
- "automation/healthcheck.py": {
-  "todo_marker": 1
- },
- "automation/journey_analysis.py": {
-  "silent_except": 1
- },
- "automation/weekly_review.py": {
-  "silent_except": 21
- },
- "config.py": {
-  "silent_except": 1
- },
- "etsy/exec_report.py": {
-  "silent_except": 2
- },
- "etsy/ledger.py": {
-  "silent_except": 2
- },
- "etsy/listing_preview.py": {
-  "silent_except": 7
- },
  "images/supplier_mockup.py": {
   "todo_marker": 1
- },
- "marketing/affiliate_programs.py": {
-  "silent_except": 1
- },
- "marketing/gift_profiles.py": {
-  "silent_except": 1
- },
- "marketing/winback.py": {
-  "silent_except": 1
- },
- "quotes/generator.py": {
-  "silent_except": 1
  }
 }

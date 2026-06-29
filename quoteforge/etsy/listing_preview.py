@@ -6,8 +6,11 @@ single .html file opens anywhere via a file:// URL - for review/comment.
 """
 import base64
 import hashlib
+import logging
 from io import BytesIO
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def _b64(path: Path) -> str:
@@ -486,8 +489,8 @@ def _listing_occasion_key(listing_n: int, title: str, category: str) -> str:
         if rec:
             occ = (rec.occasion or "").lower()
             category = rec.category or category
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - launch-pack lookup optional
+        logger.debug("launch-pack occasion lookup skipped: %s", exc)
     t = f"{title} {category}".lower()
     if "memorial" in t:
         return "memorial"
@@ -1929,8 +1932,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 _seen = {r["size"]: r for r in sizemap[_bkey]}
                 sizemap[_bkey] = sorted(
                     _seen.values(), key=lambda r: r["price"])
-        except Exception:  # noqa: BLE001 — never break the build on the branded catalog
-            pass
+        except Exception as exc:  # noqa: BLE001 - never break the build, but log
+            logger.debug("branded catalog sizemap skipped: %s", exc)
     # MUGS + CALENDARS: like branded + apparel, each is a "format" ("{name} - {colour}")
     # whose REAL sizes/prices must live in SIZEMAP under that key. These were missing,
     # so the editor's Size dropdown fell back to the first key (poster) and showed
@@ -1951,8 +1954,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         for _muk in _mukeys:                  # de-dup sizes per mug key only
             _s = {r["size"]: r for r in sizemap[_muk]}
             sizemap[_muk] = sorted(_s.values(), key=lambda r: r["price"])
-    except Exception:  # noqa: BLE001 — never break the build on the mug catalog
-        pass
+    except Exception as exc:  # noqa: BLE001 - never break the build, but log
+        logger.debug("mug catalog sizemap skipped: %s", exc)
     try:
         from quoteforge.etsy.calendar_catalog import (
             CALENDAR_CATALOG as _CAc, build_calendar_variations as _bcav)
@@ -1968,8 +1971,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         for _cak in _cakeys:                  # de-dup sizes per calendar key only
             _s = {r["size"]: r for r in sizemap[_cak]}
             sizemap[_cak] = sorted(_s.values(), key=lambda r: r["price"])
-    except Exception:  # noqa: BLE001 — never break the build on the calendar catalog
-        pass
+    except Exception as exc:  # noqa: BLE001 - never break the build, but log
+        logger.debug("calendar catalog sizemap skipped: %s", exc)
     sizemap_json = json.dumps(sizemap)
     all_formats_json = json.dumps(GLOBAL_FORMATS)
     editor_picks_json = json.dumps([s.lower() for s in EDITOR_PICKS])
@@ -2058,8 +2061,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             _rh = _emit_url(_url, f"tile-{_gidk}.jpg")   # re-host same-origin (no leak/taint)
             if _rh:
                 _garment_photos[_gidk] = _rh     # garment_id key (preferred in _card)
-    except Exception:  # noqa: BLE001 — never break the build on the supplier API
-        pass
+    except Exception as exc:  # noqa: BLE001 - never break the build, but log
+        logger.debug("supplier apparel tiles skipped: %s", exc)
     # Front + BACK garment photos for the editor's front/back FLIP, so a buyer can
     # see and design the BACK too. garment_id -> {front, back}; back is the matching
     # print-partner back-view tile (brand/tile-<gid>-back.jpg), or the front if none.
@@ -2249,8 +2252,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             mockup_photos[_nm] = {"src": _url, "area": _spec.get("area"),
                                   "cyl": bool(_spec.get("cyl")),
                                   "span": float(_spec.get("span", 1.9))}
-    except Exception:  # noqa: BLE001 — never break the build on the sync catalog
-        pass
+    except Exception as exc:  # noqa: BLE001 - never break the build, but log
+        logger.debug("mockup-sync catalog skipped: %s", exc)
     mockup_photos_json = json.dumps(mockup_photos)
 
     # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
@@ -7536,8 +7539,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # rebuild can never silently drop it and break the deploy.
     try:
         (out.parent / ".nojekyll").write_text("", encoding="utf-8")
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.warning(".nojekyll write failed (Pages deploy may break): %s", exc)
     return out
 
 

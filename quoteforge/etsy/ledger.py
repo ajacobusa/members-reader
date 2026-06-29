@@ -14,7 +14,10 @@ per day for history/trends. Money figures are USD.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 
 def _daily_opex() -> float:
@@ -290,8 +293,8 @@ def export_ledger_excel(period: str = "all", out_path=None):
         pie.add_data(Reference(su, min_col=2, min_row=4, max_row=7))
         pie.set_categories(Reference(su, min_col=1, min_row=4, max_row=7))
         su.add_chart(pie, "D3")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - chart is cosmetic
+        logger.debug("ledger cost-mix pie chart skipped: %s", exc)
     su.column_dimensions["A"].width = 18
 
     ws = wb.create_sheet("General Ledger")
@@ -342,8 +345,8 @@ def export_ledger_excel(period: str = "all", out_path=None):
             chart.add_data(data, titles_from_data=True)
             chart.set_categories(cats)
             tr.add_chart(chart, "F2")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - chart is cosmetic
+        logger.debug("ledger trend chart skipped: %s", exc)
 
     out = out_path or (OUTPUT_DIR / "general_ledger.xlsx")
     from pathlib import Path

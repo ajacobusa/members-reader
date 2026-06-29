@@ -12,6 +12,10 @@ AI summary when Claude is configured, deterministic otherwise. Never invents dat
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def _clarity_metrics() -> dict:
     """Reuse the analytics_report Clarity block (live insights or status)."""
@@ -78,8 +82,8 @@ def _ai_narrative(data: dict) -> str:
             "journey_analysis", max_tokens=180)
         if text and text.strip():
             return text.strip()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - AI summary optional, deterministic fallback
+        logger.debug("journey AI summary skipped: %s", exc)
     if f["abandon_rate_pct"] >= 50 and f["started_open"]:
         return (f"{f['abandon_rate_pct']}% of started designs are abandoned. "
                 "Focus on the customization step - the recovery email + a simpler "
