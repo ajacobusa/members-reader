@@ -111,6 +111,15 @@ def test_live_codebase_has_no_smell_beyond_committed_baseline():
     assert r["modules"] > 50 and r["regressions"] == [] and r["ok"] is True
 
 
+def test_audit_sweep_is_automated_in_render_cron():
+    # REGRESSION: the daily audit sweep must be wired into a Render cron so it
+    # actually RUNS in production, not just defined in the Windows scheduler.
+    from pathlib import Path
+    text = (Path(__file__).resolve().parent.parent
+            / "render.yaml").read_text(encoding="utf-8")
+    assert "quoteforge.admin audit" in text          # the daily-guards cron runs it
+
+
 # ───────────────────────────────────────────── wiring (keeps infra-check green)
 def test_audit_command_and_job_are_wired():
     import quoteforge.admin as admin
