@@ -68,6 +68,48 @@ def test_no_commit_mode_skips_autocommit_but_still_pushes(tmp_path):
     assert "auto_commit" not in r                                 # step skipped
 
 
+def test_autocommit_skipped_on_feature_branch(tmp_path):
+    # REGRESSION: the nightly auto-backup must NEVER auto-commit in-progress work on a
+    # feature branch. A scheduled 02:00 run once swept a half-finished mid-session
+    # change into a 'chore: auto-backup' commit (and pushed it). Only 'main' is safe.
+    import quoteforge.db.database as db
+
+    class FeatureBranchGit(FakeGit):
+        def __call__(self, args, **kwargs):
+            p = super().__call__(args, **kwargs)
+            if args[1] == "rev-parse" and "--abbrev-ref" in args:
+                p.stdout = "fix/some-feature\n"
+            return p
+    git = FeatureBranchGit()
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2:
+        db.init_db()
+        db.create_order({"order_id": "Z", "recipient_name": "X", "occasion": "Y"})
+        r = run_full_backup(push=True, runner=git)
+    assert "skipped" in r["auto_commit"] and "fix/some-feature" in r["auto_commit"]
+    assert "add" not in git.calls and "commit" not in git.calls   # WIP NOT committed
+    assert r["push"] == "pushed"                  # already-committed state still saved
+
+
+def test_autocommit_runs_on_main(tmp_path):
+    # The counterpart: on 'main' the auto-commit still happens as before.
+    import quoteforge.db.database as db
+
+    class MainGit(FakeGit):
+        def __call__(self, args, **kwargs):
+            p = super().__call__(args, **kwargs)
+            if args[1] == "rev-parse" and "--abbrev-ref" in args:
+                p.stdout = "main\n"
+            return p
+    git = MainGit()
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2:
+        db.init_db()
+        db.create_order({"order_id": "Z", "recipient_name": "X", "occasion": "Y"})
+        r = run_full_backup(push=True, runner=git)
+    assert r["auto_commit"] == "committed" and "commit" in git.calls
+
+
 def test_nothing_to_commit_still_pushes(tmp_path):
     import quoteforge.db.database as db
     git = FakeGit(has_staged=False)

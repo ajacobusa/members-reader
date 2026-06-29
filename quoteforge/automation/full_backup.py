@@ -2,7 +2,9 @@
 
 Keeps everything safe off-machine with zero effort:
   1. snapshot the database (+ prune to the retention window)
-  2. commit any tracked code changes (auto-backup commit)
+  2. commit any tracked code changes (auto-backup commit) - ONLY on the default
+     branch 'main'; on a feature branch the auto-commit is skipped so a scheduled
+     run can't sweep in-progress work into a chore commit
   3. push to GitHub so the work is off-disk
   4. refresh a complete local git bundle (offline restore)
 
@@ -45,16 +47,26 @@ def run_full_backup(push: bool = True, auto_commit: bool = True,
     except Exception as exc:  # noqa: BLE001
         result["db_backup"] = f"error: {exc}"
 
-    # 2. Auto-commit tracked changes (modifications/deletions only).
+    # 2. Auto-commit tracked changes (modifications/deletions only) - but NEVER on a
+    #    feature branch. A scheduled 02:00 run would otherwise sweep in-progress work
+    #    into a 'chore: auto-backup' commit on whatever branch is checked out (it once
+    #    grabbed a half-finished change mid-session and pushed it). Only the default
+    #    branch is safe to auto-commit; a feature branch is left for the PR flow. An
+    #    empty/unknown branch (rev-parse failed) falls back to the old behaviour.
     if auto_commit:
-        _git(["add", "-u"], runner)
-        code, _ = _git(["diff", "--cached", "--quiet"], runner)  # 1 = staged changes
-        if code == 1:
-            msg = f"chore: auto-backup {datetime.now():%Y-%m-%d %H:%M}"
-            c, out = _git(["commit", "-m", msg], runner)
-            result["auto_commit"] = "committed" if c == 0 else f"failed: {out[:120]}"
+        _, branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], runner)
+        branch = (branch or "").strip()
+        if branch and branch != "main":
+            result["auto_commit"] = f"skipped (on feature branch '{branch}', not main)"
         else:
-            result["auto_commit"] = "nothing to commit"
+            _git(["add", "-u"], runner)
+            code, _ = _git(["diff", "--cached", "--quiet"], runner)  # 1 = staged changes
+            if code == 1:
+                msg = f"chore: auto-backup {datetime.now():%Y-%m-%d %H:%M}"
+                c, out = _git(["commit", "-m", msg], runner)
+                result["auto_commit"] = "committed" if c == 0 else f"failed: {out[:120]}"
+            else:
+                result["auto_commit"] = "nothing to commit"
 
     # 3. Push to GitHub.
     if push:
