@@ -152,8 +152,8 @@ def decide_claim(order_id: str, decision: str, note: str = "",
                     f"({rep.get('status')}: {rep.get('detail', '')}). Held for manual "
                     f"action - no replacement exists yet.</pre>")
             except Exception as exc:  # noqa: BLE001 - never block the decision, but log
-                logger.warning("reprint-did-not-submit alert failed for %s: %s",
-                               order_id, exc)
+                _logger.warning("reprint-did-not-submit alert failed for %s: %s",
+                                order_id, exc)
 
     # Only email the customer when the message is TRUE: suppress the "your replacement
     # is on the way" note if the reprint did not actually submit.

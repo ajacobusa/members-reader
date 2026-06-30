@@ -26,8 +26,8 @@ def _mock_claude(text: str):
 # ── Base template tests ──────────────────────────────────────────
 
 def test_base_templates_has_all_types():
-    # Five types: includes "In Production" (added for full lifecycle coverage)
-    assert len(BASE_TEMPLATES) == 5
+    # Six types: + "Order Delivered" (buyer delivery confirmation)
+    assert len(BASE_TEMPLATES) == 6
 
 
 def test_all_message_types_present():

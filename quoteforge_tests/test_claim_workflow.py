@@ -84,6 +84,21 @@ def test_replacement_blocked_without_ship_to(tmp_path, monkeypatch):
     assert r["replacement"]["status"] in ("needs_input", "manual")
 
 
+def test_reprint_failed_alert_raise_is_logged_not_crashed(tmp_path, monkeypatch):
+    # REGRESSION: reprint did NOT submit (no ship_to) AND the owner-alert send RAISES -
+    # the except handler must LOG (it used an undefined `logger`, crashing with
+    # NameError) and still return an actionable supplier_review.
+    _seed(tmp_path, monkeypatch, claim_status="supplier_review", ship_to="")
+
+    def _boom(*a, **k):
+        raise RuntimeError("smtp down")
+    monkeypatch.setattr("quoteforge.automation.emailer._send_email", _boom)
+    from quoteforge.fulfillment.claim_workflow import decide_claim
+    r = decide_claim("QF-1", "approved_reprint")        # must NOT raise NameError
+    assert r["status"] == "supplier_review"
+    assert r["replacement"]["status"] in ("needs_input", "manual")
+
+
 def test_invalid_transition_blocked(tmp_path, monkeypatch):
     _seed(tmp_path, monkeypatch, claim_status="new")
     from quoteforge.fulfillment.claim_workflow import decide_claim

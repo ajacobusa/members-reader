@@ -29,6 +29,12 @@ BASE_TEMPLATES: dict[str, str] = {
         "You will receive a tracking number shortly so you can follow it to your door. "
         "Thank you for choosing my shop — I hope your personalized item brings joy every time you see it!"
     ),
+    "Order Delivered": (
+        "Your order has been delivered! I hope your personalized piece brings a smile "
+        "every time you see it. If it arrived damaged or not as you approved it on "
+        "screen, just reply with a photo within 7 days and I'll happily make it right. "
+        "Thank you so much for choosing my shop!"
+    ),
     "Review Request": (
         "Thank you for your purchase! I hope your personalized item arrived safely "
         "and that you and your recipient love it. "
