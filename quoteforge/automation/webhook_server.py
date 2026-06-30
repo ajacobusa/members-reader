@@ -91,9 +91,22 @@ _ORDER_LEVEL = ("customer_name", "customer_email", "sale_price", "price",
                 "total", "order_total", "grandtotal", "shipping_address")
 
 
+def _express_shipment_method(item: dict) -> str:
+    """The Gelato shipment method for this line: the express UID when the buyer chose
+    express AND the paid upgrade is enabled in config, else '' (the normal/default
+    method). Gated so a disabled shop never ships - or charges for - express."""
+    from quoteforge.config import EXPRESS_SHIPPING_ENABLED, EXPRESS_SHIPMENT_METHOD
+    chose_express = (str(item.get("shipment_method") or "").lower() == "express"
+                     or bool(item.get("express_shipping")))
+    return EXPRESS_SHIPMENT_METHOD if (EXPRESS_SHIPPING_ENABLED and chose_express) else ""
+
+
 def _build_order_data(item: dict, etsy_order_id: str) -> dict:
     """Map a (line-item) payload to the pipeline's order_data shape."""
     data = {
+        # Express delivery upgrade (opt-in, paid) -> the Gelato method this order
+        # ships by; the router sends it to Gelato. '' = the normal/default method.
+        "shipment_method": _express_shipment_method(item),
         "etsy_order_id": etsy_order_id,
         "order_id": item.get("order_id") or etsy_order_id,
         "customer_name": item.get("customer_name", ""),

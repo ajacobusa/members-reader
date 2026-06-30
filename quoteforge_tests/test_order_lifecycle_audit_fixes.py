@@ -215,7 +215,8 @@ def test_concurrent_duplicate_routing_submits_once(tmp_path, monkeypatch):
     monkeypatch.setattr("quoteforge.config.TEST_MODE", False, raising=False)
     calls = []
 
-    def _slow_create(order_id, recipient, artwork_url, product_uid, quantity=1):
+    def _slow_create(order_id, recipient, artwork_url, product_uid, quantity=1,
+                     shipment_method=""):
         calls.append(order_id)
         time.sleep(0.15)                      # widen the race window
         db.update_order(order_id, vendor_order_id="VID-1")

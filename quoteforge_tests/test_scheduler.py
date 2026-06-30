@@ -8,7 +8,8 @@ from quoteforge import admin
 
 
 def test_all_jobs_defined_with_unique_names():
-    assert len(SCHEDULED_JOBS) == 49   # + ...safety-check, infra-check, code-audit, runtime-health
+    assert len(SCHEDULED_JOBS) == 50   # + ...code-audit, runtime-health, shipping-rate-review
+    assert "QuoteForge Shipping Rate Review" in EXPECTED_TASK_NAMES
     assert "QuoteForge Runtime Health" in EXPECTED_TASK_NAMES
     assert "QuoteForge Code Audit Sweep" in EXPECTED_TASK_NAMES
     assert "QuoteForge Wave Books Review" in EXPECTED_TASK_NAMES

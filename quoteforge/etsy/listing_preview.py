@@ -1761,10 +1761,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     data_json = json.dumps(listings)
     from quoteforge.etsy.occasion_themes import tints_json
     occ_tint_json = tints_json()
-    # Estimated days to the customer's door (production + shipping) - the editor turns
-    # this into a concrete 'arrives by <date>' so a gift buyer knows it lands in time.
+    # Estimated production + shipping days (retained for internal/SEO use). The editor
+    # deliberately shows NO hard delivery date - a made-to-order arrival date is a
+    # promise we can't control, so we never display one (over-promise risk).
     from quoteforge.config import PRODUCTION_DAYS, SHIPPING_DAYS
     ship_days_total = int(PRODUCTION_DAYS) + int(SHIPPING_DAYS)
+    # Express delivery upgrade (OFF by default) - the editor surfaces it only when
+    # enabled; the upcharge is collected at checkout, the order is routed to the print
+    # partner's express method server-side. Never names a supplier/marketplace.
+    from quoteforge.config import (EXPRESS_SHIPPING_ENABLED, EXPRESS_SHIPPING_UPCHARGE,
+                                   EXPRESS_SHIPPING_DAYS)
+    express_enabled_js = "true" if EXPRESS_SHIPPING_ENABLED else "false"
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
         from quoteforge.etsy.gift_finder import quiz_config
@@ -3975,6 +3982,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const DATA = {data_json};
  const OCCASION_TINT = {occ_tint_json};
  const SHIP_DAYS_TOTAL = {ship_days_total};
+ const EXPRESS_ENABLED = {express_enabled_js};            // paid express upgrade on?
+ const EXPRESS_UPCHARGE = {EXPRESS_SHIPPING_UPCHARGE:.2f};
+ const EXPRESS_DAYS = {EXPRESS_SHIPPING_DAYS};
  const OWNER = "{owner}";
  const PRICE_HI = "{price_hi}";
  const MAT_SHORT = "{mat_short}";
@@ -4133,13 +4143,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      return '<div class="dsl">'+esc(l)+'</div>';
    }}).join('');
  }}
- function _arriveBy(){{
-   var d = new Date(Date.now() + (SHIP_DAYS_TOTAL||9)*86400000);
-   return d.toLocaleDateString('en-US', {{weekday:'short', month:'short', day:'numeric'}});
- }}
  function _setArrival(){{
+   // Deliberately NO hard delivery date: a made-to-order arrival date is a promise
+   // we can't control (production + carrier variance), so we never show one and
+   // avoid the over-promise / late-delivery complaint risk.
    var el = document.getElementById('marrive');
-   if(el) el.innerHTML = '\\uD83D\\uDE9A Order now \\u2014 arrives by <b>' + _arriveBy() + '</b>';
+   if(!el) return;
+   var html = '\\uD83D\\uDE9A <b>Made to order</b> just for you \\u2014 typically ships in a few business days';
+   // Express upgrade (only when enabled): collected at checkout, routed express.
+   if(typeof EXPRESS_ENABLED!=='undefined' && EXPRESS_ENABLED){{
+     html += '<br><span style="color:var(--green)">\\u26A1 Need it sooner? '
+       + '<b>Express delivery</b> at checkout \\u2014 +$' + EXPRESS_UPCHARGE.toFixed(2)
+       + ', about ' + EXPRESS_DAYS + ' business days</span>';
+   }}
+   el.innerHTML = html;
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
