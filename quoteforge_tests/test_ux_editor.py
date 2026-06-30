@@ -18,6 +18,23 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_mug_prints_full_360_wrap_band(tmp_path):
+    # REGRESSION: a mug prints the full 360-degree WRAP, so its print area must be a
+    # WIDE band (_placeMugBound), not the near-square apparel front panel.
+    js = _page(tmp_path)
+    assert "_placeMugBound" in js                       # dedicated wide wrap bound
+    assert "const b=_placeMugBound(W,H)" in js          # the mug uses it, not _placeBoundMock
+    assert "W*0.78*BOX.s" in js                         # wide band (vs the 0.42 front panel)
+
+
+def test_mug_spin_shows_full_wrap_front_and_back(tmp_path):
+    # REGRESSION: the mug spin wraps the design ~300 degrees (not a 97-degree front
+    # panel) and auto-spins a full turn, so the buyer sees front AND back.
+    js = _page(tmp_path)
+    assert "arc:(handle?5.3:5.6)" in js                 # full-circumference wrap (was arc:1.7)
+    assert "rot+=0.010" in js                           # full 360 auto-spin (was a gentle rock)
+
+
 def test_wording_clamped_inside_print_area(tmp_path):
     # REGRESSION: the draggable wording must be clamped by its OWN block half-size so
     # it can never be dragged outside the dashed print area (which would print
