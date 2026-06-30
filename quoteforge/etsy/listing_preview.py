@@ -1758,6 +1758,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         listings.append(entry)
     # Re-order so synthesized cards slot into showcase position with the rest.
     _reorder_by_occasion(listings)
+    # Free-shipping strategy (gated, OFF by default): bake the high-end shipping cost
+    # INTO every displayed price so the page can present "Free shipping". Done once here
+    # over EVERY listing's formats (wall art + apparel + mugs) - the single point all
+    # price pills read from. The product TYPE is derived from the format name (whole-word
+    # matched). Safe only when the Etsy listings are ALSO free-shipping (else the buyer
+    # pays shipping twice), which is why FREE_SHIPPING_BAKED is owner-gated.
+    from quoteforge.config import FREE_SHIPPING_BAKED
+    if FREE_SHIPPING_BAKED:
+        from quoteforge.etsy.shipping_costs import landed_price
+        for _lst in listings:
+            fmts = _lst.get("formats") or []
+            for _f in fmts:
+                if _f.get("price") is not None:
+                    _f["price"] = landed_price(_f["price"], _f.get("name", ""))
+            prices = [f["price"] for f in fmts if f.get("price") is not None]
+            if prices:
+                _lst["price"] = f"{min(prices):.2f}"
     data_json = json.dumps(listings)
     from quoteforge.etsy.occasion_themes import tints_json
     occ_tint_json = tints_json()
@@ -1772,6 +1789,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     from quoteforge.config import (EXPRESS_SHIPPING_ENABLED, EXPRESS_SHIPPING_UPCHARGE,
                                    EXPRESS_SHIPPING_DAYS)
     express_enabled_js = "true" if EXPRESS_SHIPPING_ENABLED else "false"
+    # Free-shipping copy: when prices are shipping-inclusive (FREE_SHIPPING_BAKED), say so;
+    # otherwise the honest default that shipping is added at checkout.
+    taxnote_html = ('🧾 Prices are per item with <b>free shipping</b>. Tax is '
+                    'calculated at checkout based on your location.'
+                    if FREE_SHIPPING_BAKED else
+                    '🧾 Prices are per item. <b>Tax &amp; shipping are calculated at '
+                    'checkout</b> based on your location.')
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
         from quoteforge.etsy.gift_finder import quiz_config
@@ -3958,8 +3982,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="savedesignrow">
            <button type="button" class="savebtn2" onclick="saveDesign()">💾 Save this design for later</button>
          </div>
-         <div class="note taxnote">🧾 Prices are per item. <b>Tax &amp; shipping are
-           calculated at checkout</b> based on your location.</div>
+         <div class="note taxnote">{taxnote_html}</div>
        </div>
        <div class="esecnav">
          <button type="button" class="esecback" onclick="editStep(2)">← Back</button>

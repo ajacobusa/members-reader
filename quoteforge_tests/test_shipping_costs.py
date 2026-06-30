@@ -33,6 +33,11 @@ def test_express_upcharge_is_the_delta_over_standard():
     assert sc.express_upcharge("poster", 1) == 9.45
 
 
+def test_landed_price_adds_shipping_to_item():
+    assert sc.landed_price(20.0, "poster", 1) == 35.75           # 20 + 15.75
+    assert sc.landed_price(30.0, "Framed - Oak", 1) == 56.25     # 30 + 26.25
+
+
 def test_table_override_via_env(monkeypatch):
     import quoteforge.config as cfg
     monkeypatch.setattr(cfg, "SHIPPING_COST_TABLE_JSON", '{"poster": 99}')

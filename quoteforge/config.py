@@ -376,6 +376,13 @@ ADDITIONAL_ITEM_SHIP_FACTOR: float = float(os.getenv("ADDITIONAL_ITEM_SHIP_FACTO
 EXPRESS_SHIP_MULT: float = float(os.getenv("EXPRESS_SHIP_MULT", "1.6"))          # express ≈ +60%
 SHIPPING_COST_TABLE_JSON: str = os.getenv("SHIPPING_COST_TABLE_JSON", "").strip()  # owner override
 SHIPPING_RATES_REVIEW_DAYS: int = int(os.getenv("SHIPPING_RATES_REVIEW_DAYS", "30"))
+# Free-shipping strategy: bake the shipping cost INTO the displayed item price and present
+# "Free shipping" (Etsy boosts free-shipping listings; US free-shipping guarantee at $35+).
+# OFF by default and it MUST stay off until the Etsy listings themselves are set to free
+# shipping - otherwise the buyer pays shipping TWICE (baked into the price here AND Etsy's
+# checkout shipping). When ON, the storefront shows landed prices (item + high-end shipping
+# + margin, via shipping_costs.landed_price) and the copy reads "Free shipping".
+FREE_SHIPPING_BAKED: bool = _env_bool("FREE_SHIPPING_BAKED", False)
 # WHO submits orders to Gelato - exactly one source may, or orders double-print +
 # double-charge. "quoteforge" (DEFAULT): QuoteForge is the personalization engine - it
 # GENERATES the artwork (AI quote -> template -> layout -> 300 DPI render) and submits

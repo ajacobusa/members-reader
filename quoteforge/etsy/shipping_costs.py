@@ -76,6 +76,13 @@ def express_upcharge(product_type: str, quantity: int = 1) -> float:
     return round(shipping_cost(product_type, quantity) * (float(EXPRESS_SHIP_MULT) - 1.0), 2)
 
 
+def landed_price(base_price: float, product_type: str, quantity: int = 1) -> float:
+    """Shipping-inclusive ('landed') price = item price + the high-end shipping cost,
+    for the free-shipping strategy (price includes shipping, shipping shown free).
+    The shipping component already carries the safety margin."""
+    return round(float(base_price) + shipping_cost(product_type, quantity), 2)
+
+
 def cost_summary() -> list:
     """Per-type {type, first_item, with_margin} rows for the monitor/report."""
     from quoteforge.config import SHIPPING_MARGIN_PCT
