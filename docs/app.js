@@ -1847,6 +1847,18 @@
    by=Math.min(Math.max(by,H*0.07),H*0.66-bh);
    return {x:bx,y:by,w:bw,h:bh};
  }
+ function _placeMugBound(W,H){
+   // A mug prints the full 360-degree WRAP, so its print area is a WIDE band whose
+   // aspect matches the real print dims (~2.1:1 for an 11oz), spanning the body -
+   // not a small front panel. Centred at BOX, resizable by BOX.s, kept on the body.
+   var ar=_printAR(); if(!(ar>0)) ar=2.1;
+   var bw=W*0.78*BOX.s, bh=bw/ar;
+   var maxbh=H*0.40; if(bh>maxbh){ bh=maxbh; bw=bh*ar; }    // never taller than the body
+   var bx=W*BOX.x-bw/2, by=H*BOX.y-bh/2;
+   bx=Math.min(Math.max(bx,W*0.05),W*0.95-bw);
+   by=Math.min(Math.max(by,H*0.14),H*0.72-bh);
+   return {x:bx,y:by,w:bw,h:bh};
+ }
  // Draggable text (position fractions) + manual size (0=auto) + rotation + drag mode.
  let TPOS={x:0.5, y:0.5}, TSIZE=0, TROT=0, ART={x:0,y:0,w:1,h:1}, DRAGMODE='text';
  // Per-element nudge offsets for a LAYOUT (badge/emblem): {slotName:{dx,dy}} in box
@@ -2230,10 +2242,10 @@
      if(_cd && _cd[0]>0 && _cd[1]>0) return _cd[0]/_cd[1];
      return 0.77;               // sensible portrait default (e.g. A4-ish cover)
    }
-   if(IS_MUG){                  // white ceramic body - aspect from the print bound dims
+   if(IS_MUG){                  // 360-degree WRAP - wide aspect from the print bound dims
      var _md=MUG_DIMS[MUG_PID[CURGARMENT]];
      if(_md && _md[0]>0 && _md[1]>0) return _md[0]/_md[1];
-     return 1.0;                // sensible square default
+     return 2.1;                // sensible wide-wrap default (~11oz mug)
    }
    if(IS_BRANDED){              // flat product field - aspect from the print bound dims
      var _d=BRANDED_DIMS[BRANDED_PID[CURGARMENT]];
@@ -2609,7 +2621,9 @@
        _wrapInto(ctx,snap,b,area,{span:spec.span||1.9,rot:rot,arc:1.7,shade:false});
      } else {
        area=_drawCylBody(ctx,W,H,acc,{handle:handle});
-       _wrapInto(ctx,snap,b,area,{span:1.9,rot:rot,arc:1.7,shade:true});
+       // A mug prints a FULL wrap (~300 degrees, leaving the handle gap), so the
+       // design covers most of the circumference and a spin reveals front AND back.
+       _wrapInto(ctx,snap,b,area,{span:1.9,rot:rot,arc:(handle?5.3:5.6),shade:true});
      }
    }
    c.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;c.style.cursor='grabbing';});
@@ -2618,14 +2632,18 @@
    c.addEventListener('touchmove',function(e){ if(e.touches[0]){ if(lx){ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; } lx=e.touches[0].clientX; } },{passive:true});
    c.addEventListener('touchend',function(){ lx=0; });
    _3d={on:true};
-   // Gently ROCK the product around the front (not a full spin) so it visibly moves
-   // - the cue that it's a 3D preview - while the design STAYS facing the buyer
-   // (a full auto-rotate hid the design on the bare back most of the time). Drag
-   // still gives full manual control; a late-loading real photo upgrades in place.
+   // Slowly SPIN the mug a full 360 so the buyer sees the whole wrap - front AND
+   // back. (The old code only rocked around the front because the design used to
+   // cover a small panel and a full turn showed a bare back; now the design wraps
+   // ~300 degrees, so the whole turn shows artwork.) A registered REAL photo can't
+   // turn, so it keeps the gentle rock; drag always gives full manual control.
    (function loop(){ if(!_3d.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){ hadPhoto=hp; dirty=true; }
      if(_SPIN_DIRTY){ var ns=_designSnap(); if(ns) snap=ns; _SPIN_DIRTY=false; dirty=true; }  // live edit
-     if(!drag){ tick++; rot=0.42*Math.sin(tick*0.022); dirty=true; }
+     if(!drag){ tick++;
+       if(hp){ rot=0.42*Math.sin(tick*0.022); }   // real photo: rock around the front
+       else { rot+=0.010; }                        // generated wrap: slow full 360 spin
+       dirty=true; }
      if(dirty){ frame(); dirty=false; } requestAnimationFrame(loop); })();
  }
  // Real front/back review (apparel): show the composed proof of the CURRENT side
@@ -2880,9 +2898,9 @@
    if(IS_CAL){                               // PORTRAIT white-paper cover + movable print frame
      if(!_mock) _drawCalField(ctx,x,y,w,h);   // real photo backdrop wins when present
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
-   } else if(IS_MUG){                         // white ceramic body + movable print frame
+   } else if(IS_MUG){                         // white ceramic body + full-wrap print band
      if(!_mock) _drawMugField(ctx,x,y,w,h);
-     const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+     const b=_placeMugBound(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    } else if(IS_BRANDED){                     // flat product field + movable print frame
      if(!_mock) _drawBrandedField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
