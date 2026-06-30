@@ -2478,7 +2478,7 @@
  // is reflected live (it used to show a frozen snapshot -> looked like you "cannot
  // change" anything). drawArt sets _SPIN_DIRTY; the read-design helpers set
  // _SNAPPING so their internal drawArt calls don't falsely flag a change.
- var _SPIN_DIRTY=false, _SNAPPING=false;
+ var _SPIN_DIRTY=false, _SNAPPING=false, _SPIN_PLAY=true;   // _SPIN_PLAY: auto-spin on/off (toggle)
  function _mockKey(){ var g=(typeof CURGARMENT!=='undefined'&&CURGARMENT)?CURGARMENT:'';
    if(g) return g; var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return f.split(' - ')[0]||''; }
  // Resolve the real-photo mockup base for the current product, in priority order:
@@ -2641,16 +2641,17 @@
    c.addEventListener('mousemove',function(e){ if(drag){ rot+=(e.clientX-lx)*0.01; lx=e.clientX; dirty=true; } });
    c.addEventListener('touchmove',function(e){ if(e.touches[0]){ if(lx){ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; } lx=e.touches[0].clientX; } },{passive:true});
    c.addEventListener('touchend',function(){ lx=0; });
-   _3d={on:true};
+   _3d={on:true}; _SPIN_PLAY=true; _updSpinLabel();   // opens spinning; button -> Stop
    // Slowly SPIN the mug a full 360 so the buyer sees the whole wrap - front AND
    // back. (The old code only rocked around the front because the design used to
    // cover a small panel and a full turn showed a bare back; now the design wraps
    // ~300 degrees, so the whole turn shows artwork.) A registered REAL photo can't
-   // turn, so it keeps the gentle rock; drag always gives full manual control.
+   // turn, so it keeps the gentle rock; drag always gives full manual control. The
+   // auto-advance is gated on _SPIN_PLAY so the Stop toggle freezes any angle to review.
    (function loop(){ if(!_3d.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){ hadPhoto=hp; dirty=true; }
      if(_SPIN_DIRTY){ var ns=_designSnap(); if(ns) snap=ns; _SPIN_DIRTY=false; dirty=true; }  // live edit
-     if(!drag){ tick++;
+     if(!drag && _SPIN_PLAY){ tick++;
        if(hp){ rot=0.42*Math.sin(tick*0.022); }   // real photo: rock around the front
        else { rot+=0.010; }                        // generated wrap: slow full 360 spin
        dirty=true; }

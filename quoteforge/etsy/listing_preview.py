@@ -3764,7 +3764,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
-       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="Spin your product" onclick="view3D()">&#128260; Spin your product &mdash; front &amp; back</button>
+       <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="Spin your product" onclick="toggleSpin()">&#128260; Spin your product &mdash; front &amp; back</button>
        <div class="dragbar" id="mplacement" style="display:none">
          <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
          <div class="dseg" role="group" aria-label="Choose side">
@@ -6481,7 +6481,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // is reflected live (it used to show a frozen snapshot -> looked like you "cannot
  // change" anything). drawArt sets _SPIN_DIRTY; the read-design helpers set
  // _SNAPPING so their internal drawArt calls don't falsely flag a change.
- var _SPIN_DIRTY=false, _SNAPPING=false;
+ var _SPIN_DIRTY=false, _SNAPPING=false, _SPIN_PLAY=true;   // _SPIN_PLAY: auto-spin on/off (toggle)
  function _mockKey(){{ var g=(typeof CURGARMENT!=='undefined'&&CURGARMENT)?CURGARMENT:'';
    if(g) return g; var f=(typeof CURFMT!=='undefined'?CURFMT:'')||''; return f.split(' - ')[0]||''; }}
  // Resolve the real-photo mockup base for the current product, in priority order:
@@ -6644,16 +6644,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    c.addEventListener('mousemove',function(e){{ if(drag){{ rot+=(e.clientX-lx)*0.01; lx=e.clientX; dirty=true; }} }});
    c.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx){{ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; }} lx=e.touches[0].clientX; }} }},{{passive:true}});
    c.addEventListener('touchend',function(){{ lx=0; }});
-   _3d={{on:true}};
+   _3d={{on:true}}; _SPIN_PLAY=true; _updSpinLabel();   // opens spinning; button -> Stop
    // Slowly SPIN the mug a full 360 so the buyer sees the whole wrap - front AND
    // back. (The old code only rocked around the front because the design used to
    // cover a small panel and a full turn showed a bare back; now the design wraps
    // ~300 degrees, so the whole turn shows artwork.) A registered REAL photo can't
-   // turn, so it keeps the gentle rock; drag always gives full manual control.
+   // turn, so it keeps the gentle rock; drag always gives full manual control. The
+   // auto-advance is gated on _SPIN_PLAY so the Stop toggle freezes any angle to review.
    (function loop(){{ if(!_3d.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){{ hadPhoto=hp; dirty=true; }}
      if(_SPIN_DIRTY){{ var ns=_designSnap(); if(ns) snap=ns; _SPIN_DIRTY=false; dirty=true; }}  // live edit
-     if(!drag){{ tick++;
+     if(!drag && _SPIN_PLAY){{ tick++;
        if(hp){{ rot=0.42*Math.sin(tick*0.022); }}   // real photo: rock around the front
        else {{ rot+=0.010; }}                        // generated wrap: slow full 360 spin
        dirty=true; }}
@@ -7443,12 +7444,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      el.addEventListener('mousemove',function(e){{ if(drag){{ grp.rotation.y+=(e.clientX-lx)*0.012; lx=e.clientX; }} }});
      el.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx) grp.rotation.y+=(e.touches[0].clientX-lx)*0.012; lx=e.touches[0].clientX; }} }},{{passive:true}});
      el.addEventListener('touchend',function(){{ lx=0; }});
-     _3d={{on:true}};
-     (function loop(){{ if(!_3d.on) return; if(!drag) grp.rotation.y+=0.005; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
+     _3d={{on:true}}; _SPIN_PLAY=true; _updSpinLabel();
+     (function loop(){{ if(!_3d.on) return; if(!drag && _SPIN_PLAY) grp.rotation.y+=0.005; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
    }};
    im.src=imgURL;
  }}
- function close3D(){{ var w=document.getElementById('mug3dwrap'); if(w)w.style.display='none'; _3d.on=false; }}
+ function close3D(){{ var w=document.getElementById('mug3dwrap'); if(w)w.style.display='none'; _3d.on=false; _SPIN_PLAY=true; _updSpinLabel(); }}
  // 3D suits CYLINDRICAL products: mugs + branded bottles/tumblers. CURFMT carries the
  // selected product name, so a tote/notebook never gets the 3D button.
  // 3D shape: CYLINDER for mugs/bottles/tumblers, a flat (framed) PANEL for everything
@@ -7464,6 +7465,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        : (((typeof _isCyl==='function')&&_isCyl()) ? '&#128260; Spin your product'
                                                    : '&#128444;&#65039; See it on your product');
    b.innerHTML=lbl; }}
+ // Spin = a single TOGGLE so the buyer reviews at their pace: first click opens + plays
+ // the spin (button -> "Stop spinning"); next click FREEZES it at the current angle to
+ // study it (button -> "Spin your product"); drag rotates manually any time. Only
+ // continuously-spinning products toggle (cylinders + the generated 3D panel); apparel
+ // flips and a flat product photo just open - there is no auto-spin to stop.
+ function _spins(){{ if((typeof _isCyl==='function')&&_isCyl()) return true;
+   if(typeof IS_APPAREL!=='undefined' && IS_APPAREL) return false;
+   var p=(typeof _photoMockupURL==='function')?_photoMockupURL():''; return !p; }}
+ function _updSpinLabel(){{ var b=document.getElementById('view3dbtn'); if(!b) return;
+   if(_spins() && _3d && _3d.on){{
+     b.innerHTML=_SPIN_PLAY ? '&#9208;&#65039; Stop spinning'
+                            : '&#9654;&#65039; Spin your product'; }}
+   else {{ _upd3DBtn(); }} }}
+ function toggleSpin(){{
+   if(!_spins()){{ view3D(); return; }}                  // flip / flat photo: just open it
+   if(!(_3d&&_3d.on)){{ _SPIN_PLAY=true; view3D(); }}    // closed -> open + play
+   else {{ _SPIN_PLAY=!_SPIN_PLAY; _SPIN_DIRTY=true; }}  // open -> play / freeze
+   _updSpinLabel(); }}
  // ── Remove background (client-side, free, private - the photo never leaves the
  // browser). Samples the 4 corners to estimate the backdrop and clears matching
  // pixels - great for logos / solid backdrops. Available on EVERY product's photo. ──

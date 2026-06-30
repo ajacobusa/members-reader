@@ -62,6 +62,16 @@ def test_mug_spin_shows_full_wrap_front_and_back(tmp_path):
     assert "rot+=0.010" in js                           # full 360 auto-spin (was a gentle rock)
 
 
+def test_spin_is_a_start_stop_toggle(tmp_path):
+    # REGRESSION: ONE button toggles the 360 spin - play it, then FREEZE it at any
+    # angle to review (and back). So the buyer controls the spin and gets clarity.
+    js = _page(tmp_path)
+    assert 'onclick="toggleSpin()"' in js               # the button drives the toggle
+    assert "function toggleSpin()" in js
+    assert "if(!drag && _SPIN_PLAY)" in js              # auto-spin gated on the toggle (freezes)
+    assert "Stop spinning" in js                        # the playing-state label
+
+
 def test_wording_clamped_inside_print_area(tmp_path):
     # REGRESSION: the draggable wording must be clamped by its OWN block half-size so
     # it can never be dragged outside the dashed print area (which would print

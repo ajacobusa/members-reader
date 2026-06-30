@@ -241,7 +241,7 @@ def test_open_spin_updates_live_on_edit(tmp_path):
     # drawArt now flags _SPIN_DIRTY on a real edit (guarded so the spin's own
     # snapshotting doesn't false-trigger), and each open spin re-renders.
     h = _page(tmp_path)
-    assert "var _SPIN_DIRTY=false, _SNAPPING=false;" in h
+    assert "var _SPIN_DIRTY=false, _SNAPPING=false, _SPIN_PLAY=true;" in h
     assert "if(!_SNAPPING) _SPIN_DIRTY=true;" in h            # edit -> dirty
     assert "_SNAPPING=true;" in h                             # read-helpers guard it
     assert "var ns=_designSnap(); if(ns) snap=ns;" in h       # cylinder re-snapshots
