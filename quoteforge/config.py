@@ -383,6 +383,18 @@ SHIPPING_RATES_REVIEW_DAYS: int = int(os.getenv("SHIPPING_RATES_REVIEW_DAYS", "3
 # checkout shipping). When ON, the storefront shows landed prices (item + high-end shipping
 # + margin, via shipping_costs.landed_price) and the copy reads "Free shipping".
 FREE_SHIPPING_BAKED: bool = _env_bool("FREE_SHIPPING_BAKED", False)
+
+# Apparel MULTI-AREA printing (back + sleeves, beyond the front). The print partner does
+# DTG on front/back/sleeves; each EXTRA area adds an upcharge that clears the shop margin
+# PLUS EXTRA_PRINT_MARGIN_PCT, AFTER marketplace fees - so an extra area is always
+# profitable, never a loss (apparel_print_costs.extra_print_upcharge). OFF until the
+# editor + per-area artwork plumbing land. Per-area COSTS are high-end estimates (the
+# partner's per-area surcharge isn't public - read the real number off the partner's
+# editor and override here); the high-end + the margin give double loss-protection.
+APPAREL_MULTI_AREA_ENABLED: bool = _env_bool("APPAREL_MULTI_AREA_ENABLED", False)
+EXTRA_PRINT_MARGIN_PCT: float = float(os.getenv("EXTRA_PRINT_MARGIN_PCT", "10"))   # +10% over base
+BACK_PRINT_COST: float = float(os.getenv("BACK_PRINT_COST", "6.00"))              # high-end est.
+SLEEVE_PRINT_COST: float = float(os.getenv("SLEEVE_PRINT_COST", "4.00"))          # high-end est.
 # WHO submits orders to Gelato - exactly one source may, or orders double-print +
 # double-charge. "quoteforge" (DEFAULT): QuoteForge is the personalization engine - it
 # GENERATES the artwork (AI quote -> template -> layout -> 300 DPI render) and submits

@@ -23,6 +23,21 @@ def _gelato_headers() -> dict:
     return {"X-API-KEY": GELATO_API_KEY, "Content-Type": "application/json"}
 
 
+def _build_files(artwork_url: str, extra_files: dict = None) -> list:
+    """The per-item files array: the front ('default') plus one file per EXTRA print
+    area (back / sleeve-*) that carries a real public URL. A blank/non-http extra area
+    is skipped so a missing back/sleeve file never breaks (or silently corrupts) the
+    submission - it just isn't printed."""
+    files = [{"type": "default", "url": artwork_url}]
+    for area, url in (extra_files or {}).items():
+        a = str(area or "").strip().lower()
+        if a in ("", "default", "front") or not url:
+            continue
+        if str(url).lower().startswith(("http://", "https://")):
+            files.append({"type": a, "url": url})
+    return files
+
+
 def create_gelato_order(
     order_id: str,
     recipient: dict,
@@ -30,8 +45,14 @@ def create_gelato_order(
     product_uid: str,
     quantity: int = 1,
     shipment_method: str = "",
+    extra_files: dict = None,
 ) -> dict:
     """Create a print order via Gelato API.
+
+    extra_files maps an EXTRA print-area placement type -> a public artwork URL, e.g.
+    {"back": "https://.../back.png", "sleeve-left": "https://.../sl.png"}. Each becomes
+    its own file in the item alongside the front ("default"), so apparel back/sleeve
+    designs actually print. Empty/None = front-only (the existing behaviour).
 
     recipient = {
         "name": "Emma Smith",
@@ -66,7 +87,7 @@ def create_gelato_order(
             {
                 "itemReferenceId": f"{order_id}-item-1",
                 "productUid": product_uid,
-                "files": [{"type": "default", "url": artwork_url}],
+                "files": _build_files(artwork_url, extra_files),
                 "quantity": quantity,
             }
         ],
