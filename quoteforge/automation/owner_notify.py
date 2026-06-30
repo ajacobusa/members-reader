@@ -86,6 +86,23 @@ def _shipped_html(o: dict) -> str:
             f"<table>{body}</table></div>")
 
 
+def _delivered_html(o: dict) -> str:
+    tn = o.get("tracking_number") or ""
+    rows = [
+        ("Order", o.get("order_id", "")),
+        ("Customer", o.get("customer_name") or o.get("recipient_name") or "—"),
+        ("Delivered", _item_line(o)),
+        ("Delivered at", o.get("delivered_at") or "—"),
+        ("Tracking", tn or "—"),
+    ]
+    body = "".join(
+        f"<tr><td style='padding:3px 12px 3px 0;color:#667'>{k}</td>"
+        f"<td style='padding:3px 0'><b>{v}</b></td></tr>" for k, v in rows)
+    return ("<div style='font-family:system-ui,Arial;font-size:14px'>"
+            "<h2 style='margin:0 0 8px'>✅ Order delivered</h2>"
+            f"<table>{body}</table></div>")
+
+
 def _send(subject: str, html: str) -> dict:
     from quoteforge.config import ORDER_NOTIFY_EMAIL
     from quoteforge.automation.emailer import _send_email
@@ -134,3 +151,10 @@ def send_owner_shipped(order) -> dict:
                    lambda o: f"📦 Shipped {o.get('order_id','')} — "
                              f"{o.get('tracking_number','') or 'tracking'}",
                    _shipped_html)
+
+
+def send_owner_delivered(order) -> dict:
+    """Email the owner when an order is confirmed delivered (idempotent, best-effort)."""
+    return _notify(order, "owner_delivered_emailed",
+                   lambda o: f"✅ Delivered {o.get('order_id','')}",
+                   _delivered_html)

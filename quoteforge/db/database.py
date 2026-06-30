@@ -174,6 +174,17 @@ def init_db() -> None:
             created_at  TEXT DEFAULT (datetime('now'))
         );
         """)
+        # Customer registry - the source of truth that a customer_id is UNIQUE in every
+        # case: customer_id is the PRIMARY KEY (no two customers share one) and email is
+        # UNIQUE (one id per buyer, so it stays stable across their orders).
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            customer_id TEXT PRIMARY KEY,
+            email       TEXT UNIQUE,
+            name        TEXT,
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+        """)
         conn.execute("""
         CREATE TABLE IF NOT EXISTS subscriptions (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -489,7 +500,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # Owner per-order notices: 1 once the INVOICE (on placement) / SHIPPED+tracking
     # (on ship) email has been sent to ORDER_NOTIFY_EMAIL - so a retry/re-poll never
     # double-sends, and a failed send retries next run instead of being lost.
-    for _col in ("owner_invoice_emailed", "owner_shipped_emailed"):
+    for _col in ("owner_invoice_emailed", "owner_shipped_emailed",
+                 "owner_delivered_emailed"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} INTEGER DEFAULT 0")
     # Delivery integrity: a 'delivered' order is NOT automatically problem-free.
@@ -533,8 +545,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
 # ── Order CRUD ───────────────────────────────────────────────────
 
 def _derive_customer_id(email: str, name: str = "") -> str:
-    """Stable per-buyer id from the buyer's email (or name) - same buyer -> same id, so
-    orders group by customer. 'CUST-' + 10 hex of a sha1; 'CUST-anon' if nothing given."""
+    """The BASE per-buyer id from the buyer's email (or name) - same buyer -> same base,
+    so orders group by customer. 'CUST-' + 10 hex of a sha1; 'CUST-anon' if nothing
+    given. get_or_create_customer guarantees the FINAL id is globally unique."""
     import hashlib
     key = (email or "").strip().lower() or (name or "").strip().lower()
     if not key:
@@ -542,9 +555,54 @@ def _derive_customer_id(email: str, name: str = "") -> str:
     return "CUST-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
 
 
+def get_or_create_customer(email: str, name: str = "", anon_key: str = "") -> str:
+    """Return a customer_id that is UNIQUE in every case, backed by the `customers`
+    registry (customer_id PRIMARY KEY, email UNIQUE):
+      - same email  -> the SAME id every time (stable grouping);
+      - different emails -> always DIFFERENT ids (a base-hash collision is disambiguated
+        with a numeric suffix until unique);
+      - no email -> a per-buyer-unique anon id derived from anon_key (e.g. the order id),
+        so anonymous orders are never collapsed onto one shared id.
+    """
+    import hashlib
+    email_n = (email or "").strip().lower()
+    with _conn() as conn:
+        if email_n:
+            row = conn.execute("SELECT customer_id FROM customers WHERE email=?",
+                               (email_n,)).fetchone()
+            if row:
+                return row["customer_id"]
+            base = _derive_customer_id(email_n)
+        else:
+            # No email: unique per order (anon_key is the unique order id).
+            seed = (anon_key or "").strip() or "anon"
+            base = "CUST-anon-" + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:10]
+        # Guarantee global uniqueness of the id itself (disambiguate any collision).
+        cid, n = base, 1
+        while conn.execute("SELECT 1 FROM customers WHERE customer_id=?",
+                           (cid,)).fetchone():
+            n += 1
+            cid = f"{base}-{n}"
+        try:
+            conn.execute("INSERT INTO customers (customer_id, email, name) VALUES (?,?,?)",
+                         (cid, email_n or None, name or None))
+        except sqlite3.IntegrityError:
+            # A concurrent insert won the race for this email - return the stored id.
+            row = conn.execute("SELECT customer_id FROM customers WHERE email=?",
+                               (email_n,)).fetchone()
+            if row:
+                return row["customer_id"]
+            raise
+        return cid
+
+
 def create_order(data: dict) -> str:
     """Insert a new order. Returns order_id."""
     order_id = data.get("order_id") or f"QF-{datetime.now().strftime('%Y%m%d%H%M%S%f')[:18]}"
+    # Resolve a globally-unique customer_id BEFORE opening the order write connection
+    # (get_or_create_customer uses its own connection - don't nest SQLite writers).
+    cust_id = data.get("customer_id") or get_or_create_customer(
+        data.get("customer_email", ""), data.get("customer_name", ""), order_id)
     with _conn() as conn:
         conn.execute("""
             INSERT OR REPLACE INTO orders
@@ -589,8 +647,7 @@ def create_order(data: dict) -> str:
             data.get("shipping_collected"),
             data.get("shipment_method"),
             int(data.get("quantity") or 1),
-            data.get("customer_id") or _derive_customer_id(
-                data.get("customer_email", ""), data.get("customer_name", "")),
+            cust_id,
         ))
     # Attach the customer's most-recent confirmed design (incl. any 12-month calendar
     # photo URLs) to this order, so the personalization travels with it to production.

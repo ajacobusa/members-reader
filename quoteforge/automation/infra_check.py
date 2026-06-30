@@ -19,12 +19,12 @@ the owner instead of being discovered after a customer is harmed:
   - a damage claim is never auto-filed without evidence (shared evidence table)
   - shipping-variance detection stays wired (margin-leaking lanes are detectable)
   - no supplier name leaks into any customer surface (generators + storefront)
-  - owner per-order emails (invoice on placement, shipped+tracking on ship) are
-    idempotent (flag-guarded, no double notice)
+  - owner per-order emails (invoice on placement, shipped+tracking on ship, delivered)
+    are idempotent (flag-guarded, no double notice)
   - no double charge: the router blocks duplicate submission + holds unconfirmed sends
   - product UID integrity: placeholder GEL-* UIDs are detected and never reach production
   - live API keys are gated before go-live + a key-verification command exists
-  - every order is assigned a stable customer id
+  - every order is assigned a stable customer id, UNIQUE in every case (registry-backed)
   - the shipping-cost review agent stays wired (never silently lose money on shipping)
 
 The per-PRODUCT/per-item sweep (SKU<->UID currency, net-margin-floor across every
@@ -421,6 +421,7 @@ def check_infrastructure() -> dict:
         from quoteforge.automation import owner_notify
         ok = (_uses_string(owner_notify.send_owner_invoice, "owner_invoice_emailed")
               and _uses_string(owner_notify.send_owner_shipped, "owner_shipped_emailed")
+              and _uses_string(owner_notify.send_owner_delivered, "owner_delivered_emailed")
               and _uses_string(owner_notify._notify, "already_sent")
               and _uses_string(owner_notify._notify, "sent"))
         checks.append(_c("owner_notices_idempotent", ok,
@@ -506,6 +507,39 @@ def check_infrastructure() -> dict:
                          if ok else "shipping-rate review not wired"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("shipping_rate_review_wired", False, str(exc)))
+
+    # 26) customer_id is UNIQUE in every case: same email -> same id, different emails ->
+    #     different ids (registry disambiguates any base-hash collision), and an
+    #     emailless order gets a per-order-unique anon id. (behavioral: proven against an
+    #     ISOLATED temp DB so the live data is never touched.)
+    try:
+        import tempfile
+        from quoteforge.db import database as db
+        _orig = db.DB_PATH
+        tmp = Path(tempfile.gettempdir()) / "qf_infra_uidcheck.db"
+        try:
+            if tmp.exists():
+                tmp.unlink()
+            db.DB_PATH = tmp
+            db.init_db()
+            same_a = db.get_or_create_customer("x@a.com")
+            same_b = db.get_or_create_customer(" X@A.com ")     # normalized -> same
+            diff = db.get_or_create_customer("y@b.com")          # different -> different
+            an1 = db.get_or_create_customer("", anon_key="O-1")
+            an2 = db.get_or_create_customer("", anon_key="O-2")  # anon -> unique per order
+            ok = (same_a == same_b and same_a != diff and an1 != an2)
+        finally:
+            db.DB_PATH = _orig
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError as _exc:        # non-fatal temp cleanup; surface, don't swallow
+                logger.debug("infra uid-check temp cleanup skipped: %s", _exc)
+        checks.append(_c("customer_id_unique", ok,
+                         "customer_id unique in every case (stable per buyer, "
+                         "collision-disambiguated, anon per order)"
+                         if ok else "customer_id uniqueness not guaranteed"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("customer_id_unique", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

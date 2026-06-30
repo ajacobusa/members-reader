@@ -20,6 +20,41 @@ def test_customer_id_assigned_and_stable(tmp_path, monkeypatch):
     assert o1["customer_id"] == o2["customer_id"]          # same buyer -> same id
 
 
+def test_customer_id_unique_and_stable(tmp_path, monkeypatch):
+    _db(tmp_path, monkeypatch)
+    i1 = db.get_or_create_customer("x@a.com")
+    i1b = db.get_or_create_customer(" X@A.com ")           # normalized -> same id
+    i2 = db.get_or_create_customer("y@b.com")              # different buyer -> different
+    assert i1 == i1b and i1 != i2
+    a1 = db.get_or_create_customer("", anon_key="O-1")
+    a2 = db.get_or_create_customer("", anon_key="O-2")     # anon -> unique per order
+    assert a1 != a2
+
+
+def test_customer_id_collision_is_disambiguated(tmp_path, monkeypatch):
+    # REGRESSION: two DIFFERENT emails that hash to the SAME base must still be unique.
+    _db(tmp_path, monkeypatch)
+    monkeypatch.setattr(db, "_derive_customer_id", lambda *a, **k: "CUST-collide")
+    i1 = db.get_or_create_customer("a@a.com")
+    i2 = db.get_or_create_customer("b@b.com")
+    assert i1 == "CUST-collide" and i2 == "CUST-collide-2" and i1 != i2
+
+
+def test_delivered_email_sends_once(tmp_path, monkeypatch):
+    _db(tmp_path, monkeypatch)
+    db.create_order({"order_id": "D1", "customer_email": "a@b.com",
+                     "product_type": "poster"})
+    db.update_order("D1", status="delivered", delivery_confirmed=1,
+                    delivered_at="2026-06-30")
+    cap = {}
+    monkeypatch.setattr(on, "_send",
+                        lambda s, h: (cap.update(s=s, h=h), {"status": "sent"})[1])
+    assert on.send_owner_delivered("D1")["status"] == "sent"
+    assert "D1" in cap["h"]
+    assert db.get_order("D1")["owner_delivered_emailed"] == 1
+    assert on.send_owner_delivered("D1")["status"] == "already_sent"   # idempotent
+
+
 def test_invoice_sends_once_then_flagged(tmp_path, monkeypatch):
     _db(tmp_path, monkeypatch)
     db.create_order({"order_id": "I1", "customer_email": "a@b.com",
