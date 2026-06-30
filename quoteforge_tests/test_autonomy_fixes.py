@@ -181,6 +181,49 @@ def test_infra_check_catches_an_order_path_silent_except(monkeypatch):
     assert _check(r, "order_path_surfaces_errors")["ok"] is False and r["ok"] is False
 
 
+# Each MAJOR fix shipped this cycle is now a daily infra-check guard, so the issue
+# can't silently return.
+def test_infra_check_guards_major_session_fixes():
+    from quoteforge.automation.infra_check import check_infrastructure
+    r = check_infrastructure()
+    by = {c["name"]: c for c in r["checks"]}
+    for name in ("backup_gated_to_main", "guards_automated_in_prod",
+                 "no_silent_except_regression", "scans_exclude_worktrees"):
+        assert name in by, f"infra-check no longer guards {name}"
+        assert by[name]["ok"], f"{name} regressed: {by[name]['detail']}"
+
+
+def test_infra_check_catches_ungated_backup(monkeypatch):
+    # GROUNDING: an auto-backup that lost its branch gate must flip the agent red.
+    import quoteforge.automation.full_backup as fb
+    from quoteforge.automation.infra_check import check_infrastructure
+
+    def _ungated_backup(push=True, auto_commit=True, runner=None):
+        # no 'main' / '--abbrev-ref' branch gate at all
+        return {"auto_commit": "committed"}
+    monkeypatch.setattr(fb, "run_full_backup", _ungated_backup)
+    r = check_infrastructure()
+    assert _check(r, "backup_gated_to_main")["ok"] is False and r["ok"] is False
+
+
+def test_infra_check_catches_silent_except_regression(monkeypatch):
+    import quoteforge.automation.code_auditor as ca
+    from quoteforge.automation.infra_check import check_infrastructure
+    monkeypatch.setattr(ca, "run_full_audit", lambda send=False: {
+        "regressions": [{"module": "x.py", "kind": "silent_except"}]})
+    r = check_infrastructure()
+    assert _check(r, "no_silent_except_regression")["ok"] is False and r["ok"] is False
+
+
+def test_infra_check_catches_worktree_leak(monkeypatch):
+    import quoteforge.automation.code_auditor as ca
+    from quoteforge.automation.infra_check import check_infrastructure
+    monkeypatch.setattr(ca, "list_modules",
+                        lambda: ["automation/x.py", ".claude/worktrees/y/q.py"])
+    r = check_infrastructure()
+    assert _check(r, "scans_exclude_worktrees")["ok"] is False and r["ok"] is False
+
+
 # GROUNDING: prove the AST structural check CATCHES a back-door, and isn't fooled
 # by the router name merely appearing in a comment. The decoy calls
 # create_gelato_order directly (and only NAMES route_order in a comment).
