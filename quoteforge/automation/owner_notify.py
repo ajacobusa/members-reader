@@ -24,6 +24,7 @@ def _order(order) -> dict:
 
 
 def _money(v) -> str:
+    """Format a value as USD, or an em-dash when it isn't a number."""
     try:
         return f"${float(v):.2f}"
     except (TypeError, ValueError):
@@ -47,6 +48,7 @@ def tracking_url(carrier: str, tracking_number: str) -> str:
 
 
 def _invoice_html(o: dict) -> str:
+    """The owner invoice email body for a placed order."""
     rows = [
         ("Order", o.get("order_id", "")),
         ("Placed", o.get("created_at") or ""),
@@ -67,6 +69,7 @@ def _invoice_html(o: dict) -> str:
 
 
 def _shipped_html(o: dict) -> str:
+    """The owner shipped email body, including the carrier + tracking link."""
     tn = o.get("tracking_number") or ""
     carrier = o.get("carrier") or ""
     url = tracking_url(carrier, tn)
@@ -87,6 +90,7 @@ def _shipped_html(o: dict) -> str:
 
 
 def _delivered_html(o: dict) -> str:
+    """The owner delivered-confirmation email body."""
     tn = o.get("tracking_number") or ""
     rows = [
         ("Order", o.get("order_id", "")),
@@ -104,6 +108,7 @@ def _delivered_html(o: dict) -> str:
 
 
 def _send(subject: str, html: str) -> dict:
+    """Send one owner notice to ORDER_NOTIFY_EMAIL via the Gmail SMTP sender."""
     from quoteforge.config import ORDER_NOTIFY_EMAIL
     from quoteforge.automation.emailer import _send_email
     return _send_email(subject, html, to=ORDER_NOTIFY_EMAIL)
