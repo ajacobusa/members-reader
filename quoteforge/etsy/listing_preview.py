@@ -1767,8 +1767,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     from quoteforge.config import PRODUCTION_DAYS, SHIPPING_DAYS
     ship_days_total = int(PRODUCTION_DAYS) + int(SHIPPING_DAYS)
     # Express delivery upgrade (OFF by default) - the editor surfaces it only when
-    # enabled; the upcharge is collected at checkout, the order is routed to Gelato
-    # express server-side. Never names a supplier/marketplace.
+    # enabled; the upcharge is collected at checkout, the order is routed to the print
+    # partner's express method server-side. Never names a supplier/marketplace.
     from quoteforge.config import (EXPRESS_SHIPPING_ENABLED, EXPRESS_SHIPPING_UPCHARGE,
                                    EXPRESS_SHIPPING_DAYS)
     express_enabled_js = "true" if EXPRESS_SHIPPING_ENABLED else "false"
