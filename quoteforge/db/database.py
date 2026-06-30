@@ -482,6 +482,16 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # reach the supplier submission or a qty>1 order ships only one unit.
     if "quantity" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN quantity INTEGER DEFAULT 1")
+    # Stable per-buyer id (derived from the buyer email/name) so orders can be grouped
+    # by customer for support + repeat-buyer analytics; assigned at create_order.
+    if "customer_id" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN customer_id TEXT")
+    # Owner per-order notices: 1 once the INVOICE (on placement) / SHIPPED+tracking
+    # (on ship) email has been sent to ORDER_NOTIFY_EMAIL - so a retry/re-poll never
+    # double-sends, and a failed send retries next run instead of being lost.
+    for _col in ("owner_invoice_emailed", "owner_shipped_emailed"):
+        if _col not in cols:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} INTEGER DEFAULT 0")
     # Delivery integrity: a 'delivered' order is NOT automatically problem-free.
     #   delivery_disputed         : a case/refund/complaint arrived after delivery
     #   do_not_request_review     : owner says never ask this buyer for a review
@@ -522,6 +532,16 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 # ── Order CRUD ───────────────────────────────────────────────────
 
+def _derive_customer_id(email: str, name: str = "") -> str:
+    """Stable per-buyer id from the buyer's email (or name) - same buyer -> same id, so
+    orders group by customer. 'CUST-' + 10 hex of a sha1; 'CUST-anon' if nothing given."""
+    import hashlib
+    key = (email or "").strip().lower() or (name or "").strip().lower()
+    if not key:
+        return "CUST-anon"
+    return "CUST-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+
+
 def create_order(data: dict) -> str:
     """Insert a new order. Returns order_id."""
     order_id = data.get("order_id") or f"QF-{datetime.now().strftime('%Y%m%d%H%M%S%f')[:18]}"
@@ -534,8 +554,9 @@ def create_order(data: dict) -> str:
              sale_price, gelato_cost, channel, vendor, product_type,
              material, size, color, listing, acquisition_source,
              line_items, item_count, country, state,
-             shipping_cost, shipping_collected, shipment_method, quantity)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             shipping_cost, shipping_collected, shipment_method, quantity,
+             customer_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -568,6 +589,8 @@ def create_order(data: dict) -> str:
             data.get("shipping_collected"),
             data.get("shipment_method"),
             int(data.get("quantity") or 1),
+            data.get("customer_id") or _derive_customer_id(
+                data.get("customer_email", ""), data.get("customer_name", "")),
         ))
     # Attach the customer's most-recent confirmed design (incl. any 12-month calendar
     # photo URLs) to this order, so the personalization travels with it to production.

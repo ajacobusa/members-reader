@@ -299,6 +299,10 @@ def sync_tracking(limit: int = 500) -> dict:
             # previously left pipeline_log silent between gelato_order and any error).
             log_pipeline_stage(o["order_id"], "tracking_sync", "shipped",
                                f"{carrier or 'carrier'} {tn}".strip())
+            # Owner shipped + tracking notice (idempotent + best-effort; re-fetches the
+            # now-persisted tracking number + carrier). Never blocks the tracker.
+            from quoteforge.automation.owner_notify import send_owner_shipped
+            send_owner_shipped(o["order_id"])
         _cancelled = gstatus in ("canceled", "cancelled", "failed", "error")
         if tn:
             o["tracking_number"] = tn

@@ -19,6 +19,13 @@ the owner instead of being discovered after a customer is harmed:
   - a damage claim is never auto-filed without evidence (shared evidence table)
   - shipping-variance detection stays wired (margin-leaking lanes are detectable)
   - no supplier name leaks into any customer surface (generators + storefront)
+  - owner per-order emails (invoice on placement, shipped+tracking on ship) are
+    idempotent (flag-guarded, no double notice)
+  - no double charge: the router blocks duplicate submission + holds unconfirmed sends
+  - product UID integrity: placeholder GEL-* UIDs are detected and never reach production
+  - live API keys are gated before go-live + a key-verification command exists
+  - every order is assigned a stable customer id
+  - the shipping-cost review agent stays wired (never silently lose money on shipping)
 
 The per-PRODUCT/per-item sweep (SKU<->UID currency, net-margin-floor across every
 variation, order-book health) is the sibling daily `daily-qa` agent; this agent
@@ -406,6 +413,99 @@ def check_infrastructure() -> dict:
                          if not leaked else f"sweep leaked into: {leaked[:3]}"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("scans_exclude_worktrees", False, str(exc)))
+
+    # 20) Owner per-order emails are idempotent (no DOUBLE invoice/ship notice on a
+    #     webhook retry or re-poll): each send is flag-guarded and the flag is set only
+    #     on a confirmed send. (structural, AST: the flag + state literals are used.)
+    try:
+        from quoteforge.automation import owner_notify
+        ok = (_uses_string(owner_notify.send_owner_invoice, "owner_invoice_emailed")
+              and _uses_string(owner_notify.send_owner_shipped, "owner_shipped_emailed")
+              and _uses_string(owner_notify._notify, "already_sent")
+              and _uses_string(owner_notify._notify, "sent"))
+        checks.append(_c("owner_notices_idempotent", ok,
+                         "owner invoice/ship emails flag-guarded (no double-send)"
+                         if ok else "owner-notice idempotency guard missing"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("owner_notices_idempotent", False, str(exc)))
+
+    # 21) No double charge: the router blocks a duplicate supplier submission (returns
+    #     'duplicate' when a vendor_order_id already exists) and HOLDS an ambiguous
+    #     post-send timeout as 'submit_unconfirmed' rather than blindly re-submitting.
+    #     (structural, AST: both anti-double-charge state literals are used.)
+    try:
+        from quoteforge.fulfillment import router
+        impl = router._route_order_impl
+        ok = (_uses_string(impl, "vendor_order_id") and _uses_string(impl, "duplicate")
+              and _uses_string(impl, "submit_unconfirmed"))
+        checks.append(_c("no_double_charge_guard", ok,
+                         "router blocks duplicate submission + holds unconfirmed sends"
+                         if ok else "double-charge guard weakened"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("no_double_charge_guard", False, str(exc)))
+
+    # 22) Product UID integrity: placeholder GEL-* UIDs are detected (verify_catalog_
+    #     mappings) and can never reach production (the router routes a GEL-* UID to
+    #     manual). (behavioral: the verifier runs; structural AST: the router uses the
+    #     GEL- + manual literals.)
+    try:
+        from quoteforge.etsy.gelato_catalog import verify_catalog_mappings
+        from quoteforge.fulfillment import router
+        m = verify_catalog_mappings()
+        impl = router._route_order_impl
+        ok = (isinstance(m, dict) and "placeholder_count" in m and "all_real" in m
+              and _uses_string(impl, "GEL-") and _uses_string(impl, "manual"))
+        checks.append(_c("product_uid_integrity", ok,
+                         f"UID guard live (placeholders={m.get('placeholder_count')}); "
+                         "placeholder UIDs blocked from production"
+                         if ok else "UID guard not wired"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("product_uid_integrity", False, str(exc)))
+
+    # 23) Live API keys are gated before go-live (preflight blocks launch on a missing
+    #     required key) and there is a live key-verification command. (behavioral: the
+    #     real REQUIRED_LIVE_KEYS tuple + the registered admin command.)
+    try:
+        from quoteforge import preflight
+        import quoteforge.admin as admin
+        keys = getattr(preflight, "REQUIRED_LIVE_KEYS", ())
+        ok = len(keys) >= 4 and "verify-keys" in admin.COMMANDS
+        checks.append(_c("api_keys_gated", ok,
+                         f"{len(keys)} required keys gated in preflight + verify-keys cmd"
+                         if ok else "API-key gate/command missing"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("api_keys_gated", False, str(exc)))
+
+    # 24) Every order is assigned a STABLE customer id (same buyer -> same id) at
+    #     creation, for support + repeat-buyer grouping. (behavioral: deriver is stable
+    #     + normalized; structural AST: create_order uses the customer_id column.)
+    try:
+        from quoteforge.db import database as db
+        a = db._derive_customer_id("Buyer@Example.com")
+        b = db._derive_customer_id("  buyer@example.com ")
+        ok = (a.startswith("CUST-") and a == b
+              and db._derive_customer_id("", "") == "CUST-anon"
+              and _uses_string(db.create_order, "customer_id"))
+        checks.append(_c("customer_id_assigned", ok,
+                         "stable customer_id assigned per order"
+                         if ok else "customer_id assignment missing/unstable"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("customer_id_assigned", False, str(exc)))
+
+    # 25) The shipping-cost review agent is wired (reports the per-product landed cost
+    #     basis + flags when a re-verify against the supplier is overdue) so shipping
+    #     never quietly loses money. (behavioral: it runs + the command exists.)
+    try:
+        from quoteforge.automation.shipping_rate_monitor import review_shipping_rates
+        import quoteforge.admin as admin
+        r = review_shipping_rates()
+        ok = (isinstance(r, dict) and "stale" in r and bool(r.get("summary"))
+              and "shipping-rate-check" in admin.COMMANDS)
+        checks.append(_c("shipping_rate_review_wired", ok,
+                         "shipping-cost review agent wired (basis + staleness)"
+                         if ok else "shipping-rate review not wired"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("shipping_rate_review_wired", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

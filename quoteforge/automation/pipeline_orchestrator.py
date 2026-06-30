@@ -214,6 +214,9 @@ def run_full_pipeline(
     _notify("order_intake", "Storing order in database...")
     order_id = create_order(order_data)
     _log(order_id, "order_intake", "success", f"Order {order_id} created")
+    # Owner invoice copy on placement (idempotent + best-effort; never blocks intake).
+    from quoteforge.automation.owner_notify import send_owner_invoice
+    send_owner_invoice(order_id)
 
     # Apparel ingest resolves the Gelato apparel UID into order_data; honour it
     # when no explicit UID was passed, and persist it so routing + dedup see it.
