@@ -29,6 +29,8 @@ the owner instead of being discovered after a customer is harmed:
   - a 12-month calendar is never auto-submitted cover-only (held for manual multi-image)
   - branded items (bottle/tumbler) keep their own placeholder-UID guard
   - apparel multi-area printing (back+sleeves) never loses money + submits every area's file
+  - the daily Gelato cost/discontinued/UID discovery agent is wired + grounded (live API,
+    no fabricated numbers, reprices to the margin floor + disables discontinued nightly)
 
 The per-PRODUCT/per-item sweep (SKU<->UID currency, net-margin-floor across every
 variation, order-book health) is the sibling daily `daily-qa` agent; this agent
@@ -594,6 +596,28 @@ def check_infrastructure() -> dict:
                          if ok else "multi-area pricing under-margin or files not submitted"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("apparel_multiarea_profitable", False, str(exc)))
+
+    # 30) The daily Gelato cost/availability discovery agent is wired + GROUNDED: it pulls
+    #     REAL prices + discontinued status from the LIVE Gelato API (never a fabricated
+    #     number - TEST_MODE/no-key returns a mock with zero costs), reprices to the
+    #     margin floor + disables discontinued items + surfaces unmapped/placeholder UIDs,
+    #     and runs nightly. This is the no-hallucination cost capture. (behavioral:
+    #     sync_catalog runs + returns the grounded shape; structural: it hits the real
+    #     gelatoapis endpoint; scheduled: a daily gelato-sync job exists.)
+    try:
+        from quoteforge.automation.gelato_sync import sync_catalog, _fetch_one
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS
+        r = sync_catalog()
+        grounded = isinstance(r, dict) and "checked" in r and "discontinued" in r
+        hits_api = _uses_string(_fetch_one, "product.gelatoapis.com")
+        scheduled = any(j.admin_args.startswith("gelato-sync") for j in SCHEDULED_JOBS)
+        ok = bool(grounded and hits_api and scheduled)
+        checks.append(_c("gelato_cost_sync_grounded", ok,
+                         f"daily live Gelato cost/discontinued/UID sync wired + grounded "
+                         f"({r.get('checked')} SKUs checked)"
+                         if ok else "Gelato cost sync not wired/grounded/scheduled"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("gelato_cost_sync_grounded", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
