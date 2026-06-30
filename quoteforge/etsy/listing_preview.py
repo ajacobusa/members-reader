@@ -4139,7 +4139,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // we can't control (production + carrier variance), so we never show one and
    // avoid the over-promise / late-delivery complaint risk.
    var el = document.getElementById('marrive');
-   if(el) el.innerHTML = '\\uD83D\\uDE9A Order now \\u2014 <b>made to order</b> just for you';
+   if(el) el.innerHTML = '\\uD83D\\uDE9A <b>Made to order</b> just for you \\u2014 typically ships in a few business days';
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;

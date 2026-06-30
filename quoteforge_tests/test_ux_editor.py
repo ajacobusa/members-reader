@@ -24,7 +24,7 @@ def test_editor_shows_no_hard_delivery_date(tmp_path):
     h = _page(tmp_path)
     assert "arrives by" not in h
     assert "_arriveBy" not in h
-    assert "made to order</b> just for you" in h        # the safe, no-date replacement
+    assert "typically ships in a few business days" in h   # soft estimate, no hard date
 
 
 def test_mug_prints_full_360_wrap_band(tmp_path):
