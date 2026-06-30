@@ -1,6 +1,7 @@
-"""Personalized 'arrives by <date>' estimate in the editor - the top gift-buyer
-anxiety (will it arrive in time?) answered with a concrete client-computed date built
-from the real PRODUCTION_DAYS + SHIPPING_DAYS.
+"""Editor delivery line. A hard 'arrives by <date>' was an over-promise we can't
+control (production + multi-carrier variance), so the editor now shows a soft,
+non-binding production estimate instead - no calendar date. SHIP_DAYS_TOTAL is still
+computed from PRODUCTION_DAYS + SHIPPING_DAYS for internal/SEO use.
 """
 from PIL import Image
 
@@ -16,14 +17,15 @@ def _page(tmp_path):
     return out.read_text(encoding="utf-8")
 
 
-def test_editor_shows_arrival_estimate(tmp_path):
+def test_editor_shows_soft_estimate_not_a_hard_date(tmp_path):
+    # REGRESSION: no hard 'arrives by <date>' delivery promise; a soft production line.
     html = _page(tmp_path)
-    assert 'id="marrive"' in html                       # the arrival element exists
-    assert "const SHIP_DAYS_TOTAL = 9" in html          # PRODUCTION_DAYS 3 + SHIPPING_DAYS 6
-    assert "function _setArrival" in html                # client-side date computation
-    assert "function _arriveBy" in html
-    assert "arrives by" in html
+    assert 'id="marrive"' in html                       # the delivery line element exists
+    assert "function _setArrival" in html
     assert "_setArrival();" in html                      # called when the editor opens
+    assert "arrives by" not in html                     # no delivery-date over-promise
+    assert "_arriveBy" not in html
+    assert "typically ships in a few business days" in html   # the soft estimate
 
 
 def test_arrival_total_tracks_config(tmp_path, monkeypatch):
