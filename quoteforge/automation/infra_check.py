@@ -46,6 +46,7 @@ import ast
 import inspect
 import logging
 import textwrap
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -342,6 +343,69 @@ def check_infrastructure() -> dict:
                          else f"DEGRADED: {bad}"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("runtime_health", False, str(exc)))
+
+    # ── Each MAJOR fix shipped this cycle becomes a guard, so the issue can't
+    #    silently return. ───────────────────────────────────────────────────
+
+    # 16) The nightly auto-backup is gated to the default branch - it must NEVER
+    #     auto-commit in-progress work on a feature branch (a scheduled 02:00 run
+    #     once swept a half-finished change into a chore commit and pushed it).
+    #     (structural: run_full_backup reads the current branch and compares 'main'.)
+    try:
+        from quoteforge.automation.full_backup import run_full_backup
+        gated = (_uses_string(run_full_backup, "--abbrev-ref")
+                 and _uses_string(run_full_backup, "main"))
+        checks.append(_c("backup_gated_to_main", gated,
+                         "auto-backup only auto-commits on main"
+                         if gated else "auto-backup branch gate MISSING - WIP risk"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("backup_gated_to_main", False, str(exc)))
+
+    # 17) The daily self-monitoring agents actually RUN in production. They were once
+    #     defined only in the Windows scheduler and absent from the Render cron, so on
+    #     the hosted path they never ran. (content scan: render.yaml wires them.)
+    try:
+        import quoteforge
+        rp = Path(quoteforge.__file__).resolve().parent.parent / "render.yaml"
+        if not rp.exists():
+            checks.append(_c("guards_automated_in_prod", True,
+                             "skipped (no render.yaml present)"))
+        else:
+            txt = rp.read_text(encoding="utf-8")
+            missing = [g for g in ("safety-check", "infra-check", "audit", "daily-qa")
+                       if f"quoteforge.admin {g}" not in txt]
+            checks.append(_c("guards_automated_in_prod", not missing,
+                             "self-monitoring agents wired into the Render cron"
+                             if not missing else f"NOT in the Render cron: {missing}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("guards_automated_in_prod", False, str(exc)))
+
+    # 18) No silently-swallowed exception ANYWHERE beyond the accepted baseline - the
+    #     whole-codebase ratchet that keeps the silent-failure backlog at zero.
+    #     (behavioral: the real AST sweep finds no regression.)
+    try:
+        from quoteforge.automation.code_auditor import run_full_audit
+        regs = run_full_audit(send=False)["regressions"]
+        checks.append(_c("no_silent_except_regression", not regs,
+                         "no new silent failure beyond baseline"
+                         if not regs else f"{len(regs)} new silent failure(s): "
+                         f"{[r['module'] for r in regs][:3]}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("no_silent_except_regression", False, str(exc)))
+
+    # 19) The code scanners never recurse into the harness's nested git worktrees
+    #     under .claude/worktrees (a stale checkout once leaked its smells + test
+    #     files into the sweep and the docs ratchet). (behavioral: list_modules
+    #     excludes hidden dirs.)
+    try:
+        from quoteforge.automation.code_auditor import list_modules
+        leaked = [m for m in list_modules()
+                  if any(seg.startswith(".") for seg in m.split("/"))]
+        checks.append(_c("scans_exclude_worktrees", not leaked,
+                         "module sweep excludes hidden/worktree dirs"
+                         if not leaked else f"sweep leaked into: {leaked[:3]}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("scans_exclude_worktrees", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
