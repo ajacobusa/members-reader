@@ -27,6 +27,7 @@ _BASE_TABLE = {
     "mug": 14.0,
     "apparel": 14.0, "tshirt": 14.0, "t-shirt": 14.0, "shirt": 14.0,
     "hoodie": 14.0, "tee": 14.0, "sweatshirt": 14.0, "branded": 14.0,
+    "tank": 14.0, "tank top": 14.0, "tanktop": 14.0,
 }
 # Unknown product -> assume the high end so we never quietly under-charge shipping.
 _DEFAULT_HIGH = 25.0

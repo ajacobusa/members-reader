@@ -26,6 +26,8 @@ the owner instead of being discovered after a customer is harmed:
   - live API keys are gated before go-live + a key-verification command exists
   - every order is assigned a stable customer id, UNIQUE in every case (registry-backed)
   - the shipping-cost review agent stays wired (never silently lose money on shipping)
+  - a 12-month calendar is never auto-submitted cover-only (held for manual multi-image)
+  - branded items (bottle/tumbler) keep their own placeholder-UID guard
 
 The per-PRODUCT/per-item sweep (SKU<->UID currency, net-margin-floor across every
 variation, order-book health) is the sibling daily `daily-qa` agent; this agent
@@ -540,6 +542,36 @@ def check_infrastructure() -> dict:
                          if ok else "customer_id uniqueness not guaranteed"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("customer_id_unique", False, str(exc)))
+
+    # 27) A 12-month calendar is NEVER auto-submitted cover-only - the router HOLDS it
+    #     for manual multi-image production. A refactor dropping that branch would
+    #     silently under-deliver every calendar post-go-live. (structural, AST: the
+    #     calendar-hold branch's 'calendar' + 'multi-image' literals are present.)
+    try:
+        from quoteforge.fulfillment import router
+        impl = router._route_order_impl
+        ok = _uses_string(impl, "calendar") and _uses_string(impl, "multi-image")
+        checks.append(_c("calendar_multiimage_hold", ok,
+                         "router holds calendars for manual multi-image production"
+                         if ok else "calendar cover-only-submission hold guard missing"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("calendar_multiimage_hold", False, str(exc)))
+
+    # 28) Branded items (bottle/tumbler/...) have their OWN Gelato placeholder guard
+    #     (verify_branded_mappings) so a GEL-* branded SKU can't reach production, and
+    #     the cylinder spin recognises them - both were un-invarianted. (behavioral: the
+    #     branded verifier runs; structural: _route_order_impl blocks GEL- for all SKUs.)
+    try:
+        from quoteforge.etsy.branded_catalog import verify_branded_mappings
+        from quoteforge.fulfillment import router
+        m = verify_branded_mappings()
+        ok = (isinstance(m, dict) and "placeholder_count" in m and "all_real" in m
+              and _uses_string(router._route_order_impl, "GEL-"))
+        checks.append(_c("branded_uid_integrity", ok,
+                         f"branded UID guard live (placeholders={m.get('placeholder_count')})"
+                         if ok else "branded UID guard not wired"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("branded_uid_integrity", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
