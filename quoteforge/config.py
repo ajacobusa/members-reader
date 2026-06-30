@@ -354,6 +354,28 @@ GELATO_API_VERSION: str = os.getenv("GELATO_API_VERSION", "v4").strip().lower()
 # "normal,express") tells Gelato to pick the CHEAPEST of those. The buyer already
 # paid Etsy shipping; this is what Gelato uses to fulfil + what it charges you.
 GELATO_SHIPMENT_METHOD: str = os.getenv("GELATO_SHIPMENT_METHOD", "normal").strip()
+
+# Express delivery — a PAID, per-order upgrade the customer can choose at design time.
+# OFF by default: until EXPRESS_SHIPPING_ENABLED is true the storefront never offers it
+# and nothing changes. When enabled, the buyer can pick Express for EXPRESS_SHIPPING_UPCHARGE
+# (USD, on top of standard shipping) and the order is sent to Gelato with
+# EXPRESS_SHIPMENT_METHOD instead of the normal method. Set the upcharge from your Gelato
+# account's express rate so it covers the express cost difference + margin. Confirm Gelato
+# offers express for your products/destinations before enabling.
+EXPRESS_SHIPPING_ENABLED: bool = _env_bool("EXPRESS_SHIPPING_ENABLED", False)
+EXPRESS_SHIPPING_UPCHARGE: float = float(os.getenv("EXPRESS_SHIPPING_UPCHARGE", "9.95"))
+EXPRESS_SHIPMENT_METHOD: str = os.getenv("EXPRESS_SHIPMENT_METHOD", "express").strip()
+EXPRESS_SHIPPING_DAYS: int = int(os.getenv("EXPRESS_SHIPPING_DAYS", "3"))
+
+# Shipping COST model — high-end US estimates per product TYPE + a SAFETY MARGIN, so a
+# shipping figure baked into the price (or charged) never loses money. Gelato's exact
+# rate varies by product/size/destination/hub and changes regularly, so we take the
+# HIGH end + margin; the shipping-rate monitor re-checks and flags drift/staleness.
+SHIPPING_MARGIN_PCT: float = float(os.getenv("SHIPPING_MARGIN_PCT", "5"))        # +5% margin
+ADDITIONAL_ITEM_SHIP_FACTOR: float = float(os.getenv("ADDITIONAL_ITEM_SHIP_FACTOR", "0.75"))
+EXPRESS_SHIP_MULT: float = float(os.getenv("EXPRESS_SHIP_MULT", "1.6"))          # express ≈ +60%
+SHIPPING_COST_TABLE_JSON: str = os.getenv("SHIPPING_COST_TABLE_JSON", "").strip()  # owner override
+SHIPPING_RATES_REVIEW_DAYS: int = int(os.getenv("SHIPPING_RATES_REVIEW_DAYS", "30"))
 # WHO submits orders to Gelato - exactly one source may, or orders double-print +
 # double-charge. "quoteforge" (DEFAULT): QuoteForge is the personalization engine - it
 # GENERATES the artwork (AI quote -> template -> layout -> 300 DPI render) and submits

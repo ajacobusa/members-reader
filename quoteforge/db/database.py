@@ -462,6 +462,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for _col in ("shipping_cost", "shipping_collected"):
         if _col not in cols:
             conn.execute(f"ALTER TABLE orders ADD COLUMN {_col} REAL")
+    # The Gelato shipment method this order ships by (e.g. 'express' when the buyer
+    # chose the paid express upgrade); blank/NULL = the normal/default method.
+    if "shipment_method" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN shipment_method TEXT")
     # Carrier name helps the tracking API confirm real delivery; the estimated
     # delivery date (from Gelato/carrier) sets buyer expectations + SLA checks.
     if "carrier" not in cols:
@@ -530,8 +534,8 @@ def create_order(data: dict) -> str:
              sale_price, gelato_cost, channel, vendor, product_type,
              material, size, color, listing, acquisition_source,
              line_items, item_count, country, state,
-             shipping_cost, shipping_collected, quantity)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             shipping_cost, shipping_collected, shipment_method, quantity)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -562,6 +566,7 @@ def create_order(data: dict) -> str:
             data.get("state"),
             data.get("shipping_cost"),
             data.get("shipping_collected"),
+            data.get("shipment_method"),
             int(data.get("quantity") or 1),
         ))
     # Attach the customer's most-recent confirmed design (incl. any 12-month calendar

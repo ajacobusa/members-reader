@@ -1766,6 +1766,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # promise we can't control, so we never display one (over-promise risk).
     from quoteforge.config import PRODUCTION_DAYS, SHIPPING_DAYS
     ship_days_total = int(PRODUCTION_DAYS) + int(SHIPPING_DAYS)
+    # Express delivery upgrade (OFF by default) - the editor surfaces it only when
+    # enabled; the upcharge is collected at checkout, the order is routed to Gelato
+    # express server-side. Never names a supplier/marketplace.
+    from quoteforge.config import (EXPRESS_SHIPPING_ENABLED, EXPRESS_SHIPPING_UPCHARGE,
+                                   EXPRESS_SHIPPING_DAYS)
+    express_enabled_js = "true" if EXPRESS_SHIPPING_ENABLED else "false"
     owner = REPORT_RECIPIENT or "owner@example.com"
     try:
         from quoteforge.etsy.gift_finder import quiz_config
@@ -3976,6 +3982,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const DATA = {data_json};
  const OCCASION_TINT = {occ_tint_json};
  const SHIP_DAYS_TOTAL = {ship_days_total};
+ const EXPRESS_ENABLED = {express_enabled_js};            // paid express upgrade on?
+ const EXPRESS_UPCHARGE = {EXPRESS_SHIPPING_UPCHARGE:.2f};
+ const EXPRESS_DAYS = {EXPRESS_SHIPPING_DAYS};
  const OWNER = "{owner}";
  const PRICE_HI = "{price_hi}";
  const MAT_SHORT = "{mat_short}";
@@ -4139,7 +4148,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // we can't control (production + carrier variance), so we never show one and
    // avoid the over-promise / late-delivery complaint risk.
    var el = document.getElementById('marrive');
-   if(el) el.innerHTML = '\\uD83D\\uDE9A <b>Made to order</b> just for you \\u2014 typically ships in a few business days';
+   if(!el) return;
+   var html = '\\uD83D\\uDE9A <b>Made to order</b> just for you \\u2014 typically ships in a few business days';
+   // Express upgrade (only when enabled): collected at checkout, routed express.
+   if(typeof EXPRESS_ENABLED!=='undefined' && EXPRESS_ENABLED){{
+     html += '<br><span style="color:var(--green)">\\u26A1 Need it sooner? '
+       + '<b>Express delivery</b> at checkout \\u2014 +$' + EXPRESS_UPCHARGE.toFixed(2)
+       + ', about ' + EXPRESS_DAYS + ' business days</span>';
+   }}
+   el.innerHTML = html;
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;

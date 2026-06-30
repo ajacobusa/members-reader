@@ -29,6 +29,7 @@ def create_gelato_order(
     artwork_url: str,
     product_uid: str,
     quantity: int = 1,
+    shipment_method: str = "",
 ) -> dict:
     """Create a print order via Gelato API.
 
@@ -73,7 +74,8 @@ def create_gelato_order(
     }
     if ver == "v4":
         payload["orderType"] = "order"                       # not a draft
-        payload["shipmentMethodUid"] = GELATO_SHIPMENT_METHOD or "normal"
+        # Per-order method (express upgrade) wins; else the configured default.
+        payload["shipmentMethodUid"] = shipment_method or GELATO_SHIPMENT_METHOD or "normal"
     resp = requests.post(
         f"{GELATO_BASE_URL}/{ver}/orders",
         headers=_gelato_headers(),

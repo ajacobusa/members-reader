@@ -149,6 +149,13 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "lock, claims human-only, address-fix gate, no auto-retry of an unconfirmed "
         "send) and ALERT the owner if any has weakened (e.g. a misconfigured cap)."),
     ScheduledJob(
+        "QuoteForge Shipping Rate Review", "shipping-rate-check",
+        ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:58"],
+        "Weekly: re-check the shipping-cost model is current + margin-safe (high-end "
+        "per-product cost + 5% margin) and ALERT the owner when a re-verify against "
+        "the Gelato dashboard is overdue - so we never quietly lose money when Gelato "
+        "changes rates. Report-only; never changes prices itself."),
+    ScheduledJob(
         "QuoteForge Runtime Health", "runtime-health",
         ["/SC", "DAILY", "/ST", "06:18"],
         "Daily: proactively verify the worker daemons, ports, hooks and plugins the "

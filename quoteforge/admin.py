@@ -2348,6 +2348,26 @@ def _cmd_runtime_health(args: list[str]) -> int:
     return 0
 
 
+def _cmd_shipping_rate_check(args: list[str]) -> int:
+    """Shipping-rate review agent: re-check the shipping-cost model is current + margin-
+    safe (high-end per-product cost + 5% margin) and ALERT when a re-verify is overdue,
+    so we never quietly lose money when Gelato changes rates. `--reviewed` stamps the
+    rates as verified today (after you check the Gelato dashboard). `shipping-rate-check`."""
+    from quoteforge.automation.shipping_rate_monitor import (
+        review_shipping_rates, format_review_text, mark_reviewed)
+    if args and args[0] == "--reviewed":
+        print(f"Shipping rates marked reviewed on {mark_reviewed()}.")
+        return 0
+    r = review_shipping_rates()
+    print(format_review_text(r))
+    if r["stale"]:
+        _alert("\U0001f4e6 Shipping rates need a review",
+               "<pre>" + format_review_text(r) + "</pre>", what="shipping-rates")
+        print("\nReview overdue - owner alerted.")
+        return 1
+    return 0
+
+
 def _cmd_safety_check(args: list[str]) -> int:
     """Verify the safety guardrails (no auto-refund, margin-floor hold, order lock,
     claims human-only, address-fix gate, no auto-retry of unconfirmed) and ALERT the
@@ -3161,6 +3181,7 @@ COMMANDS = {
     "safety-check": _cmd_safety_check,
     "infra-check": _cmd_infra_check,
     "runtime-health": _cmd_runtime_health,
+    "shipping-rate-check": _cmd_shipping_rate_check,
     "audit": _cmd_audit,
     "notify-customers": _cmd_notify_customers,
     "shipping-audit": _cmd_shipping_audit,

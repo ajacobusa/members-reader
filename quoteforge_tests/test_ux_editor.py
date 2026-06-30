@@ -27,6 +27,24 @@ def test_editor_shows_no_hard_delivery_date(tmp_path):
     assert "typically ships in a few business days" in h   # soft estimate, no hard date
 
 
+def test_express_option_off_by_default(tmp_path):
+    # OFF by default: the gate const is false, so the express line never renders live
+    # (the JS for it ships in source, but EXPRESS_ENABLED=false suppresses it), and
+    # the shop is unchanged until the owner sets EXPRESS_SHIPPING_ENABLED.
+    h = _page(tmp_path)
+    assert "const EXPRESS_ENABLED = false" in h
+
+
+def test_express_option_renders_when_enabled(tmp_path, monkeypatch):
+    # When the owner enables it, the editor surfaces the express upgrade line + price.
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "EXPRESS_SHIPPING_ENABLED", True)
+    h = _page(tmp_path)
+    assert "const EXPRESS_ENABLED = true" in h
+    assert "Express delivery</b> at checkout" in h
+    assert "9.95" in h
+
+
 def test_mug_prints_full_360_wrap_band(tmp_path):
     # REGRESSION: a mug prints the full 360-degree WRAP, so its print area must be a
     # WIDE band (_placeMugBound), not the near-square apparel front panel.
