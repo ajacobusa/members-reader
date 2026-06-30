@@ -158,7 +158,8 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             resp = create_gelato_order(order_id=order_id, recipient=recipient,
                                        artwork_url=artwork_url, product_uid=product_uid,
                                        quantity=int(qty or 1),
-                                       shipment_method=order.get("shipment_method") or "")
+                                       shipment_method=order.get("shipment_method") or "",
+                                       extra_files=order.get("extra_files") or None)
             vid = resp.get("id", "")
             # Self-store the supplier order id on success so the idempotency guard
             # is robust even if the caller forgets to persist it.

@@ -28,6 +28,7 @@ the owner instead of being discovered after a customer is harmed:
   - the shipping-cost review agent stays wired (never silently lose money on shipping)
   - a 12-month calendar is never auto-submitted cover-only (held for manual multi-image)
   - branded items (bottle/tumbler) keep their own placeholder-UID guard
+  - apparel multi-area printing (back+sleeves) never loses money + submits every area's file
 
 The per-PRODUCT/per-item sweep (SKU<->UID currency, net-margin-floor across every
 variation, order-book health) is the sibling daily `daily-qa` agent; this agent
@@ -572,6 +573,27 @@ def check_infrastructure() -> dict:
                          if ok else "branded UID guard not wired"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("branded_uid_integrity", False, str(exc)))
+
+    # 29) Apparel multi-area printing (back + sleeves) never loses money AND actually
+    #     prints every area: each extra area's upcharge clears the shop margin +
+    #     EXTRA_PRINT_MARGIN_PCT AFTER marketplace fees, and the submission sends a file
+    #     per area. (behavioral: priced net margin >= target; structural: create order
+    #     carries extra_files + builds the multi-file payload.)
+    try:
+        from quoteforge.etsy.apparel_print_costs import margin_breakdown
+        from quoteforge.config import TARGET_MARGIN_PCT, EXTRA_PRINT_MARGIN_PCT
+        from quoteforge.automation import gelato_api
+        target = float(TARGET_MARGIN_PCT) + float(EXTRA_PRINT_MARGIN_PCT)
+        priced_ok = all(margin_breakdown(a)["margin_pct"] >= target - 0.5
+                        for a in ("back", "sleeve-left", "sleeve-right"))
+        submit_ok = (_references(gelato_api.create_gelato_order, "extra_files")
+                     and _uses_string(gelato_api._build_files, "default"))
+        ok = priced_ok and submit_ok
+        checks.append(_c("apparel_multiarea_profitable", ok,
+                         f"extra print areas clear {target:.0f}% net + submit per-area files"
+                         if ok else "multi-area pricing under-margin or files not submitted"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("apparel_multiarea_profitable", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
