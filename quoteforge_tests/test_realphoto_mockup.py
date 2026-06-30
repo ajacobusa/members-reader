@@ -63,24 +63,25 @@ def test_cylinder_routes_to_realistic_spin(tmp_path):
     assert "createLinearGradient" in h and "quadraticCurveTo" in h
 
 
-def test_cylinder_rocks_but_keeps_design_facing_buyer(tmp_path):
-    # REGRESSION: a full auto-rotate hid the design on the bare back most of the
-    # time ("I see the picture not the text"). The spin now gently ROCKS around the
-    # front so it visibly moves (3D cue) while the design stays facing the buyer;
-    # drag still gives full control.
+def test_cylinder_spins_full_for_wrap_rocks_for_real_photo(tmp_path):
+    # REGRESSION: the mug prints a ~300-degree WRAP, so the GENERATED mug now spins a
+    # full 360 to show front AND back; a registered real photo can't turn, so it keeps
+    # the gentle front rock. (A full turn was previously avoided because the design
+    # covered only a small front panel and the back was bare.) Drag always gives full
+    # manual control.
     h = _page(tmp_path)
     assert "var rot=0,drag=false,lx=0,dirty=true,hadPhoto=false,tick=0;" in h
-    assert "if(!drag){ tick++; rot=0.42*Math.sin(tick*0.022); dirty=true; }" in h
-    assert "rot+=0.006" not in h                          # no full auto-rotate
+    assert "rot=0.42*Math.sin(tick*0.022);" in h          # real photo: gentle front rock
+    assert "rot+=0.010" in h                              # generated wrap: slow full 360 spin
     assert "if(dirty){ frame(); dirty=false; }" in h
 
 
-def test_wrap_leaves_back_bare_never_blank_front(tmp_path):
-    # The wrap paints the print only across its barrel arc and leaves the rest of
-    # the body/photo bare, so a spin reveals a clean back AND the design always
-    # sits on the front at rest (rot 0 -> centred print).
+def test_wrap_covers_most_of_the_mug_leaving_the_handle_gap(tmp_path):
+    # The design wraps ~300 degrees of the mug (a real wrap print), confined to that
+    # arc so the handle gap stays bare and the front is always centred at rest.
     h = _page(tmp_path)
-    assert "Math.abs(rel)<=arc/2" in h      # print confined to its front arc
+    assert "Math.abs(rel)<=arc/2" in h            # print confined to its wrap arc
+    assert "arc:(handle?5.3:5.6)" in h            # ~300-degree wrap (was a 97-degree panel)
 
 
 # ── The WebGL flat-panel path is still intact (unchanged products) ─
