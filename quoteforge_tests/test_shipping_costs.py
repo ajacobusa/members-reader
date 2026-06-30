@@ -16,6 +16,13 @@ def test_unknown_type_defaults_to_high_end():
     assert sc.first_item_cost("mystery gizmo") == 25.0          # never under-charge
 
 
+def test_tank_top_priced_as_apparel_not_unknown():
+    # REGRESSION: 'Tank Top' fell through to the $25 unknown default (over-charged)
+    # because the shipping keyword set drifted from the apparel catalog.
+    assert sc.first_item_cost("Tank Top") == 14.0
+    assert sc.first_item_cost("tank") == 14.0
+
+
 def test_shipping_cost_adds_5pct_margin():
     assert sc.shipping_cost("poster", 1) == 15.75              # 15 * 1.05
     assert sc.shipping_cost("mug", 1) == 14.70                 # 14 * 1.05
