@@ -18,6 +18,15 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_editor_shows_no_hard_delivery_date(tmp_path):
+    # REGRESSION: a made-to-order delivery date is an over-promise we can't control
+    # (production + carrier variance), so the editor must NOT show "arrives by <date>".
+    h = _page(tmp_path)
+    assert "arrives by" not in h
+    assert "_arriveBy" not in h
+    assert "made to order</b> just for you" in h        # the safe, no-date replacement
+
+
 def test_mug_prints_full_360_wrap_band(tmp_path):
     # REGRESSION: a mug prints the full 360-degree WRAP, so its print area must be a
     # WIDE band (_placeMugBound), not the near-square apparel front panel.

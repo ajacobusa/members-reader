@@ -1761,8 +1761,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     data_json = json.dumps(listings)
     from quoteforge.etsy.occasion_themes import tints_json
     occ_tint_json = tints_json()
-    # Estimated days to the customer's door (production + shipping) - the editor turns
-    # this into a concrete 'arrives by <date>' so a gift buyer knows it lands in time.
+    # Estimated production + shipping days (retained for internal/SEO use). The editor
+    # deliberately shows NO hard delivery date - a made-to-order arrival date is a
+    # promise we can't control, so we never display one (over-promise risk).
     from quoteforge.config import PRODUCTION_DAYS, SHIPPING_DAYS
     ship_days_total = int(PRODUCTION_DAYS) + int(SHIPPING_DAYS)
     owner = REPORT_RECIPIENT or "owner@example.com"
@@ -4133,13 +4134,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      return '<div class="dsl">'+esc(l)+'</div>';
    }}).join('');
  }}
- function _arriveBy(){{
-   var d = new Date(Date.now() + (SHIP_DAYS_TOTAL||9)*86400000);
-   return d.toLocaleDateString('en-US', {{weekday:'short', month:'short', day:'numeric'}});
- }}
  function _setArrival(){{
+   // Deliberately NO hard delivery date: a made-to-order arrival date is a promise
+   // we can't control (production + carrier variance), so we never show one and
+   // avoid the over-promise / late-delivery complaint risk.
    var el = document.getElementById('marrive');
-   if(el) el.innerHTML = '\\uD83D\\uDE9A Order now \\u2014 arrives by <b>' + _arriveBy() + '</b>';
+   if(el) el.innerHTML = '\\uD83D\\uDE9A Order now \\u2014 <b>made to order</b> just for you';
  }}
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;

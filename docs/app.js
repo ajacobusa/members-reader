@@ -160,13 +160,12 @@
      return '<div class="dsl">'+esc(l)+'</div>';
    }).join('');
  }
- function _arriveBy(){
-   var d = new Date(Date.now() + (SHIP_DAYS_TOTAL||9)*86400000);
-   return d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
- }
  function _setArrival(){
+   // Deliberately NO hard delivery date: a made-to-order arrival date is a promise
+   // we can't control (production + carrier variance), so we never show one and
+   // avoid the over-promise / late-delivery complaint risk.
    var el = document.getElementById('marrive');
-   if(el) el.innerHTML = '\uD83D\uDE9A Order now \u2014 arrives by <b>' + _arriveBy() + '</b>';
+   if(el) el.innerHTML = '\uD83D\uDE9A Order now \u2014 <b>made to order</b> just for you';
  }
  function openM(i){
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
