@@ -52,3 +52,24 @@ def test_delivered_sent_once_by_gated_sweep(tmp_path, monkeypatch):
     sent.clear()
     cn.send_pending_notifications()
     assert sent == []
+
+
+def test_leaky_delivered_body_is_blocked_at_send(tmp_path, monkeypatch):
+    # REGRESSION: the runtime leak guard covers the delivered type too - a body that
+    # somehow names a supplier/marketplace is SKIPPED, never emailed to the buyer.
+    _db(tmp_path, monkeypatch)
+    db.create_order({"order_id": "D4", "customer_email": "b@x.com"})
+    mid = db.save_customer_message("D4", "Order Delivered",
+                                   "Your order shipped from Gelato!", sent=False)
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "CUSTOMER_AUTO_NOTIFY", True)
+    monkeypatch.setattr(cfg, "TEST_MODE", False)
+    import quoteforge.automation.emailer as em
+    sent = []
+    monkeypatch.setattr(em, "_send_email",
+                        lambda *a, **k: (sent.append(a), {"status": "sent"})[1])
+    res = cn.send_pending_notifications()
+    assert sent == []                              # leaky body never reaches the buyer
+    assert mid in res.get("skipped", [])           # caught + skipped by the leak guard
+    after = [m for m in db.get_customer_messages("D4") if m["id"] == mid][0]
+    assert not after["sent"]                        # not marked sent (so it never goes)
