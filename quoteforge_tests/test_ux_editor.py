@@ -18,6 +18,16 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
+def test_wording_clamped_inside_print_area(tmp_path):
+    # REGRESSION: the draggable wording must be clamped by its OWN block half-size so
+    # it can never be dragged outside the dashed print area (which would print
+    # clipped). The TPOS clamp alone bounds the CENTRE, not the block's edges.
+    js = _page(tmp_path)                               # editor JS is inline in the page
+    assert "_ehw" in js and "_ehh" in js               # rotation-aware block half-size
+    assert "Math.max(ax, x+_ehw)" in js                # anchor bounded by the block edge
+    assert "Math.max(ay, y+_ehh)" in js
+
+
 def test_calendar_photos_queue_until_email(tmp_path):
     # REGRESSION: a buyer who designs a calendar BEFORE entering their email lost
     # every month photo - the old _calUpload returned early with no email, so the

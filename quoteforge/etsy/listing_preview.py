@@ -6923,7 +6923,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    else {{ fs=Math.round(stackDim*0.10); lines=wrap(fs);                      // auto-fit
      while((lines.length*fs*1.32)>stackDim*0.82 && fs>9){{fs-=1; lines=wrap(fs);}} }}
    const lh=fs*1.34; const block=lines.length*lh;
-   const ax=x+TPOS.x*w, ay=y+TPOS.y*h;                         // anchor (draggable)
+   // Keep the WHOLE wording block inside the dashed print area wherever it's dragged.
+   // TPOS clamps the CENTRE to 0.04..0.96, but the block has width+height, so half of
+   // it could still spill past the edge and print clipped. Clamp the anchor by the
+   // block's rotation-aware bounding half-size so the design always stays inside.
+   let _mlw=0; for(const ln of lines){{ const _lw=ctx.measureText(ln).width; if(_lw>_mlw)_mlw=_lw; }}
+   const _th=(TROT||0)*Math.PI/180, _ca=Math.abs(Math.cos(_th)), _sa=Math.abs(Math.sin(_th));
+   const _hw=_mlw/2, _hh=block/2;
+   const _ehw=_hw*_ca+_hh*_sa, _ehh=_hw*_sa+_hh*_ca;           // rotated AABB half-size
+   let ax=x+TPOS.x*w, ay=y+TPOS.y*h;                           // anchor (draggable)
+   ax=(_ehw*2>=w) ? x+w/2 : Math.min(Math.max(ax, x+_ehw), x+w-_ehw);
+   ay=(_ehh*2>=h) ? y+h/2 : Math.min(Math.max(ay, y+_ehh), y+h-_ehh);
    ctx.save(); ctx.translate(ax,ay);
    if(TROT) ctx.rotate(TROT*Math.PI/180);                      // rotate the wording
    let ty=-block/2+fs*0.9;
