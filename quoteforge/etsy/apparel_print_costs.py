@@ -34,11 +34,13 @@ def area_cost(area: str) -> float:
 
 
 def _target_margin_pct() -> float:
+    """The net-margin target for an extra area = the shop floor + the extra-area bump."""
     from quoteforge.config import TARGET_MARGIN_PCT, EXTRA_PRINT_MARGIN_PCT
     return float(TARGET_MARGIN_PCT) + float(EXTRA_PRINT_MARGIN_PCT)
 
 
 def _fee_rate() -> float:
+    """The marketplace fee fraction (transaction + payment) applied to the sale price."""
     from quoteforge.etsy.margin_guard import ETSY_TRANSACTION_FEE, ETSY_PAYMENT_FEE
     return ETSY_TRANSACTION_FEE + ETSY_PAYMENT_FEE
 
