@@ -181,7 +181,8 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "QuoteForge Customer Notifications", "notify-customers",
         ["/SC", "HOURLY", "/MO", "6"],
         "Every 6h: sends the opt-in transactional order updates (Order Received / "
-        "In Production) to buyers. No-op unless CUSTOMER_AUTO_NOTIFY is enabled."),
+        "In Production / Order Delivered) to buyers. No-op unless CUSTOMER_AUTO_NOTIFY "
+        "is enabled."),
     ScheduledJob(
         "QuoteForge Weekly API Costs", "costs week email",
         ["/SC", "WEEKLY", "/D", "MON", "/ST", "07:50"],

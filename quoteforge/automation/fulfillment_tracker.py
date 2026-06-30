@@ -148,6 +148,8 @@ def _carrier_confirm(order: dict, delivered_confirmed: list,
         delivered_confirmed.append(order["order_id"])
         from quoteforge.automation.owner_notify import send_owner_delivered
         send_owner_delivered(order["order_id"])   # idempotent + best-effort
+        from quoteforge.automation.customer_notify import queue_order_delivered
+        queue_order_delivered(order["order_id"], order.get("recipient_name") or "")
         # Delivered-address sanity check: country delivered vs ordered.
         if address_mismatch is not None:
             want = _iso2_country(order.get("country") or "")
@@ -319,6 +321,8 @@ def sync_tracking(limit: int = 500) -> dict:
             delivered_confirmed.append(o["order_id"])
             from quoteforge.automation.owner_notify import send_owner_delivered
             send_owner_delivered(o["order_id"])   # idempotent + best-effort
+            from quoteforge.automation.customer_notify import queue_order_delivered
+            queue_order_delivered(o["order_id"], o.get("recipient_name") or "")
         elif _cancelled:
             # Gelato spells it "canceled" (one L); normalize to the terminal
             # "cancelled" every downstream consumer checks (_TERMINAL, reports,
