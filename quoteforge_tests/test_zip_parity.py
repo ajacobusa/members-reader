@@ -79,7 +79,7 @@ def test_in_production_message_exists():
 
 
 def test_five_message_types_now():
-    assert len(MESSAGE_TYPES) == 5
+    assert len(MESSAGE_TYPES) == 6      # + "Order Delivered" (buyer delivery confirmation)
 
 
 # ── New DB tables: customer_messages, upsells, reviews ───────────
