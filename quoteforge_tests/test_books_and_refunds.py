@@ -67,9 +67,11 @@ def db(tmp_path, monkeypatch):
 
 
 def _insert(d, oid, status, sale, **extra):
+    from datetime import datetime
     conn = sqlite3.connect(d.DB_PATH)
+    _cm = datetime.now().strftime("%Y-%m-%d")            # TODAY (current month, not future)
     cols = {"order_id": oid, "recipient_name": "R", "occasion": "birthday",
-            "status": status, "sale_price": sale, "created_at": "2026-06-12",
+            "status": status, "sale_price": sale, "created_at": _cm,
             "gelato_cost": 13.00, "tax_collected": 3.20, "shipping_collected": 5.00,
             "etsy_fees_actual": 2.60, **extra}
     conn.execute(f"INSERT INTO orders ({','.join(cols)}) "
@@ -85,8 +87,9 @@ def test_refunded_order_excluded_from_daily_ledger(db):
     _insert(db, "refunded", "refunded", 43.20)
     from quoteforge.etsy.ledger import build_ledger
     from quoteforge.etsy.financials import month_financials
+    from datetime import datetime as _dt
     led = build_ledger("month")
-    summ = month_financials(2026, 6)
+    summ = month_financials(_dt.now().year, _dt.now().month)   # current month (matches ledger)
     # exactly one billable order in both layers, identical revenue
     assert summ["order_count"] == 1
     assert round(led["totals"]["revenue"], 2) == round(summ["revenue"], 2) == 40.00

@@ -109,9 +109,11 @@ def db(tmp_path, monkeypatch):
 
 
 def _insert(d, oid, status, sale, **extra):
+    from datetime import datetime
     conn = sqlite3.connect(d.DB_PATH)
+    _cm = datetime.now().strftime("%Y-%m-%d")            # TODAY (current month, not future)
     cols = {"order_id": oid, "recipient_name": "R", "occasion": "birthday",
-            "status": status, "sale_price": sale, "created_at": "2026-06-12",
+            "status": status, "sale_price": sale, "created_at": _cm,
             "gelato_cost": 13.0, "tax_collected": 3.20, "shipping_collected": 5.0,
             "etsy_fees_actual": 2.60, **extra}
     conn.execute(f"INSERT INTO orders ({','.join(cols)}) "

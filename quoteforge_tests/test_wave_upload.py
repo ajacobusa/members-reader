@@ -18,9 +18,13 @@ def db(tmp_path, monkeypatch):
 
 
 def _order(d, oid, status="shipped", sale=43.20, **extra):
+    from datetime import datetime
     conn = sqlite3.connect(d.DB_PATH)
+    # TODAY (always in the current month AND not in the future, so period='month' - which
+    # filters created_at <= now - includes it. A hardcoded date failed every other month.
+    _cm = datetime.now().strftime("%Y-%m-%d")
     cols = {"order_id": oid, "recipient_name": "R", "occasion": "birthday",
-            "status": status, "sale_price": sale, "created_at": "2026-06-12",
+            "status": status, "sale_price": sale, "created_at": _cm,
             "gelato_cost": 13.0, "tax_collected": 3.20, "shipping_collected": 5.0,
             "etsy_fees_actual": 2.60, **extra}
     conn.execute(f"INSERT INTO orders ({','.join(cols)}) "
