@@ -387,11 +387,14 @@ FREE_SHIPPING_BAKED: bool = _env_bool("FREE_SHIPPING_BAKED", False)
 # Apparel MULTI-AREA printing (back + sleeves, beyond the front). The print partner does
 # DTG on front/back/sleeves; each EXTRA area adds an upcharge that clears the shop margin
 # PLUS EXTRA_PRINT_MARGIN_PCT, AFTER marketplace fees - so an extra area is always
-# profitable, never a loss (apparel_print_costs.extra_print_upcharge). OFF until the
-# editor + per-area artwork plumbing land. Per-area COSTS are high-end estimates (the
-# partner's per-area surcharge isn't public - read the real number off the partner's
-# editor and override here); the high-end + the margin give double loss-protection.
-APPAREL_MULTI_AREA_ENABLED: bool = _env_bool("APPAREL_MULTI_AREA_ENABLED", False)
+# profitable, never a loss (apparel_print_costs.extra_print_upcharge). ON by default so
+# the storefront editor offers back/sleeves and the daily rebuild keeps it live. This is
+# SAFE even before the automatic per-area artwork submission is wired: the router
+# UNCONDITIONALLY holds any back/sleeve order for manual two-sided production, so nothing
+# ever prints front-only. Per-area COSTS are high-end estimates (the partner's per-area
+# surcharge isn't public - read the real number off the partner's editor and override
+# here); the high-end + the margin give double loss-protection. Set =false to hide it.
+APPAREL_MULTI_AREA_ENABLED: bool = _env_bool("APPAREL_MULTI_AREA_ENABLED", True)
 EXTRA_PRINT_MARGIN_PCT: float = float(os.getenv("EXTRA_PRINT_MARGIN_PCT", "10"))   # +10% over base
 BACK_PRINT_COST: float = float(os.getenv("BACK_PRINT_COST", "6.00"))              # high-end est.
 SLEEVE_PRINT_COST: float = float(os.getenv("SLEEVE_PRINT_COST", "4.00"))          # high-end est.
