@@ -5824,8 +5824,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
  let BOX={{x:0.50,y:0.35,s:1.0}};
- function _clampBox(){{ BOX.x=Math.min(0.84,Math.max(0.16,BOX.x));
-   BOX.y=Math.min(0.62,Math.max(0.18,BOX.y)); BOX.s=Math.min(1.7,Math.max(0.45,BOX.s)); }}
+ function _clampBox(){{
+   // A sleeve is off-centre + small, so it needs the FULL canvas range and a smaller
+   // minimum size; front/back stay clamped to the torso.
+   var _sl=(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right');
+   BOX.x=Math.min(_sl?0.95:0.84,Math.max(_sl?0.05:0.16,BOX.x));
+   BOX.y=Math.min(_sl?0.82:0.62,Math.max(_sl?0.08:0.18,BOX.y));
+   BOX.s=Math.min(1.7,Math.max(_sl?0.30:0.45,BOX.s)); }}
  function setFrameSize(v){{ BOX.s=parseFloat(v)||1; _clampBox(); drawArt(); }}
  function moveFrame(dx,dy){{ BOX.x+=dx; BOX.y+=dy; _clampBox(); drawArt(); }}
  function resetFrame(){{ BOX={{x:0.50,y:0.35,s:1.0}};
@@ -5880,7 +5885,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      b.classList.toggle('sel', b.dataset.p===p); }});
    const _bh=document.getElementById('mbackhint');
    if(_bh) _bh.style.display=(p==='back')?'block':'none';
+   const _wasEmpty = IS_APPAREL && !SIDES[p];               // this area never designed yet
    if(IS_APPAREL && p!==prev) _restoreSide(SIDES[p]);       // load the side we moved to
+   if(_wasEmpty && (p==='sleeve-left'||p==='sleeve-right')){{
+     // Start the sleeve frame ON the arm (image-left / image-right), small - so it's
+     // visible on the sleeve and the buyer can drag/resize/rotate it from there.
+     BOX={{x:(p==='sleeve-left'?0.24:0.76), y:0.30, s:0.75}};
+   }}
    drawArt();
  }}
  // Toggle the shop-logo overlay (added to BOTH the front and the back).
@@ -5909,13 +5920,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // frame on the upper arm (left/right), resizable via BOX.s with a little drag room,
    // so the buyer actually designs ON the sleeve - not the chest.
    if(APPLACEMENT==='sleeve-left' || APPLACEMENT==='sleeve-right'){{
-     var bw=W*0.15*BOX.s, bh=H*0.17*BOX.s;
-     var cx=(APPLACEMENT==='sleeve-left')?W*0.135:W*0.865;      // upper-left / upper-right arm
-     var bx=cx-bw/2+(BOX.x-0.5)*W*0.10, by=H*0.24-bh/2+(BOX.y-0.5)*H*0.10;
-     var loX=(APPLACEMENT==='sleeve-left')?W*0.02:W*0.62;
-     var hiX=(APPLACEMENT==='sleeve-left')?W*0.38:W*0.98;
-     bx=Math.min(Math.max(bx,loX),hiX-bw);
-     by=Math.min(Math.max(by,H*0.08),H*0.52-bh);
+     // Small frame that follows BOX.x/BOX.y (full drag) + BOX.s (resize), so the buyer
+     // moves + resizes it onto the sleeve. Default position is set on the arm when the
+     // sleeve is first opened (setPlacement).
+     var bw=W*0.16*BOX.s, bh=H*0.18*BOX.s;
+     var bx=W*BOX.x-bw/2, by=H*BOX.y-bh/2;
+     bx=Math.min(Math.max(bx,W*0.01),W*0.99-bw);
+     by=Math.min(Math.max(by,H*0.02),H*0.82-bh);
      return {{x:bx,y:by,w:bw,h:bh}};
    }}
    return _placeBoundMock(W,H);
