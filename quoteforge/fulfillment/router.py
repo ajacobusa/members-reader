@@ -46,6 +46,30 @@ def route_order(order: dict, recipient: dict = None, artwork_url: str = "") -> d
         return _route_order_impl(order, recipient, artwork_url)
 
 
+def _has_extra_print_area(order: dict) -> bool:
+    """True if this order carries a designed BACK or SLEEVE area (so it must never print
+    front-only). Checks the order's recorded extra-print upcharge first, then the linked
+    design's per-side flags. Best-effort: a lookup miss returns False without blocking."""
+    try:
+        if float(order.get("extra_print") or 0) > 0:
+            return True
+    except (TypeError, ValueError):
+        logger.debug("extra_print not numeric on %s: %r",
+                     order.get("order_id"), order.get("extra_print"))
+    sides = order.get("sides")
+    if not isinstance(sides, dict):
+        try:
+            from quoteforge.db.database import get_design_for_order
+            d = get_design_for_order(order.get("order_id") or "") or {}
+            sides = d.get("sides") or (d.get("design") or {}).get("sides") or {}
+        except Exception as exc:  # noqa: BLE001 - never block routing on a lookup miss,
+            # but LOUD not silent: a missed design lookup means we can't see extra areas.
+            logger.warning("multi-area design lookup failed for %s: %s",
+                           order.get("order_id"), exc)
+            sides = {}
+    return any((sides or {}).get(a) for a in ("back", "sleeve-left", "sleeve-right"))
+
+
 def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = "") -> dict:
     """Send the order to its vendor's API (gelato/printful/printify)."""
     vendor = (order.get("vendor") or "gelato").lower()
@@ -115,6 +139,15 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             return {"status": "manual", "vendor": "gelato", "id": "",
                     "detail": "12-month calendar needs multi-image production - "
                               "manual fulfilment (all 12 month photos)"}
+        # Multi-area apparel safety (UNCONDITIONAL - independent of any flag): an order
+        # that carries a designed BACK or SLEEVE must NEVER be printed front-only. If the
+        # per-area files aren't attached, HOLD it for manual two-sided production (like a
+        # calendar). This closes the silent under-delivery even if the editor offered a
+        # back/sleeve before the automatic per-area submission is wired.
+        if not order.get("extra_files") and _has_extra_print_area(order):
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "multi-area apparel (back/sleeve design) - manual two-sided "
+                              "production until per-area files are wired"}
         if not (product_uid and recipient and artwork_url):
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",

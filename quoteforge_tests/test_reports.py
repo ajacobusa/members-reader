@@ -50,7 +50,7 @@ def test_monthly_includes_recent_orders(tmp_path):
     with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
          patch.object(db, "OUTPUT_DIR", tmp_path):
         db.init_db()
-        _seed(db, tmp_path, days_ago=2)   # within all windows
+        _seed(db, tmp_path, days_ago=0)   # today -> always in the current calendar month
         rep = period_report("monthly")
     assert rep["total_orders"] >= 1
     assert rep["financials"]["revenue"] >= 30.0

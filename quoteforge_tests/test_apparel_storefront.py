@@ -234,10 +234,10 @@ def test_apparel_final_proof_rotates_front_back(tmp_path):
     # drag-to-spin wired onto the proof image (mouse + touch)
     assert "_proofDown(event)" in h and "function _proofMove" in h
     # apparel-only + hidden in final wizard mode
-    assert "IS_APPAREL?'flex':'none'" in h
+    assert "(IS_APPAREL && MULTI_AREA)?'flex':'none'" in h    # flip shown for multi-area apparel
     assert "img.classList.toggle('spinnable',IS_APPAREL)" in h
     # discoverable, supplier-safe copy
-    assert "See the back" in h and "drag the shirt to spin front" in h
+    assert "See the back" in h and "drag the shirt to spin" in h
     assert "gelato" not in h.lower() and "printify" not in h.lower()
 
 
@@ -513,13 +513,14 @@ def test_apparel_front_back_sides_are_independent(tmp_path):
     # recorded on the cart line.
     h = _page(tmp_path)
     assert 'id="mplacement"' in h                         # the side picker (apparel-only)
-    assert h.count('class="plbtn') == 2                   # exactly Front + Back
+    assert h.count('class="plbtn') == 4                   # Front + Back + Left/Right sleeve
     assert "setPlacement('front')" in h and "setPlacement('back')" in h
+    assert "setPlacement('sleeve-left')" in h and "setPlacement('sleeve-right')" in h
     assert "leftchest" not in h and ">Sleeve</button>" not in h
     assert "function setPlacement" in h
     assert "function _placeBound" in h and "function _placeBoundMock" in h
     # per-side capture/restore on flip
-    assert "let SIDES={front:null,back:null}" in h
+    assert "let SIDES={front:null,back:null,'sleeve-left':null,'sleeve-right':null}" in h
     assert "function _captureSide" in h and "function _restoreSide" in h
     assert "SIDES[prev]=_captureSide()" in h and "_restoreSide(SIDES[p])" in h
     # the cart records which sides carry a design, plus placement + the print label

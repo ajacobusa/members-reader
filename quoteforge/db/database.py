@@ -613,8 +613,8 @@ def create_order(data: dict) -> str:
              material, size, color, listing, acquisition_source,
              line_items, item_count, country, state,
              shipping_cost, shipping_collected, shipment_method, quantity,
-             customer_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             customer_id, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             order_id,
             data.get("etsy_order_id"),
@@ -648,6 +648,11 @@ def create_order(data: dict) -> str:
             data.get("shipment_method"),
             int(data.get("quantity") or 1),
             cust_id,
+            # Stamp created_at in the shop's LOCAL time so monthly financials/taxes
+            # attribute an order to the local calendar month. The SQLite default is UTC,
+            # which mis-files an order created late on the last local day of a month into
+            # the NEXT month. Explicit local time fixes that for new + existing DBs.
+            data.get("created_at") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         ))
     # Attach the customer's most-recent confirmed design (incl. any 12-month calendar
     # photo URLs) to this order, so the personalization travels with it to production.

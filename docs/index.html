@@ -1343,10 +1343,11 @@
          onmouseup="_proofUp()" onmouseleave="_proofUp()"
          ontouchstart="_proofDown(event)" ontouchmove="_proofMove(event)" ontouchend="_proofUp()">
     <div id="proofFlip" class="proofflip">
-      <button type="button" class="proofflipbtn" onclick="proofFlip()" aria-label="Rotate the garment to see the other side">
+      <button type="button" class="proofflipbtn" onclick="proofFlip()" aria-label="Rotate the garment to review each designed area">
         &#128260; <span id="proofFlipLbl">See the back</span></button>
-      <span class="prooffliphint">or drag the shirt to spin front &harr; back</span>
+      <span class="prooffliphint">or drag the shirt to spin through your designed areas</span>
     </div>
+    <div id="proofAreas" class="dbhint" style="display:none"></div>
     <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofCross" class="proofcross"></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
@@ -1403,11 +1404,14 @@
          &#128065;&#65039; See final preview</button>
        <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="Spin your product" onclick="toggleSpin()">&#128260; Spin your product &mdash; front &amp; back</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
-         <div class="dseg" role="group" aria-label="Choose side">
+         <div class="dbq">&#128085; Design the <b>front</b>, <b>back</b> &amp; <b>sleeves</b> &mdash; each holds its own wording &amp; photo. Tap an area, or <b>drag the shirt</b> to spin it.</div>
+         <div class="dseg" role="group" aria-label="Choose area">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
            <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
+           <button type="button" class="plbtn" data-p="sleeve-left" onclick="setPlacement('sleeve-left')">Left sleeve</button>
+           <button type="button" class="plbtn" data-p="sleeve-right" onclick="setPlacement('sleeve-right')">Right sleeve</button>
          </div>
+         <div class="dbhint">Each extra area you design adds to the price: <b>back +$29.27</b>, <b>each sleeve +$19.51</b>. Front is included.</div>
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
@@ -1638,7 +1642,7 @@
  </div>
 </div>
 
-<script defer src="app.js?v=d253528a77cd"></script>
+<script defer src="app.js?v=07c876806705"></script>
 
 <div id="basketPanel" role="dialog" aria-modal="true" aria-label="Your basket" onclick="if(event.target.id==='basketPanel')toggleBasket()">
   <div class="bpbox">
