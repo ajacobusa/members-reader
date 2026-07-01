@@ -29,6 +29,8 @@ the owner instead of being discovered after a customer is harmed:
   - a 12-month calendar is never auto-submitted cover-only (held for manual multi-image)
   - branded items (bottle/tumbler) keep their own placeholder-UID guard
   - apparel multi-area printing (back+sleeves) never loses money + submits every area's file
+  - shipping charged separately is collected at cost - an under-collected order is flagged
+    at order time (a mis-set Etsy shipping profile can't silently lose money)
   - the daily Gelato cost/discontinued/UID discovery agent is wired + grounded (live API,
     no fabricated numbers, reprices to the margin floor + disables discontinued nightly)
 
@@ -623,6 +625,25 @@ def check_infrastructure() -> dict:
                          if ok else "Gelato cost sync not wired/grounded/scheduled"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("gelato_cost_sync_grounded", False, str(exc)))
+
+    # 31) Shipping shortfall is caught at ORDER time: when shipping is charged separately
+    #     (not baked into the price), an order that collected LESS shipping than our cost
+    #     is flagged immediately - so a mis-set Etsy shipping profile can't quietly lose
+    #     money on every order. (behavioral: a $0-collected apparel order raises a review,
+    #     or the check is correctly skipped when FREE_SHIPPING_BAKED is on.)
+    try:
+        from quoteforge.automation.order_monitor import audit_order
+        from quoteforge.config import FREE_SHIPPING_BAKED
+        r = audit_order({"order_id": "SHIPCHK", "status": "shipped", "proof_approved": 1,
+                         "vendor_order_id": "V", "product_type": "apparel",
+                         "shipping_collected": 0.0, "quantity": 1})
+        flagged = any("shipping collected" in x for x in r.get("review", []))
+        ok = bool(flagged or FREE_SHIPPING_BAKED)
+        checks.append(_c("shipping_shortfall_flagged", ok,
+                         "order-time guard flags an under-collected shipping order"
+                         if ok else "shipping shortfall not caught at order time"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("shipping_shortfall_flagged", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
