@@ -105,6 +105,27 @@ def audit_order(order: dict) -> dict:
         except (TypeError, ValueError) as exc:
             logger.debug("order margin check skipped (unparseable economics): %s", exc)
 
+    # Shipping shortfall: when shipping is CHARGED SEPARATELY (not baked into the price),
+    # Etsy must collect at least our shipping cost or the order loses money on shipping.
+    # Flag the moment a real order's collected shipping is short of the modeled cost, so
+    # a mis-set Etsy listing shipping profile is caught on order #1 - not next month.
+    # (When FREE_SHIPPING_BAKED is on, shipping IS in the price, so a $0 collected is
+    # correct and this check is skipped.)
+    from quoteforge.config import FREE_SHIPPING_BAKED
+    collected = order.get("shipping_collected")
+    if not FREE_SHIPPING_BAKED and collected is not None:
+        try:
+            from quoteforge.etsy.shipping_costs import shipping_cost
+            cost = shipping_cost(order.get("product_type") or "",
+                                 int(order.get("quantity") or 1))
+            if float(collected) + 0.01 < cost:
+                review.append(
+                    f"shipping collected ${float(collected):.2f} is below our "
+                    f"${cost:.2f} cost - losing ${cost - float(collected):.2f}/order; "
+                    f"set the Etsy listing shipping to at least ${cost:.2f}")
+        except (TypeError, ValueError) as exc:
+            logger.debug("order shipping check skipped (unparseable): %s", exc)
+
     return {"order_id": order.get("order_id", ""), "status": status,
             "issues": issues, "review": review, "compliant": not issues}
 
