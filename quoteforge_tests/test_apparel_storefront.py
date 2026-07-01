@@ -29,14 +29,15 @@ def _page(tmp_path) -> str:
 def test_drawn_apparel_frame_is_resizable(tmp_path):
     # REGRESSION: on a DRAWN (non-mockup) garment the design bound was set by the
     # garment-FIXED _placeBound, so the green resize handle changed BOX.s but the
-    # frame never moved ("can't move the green dot"). It must use the BOX-driven
-    # _placeBoundMock - same as the mockup path and mug/branded/calendar - so the
-    # corner actually resizes.
+    # frame never moved ("can't move the green dot"). It must use the per-area
+    # _apparelBound (which returns the BOX-driven _placeBoundMock for front/back, and a
+    # sleeve frame for sleeves) - so the corner actually resizes.
     import re
     h = _page(tmp_path)
     m = re.search(r"drawGarment\(ctx,x,y,w,h\);.*?APPAREL_BOUND=b;", h, re.S)
-    assert m and "_placeBoundMock(W,H)" in m.group(0)
-    assert "b=_placeBound(x,y,w,h)" not in h     # the garment-fixed bound is gone
+    assert m and "_apparelBound(W,H)" in m.group(0)
+    assert "return _placeBoundMock(W,H)" in h     # front/back stays BOX-driven (resizable)
+    assert "b=_placeBound(x,y,w,h)" not in h      # the garment-fixed bound is gone
 
 
 def test_homepage_how_it_works_block(tmp_path):

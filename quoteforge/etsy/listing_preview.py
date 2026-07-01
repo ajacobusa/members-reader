@@ -5830,7 +5830,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function moveFrame(dx,dy){{ BOX.x+=dx; BOX.y+=dy; _clampBox(); drawArt(); }}
  function resetFrame(){{ BOX={{x:0.50,y:0.35,s:1.0}};
    var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }}
- const _PLACE_LBL={{front:'Front',back:'Back'}};
+ const _PLACE_LBL={{front:'Front',back:'Back','sleeve-left':'Left sleeve','sleeve-right':'Right sleeve'}};
  // Front and back hold INDEPENDENT designs (different wording + photo + frame).
  // Snapshot the current side before flipping, then restore the other side's design.
  let SIDES={{front:null,back:null,'sleeve-left':null,'sleeve-right':null}};
@@ -5903,6 +5903,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    bx=Math.min(Math.max(bx,W*0.06),W*0.94-bw);
    by=Math.min(Math.max(by,H*0.07),H*0.66-bh);
    return {{x:bx,y:by,w:bw,h:bh}};
+ }}
+ function _apparelBound(W,H){{
+   // Per-AREA print frame. Front/back use the big torso frame; a SLEEVE uses a small
+   // frame on the upper arm (left/right), resizable via BOX.s with a little drag room,
+   // so the buyer actually designs ON the sleeve - not the chest.
+   if(APPLACEMENT==='sleeve-left' || APPLACEMENT==='sleeve-right'){{
+     var bw=W*0.15*BOX.s, bh=H*0.17*BOX.s;
+     var cx=(APPLACEMENT==='sleeve-left')?W*0.135:W*0.865;      // upper-left / upper-right arm
+     var bx=cx-bw/2+(BOX.x-0.5)*W*0.10, by=H*0.24-bh/2+(BOX.y-0.5)*H*0.10;
+     var loX=(APPLACEMENT==='sleeve-left')?W*0.02:W*0.62;
+     var hiX=(APPLACEMENT==='sleeve-left')?W*0.38:W*0.98;
+     bx=Math.min(Math.max(bx,loX),hiX-bw);
+     by=Math.min(Math.max(by,H*0.08),H*0.52-bh);
+     return {{x:bx,y:by,w:bw,h:bh}};
+   }}
+   return _placeBoundMock(W,H);
  }}
  function _placeMugBound(W,H){{
    // A mug prints the full 360-degree WRAP, so its print area is a WIDE band whose
@@ -6964,13 +6980,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    }} else if(IS_APPAREL){{
      if(_mock){{                              // design sits on the real mockup, per placement
-       const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+       const b=_apparelBound(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      }} else {{
        drawGarment(ctx,x,y,w,h);
        // BOX-driven frame (same as mockup mode + mug/branded/calendar) so the green
        // corner actually RESIZES on a drawn garment too - the old _placeBound was
        // garment-fixed, so the resize handle changed BOX.s but the frame never moved.
-       const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
+       const b=_apparelBound(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      }}
    }} else if(spec){{ const t=spec.t*w;
      ctx.fillStyle=spec.color; ctx.fillRect(x,y,w,h);          // frame

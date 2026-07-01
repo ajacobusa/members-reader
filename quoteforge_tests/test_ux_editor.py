@@ -701,3 +701,13 @@ def test_background_removal_available_on_every_product(tmp_path):
     assert "function removeBg" in h and "Remove background" in h
     assert "getImageData" in h                       # client-side pixel op (no upload)
     assert "function _is3D" in h and "bottle|tumbler" in h   # 3D for mugs + bottles/tumblers
+
+
+def test_sleeves_have_their_own_editable_print_area(tmp_path):
+    # REGRESSION: selecting a sleeve tab must show a distinct SLEEVE print area + label
+    # (not the front chest box), so the buyer can actually design each sleeve.
+    js = _page(tmp_path)
+    assert "function _apparelBound" in js                       # per-area print frame
+    assert "APPLACEMENT==='sleeve-left'" in js               # sleeve gets its own bound
+    assert "'sleeve-left':'Left sleeve'" in js           # per-area drag label
+    assert "_apparelBound(W,H)" in js                           # drawArt uses it for apparel
