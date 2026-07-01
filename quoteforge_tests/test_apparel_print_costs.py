@@ -52,3 +52,23 @@ def test_non_http_extra_file_skipped():
     from quoteforge.automation.gelato_api import _build_files
     files = _build_files("http://x/f.png", {"back": "file:///local.png"})
     assert [f["type"] for f in files] == ["default"]     # local path never submitted
+
+
+def test_extra_area_detection():
+    from quoteforge.fulfillment.router import _has_extra_print_area
+    assert _has_extra_print_area({"extra_print": 29.27}) is True
+    assert _has_extra_print_area({"sides": {"back": True}}) is True
+    assert _has_extra_print_area({"sides": {"sleeve-left": True}}) is True
+    assert _has_extra_print_area({"extra_print": 0, "sides": {"front": True}}) is False
+
+
+def test_back_sleeve_order_held_for_manual_when_files_missing(monkeypatch):
+    # REGRESSION: an order with a back/sleeve design but NO per-area files must be HELD
+    # for manual - never silently printed front-only. Unconditional (flag-independent).
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "GELATO_FULFILLMENT_MODE", "quoteforge", raising=False)
+    from quoteforge.fulfillment.router import route_order
+    r = route_order({"order_id": "", "vendor": "gelato", "product_type": "tshirt",
+                     "gelato_product_uid": "uid", "extra_print": 29.27},
+                    recipient={"name": "A"}, artwork_url="http://x/a.png")
+    assert r["status"] == "manual" and "back/sleeve" in r["detail"]

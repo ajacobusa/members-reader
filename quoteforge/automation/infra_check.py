@@ -590,10 +590,15 @@ def check_infrastructure() -> dict:
                         for a in ("back", "sleeve-left", "sleeve-right"))
         submit_ok = (_references(gelato_api.create_gelato_order, "extra_files")
                      and _uses_string(gelato_api._build_files, "default"))
-        ok = priced_ok and submit_ok
+        # The router MUST hold a back/sleeve order that lacks per-area files (never
+        # silently print front-only) - this safety is unconditional.
+        from quoteforge.fulfillment import router
+        safety_ok = _references(router._route_order_impl, "_has_extra_print_area")
+        ok = priced_ok and submit_ok and safety_ok
         checks.append(_c("apparel_multiarea_profitable", ok,
-                         f"extra print areas clear {target:.0f}% net + submit per-area files"
-                         if ok else "multi-area pricing under-margin or files not submitted"))
+                         f"extra areas clear {target:.0f}% net + submit per-area files + "
+                         "back/sleeve held when files missing"
+                         if ok else "multi-area pricing/submission/safety-hold gap"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("apparel_multiarea_profitable", False, str(exc)))
 

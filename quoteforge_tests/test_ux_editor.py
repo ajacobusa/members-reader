@@ -62,6 +62,18 @@ def test_mug_spin_shows_full_wrap_front_and_back(tmp_path):
     assert "rot+=0.010" in js                           # full 360 auto-spin (was a gentle rock)
 
 
+def test_proof_reviews_every_designed_area(tmp_path):
+    # REGRESSION: the buyer must SEE every area they designed (front/back/sleeves) before
+    # the single affirmative approval - the proof flip cycles ALL designed areas, and the
+    # consent line covers exactly what is shown. This is the no-return policy's record.
+    js = _page(tmp_path)
+    assert "function _designedAreas()" in js
+    assert "areas[(i+1)%areas.length]" in js                    # cycles all designed areas
+    assert 'id="proofAreas"' in js                              # lists what they designed
+    assert "flip to review each area before you approve" in js
+    assert "I approve this print exactly as shown and authorize it to proceed" in js
+
+
 def test_spin_is_a_start_stop_toggle(tmp_path):
     # REGRESSION: ONE button toggles the 360 spin - play it, then FREEZE it at any
     # angle to review (and back). So the buyer controls the spin and gets clarity.

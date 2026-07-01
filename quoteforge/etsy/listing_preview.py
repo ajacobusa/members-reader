@@ -1789,6 +1789,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     from quoteforge.config import (EXPRESS_SHIPPING_ENABLED, EXPRESS_SHIPPING_UPCHARGE,
                                    EXPRESS_SHIPPING_DAYS)
     express_enabled_js = "true" if EXPRESS_SHIPPING_ENABLED else "false"
+    # Apparel multi-area (back + sleeves): the editor reveals the extra placement tabs +
+    # the per-area upcharge ONLY when enabled; off = front-only (the existing flow).
+    from quoteforge.config import APPAREL_MULTI_AREA_ENABLED
+    from quoteforge.etsy.apparel_print_costs import area_upcharge
+    multiarea_enabled_js = "true" if APPAREL_MULTI_AREA_ENABLED else "false"
+    back_upcharge_js = f"{area_upcharge('back'):.2f}"
+    sleeve_upcharge_js = f"{area_upcharge('sleeve-left'):.2f}"
     # Free-shipping copy: when prices are shipping-inclusive (FREE_SHIPPING_BAKED), say so;
     # otherwise the honest default that shipping is added at checkout.
     taxnote_html = ('🧾 Prices are per item with <b>free shipping</b>. Tax is '
@@ -3706,10 +3713,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          onmouseup="_proofUp()" onmouseleave="_proofUp()"
          ontouchstart="_proofDown(event)" ontouchmove="_proofMove(event)" ontouchend="_proofUp()">
     <div id="proofFlip" class="proofflip">
-      <button type="button" class="proofflipbtn" onclick="proofFlip()" aria-label="Rotate the garment to see the other side">
+      <button type="button" class="proofflipbtn" onclick="proofFlip()" aria-label="Rotate the garment to review each designed area">
         &#128260; <span id="proofFlipLbl">See the back</span></button>
-      <span class="prooffliphint">or drag the shirt to spin front &harr; back</span>
+      <span class="prooffliphint">or drag the shirt to spin through your designed areas</span>
     </div>
+    <div id="proofAreas" class="dbhint" style="display:none"></div>
     <div class="proofsum"><span id="proofSummary"></span></div>
     <div id="proofCross" class="proofcross"></div>
     <div id="proofStatus" class="proofstatus" role="status" aria-live="polite"></div>
@@ -3766,11 +3774,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          &#128065;&#65039; See final preview</button>
        <button type="button" class="seefinal" id="view3dbtn" style="display:none" aria-label="Spin your product" onclick="toggleSpin()">&#128260; Spin your product &mdash; front &amp; back</button>
        <div class="dragbar" id="mplacement" style="display:none">
-         <div class="dbq">&#128085; Design the <b>front</b> and the <b>back</b> &mdash; each holds its own wording &amp; photo. Tap a side, or <b>drag the shirt</b> to spin it.</div>
-         <div class="dseg" role="group" aria-label="Choose side">
+         <div class="dbq">&#128085; Design the <b>front</b>, <b>back</b> &amp; <b>sleeves</b> &mdash; each holds its own wording &amp; photo. Tap an area, or <b>drag the shirt</b> to spin it.</div>
+         <div class="dseg" role="group" aria-label="Choose area">
            <button type="button" class="plbtn sel" data-p="front" onclick="setPlacement('front')">Front</button>
            <button type="button" class="plbtn" data-p="back" onclick="setPlacement('back')">Back</button>
+           <button type="button" class="plbtn" data-p="sleeve-left" onclick="setPlacement('sleeve-left')">Left sleeve</button>
+           <button type="button" class="plbtn" data-p="sleeve-right" onclick="setPlacement('sleeve-right')">Right sleeve</button>
          </div>
+         <div class="dbhint">Each extra area you design adds to the price: <b>back +${back_upcharge_js}</b>, <b>each sleeve +${sleeve_upcharge_js}</b>. Front is included.</div>
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
@@ -4008,6 +4019,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const EXPRESS_ENABLED = {express_enabled_js};            // paid express upgrade on?
  const EXPRESS_UPCHARGE = {EXPRESS_SHIPPING_UPCHARGE:.2f};
  const EXPRESS_DAYS = {EXPRESS_SHIPPING_DAYS};
+ const MULTI_AREA = {multiarea_enabled_js};              // apparel back+sleeve printing on?
+ const BACK_UPCHARGE = {back_upcharge_js};               // per-area buyer upcharge (loss-proof)
+ const SLEEVE_UPCHARGE = {sleeve_upcharge_js};
  const OWNER = "{owner}";
  const PRICE_HI = "{price_hi}";
  const MAT_SHORT = "{mat_short}";
@@ -4597,7 +4611,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      : (IS_APPAREL ? apparelTitle() : (WALLART_TITLE || mt.textContent))));
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
-   if(pl) pl.style.display = IS_APPAREL ? 'block' : 'none';
+   if(pl) pl.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';   // off => front-only (no unprintable back)
    // Movable design-frame controls run for apparel AND branded.
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = PRINT ? 'block' : 'none';
@@ -4648,7 +4662,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    if(IS_APPAREL){{
      APPLACEMENT='front';              // start on the front side (apparel only)
-     SIDES={{front:null,back:null}};   // clear both sides' designs for the new garment
+     SIDES={{front:null,back:null,'sleeve-left':null,'sleeve-right':null}};   // clear all areas for the new garment
      document.querySelectorAll('#mplacement .plbtn').forEach(function(b){{
        b.classList.toggle('sel', b.dataset.p==='front'); }});
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
@@ -4880,10 +4894,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // order knows the front AND back content (each side is independent).
    if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();
    const _has=function(s){{ return !!(s && (((s.quote||'').trim()) || s.photoSrc || _slotsFilled(s.slots) || (s.collage&&s.collage.some(Boolean)))); }};
-   const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back)}} : null;
-   CART.push({{fmt:CURFMT,size:p[0],unit:parseFloat(p[1]),qty:qty,title:title,
+   const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back),
+     'sleeve-left':_has(SIDES['sleeve-left']), 'sleeve-right':_has(SIDES['sleeve-right'])}} : null;
+   // Multi-area upcharge: each designed EXTRA area adds its loss-proof upcharge to the unit.
+   const _extra = (IS_APPAREL && MULTI_AREA && _sides) ? (
+       (_sides.back?BACK_UPCHARGE:0)
+       + (_sides['sleeve-left']?SLEEVE_UPCHARGE:0)
+       + (_sides['sleeve-right']?SLEEVE_UPCHARGE:0)) : 0;
+   CART.push({{fmt:CURFMT,size:p[0],unit:+(parseFloat(p[1])+_extra).toFixed(2),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
-     sides:_sides, wording:_slotWording(),
+     sides:_sides, extra_print:+(_extra).toFixed(2), wording:_slotWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
      logo:(IS_APPAREL&&LOGO_ON)?'front+back':'',
@@ -5293,22 +5313,44 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // sides before approving. Reuses the editor's per-side designs (setPlacement
  // swaps in each side's own wording + photo) and recomposes the proof image.
  // Apparel only - wall art has a single face.
+ function _sideHas(s){{ return !!(s && ((((s.quote||'').trim())) || s.photoSrc || _slotsFilled(s.slots) || (s.collage&&s.collage.some(Boolean)))); }}
+ function _designedAreas(){{
+   // Front is ALWAYS reviewed; each extra area only if the buyer actually designed it.
+   var order=['front','back','sleeve-left','sleeve-right'], out=[];
+   for(var i=0;i<order.length;i++){{ var a=order[i];
+     if(a==='front' || (MULTI_AREA && _sideHas(SIDES[a]))) out.push(a); }}
+   return out;
+ }}
+ function _areaLabel(a){{ return a==='sleeve-left'?'left sleeve':(a==='sleeve-right'?'right sleeve':a); }}
  function _syncProofFlip(){{
-   var l=document.getElementById('proofFlipLbl');
-   if(l) l.textContent=(APPLACEMENT==='back')?'See the front':'See the back';
+   var l=document.getElementById('proofFlipLbl'), fl=document.getElementById('proofFlip');
+   var areas=_designedAreas();
+   if(fl) fl.style.display=(IS_APPAREL && areas.length>1)?'flex':'none';   // flip only when >1 area
+   var nt=document.getElementById('proofAreas');
+   if(nt){{ nt.style.display=(areas.length>1)?'block':'none';
+     nt.innerHTML='You designed: <b>'+areas.map(_areaLabel).join(' &middot; ')
+       +'</b> &mdash; flip to review each area before you approve.'; }}
+   if(!l) return;
+   if(areas.length<2){{ l.textContent='See the back'; return; }}
+   var i=areas.indexOf(APPLACEMENT); if(i<0) i=0;
+   l.textContent='See the '+_areaLabel(areas[(i+1)%areas.length]);
  }}
  function _proofRenderSide(side){{
    if(!IS_APPAREL) return;
-   setPlacement(side);                        // swap the editor to that side's design
+   setPlacement(side);                        // swap the editor to that area's design
    var img=document.getElementById('proofImg');
    var paint=function(){{ var du=_composedProofURL(); if(du&&img){{ img.src=du; }} }};
-   paint();                                   // show now (blank back if photo still loading)
-   if(PHOTO && PHOTO.src && !PHOTO.complete){{ // repaint once the side's photo arrives
+   paint();                                   // show now (blank if the photo is still loading)
+   if(PHOTO && PHOTO.src && !PHOTO.complete){{ // repaint once the area's photo arrives
      PHOTO.addEventListener('load',paint,{{once:true}});
      PHOTO.addEventListener('error',paint,{{once:true}}); }}
    _syncProofFlip();
  }}
- function proofFlip(){{ _proofRenderSide(APPLACEMENT==='back'?'front':'back'); }}
+ function proofFlip(){{                          // cycle through EVERY designed area
+   var areas=_designedAreas(); if(areas.length<2) return;
+   var i=areas.indexOf(APPLACEMENT); if(i<0) i=0;
+   _proofRenderSide(areas[(i+1)%areas.length]);
+ }}
  // Drag the proof image sideways to spin it (mirrors the editor's garment spin).
  let _PROOFDRAG=null;
  function _proofDown(ev){{ if(!IS_APPAREL||PROOFMODE!=='item') return;
@@ -5426,8 +5468,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      REVIEWED=true; guide();              // review opened: that task is done
      if(cv&&img){{ const _du=IS_MUG?_mugMockupURL():_composedProofURL();  // mugs: wrap on a real mug
        if(_du){{ img.src=_du; img.style.display='block'; }} }}
-     // Apparel: let the buyer spin the garment to review the BACK too before approving.
-     if(_fl)_fl.style.display=IS_APPAREL?'flex':'none';
+     // Apparel: let the buyer spin the garment to review the BACK too before approving
+     // (only when multi-area is on; otherwise the design is front-only).
+     if(_fl)_fl.style.display=(IS_APPAREL && MULTI_AREA)?'flex':'none';
      if(img)img.classList.toggle('spinnable',IS_APPAREL);
      _syncProofFlip();
      if(title)title.textContent='Your final design';
@@ -5790,7 +5833,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const _PLACE_LBL={{front:'Front',back:'Back'}};
  // Front and back hold INDEPENDENT designs (different wording + photo + frame).
  // Snapshot the current side before flipping, then restore the other side's design.
- let SIDES={{front:null,back:null}};
+ let SIDES={{front:null,back:null,'sleeve-left':null,'sleeve-right':null}};
  function _captureSide(){{
    const ta=document.getElementById('mtext');
    return {{ quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
@@ -5828,7 +5871,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }}
  function setPlacement(p){{
-   if(p!=='back') p='front';
+   var _valid = MULTI_AREA ? ['front','back','sleeve-left','sleeve-right'] : ['front','back'];
+   if(_valid.indexOf(p)<0) p='front';
    const prev=APPLACEMENT;
    if(IS_APPAREL && p!==prev) SIDES[prev]=_captureSide();   // save the side we're leaving
    APPLACEMENT=p;
