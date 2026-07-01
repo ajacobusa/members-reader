@@ -5,7 +5,7 @@
  const EXPRESS_ENABLED = false;            // paid express upgrade on?
  const EXPRESS_UPCHARGE = 9.95;
  const EXPRESS_DAYS = 3;
- const MULTI_AREA = false;              // apparel back+sleeve printing on?
+ const MULTI_AREA = true;              // apparel back+sleeve printing on?
  const BACK_UPCHARGE = 29.27;               // per-area buyer upcharge (loss-proof)
  const SLEEVE_UPCHARGE = 19.51;
  const OWNER = "joffielsc@gmail.com";
