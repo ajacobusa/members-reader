@@ -32,10 +32,14 @@ from dataclasses import dataclass, field
 DEFAULT_APPAREL_DIMS: tuple[int, int] = (3600, 4800)
 
 # Extended sizes cost more to fulfill; modeled upcharge added to the base cost.
-SIZE_UPCHARGE: dict[str, float] = {"2XL": 2.0, "3XL": 4.0}
+SIZE_UPCHARGE: dict[str, float] = {"2XL": 2.0, "3XL": 4.0, "4XL": 6.0, "5XL": 8.0}
 
 
-DEFAULT_SIZES = ["S", "M", "L", "XL", "2XL"]
+# Gelato's common apparel size run (XS-XXXL), matching the live product configurator.
+# The EXACT per-garment run varies by blank and is synced from Gelato per garment
+# (gelato_apparel_variants.sync_apparel_variants) - this is the modeled default until
+# then. The extended sizes (2XL+) carry the SIZE_UPCHARGE above.
+DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
 
 
 @dataclass
