@@ -520,7 +520,7 @@ def test_apparel_front_back_sides_are_independent(tmp_path):
     assert "function setPlacement" in h
     assert "function _placeBound" in h and "function _placeBoundMock" in h
     # per-side capture/restore on flip
-    assert "let SIDES={front:null,back:null}" in h
+    assert "let SIDES={front:null,back:null,'sleeve-left':null,'sleeve-right':null}" in h
     assert "function _captureSide" in h and "function _restoreSide" in h
     assert "SIDES[prev]=_captureSide()" in h and "_restoreSide(SIDES[p])" in h
     # the cart records which sides carry a design, plus placement + the print label
