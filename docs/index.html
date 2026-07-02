@@ -733,6 +733,8 @@
    background:#f4f2ec center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#b9b3a7;font-size:26px}
  .qdthumb.filled .qdplus{display:none}
  .qdcap{font-weight:600;font-size:13px;color:#2a2a2a}
+ .tdirbtn{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-weight:600;cursor:pointer;font-size:13px}
+ .tdirbtn:hover{border-color:var(--gold)}
  .tposreset{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}
  .tposhint{margin-left:8px;color:#8a6210;font-weight:700}
@@ -1446,6 +1448,10 @@
            <button type="button" aria-label="Move design down" onclick="moveFrame(0,0.04)">&darr;</button>
            <button type="button" class="tposreset" onclick="resetFrame()">Reset</button>
          </div>
+         <div class="photorow" id="mtdirrow">
+           <span class="plbl">Text</span>
+           <button type="button" id="mtdirbtn" class="tdirbtn" onclick="toggleTextOrientation()">↕ Vertical / ↔ Horizontal</button>
+         </div>
          <div class="dbhint">Move the whole design (wording + photo) anywhere on the garment and size it up or down.</div>
        </div>
        <div class="dragbar" id="mcalbar" style="display:none">
@@ -1667,7 +1673,7 @@
  </div>
 </div>
 
-<script defer src="app.js?v=a55506fe8c2a"></script>
+<script defer src="app.js?v=279a49ad74e4"></script>
 
 <div id="basketPanel" role="dialog" aria-modal="true" aria-label="Your basket" onclick="if(event.target.id==='basketPanel')toggleBasket()">
   <div class="bpbox">

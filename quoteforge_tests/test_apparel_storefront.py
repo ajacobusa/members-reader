@@ -354,7 +354,8 @@ def test_apparel_editor_rotate_and_clean_proof(tmp_path):
     h = _page(tmp_path)
     # drag-to-spin
     assert "function _flipSide" in h
-    assert "return 'rotate'" in h and "DRAGTARGET==='rotate'" in h
+    # front/back still spin-to-flip (sleeves move instead - see the sleeve-edit test).
+    assert "? 'frame' : 'rotate'" in h and "DRAGTARGET==='rotate'" in h
     assert "drag the shirt" in h                             # spin hint in the UI
     # clean proof: chrome is gated behind !_CLEAN and the proof redraws clean
     assert "let _CLEAN=false" in h

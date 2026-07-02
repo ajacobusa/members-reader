@@ -1919,6 +1919,7 @@
      var _tr=document.getElementById('mtrot'); if(_tr)_tr.value=TROT;
      var _trl=document.getElementById('mtrotlbl'); if(_trl)_trl.textContent=TROT+'°';
    }
+   _syncTextDirBtn();
    drawArt();
  }
  // Toggle the shop-logo overlay (added to BOTH the front and the back).
@@ -1978,8 +1979,21 @@
  let LOFF={};
  function _loff(k){ return LOFF[k]||{dx:0,dy:0}; }
  function setTextRot(v){ TROT=parseInt(v)||0;
-   const lbl=document.getElementById('mtrotlbl'); if(lbl)lbl.textContent=TROT+'°'; drawArt(); }
+   const lbl=document.getElementById('mtrotlbl'); if(lbl)lbl.textContent=TROT+'°';
+   _syncTextDirBtn(); drawArt(); }
  function setRot(deg){ const s=document.getElementById('mtrot'); if(s)s.value=deg; setTextRot(deg); }
+ // Is the wording currently running sideways (roughly vertical)?
+ function _textIsVertical(){ var ra=Math.abs(((TROT%180)+180)%180); return ra>45 && ra<135; }
+ // On-the-fly toggle: flip the wording between VERTICAL (down the arm) and HORIZONTAL,
+ // right by the preview. On a sleeve, vertical mirrors per side so it reads up the arm.
+ function toggleTextOrientation(){
+   var vert=(APPLACEMENT==='sleeve-left'?-90:90);
+   setRot(_textIsVertical()?0:vert);
+ }
+ function _syncTextDirBtn(){
+   var b=document.getElementById('mtdirbtn'); if(!b) return;
+   b.textContent=_textIsVertical()?'↕ Vertical — tap for horizontal':'↔ Horizontal — tap for vertical';
+ }
  function setDragMode(m){ DRAGMODE=m;
    document.querySelectorAll('.dmbtn').forEach(b=>b.classList.toggle('sel',b.dataset.m===m)); }
  // Explicit MOVE controls for the wording (besides dragging it on the preview), so
@@ -2013,7 +2027,13 @@
    const b=APPAREL_BOUND, near=function(hx,hy){ return Math.abs(px.x-hx)<26 && Math.abs(px.y-hy)<26; };
    if(PHOTO && PHOTO_RECT && near(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h)) return 'photoresize';
    if(b && near(b.x, b.y+b.h)) return 'resize';
-   if(b && (px.x<b.x-8 || px.x>b.x+b.w+8 || px.y<b.y-8 || px.y>b.y+b.h+8)) return 'rotate';
+   if(b && (px.x<b.x-8 || px.x>b.x+b.w+8 || px.y<b.y-8 || px.y>b.y+b.h+8)){
+     // A SLEEVE frame is small, so a near-miss grab should MOVE it - NOT flip the
+     // garment front/back (that made the sleeve feel un-editable: every miss spun the
+     // shirt). Switch sides with the Front/Back/sleeve tabs instead. Front/back (big
+     // frame, lots of bare garment to grab) keep the spin-to-flip gesture.
+     return (APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') ? 'frame' : 'rotate';
+   }
    const fx=(px.x-ART.x)/ART.w, fy=(px.y-ART.y)/ART.h;
    const typed=((document.getElementById('mtext')||{}).value||'').trim();
    if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
