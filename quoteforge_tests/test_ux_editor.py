@@ -737,3 +737,14 @@ def test_sleeve_text_defaults_to_vertical(tmp_path):
     assert "if(_tr)_tr.value=TROT" in js                         # slider reflects the default
     # The horizontal/vertical switch controls still exist so it's not locked vertical.
     assert "setRot(0)" in js and "setRot(-90)" in js and "setRot(90)" in js
+
+
+def test_sideways_text_grows_to_fill_narrow_frame(tmp_path):
+    # REGRESSION: vertical text in a NARROW sleeve frame must GROW to fill the box, not
+    # collapse to a few px. The old auto-fit started at 10% of the (narrow) width and
+    # only shrank, so sideways sleeve wording looked absent ("can't add text"). The
+    # sideways branch now starts large and shrinks to fit both thickness AND length.
+    js = _page(tmp_path)
+    assert "else if(sideways)" in js                             # dedicated vertical-fit path
+    assert "Math.round(stackDim*0.62)" in js                    # starts LARGE (was 0.10)
+    assert "<=stackDim*0.92 && _ml<=maxW) break" in js          # shrinks to fit thickness + length

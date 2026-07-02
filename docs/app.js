@@ -3057,6 +3057,21 @@
    let fs, lines;
    if(TSIZE>0){ fs=Math.max(9, Math.round(stackDim*TSIZE/100)); lines=wrap(fs);  // manual...
      while((lines.length*fs*1.32)>stackDim*0.96 && fs>9){fs-=1; lines=wrap(fs);} }  // ...but capped to the print area
+   else if(sideways){
+     // VERTICAL text (e.g. down a sleeve): the frame is narrow, so grow the font FROM A
+     // LARGE start down to the biggest size that fits both the thickness (lines stacked
+     // across the width) AND the length (each line runs along the height). The old
+     // fixed 10%-of-width start collapsed to a few px in a skinny sleeve box, so the
+     // wording looked absent - the buyer "couldn't add text".
+     fs=Math.max(9, Math.round(stackDim*0.62)); lines=wrap(fs);
+     var _fg=0;
+     while(_fg++<260 && fs>9){
+       lines=wrap(fs); ctx.font='600 '+fs+'px '+SELFONT;
+       var _ml=0; for(var _li=0;_li<lines.length;_li++){ var _lw2=ctx.measureText(lines[_li]).width; if(_lw2>_ml)_ml=_lw2; }
+       if((lines.length*fs*1.32)<=stackDim*0.92 && _ml<=maxW) break;   // fits thickness + length
+       fs-=1;
+     }
+   }
    else { fs=Math.round(stackDim*0.10); lines=wrap(fs);                      // auto-fit
      while((lines.length*fs*1.32)>stackDim*0.82 && fs>9){fs-=1; lines=wrap(fs);} }
    const lh=fs*1.34; const block=lines.length*lh;
