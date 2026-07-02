@@ -303,7 +303,7 @@ def test_apparel_design_frame_is_movable_and_resizable(tmp_path):
     # photo live inside it and move/scale with it. (The buyer asked to "move the
     # frame anywhere and resize it".)
     h = _page(tmp_path)
-    assert "let BOX={x:0.50,y:0.35,s:1.0}" in h               # frame centre + scale state
+    assert "let BOX={x:0.50,y:0.35,s:1.0,sy:1.0}" in h        # frame centre + width + length state
     assert "const bw=W*0.42*BOX.s, bh=H*0.32*BOX.s" in h      # bound derived from the frame
     assert "function setFrameSize" in h and "function moveFrame" in h
     assert 'id="mframebar"' in h and 'id="mframesize"' in h   # frame controls in the UI

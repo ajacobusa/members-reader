@@ -4657,7 +4657,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    renderBg();                         // colour swatches (apparel/branded) / Background
    if(_PRINT){{
      autoContrastText((CURFMT.split(' - ')[1]||''));
-     BOX={{x:0.50,y:0.35,s:1.0}};      // reset the design frame position + size
+     BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}};      // reset the design frame position + size
      var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=1;
    }}
    if(IS_APPAREL){{
@@ -5823,17 +5823,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
- let BOX={{x:0.50,y:0.35,s:1.0}};
+ let BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}};   // s = width scale; sy = INDEPENDENT length (sleeves)
  function _clampBox(){{
    // A sleeve is off-centre + small, so it needs the FULL canvas range and a smaller
-   // minimum size; front/back stay clamped to the torso.
+   // minimum size; front/back stay clamped to the torso. sy stretches a sleeve's LENGTH.
    var _sl=(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right');
    BOX.x=Math.min(_sl?0.95:0.84,Math.max(_sl?0.05:0.16,BOX.x));
    BOX.y=Math.min(_sl?0.82:0.62,Math.max(_sl?0.08:0.18,BOX.y));
-   BOX.s=Math.min(1.7,Math.max(_sl?0.30:0.45,BOX.s)); }}
+   BOX.s=Math.min(1.7,Math.max(_sl?0.30:0.45,BOX.s));
+   if(BOX.sy==null) BOX.sy=1.0;
+   BOX.sy=Math.min(3.0,Math.max(0.30,BOX.sy)); }}
  function setFrameSize(v){{ BOX.s=parseFloat(v)||1; _clampBox(); drawArt(); }}
  function moveFrame(dx,dy){{ BOX.x+=dx; BOX.y+=dy; _clampBox(); drawArt(); }}
- function resetFrame(){{ BOX={{x:0.50,y:0.35,s:1.0}};
+ function resetFrame(){{
+   if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right'){{
+     // Back to the on-arm long-narrow sleeve default (matches setPlacement).
+     BOX={{x:(APPLACEMENT==='sleeve-left'?0.24:0.76), y:0.30, s:0.75, sy:1.5}};
+   }} else {{ BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}}; }}
    var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }}
  const _PLACE_LBL={{front:'Front',back:'Back','sleeve-left':'Left sleeve','sleeve-right':'Right sleeve'}};
  // Front and back hold INDEPENDENT designs (different wording + photo + frame).
@@ -5843,7 +5849,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const ta=document.getElementById('mtext');
    return {{ quote:(ta?ta.value:'')||'', cq:CURQUOTE, photoSrc:(PHOTO&&PHOTO.src)?PHOTO.src:'',
      pz:PHOTO_ZOOM, pfx:PHOTO_FX, pfy:PHOTO_FY, tpos:{{x:TPOS.x,y:TPOS.y}},
-     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s}}, font:SELFONT, txt:SELTXT,
+     tsize:TSIZE, trot:TROT, box:{{x:BOX.x,y:BOX.y,s:BOX.s,sy:BOX.sy}}, font:SELFONT, txt:SELTXT,
      layout:CURLAYOUT, slots:JSON.parse(JSON.stringify(SLOTS)),
      loff:JSON.parse(JSON.stringify(LOFF)),
      collage:COLLAGE.map(function(im){{ return (im&&im.src)||''; }}) }};
@@ -5854,7 +5860,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(ta) ta.value=s.quote||''; CURQUOTE=s.cq||'';
      PHOTO_ZOOM=s.pz; PHOTO_FX=s.pfx; PHOTO_FY=s.pfy;
      TPOS={{x:s.tpos.x,y:s.tpos.y}}; TSIZE=s.tsize; TROT=s.trot;
-     BOX={{x:s.box.x,y:s.box.y,s:s.box.s}};
+     BOX={{x:s.box.x,y:s.box.y,s:s.box.s,sy:(s.box.sy||1)}};
      if(s.font) SELFONT=s.font; if(s.txt) SELTXT=s.txt;
      CURLAYOUT=s.layout||'freeform'; SLOTS=s.slots?JSON.parse(JSON.stringify(s.slots)):_emptySlots();
      LOFF=s.loff?JSON.parse(JSON.stringify(s.loff)):{{}};
@@ -5867,7 +5873,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }} else {{                                    // a fresh, empty side
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
-     TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0}}; _showPhotoCtl(false);
+     TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}}; _showPhotoCtl(false);
      CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null]; LOFF={{}};
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
@@ -5890,7 +5896,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(_wasEmpty && (p==='sleeve-left'||p==='sleeve-right')){{
      // Start the sleeve frame ON the arm (image-left / image-right), small - so it's
      // visible on the sleeve and the buyer can drag/resize/rotate it from there.
-     BOX={{x:(p==='sleeve-left'?0.24:0.76), y:0.30, s:0.75}};
+     BOX={{x:(p==='sleeve-left'?0.24:0.76), y:0.30, s:0.75, sy:1.5}};
    }}
    drawArt();
  }}
@@ -5920,10 +5926,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // frame on the upper arm (left/right), resizable via BOX.s with a little drag room,
    // so the buyer actually designs ON the sleeve - not the chest.
    if(APPLACEMENT==='sleeve-left' || APPLACEMENT==='sleeve-right'){{
-     // Small frame that follows BOX.x/BOX.y (full drag) + BOX.s (resize), so the buyer
-     // moves + resizes it onto the sleeve. Default position is set on the arm when the
-     // sleeve is first opened (setPlacement).
-     var bw=W*0.16*BOX.s, bh=H*0.18*BOX.s;
+     // Small frame that follows BOX.x/BOX.y (full drag). A sleeve is a long, narrow
+     // strip, so WIDTH (BOX.s) and LENGTH (BOX.sy) resize INDEPENDENTLY - the buyer
+     // drags the corner sideways to widen and up/down to lengthen. Default position +
+     // long-narrow shape are set on the arm when the sleeve is first opened (setPlacement).
+     var bw=W*0.16*BOX.s, bh=H*0.20*(BOX.sy||1);
      var bx=W*BOX.x-bw/2, by=H*BOX.y-bh/2;
      bx=Math.min(Math.max(bx,W*0.01),W*0.99-bw);
      by=Math.min(Math.max(by,H*0.02),H*0.82-bh);
@@ -6028,7 +6035,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(DRAGPX){{ BOX.x+=(px.x-DRAGPX.x)/W; BOX.y+=(px.y-DRAGPX.y)/H; _clampBox(); }}
    }} else if(DRAGTARGET==='resize'){{                           // drag the corner to resize the FRAME
      const cx=BOX.x*W, cy=BOX.y*H;
-     BOX.s=Math.max(2*Math.abs(px.x-cx)/(0.42*W), 2*Math.abs(px.y-cy)/(0.32*H));
+     if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right'){{
+       // A sleeve resizes WIDTH and LENGTH independently: horizontal drag sets the
+       // width (BOX.s), vertical drag sets the length (BOX.sy). Base dims mirror
+       // _apparelBound (0.16*W wide, 0.20*H long).
+       BOX.s=2*Math.abs(px.x-cx)/(0.16*W);
+       BOX.sy=2*Math.abs(px.y-cy)/(0.20*H);
+     }} else {{
+       BOX.s=Math.max(2*Math.abs(px.x-cx)/(0.42*W), 2*Math.abs(px.y-cy)/(0.32*H));
+     }}
      _clampBox();
    }} else if(DRAGTARGET==='photoresize'){{                       // drag the corner to resize the PHOTO
      if(PHOTO_RECT && PHOTO_RECT.w>2 && PHOTO_RECT.h>2){{
@@ -7099,7 +7114,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const _cap=IS_CAL ? '📅 Cover area - drag to move · green corner to resize'
        : (IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
        : (IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
-       : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize')));
+       : ((APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right')
+         ? ('👕 '+(_PLACE_LBL[APPLACEMENT])+' - drag to move · corner: sideways = width, up/down = length')
+         : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize'))));
      ctx.fillText(_cap, b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];

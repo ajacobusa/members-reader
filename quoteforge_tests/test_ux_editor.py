@@ -711,3 +711,18 @@ def test_sleeves_have_their_own_editable_print_area(tmp_path):
     assert "APPLACEMENT==='sleeve-left'" in js               # sleeve gets its own bound
     assert "'sleeve-left':'Left sleeve'" in js           # per-area drag label
     assert "_apparelBound(W,H)" in js                           # drawArt uses it for apparel
+
+
+def test_sleeve_frame_resizes_width_and_length_independently(tmp_path):
+    # REGRESSION: a sleeve is a long, narrow strip - the buyer must be able to stretch
+    # WIDTH and LENGTH independently, not just scale uniformly. Width is driven by BOX.s
+    # and length by an INDEPENDENT BOX.sy (corner: sideways=width, up/down=length).
+    js = _page(tmp_path)
+    # A second, independent length scale exists and drives the sleeve bound's height.
+    assert "sy:1.0" in js or "sy:1.5" in js                     # BOX carries an sy dimension
+    assert "H*0.20*(BOX.sy" in js                               # sleeve LENGTH uses BOX.sy, not BOX.s
+    # The corner-resize gesture sets width and length on separate axes for a sleeve.
+    assert "BOX.sy=2*Math.abs(px.y-cy)/(0.20*H)" in js          # vertical drag -> length
+    assert "BOX.s=2*Math.abs(px.x-cx)/(0.16*W)" in js           # horizontal drag -> width
+    # The clamp keeps the independent length in range so it can't invert or run away.
+    assert "BOX.sy=Math.min(3.0,Math.max(0.30,BOX.sy))" in js
