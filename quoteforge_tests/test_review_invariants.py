@@ -31,6 +31,7 @@ def test_new_infra_checks_are_wired():
     assert "branded_uid_integrity" in names
     assert "apparel_multiarea_profitable" in names
     assert "gelato_cost_sync_grounded" in names         # daily Gelato cost discovery wired
+    assert "sleeve_order_integrity_grounded" in names   # a paid sleeve can't be dropped from the order
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():

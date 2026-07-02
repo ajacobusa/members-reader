@@ -5267,7 +5267,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var d=_designState();
    if(IS_APPAREL){{
      try{{ SIDES[APPLACEMENT]=_captureSide(); }}catch(e){{}}
-     d.sides={{front:_stripPhoto(SIDES.front), back:_stripPhoto(SIDES.back)}};
+     // ALL FOUR areas must ride in the order payload - a sleeve is previewed AND priced
+     // (extra_print upcharge), so dropping its content here would ship a paid sleeve
+     // blank/wrong. (Was front+back only, from before sleeves existed.)
+     d.sides={{front:_stripPhoto(SIDES.front), back:_stripPhoto(SIDES.back),
+       'sleeve-left':_stripPhoto(SIDES['sleeve-left']),
+       'sleeve-right':_stripPhoto(SIDES['sleeve-right'])}};
      d.placement=APPLACEMENT;
      d.logo=(typeof LOGO_ON!=='undefined'&&LOGO_ON)?'front+back':'';
    }}
@@ -5371,34 +5376,41 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // designed SLEEVES on the arms (a real shirt shows its sleeves from the front). The
  // BACK is a SEPARATE view with only the back design - there are no sleeves on the
  // back. Each sleeve is overlaid by its OWN bound region so it never covers the chest.
- function _composedFrontURL(){{
+ // maxDim (optional) downscales to a JPEG thumbnail; omitted returns a full-size PNG.
+ // This is the SINGLE front-with-sleeves compositor - the live proof, the spin flip, the
+ // submitted checkout proof AND the basket thumbnail all go through it, so they can never
+ // drift apart (one shows sleeves, another doesn't).
+ function _composedFrontURL(maxDim){{
    const cv=document.getElementById('mcanvas'); if(!cv) return '';
    if(!IS_APPAREL) return _composedProofURL();
    const mg=document.getElementById('mgarment');
    const prev=APPLACEMENT;
    _SNAPPING=true; _CLEAN=true;
-   const tc=document.createElement('canvas'); tc.width=cv.width; tc.height=cv.height;
-   const tx=tc.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,tc.width,tc.height);
+   var W=cv.width, H=cv.height, tw=W, th=H;
+   if(maxDim){{ var _r=W/H; tw=_r>=1?maxDim:Math.round(maxDim*_r); th=_r>=1?Math.round(maxDim/_r):maxDim; }}
+   var _sc=tw/W, _scY=th/H;                    // full-canvas coords -> target (scaled) coords
+   const tc=document.createElement('canvas'); tc.width=tw; tc.height=th;
+   const tx=tc.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,tw,th);
    // 1) front: the garment photo (if any) behind the front design
    setPlacement('front'); drawArt();
    if(mg && mg.style.display!=='none' && mg.complete && mg.naturalWidth){{
-     const ir=mg.naturalWidth/mg.naturalHeight, cr=tc.width/tc.height; let dw,dh;
-     if(ir>cr){{ dw=tc.width; dh=dw/ir; }} else {{ dh=tc.height; dw=dh*ir; }}
-     tx.drawImage(mg,(tc.width-dw)/2,(tc.height-dh)/2,dw,dh);
+     const ir=mg.naturalWidth/mg.naturalHeight, cr=tw/th; let dw,dh;
+     if(ir>cr){{ dw=tw; dh=dw/ir; }} else {{ dh=th; dw=dh*ir; }}
+     tx.drawImage(mg,(tw-dw)/2,(th-dh)/2,dw,dh);
    }}
-   tx.drawImage(cv,0,0);                       // front silhouette (if drawn on canvas) + front design
+   tx.drawImage(cv,0,0,tw,th);                 // front silhouette (if drawn on canvas) + front design
    // 2) overlay each DESIGNED sleeve, copying ONLY its bound region so the chest stays
    ['sleeve-left','sleeve-right'].forEach(function(a){{
      if(!_sideHas(SIDES[a])) return;
      setPlacement(a); drawArt();
-     var b=_apparelBound(cv.width,cv.height), pad=4;
+     var b=_apparelBound(W,H), pad=4;
      var sx=Math.max(0,b.x-pad), sy=Math.max(0,b.y-pad);
-     var sw=Math.min(cv.width-sx,b.w+2*pad), sh=Math.min(cv.height-sy,b.h+2*pad);
-     tx.drawImage(cv, sx,sy,sw,sh, sx,sy,sw,sh);
+     var sw=Math.min(W-sx,b.w+2*pad), sh=Math.min(H-sy,b.h+2*pad);
+     tx.drawImage(cv, sx,sy,sw,sh, sx*_sc,sy*_scY,sw*_sc,sh*_scY);
    }});
    setPlacement(prev);
    _CLEAN=false; drawArt(); _SNAPPING=false;
-   var url=''; try{{ url=tc.toDataURL('image/png'); }}catch(e){{ url=''; }}
+   var url=''; try{{ url=maxDim?tc.toDataURL('image/jpeg',0.78):tc.toDataURL('image/png'); }}catch(e){{ url=''; }}
    return url;
  }}
  // A small (~240px) JPEG snapshot of the composed proof, captured at add-to-basket
@@ -5408,6 +5420,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // canvas) - the row then falls back to text, never blocking checkout.
  function _proofThumb(){{
    try{{
+     // Apparel: the thumbnail must match the approved proof (front + BOTH sleeves), so
+     // it goes through the single front-with-sleeves compositor at thumbnail size.
+     if(IS_APPAREL){{ var _u=_composedFrontURL(240); if(_u) return _u; }}
      var cv=document.getElementById('mcanvas'); if(!cv||!cv.width) return '';
      var mg=document.getElementById('mgarment');
      _SNAPPING=true; _CLEAN=true; drawArt();
@@ -5829,7 +5844,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          cal:l.cal||null,logo:l.logo||'',design:l.design||null}})) }};
      fetch(CONFIRM_API,{{method:'POST',headers:{{'Content-Type':'application/json'}},
        body:JSON.stringify({{email:email, summary:summary, design:dsn,
-         design_id:'cart-'+Date.now(), proof:_composedProofURL()}})}})
+         design_id:'cart-'+Date.now(), proof:(IS_APPAREL?_composedFrontURL():_composedProofURL())}})}})
        .then(r=>r.json()).then(d=>done(d&&d.ok)).catch(()=>done(false));
    }} else {{ done(false); }}
  }}
@@ -6039,6 +6054,24 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
    renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }}
+ // == SLEEVE EDITING CONTRACT (keep true; pinned by test_sleeve_editing_contract) =========
+ // A sleeve (sleeve-left/right) is an independent print area, enabled only with MULTI_AREA.
+ // PERSISTENCE: each area's full design lives in SIDES[area]; switching tabs saves via
+ //   _captureSide + restores via _restoreSide - no area is lost.
+ // FRAME: a long-narrow on-arm strip (_apparelBound sleeve branch), opening at the on-arm
+ //   default (x 0.24/0.76, y 0.30, s 0.75, sy 1.5) with text VERTICAL, mirrored per arm.
+ // MOVE AS A UNIT: any grab inside a sleeve frame moves the whole design (BOX.x/BOX.y);
+ //   it never nudges text/photo within the frame and never flips the garment.
+ // RESIZE: width (BOX.s) + length (BOX.sy) independently, anchored at the opposite corner.
+ // TEXT FIT: wording fits the frame in EITHER orientation (vertical grows-to-fit,
+ //   horizontal shrinks-to-width).
+ // SINGLE-SOURCE COMPOSITING: EVERY front-facing render - live proof, spin flip, basket
+ //   thumbnail AND the submitted checkout proof - goes through _composedFrontURL (front +
+ //   both sleeve regions); back is a separate back-only view.
+ // ORDER INTEGRITY: _fullDesign().sides carries ALL FOUR areas + a designed sleeve adds the
+ //   sleeve upcharge - what is previewed is exactly what is ordered/produced.
+ // LAYOUTS: sleeves are FREEFORM-ONLY (Layout Studio hidden + CURLAYOUT forced freeform).
+ // =========================================================================================
  function setPlacement(p){{
    var _valid = MULTI_AREA ? ['front','back','sleeve-left','sleeve-right'] : ['front','back'];
    if(_valid.indexOf(p)<0) p='front';
@@ -6062,6 +6095,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var _tr=document.getElementById('mtrot'); if(_tr)_tr.value=TROT;
      var _trl=document.getElementById('mtrotlbl'); if(_trl)_trl.textContent=TROT+'°';
    }}
+   // Sleeves are FREEFORM-ONLY: a sleeve is too narrow to arrange a structured Layout
+   // Studio preset, and those presets don't rotate to read down the arm. Force freeform
+   // + hide the layout picker on a sleeve; restore it for front/back.
+   var _sleeveNow=(p==='sleeve-left'||p==='sleeve-right');
+   var _lb=document.getElementById('mlayoutbar');
+   if(_sleeveNow){{ CURLAYOUT='freeform'; if(_lb)_lb.style.display='none'; }}
+   else if(_lb && (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)){{ _lb.style.display='block'; }}
    _syncTextDirBtn();
    drawArt();
  }}
@@ -6177,6 +6217,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // frame, lots of bare garment to grab) keep the spin-to-flip gesture.
      return (APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') ? 'frame' : 'rotate';
    }}
+   // On a SLEEVE the design moves as a UNIT: any grab INSIDE the frame (past the resize
+   // corner) MOVES the whole thing onto the arm, instead of nudging just the wording or
+   // photo within it - a sleeve is too small to arrange elements inside, and grabbing the
+   // wording used to return 'text' so the design felt stuck ("cannot move the sleeve").
+   if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') return 'frame';
    const fx=(px.x-ART.x)/ART.w, fy=(px.y-ART.y)/ART.h;
    const typed=((document.getElementById('mtext')||{{}}).value||'').trim();
    if((typed||CURQUOTE) && Math.abs(fx-TPOS.x)<0.24 && Math.abs(fy-TPOS.y)<0.17) return 'text';
@@ -6501,7 +6546,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function onSlot(k,v){{ SLOTS[k]=v; if(k==='headline'){{ var ta=document.getElementById('mtext'); if(ta) ta.value=v; }} drawArt(); }}
  function pickLayout(k){{ CURLAYOUT=k; LOFF={{}}; renderLayoutGallery(); renderSlotInputs(); drawArt(); }}
  // Put every nudged element back to its template position.
- function resetPlacement(){{ LOFF={{}}; TPOS={{x:0.5,y:0.5}}; drawArt(); toast('Placement reset.'); }}
+ function resetPlacement(){{ LOFF={{}}; TPOS={{x:0.5,y:0.5}};
+   // A sleeve design is positioned by its FRAME (BOX), not TPOS, so reset the frame too
+   // (resetFrame is sleeve-aware and restores the on-arm default).
+   if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') resetFrame();
+   drawArt(); toast('Placement reset.'); }}
  function swatchDot(name){{
    // Small colour cue on each frame/material pill - keeps the familiar pill
    // layout while making the picker visual. Framed swatches get a thin white mat
@@ -7283,7 +7332,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      }}
    }}
    else {{ fs=Math.round(stackDim*0.10); lines=wrap(fs);                      // auto-fit
-     while((lines.length*fs*1.32)>stackDim*0.82 && fs>9){{fs-=1; lines=wrap(fs);}} }}
+     // Shrink to fit BOTH the height (stacked block) AND the width (widest line): a long
+     // single word can't wrap, so on a NARROW sleeve frame HORIZONTAL text would else
+     // overflow the dashed area and print clipped.
+     var _wideAt=function(){{ ctx.font='600 '+fs+'px '+SELFONT;
+       for(var _wi=0;_wi<lines.length;_wi++){{ if(ctx.measureText(lines[_wi]).width>maxW) return true; }} return false; }};
+     while(((lines.length*fs*1.32)>stackDim*0.82 || _wideAt()) && fs>9){{fs-=1; lines=wrap(fs);}} }}
    const lh=fs*1.34; const block=lines.length*lh;
    // Keep the WHOLE wording block inside the dashed print area wherever it's dragged.
    // TPOS clamps the CENTRE to 0.04..0.96, but the block has width+height, so half of
