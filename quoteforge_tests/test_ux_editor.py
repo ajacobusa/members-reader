@@ -779,3 +779,23 @@ def test_sleeve_resize_anchors_opposite_corner_extends_down_arm(tmp_path):
     assert "RESIZE_ANCHOR?RESIZE_ANCHOR.x:cx" in js             # move uses the anchor
     assert "BOX.x=((ax+px.x)/2)/W; BOX.y=((ay+px.y)/2)/H" in js # recentre keeps anchor fixed
     assert "H*0.94-bh" in js                                     # wider downward range (was 0.82)
+
+
+def test_sleeve_grab_moves_frame_not_flips_garment(tmp_path):
+    # REGRESSION: the sleeve frame is small, so a near-miss grab hit 'rotate' and FLIPPED
+    # the shirt front/back - the sleeve felt un-editable ("cannot edit sleeve"). A grab
+    # outside a SLEEVE frame must MOVE it, not flip; front/back keep the spin gesture.
+    js = _page(tmp_path)
+    assert "'sleeve-left'||APPLACEMENT==='sleeve-right') ? 'frame' : 'rotate'" in js
+
+
+def test_text_orientation_toggle_on_the_fly(tmp_path):
+    # REGRESSION: buyers wanted to switch wording between vertical and horizontal ON THE
+    # FLY, right by the preview - not buried in the Text step. A one-tap toggle in the
+    # move/resize bar flips TROT between vertical and 0 and labels the current state.
+    js = _page(tmp_path)
+    assert 'id="mtdirbtn"' in js                                 # the on-the-fly toggle button
+    assert "toggleTextOrientation()" in js
+    assert "function toggleTextOrientation" in js
+    assert "function _textIsVertical" in js                      # decides vertical vs horizontal
+    assert "setRot(_textIsVertical()?0:vert)" in js             # flips to the opposite orientation
