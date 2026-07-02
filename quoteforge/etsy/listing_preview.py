@@ -3112,6 +3112,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .rotrow button{{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
    padding:5px 8px;font-size:12px;cursor:pointer;color:var(--green);white-space:nowrap}}
  .rotrow button:hover{{border-color:var(--gold)}}
+ .qdrow{{display:flex;gap:10px;margin:6px 0 10px}}
+ .qdbox{{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
+   border:1.5px dashed var(--line);border-radius:14px;padding:12px 8px;cursor:pointer;background:#fff;transition:border-color .15s}}
+ .qdbox:hover{{border-color:var(--gold)}}
+ .qdbox input[type=file]{{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer}}
+ .qdthumb{{width:100%;max-width:120px;aspect-ratio:1/1;border-radius:10px;
+   background:#f4f2ec center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#b9b3a7;font-size:26px}}
+ .qdthumb.filled .qdplus{{display:none}}
+ .qdcap{{font-weight:600;font-size:13px;color:#2a2a2a}}
  .tposreset{{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}}
  .tposhint{{margin-left:8px;color:#8a6210;font-weight:700}}
@@ -3935,6 +3944,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        </div>
        <div class="esec" id="esec2" style="display:none">
+         <div id="quickdesign" style="display:none">
+           <div class="lbl">⚡ Quick design - drop a ready-made file for each side</div>
+           <div class="qdrow">
+             <label class="qdbox" id="qdfront">
+               <span class="qdthumb" id="qfrontthumb"><span class="qdplus">＋</span></span>
+               <span class="qdcap">Front file</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('front',this)" aria-label="Upload a design file for the front">
+             </label>
+             <label class="qdbox" id="qdback">
+               <span class="qdthumb" id="qbackthumb"><span class="qdplus">＋</span></span>
+               <span class="qdcap">Back file</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('back',this)" aria-label="Upload a design file for the back">
+             </label>
+           </div>
+           <div class="note">Each file drops straight onto that side, sized to the print area. Fine-tune the position, zoom or add wording on the left - or use the single uploader below to do one side at a time.</div>
+         </div>
          <div class="uploadbox">
            <div class="lbl">📷 Add your own photo (optional)</div>
            <input type="file" id="mupload"
@@ -4612,6 +4637,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';   // off => front-only (no unprintable back)
+   // Quick-design two-file (front + back) drop-zones are apparel-only (needs 2 sides).
+   const qd=document.getElementById('quickdesign');
+   if(qd) qd.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';
    // Movable design-frame controls run for apparel AND branded.
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = PRINT ? 'block' : 'none';
@@ -4668,6 +4696,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
+     ['qfrontthumb','qbackthumb'].forEach(function(id){{      // clear quick-design previews
+       var t=document.getElementById(id); if(t){{ t.style.backgroundImage=''; t.classList.remove('filled'); }} }});
    }}
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
@@ -5789,6 +5819,30 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      guide(); }};
    img.onerror=function(){{PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';}};
    img.src=URL.createObjectURL(f);}}
+ // Quick design: drop a ready-made file straight onto ONE side (front or back). Each
+ // side keeps its own uploaded design (per-side capture), so the buyer can fill front
+ // AND back at once. The image is CONTAIN-fit to that side's print area (whole artwork
+ // shown); they can still zoom/move it or add wording afterwards.
+ function quickSideUpload(side, inp){{
+   var f=inp.files&&inp.files[0]; if(!f) return;
+   if(!/(jpe?g|png)$/i.test(f.name)){{ toast('Use a JPG or PNG image for quick design.'); inp.value=''; return; }}
+   if(f.size>MAX_UPLOAD_MB*1048576){{ toast('That file is too large (max '+MAX_UPLOAD_MB+' MB).'); inp.value=''; return; }}
+   var img=new Image();
+   img.onload=function(){{
+     setPlacement(side);                              // make this side active (saves the other side)
+     PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+     var z=document.getElementById('mphotozoom'); if(z)z.value=1;
+     setDragMode('photo'); _showPhotoCtl(true); drawArt();
+     SIDES[side]=_captureSide();                      // persist this side immediately
+     var th=document.getElementById(side==='front'?'qfrontthumb':'qbackthumb');
+     if(th){{ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }}
+     if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
+     if(typeof guide==='function') guide();
+     toast((side==='front'?'Front':'Back')+' design added ✓');
+   }};
+   img.onerror=function(){{ toast('Could not read that image - try another file.'); }};
+   img.src=URL.createObjectURL(f);
+ }}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // which side is being designed: front | back
