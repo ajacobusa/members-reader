@@ -598,6 +598,9 @@
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';   // off => front-only (no unprintable back)
+   // Quick-design two-file (front + back) drop-zones are apparel-only (needs 2 sides).
+   const qd=document.getElementById('quickdesign');
+   if(qd) qd.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';
    // Movable design-frame controls run for apparel AND branded.
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = PRINT ? 'block' : 'none';
@@ -654,6 +657,8 @@
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
+     ['qfrontthumb','qbackthumb'].forEach(function(id){      // clear quick-design previews
+       var t=document.getElementById(id); if(t){ t.style.backgroundImage=''; t.classList.remove('filled'); } });
    }
    renderTierRow();                    // quality picker (apparel, multi-tier only)
    fillSizes(); drawArt(); updateReview();
@@ -1775,6 +1780,30 @@
      guide(); };
    img.onerror=function(){PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';};
    img.src=URL.createObjectURL(f);}
+ // Quick design: drop a ready-made file straight onto ONE side (front or back). Each
+ // side keeps its own uploaded design (per-side capture), so the buyer can fill front
+ // AND back at once. The image is CONTAIN-fit to that side's print area (whole artwork
+ // shown); they can still zoom/move it or add wording afterwards.
+ function quickSideUpload(side, inp){
+   var f=inp.files&&inp.files[0]; if(!f) return;
+   if(!/(jpe?g|png)$/i.test(f.name)){ toast('Use a JPG or PNG image for quick design.'); inp.value=''; return; }
+   if(f.size>MAX_UPLOAD_MB*1048576){ toast('That file is too large (max '+MAX_UPLOAD_MB+' MB).'); inp.value=''; return; }
+   var img=new Image();
+   img.onload=function(){
+     setPlacement(side);                              // make this side active (saves the other side)
+     PHOTO=img; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
+     var z=document.getElementById('mphotozoom'); if(z)z.value=1;
+     setDragMode('photo'); _showPhotoCtl(true); drawArt();
+     SIDES[side]=_captureSide();                      // persist this side immediately
+     var th=document.getElementById(side==='front'?'qfrontthumb':'qbackthumb');
+     if(th){ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }
+     if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
+     if(typeof guide==='function') guide();
+     toast((side==='front'?'Front':'Back')+' design added ✓');
+   };
+   img.onerror=function(){ toast('Could not read that image - try another file.'); };
+   img.src=URL.createObjectURL(f);
+ }
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
  let APPLACEMENT='front';  // which side is being designed: front | back

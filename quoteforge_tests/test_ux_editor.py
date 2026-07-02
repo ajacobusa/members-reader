@@ -748,3 +748,19 @@ def test_sideways_text_grows_to_fill_narrow_frame(tmp_path):
     assert "else if(sideways)" in js                             # dedicated vertical-fit path
     assert "Math.round(stackDim*0.62)" in js                    # starts LARGE (was 0.10)
     assert "<=stackDim*0.92 && _ml<=maxW) break" in js          # shrinks to fit thickness + length
+
+
+def test_quick_design_front_and_back_file_dropzones(tmp_path):
+    # REGRESSION: buyers expected a quick way to drop a ready-made file for the FRONT
+    # and a separate file for the BACK. Two drop-zones must exist, each routed to its
+    # side, and each side keeps its OWN uploaded design (per-side capture).
+    js = _page(tmp_path)
+    assert 'id="quickdesign"' in js                              # the quick-design panel
+    assert "Front file" in js and "Back file" in js             # two labelled drop-zones
+    assert "quickSideUpload('front',this)" in js                # front input -> front side
+    assert "quickSideUpload('back',this)" in js                 # back input -> back side
+    assert "function quickSideUpload" in js
+    assert "setPlacement(side)" in js                           # activates the target side
+    assert "SIDES[side]=_captureSide()" in js                   # persists that side's own design
+    # apparel-only (needs two sides); gated with the front/back placement bar.
+    assert "qd.style.display = (IS_APPAREL && MULTI_AREA)" in js

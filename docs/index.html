@@ -724,6 +724,15 @@
  .rotrow button{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
    padding:5px 8px;font-size:12px;cursor:pointer;color:var(--green);white-space:nowrap}
  .rotrow button:hover{border-color:var(--gold)}
+ .qdrow{display:flex;gap:10px;margin:6px 0 10px}
+ .qdbox{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
+   border:1.5px dashed var(--line);border-radius:14px;padding:12px 8px;cursor:pointer;background:#fff;transition:border-color .15s}
+ .qdbox:hover{border-color:var(--gold)}
+ .qdbox input[type=file]{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer}
+ .qdthumb{width:100%;max-width:120px;aspect-ratio:1/1;border-radius:10px;
+   background:#f4f2ec center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#b9b3a7;font-size:26px}
+ .qdthumb.filled .qdplus{display:none}
+ .qdcap{font-weight:600;font-size:13px;color:#2a2a2a}
  .tposreset{background:#fff;border:1px solid var(--line);border-radius:14px;
    padding:4px 12px;font-size:12px;cursor:pointer;color:var(--green)}
  .tposhint{margin-left:8px;color:#8a6210;font-weight:700}
@@ -1565,6 +1574,22 @@
        </div>
        </div>
        <div class="esec" id="esec2" style="display:none">
+         <div id="quickdesign" style="display:none">
+           <div class="lbl">⚡ Quick design - drop a ready-made file for each side</div>
+           <div class="qdrow">
+             <label class="qdbox" id="qdfront">
+               <span class="qdthumb" id="qfrontthumb"><span class="qdplus">＋</span></span>
+               <span class="qdcap">Front file</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('front',this)" aria-label="Upload a design file for the front">
+             </label>
+             <label class="qdbox" id="qdback">
+               <span class="qdthumb" id="qbackthumb"><span class="qdplus">＋</span></span>
+               <span class="qdcap">Back file</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('back',this)" aria-label="Upload a design file for the back">
+             </label>
+           </div>
+           <div class="note">Each file drops straight onto that side, sized to the print area. Fine-tune the position, zoom or add wording on the left - or use the single uploader below to do one side at a time.</div>
+         </div>
          <div class="uploadbox">
            <div class="lbl">📷 Add your own photo (optional)</div>
            <input type="file" id="mupload"
@@ -1642,7 +1667,7 @@
  </div>
 </div>
 
-<script defer src="app.js?v=fae830a6b52b"></script>
+<script defer src="app.js?v=adf19421185f"></script>
 
 <div id="basketPanel" role="dialog" aria-modal="true" aria-label="Your basket" onclick="if(event.target.id==='basketPanel')toggleBasket()">
   <div class="bpbox">
