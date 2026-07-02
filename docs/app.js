@@ -661,7 +661,7 @@
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
-     ['qfrontthumb','qbackthumb'].forEach(function(id){      // clear quick-design previews
+     ['qfrontthumb','qbackthumb','qsleeveLthumb','qsleeveRthumb'].forEach(function(id){      // clear quick-design previews
        var t=document.getElementById(id); if(t){ t.style.backgroundImage=''; t.classList.remove('filled'); } });
    }
    renderTierRow();                    // quality picker (apparel, multi-tier only)
@@ -1848,11 +1848,13 @@
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo'); _showPhotoCtl(true); drawArt();
      SIDES[side]=_captureSide();                      // persist this side immediately
-     var th=document.getElementById(side==='front'?'qfrontthumb':'qbackthumb');
+     var _QD={'front':{t:'qfrontthumb',n:'Front'},'back':{t:'qbackthumb',n:'Back'},
+       'sleeve-left':{t:'qsleeveLthumb',n:'Left sleeve'},'sleeve-right':{t:'qsleeveRthumb',n:'Right sleeve'}}[side]||{t:'',n:side};
+     var th=_QD.t?document.getElementById(_QD.t):null;
      if(th){ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }
      if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
      if(typeof guide==='function') guide();
-     toast((side==='front'?'Front':'Back')+' design added ✓');
+     toast(_QD.n+' design added ✓');
    };
    img.onerror=function(){ toast('Could not read that image - try another file.'); };
    img.src=URL.createObjectURL(f);

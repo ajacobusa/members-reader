@@ -110,6 +110,56 @@ def test_autocommit_runs_on_main(tmp_path):
     assert r["auto_commit"] == "committed" and "commit" in git.calls
 
 
+def test_autocommit_skipped_when_code_dirty_on_main(tmp_path):
+    # REGRESSION: development happens ON main here, so the feature-branch guard is not
+    # enough - a dirty main would sweep un-gated code/build edits into a 02:00
+    # 'auto-backup' commit and push them to the LIVE branch (it did once, with
+    # docs/app.js + a source file, before the test gate finished). If any tracked
+    # code/build file is modified, the auto-commit must SKIP it for the gated PR flow.
+    import quoteforge.db.database as db
+
+    class DirtyMainGit(FakeGit):
+        def __call__(self, args, **kwargs):
+            p = super().__call__(args, **kwargs)
+            if args[1] == "rev-parse" and "--abbrev-ref" in args:
+                p.stdout = "main\n"
+            elif args[1] == "status":
+                p.stdout = (" M docs/app.js\n"
+                            " M quoteforge/etsy/listing_preview.py\n"
+                            "?? some-untracked.txt\n")
+            return p
+    git = DirtyMainGit()
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2:
+        db.init_db()
+        r = run_full_backup(push=True, runner=git)
+    assert "skipped" in r["auto_commit"] and "code/build" in r["auto_commit"]
+    assert "add" not in git.calls and "commit" not in git.calls   # un-gated code NOT committed
+    assert r["push"] == "pushed"                                  # committed history still saved
+    assert any("app.js" in p for p in r.get("auto_commit_skipped", []))
+
+
+def test_autocommit_allows_noncode_tracked_change_on_main(tmp_path):
+    # A non-code tracked change (e.g. a generated data/report file) may still auto-commit
+    # on main - only CODE/BUILD paths are protected, so legit data backups still flow.
+    import quoteforge.db.database as db
+
+    class DataMainGit(FakeGit):
+        def __call__(self, args, **kwargs):
+            p = super().__call__(args, **kwargs)
+            if args[1] == "rev-parse" and "--abbrev-ref" in args:
+                p.stdout = "main\n"
+            elif args[1] == "status":
+                p.stdout = " M reports/daily_summary.csv\n"
+            return p
+    git = DataMainGit()
+    p1, p2 = _patch_db(tmp_path)
+    with p1, p2:
+        db.init_db()
+        r = run_full_backup(push=True, runner=git)
+    assert r["auto_commit"] == "committed" and "commit" in git.calls
+
+
 def test_nothing_to_commit_still_pushes(tmp_path):
     import quoteforge.db.database as db
     git = FakeGit(has_staged=False)
