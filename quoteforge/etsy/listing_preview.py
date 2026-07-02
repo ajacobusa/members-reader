@@ -5897,6 +5897,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // Start the sleeve frame ON the arm (image-left / image-right), small - so it's
      // visible on the sleeve and the buyer can drag/resize/rotate it from there.
      BOX={{x:(p==='sleeve-left'?0.24:0.76), y:0.30, s:0.75, sy:1.5}};
+     // A sleeve is long + narrow, so wording reads best VERTICALLY down the arm.
+     // Default new sleeve text to sideways (mirrored: each arm's text ascends toward
+     // the shoulder). The Upright button flips it back to horizontal anytime.
+     TROT=(p==='sleeve-left'?-90:90);
+     var _tr=document.getElementById('mtrot'); if(_tr)_tr.value=TROT;
+     var _trl=document.getElementById('mtrotlbl'); if(_trl)_trl.textContent=TROT+'°';
    }}
    drawArt();
  }}
