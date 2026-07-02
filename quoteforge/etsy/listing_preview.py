@@ -5874,6 +5874,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      :'✓ Saved on this device - please also tap "Email us your order now" above so we receive it.';
  }}
  let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5, PHOTO_RECT=null;
+ let TEXT_HANDLE=null;   // on-canvas "drag the wording" badge (front/back); chrome-only, never prints
  function _showPhotoCtl(on){{
    var c=document.getElementById('mphotoctl'); if(c)c.style.display=on?'block':'none';
  }}
@@ -6208,6 +6209,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // garment) spins the shirt front<->back.
  function _hitTarget(px){{
    const b=APPAREL_BOUND, near=function(hx,hy){{ return Math.abs(px.x-hx)<26 && Math.abs(px.y-hy)<26; }};
+   // The wording's own drag handle wins first, so grabbing it ALWAYS moves the text -
+   // never the photo underneath (front/back). Generous 22px grab radius.
+   if(TEXT_HANDLE && Math.abs(px.x-TEXT_HANDLE.x)<22 && Math.abs(px.y-TEXT_HANDLE.y)<22) return 'text';
    if(PHOTO && PHOTO_RECT && near(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h)) return 'photoresize';
    if(b && near(b.x, b.y+b.h)) return 'resize';
    if(b && (px.x<b.x-8 || px.x>b.x+b.w+8 || px.y<b.y-8 || px.y>b.y+b.h+8)){{
@@ -7200,6 +7204,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function drawArt(){{
    const cv=document.getElementById('mcanvas'); if(!cv) return;
+   TEXT_HANDLE=null;                  // recomputed below if there is draggable wording
    if(!_SNAPPING) _SPIN_DIRTY=true;   // a real edit -> the open spin re-renders live
    if(typeof _preloadMock==='function') _preloadMock();   // warm the real-photo mockup (cheap, idempotent)
    const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
@@ -7360,6 +7365,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ctx.strokeStyle = _isLight(SELTXT) ? 'rgba(0,0,0,.78)' : 'rgba(255,255,255,.92)'; }}
    for(const ln of lines){{ if(overPhoto) ctx.strokeText(ln,0,ty); ctx.fillText(ln,0,ty); ty+=lh; }}
    ctx.restore();
+   // A visible "drag the wording" handle sits just off the top of the text so the buyer
+   // knows the wording is grabbable + can be moved ANYWHERE (incl. over the photo). It's
+   // chrome (never prints). Sleeves move as a UNIT (no separate text drag), so no handle.
+   if(text && text.trim() && APPLACEMENT!=='sleeve-left' && APPLACEMENT!=='sleeve-right'){{
+     var _off=block/2+15;               // _th (rotation) is already computed above
+     TEXT_HANDLE={{x:ax+_off*Math.sin(_th), y:ay-_off*Math.cos(_th)}};
+   }}
    }}
    // Optional shop-logo overlay (front & back) - a small brand mark below the
    // design. Drawn on whichever side is in view, since the toggle adds it to both.
@@ -7381,13 +7393,26 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      _handle(b.x, b.y+b.h, '#15643c');
      // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
      if(PHOTO && PHOTO_RECT){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
+     // WORDING drag handle (gold circle + 4-way move arrow) - shows the wording is
+     // grabbable and can be dragged ANYWHERE, including over the photo.
+     if(TEXT_HANDLE){{ var _hx=TEXT_HANDLE.x, _hy=TEXT_HANDLE.y, _R=11;
+       ctx.beginPath(); ctx.arc(_hx,_hy,_R,0,7); ctx.fillStyle='#c8a24a'; ctx.fill();
+       ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+       ctx.strokeStyle='#fff'; ctx.lineWidth=1.6; ctx.lineCap='round'; ctx.beginPath();
+       ctx.moveTo(_hx-5,_hy); ctx.lineTo(_hx+5,_hy); ctx.moveTo(_hx,_hy-5); ctx.lineTo(_hx,_hy+5);
+       ctx.moveTo(_hx-5,_hy); ctx.lineTo(_hx-3,_hy-2); ctx.moveTo(_hx-5,_hy); ctx.lineTo(_hx-3,_hy+2);
+       ctx.moveTo(_hx+5,_hy); ctx.lineTo(_hx+3,_hy-2); ctx.moveTo(_hx+5,_hy); ctx.lineTo(_hx+3,_hy+2);
+       ctx.moveTo(_hx,_hy-5); ctx.lineTo(_hx-2,_hy-3); ctx.moveTo(_hx,_hy-5); ctx.lineTo(_hx+2,_hy-3);
+       ctx.moveTo(_hx,_hy+5); ctx.lineTo(_hx-2,_hy+3); ctx.moveTo(_hx,_hy+5); ctx.lineTo(_hx+2,_hy+3);
+       ctx.stroke(); }}
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
      const _cap=IS_CAL ? '📅 Cover area - drag to move · green corner to resize'
        : (IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
        : (IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
        : ((APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right')
          ? ('👕 '+(_PLACE_LBL[APPLACEMENT])+' - drag to move · corner: sideways = width, up/down = length')
-         : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - drag to move · green corner to resize'))));
+         : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - green corner to resize'
+            +(TEXT_HANDLE?' · ✥ drag the wording anywhere (even over the photo)':' · drag to move')))));
      ctx.fillText(_cap, b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];

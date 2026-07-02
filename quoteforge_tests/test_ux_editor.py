@@ -792,6 +792,18 @@ def test_sleeve_resize_anchors_opposite_corner_extends_down_arm(tmp_path):
     assert "H*0.94-bh" in js                                     # wider downward range (was 0.82)
 
 
+def test_front_back_text_has_a_visible_drag_handle(tmp_path):
+    # REGRESSION (expert-designer request): text on front/back must be visibly grabbable
+    # and draggable ANYWHERE, including OVER the photo. A gold move-handle sits on the
+    # wording, and grabbing it ALWAYS moves the text - never the photo underneath.
+    # Sleeves move as a unit, so there is no separate text handle there.
+    js = _page(tmp_path)
+    assert "let TEXT_HANDLE=null" in js
+    assert "WORDING drag handle" in js                                # the visible handle is drawn
+    assert "if(TEXT_HANDLE && Math.abs(px.x-TEXT_HANDLE.x)<22" in js   # grabbing it always moves text
+    assert "TEXT_HANDLE={x:ax+_off*Math.sin(_th)" in js               # handle sits on the wording
+
+
 def test_sleeve_editing_contract(tmp_path):
     # REGRESSION (from the full sleeve-subsystem audit): these are the load-bearing
     # invariants that kept regressing at the SEAMS. Pin them so a future edit can't
