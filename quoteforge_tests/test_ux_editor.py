@@ -819,3 +819,14 @@ def test_final_proof_front_shows_sleeves_back_is_back_only(tmp_path):
     assert "_sideHas(SIDES['back'])) v.push('back')" in js       # back is its OWN view (no sleeves)
     assert "_proofRenderView('front')" in js                     # proof opens on the front composite
     assert "the front view shows your sleeves on the arms" in js
+
+
+def test_spin_review_shows_sleeves_and_hides_duplicate_button(tmp_path):
+    # REGRESSION: (1) the inline spin/flip review must show the FRONT with both sleeve
+    # designs so the buyer can SEE the sleeve wording (not a bare front); (2) while it is
+    # open, its own "See the back" is the spin control, so the editor's "Spin your
+    # product" button is hidden - no two spin controls on screen at once.
+    js = _page(tmp_path)
+    assert "_composedFrontURL():_composedProofURL()" in js       # front view composites the sleeves
+    assert "Front (with sleeves)" in js
+    assert "_spinBtn.style.display='none'" in js                 # hide the duplicate spin button while open

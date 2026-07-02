@@ -6933,6 +6933,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var mount=document.getElementById('mug3d');
    if(!mount){{ _build3D(_composedProofURL()); return; }}
    mount.innerHTML=''; _3d={{on:false}};
+   // While the flip review is open, its OWN "See the back" is the spin control - so hide
+   // the editor's "Spin your product" button to avoid two spin controls on screen at once.
+   var _spinBtn=document.getElementById('view3dbtn'); if(_spinBtn) _spinBtn.style.display='none';
    var im=document.createElement('img'); im.alt='Your product - front and back';
    im.draggable=false;                  // stop the browser's native image drag-ghost (it ate the flip drag)
    im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px;cursor:pointer;-webkit-user-drag:none;user-select:none';
@@ -6945,8 +6948,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var ttl=document.getElementById('mock3dttl'), sub=document.getElementById('mock3dsub');
    if(sub) sub.textContent='Your approved flat proof is exactly what prints.';
    function _isBack(){{ return (typeof APPLACEMENT!=='undefined'&&APPLACEMENT==='back'); }}
-   function _render(){{ var u=(typeof _composedProofURL==='function')?_composedProofURL():''; if(u) im.src=u;
-     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':'Front')+' &mdash; drag or tap to flip';
+   function _render(){{
+     // FRONT shows the front design AND both sleeve designs on the arms (composite);
+     // BACK shows only the back - same two-view logic as the final proof, so the buyer
+     // can SEE the sleeve wording here too.
+     var u = _isBack() ? ((typeof _composedProofURL==='function')?_composedProofURL():'')
+             : ((typeof _composedFrontURL==='function')?_composedFrontURL():_composedProofURL());
+     if(u) im.src=u;
+     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':'Front (with sleeves)')+' &mdash; drag or tap to flip';
      fb.innerHTML='&#8635; See the '+(_isBack()?'front':'back'); }}
    function _flip(){{ if(typeof setPlacement==='function') setPlacement(_isBack()?'front':'back'); _render(); }}
    _render();
