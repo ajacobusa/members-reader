@@ -5883,7 +5883,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // minimum size; front/back stay clamped to the torso. sy stretches a sleeve's LENGTH.
    var _sl=(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right');
    BOX.x=Math.min(_sl?0.95:0.84,Math.max(_sl?0.05:0.16,BOX.x));
-   BOX.y=Math.min(_sl?0.82:0.62,Math.max(_sl?0.08:0.18,BOX.y));
+   BOX.y=Math.min(_sl?0.90:0.62,Math.max(_sl?0.08:0.18,BOX.y));
    BOX.s=Math.min(1.7,Math.max(_sl?0.30:0.45,BOX.s));
    if(BOX.sy==null) BOX.sy=1.0;
    BOX.sy=Math.min(3.0,Math.max(0.30,BOX.sy)); }}
@@ -5993,7 +5993,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var bw=W*0.16*BOX.s, bh=H*0.20*(BOX.sy||1);
      var bx=W*BOX.x-bw/2, by=H*BOX.y-bh/2;
      bx=Math.min(Math.max(bx,W*0.01),W*0.99-bw);
-     by=Math.min(Math.max(by,H*0.02),H*0.82-bh);
+     by=Math.min(Math.max(by,H*0.02),H*0.94-bh);
      return {{x:bx,y:by,w:bw,h:bh}};
    }}
    return _placeBoundMock(W,H);
@@ -6072,10 +6072,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    return 'frame';
  }}
+ let RESIZE_ANCHOR=null;   // opposite corner held fixed while resizing a sleeve frame
  function _startDrag(ev){{ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
+   RESIZE_ANCHOR=null;
    if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{ DRAGTARGET=_hitTarget(DRAGPX);
      // Branded has no front/back to spin - grabbing outside just moves the frame.
-     if((IS_BRANDED||IS_MUG) && DRAGTARGET==='rotate') DRAGTARGET='frame'; }}
+     if((IS_BRANDED||IS_MUG) && DRAGTARGET==='rotate') DRAGTARGET='frame';
+     // Sleeve resize anchors the OPPOSITE (top-right) corner so the green handle follows
+     // the finger - dragging DOWN extends the length down the arm, not up off the shoulder.
+     RESIZE_ANCHOR = (DRAGTARGET==='resize' && (APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') && APPAREL_BOUND)
+       ? {{x:APPAREL_BOUND.x+APPAREL_BOUND.w, y:APPAREL_BOUND.y}} : null; }}
    else {{
      // wall art: smart-grab the wording, else follow the Photo toggle (pan).
      const nearText = Math.abs(DRAGLAST.x-TPOS.x)<0.22 && Math.abs(DRAGLAST.y-TPOS.y)<0.16;
@@ -6096,11 +6102,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }} else if(DRAGTARGET==='resize'){{                           // drag the corner to resize the FRAME
      const cx=BOX.x*W, cy=BOX.y*H;
      if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right'){{
-       // A sleeve resizes WIDTH and LENGTH independently: horizontal drag sets the
-       // width (BOX.s), vertical drag sets the length (BOX.sy). Base dims mirror
-       // _apparelBound (0.16*W wide, 0.20*H long).
-       BOX.s=2*Math.abs(px.x-cx)/(0.16*W);
-       BOX.sy=2*Math.abs(px.y-cy)/(0.20*H);
+       // Independent WIDTH + LENGTH, anchored at the opposite (top-right) corner so the
+       // green handle tracks the finger: drag sideways = width, drag DOWN = length down
+       // the arm toward the cuff (instead of the frame growing up off the shoulder).
+       var ax=RESIZE_ANCHOR?RESIZE_ANCHOR.x:cx, ay=RESIZE_ANCHOR?RESIZE_ANCHOR.y:cy;
+       var wpx=Math.max(0.048*W, ax-px.x);           // handle is LEFT of the anchor
+       var hpx=Math.max(0.06*H, px.y-ay);            // handle is BELOW the anchor
+       BOX.s=wpx/(0.16*W); BOX.sy=hpx/(0.20*H);
+       BOX.x=((ax+px.x)/2)/W; BOX.y=((ay+px.y)/2)/H; // keep the anchor corner fixed
      }} else {{
        BOX.s=Math.max(2*Math.abs(px.x-cx)/(0.42*W), 2*Math.abs(px.y-cy)/(0.32*H));
      }}
