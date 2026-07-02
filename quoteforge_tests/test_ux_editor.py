@@ -68,9 +68,10 @@ def test_proof_reviews_every_designed_area(tmp_path):
     # consent line covers exactly what is shown. This is the no-return policy's record.
     js = _page(tmp_path)
     assert "function _designedAreas()" in js
-    assert "areas[(i+1)%areas.length]" in js                    # cycles all designed areas
+    assert "views[(i+1)%views.length]" in js                    # flips between front (with sleeves) & back
     assert 'id="proofAreas"' in js                              # lists what they designed
-    assert "flip to review each area before you approve" in js
+    # the front view shows front + sleeves, so every designed area is still reviewed
+    assert "You designed: <b>" in js
     assert "I approve this print exactly as shown and authorize it to proceed" in js
 
 
@@ -799,3 +800,16 @@ def test_text_orientation_toggle_on_the_fly(tmp_path):
     assert "function toggleTextOrientation" in js
     assert "function _textIsVertical" in js                      # decides vertical vs horizontal
     assert "setRot(_textIsVertical()?0:vert)" in js             # flips to the opposite orientation
+
+
+def test_final_proof_front_shows_sleeves_back_is_back_only(tmp_path):
+    # REGRESSION: the final-design proof must show the FRONT view = front design PLUS
+    # both sleeve designs on the arms (a shirt shows its sleeves from the front), and
+    # the BACK view = ONLY the back design (there are no sleeves on the back side).
+    js = _page(tmp_path)
+    assert "function _composedFrontURL" in js                    # front = front + sleeves composite
+    assert "['sleeve-left','sleeve-right'].forEach" in js        # both sleeves overlaid on the front view
+    assert "function _proofViews" in js
+    assert "_sideHas(SIDES['back'])) v.push('back')" in js       # back is its OWN view (no sleeves)
+    assert "_proofRenderView('front')" in js                     # proof opens on the front composite
+    assert "the front view shows your sleeves on the arms" in js
