@@ -59,14 +59,38 @@ def run_full_backup(push: bool = True, auto_commit: bool = True,
         if branch and branch != "main":
             result["auto_commit"] = f"skipped (on feature branch '{branch}', not main)"
         else:
-            _git(["add", "-u"], runner)
-            code, _ = _git(["diff", "--cached", "--quiet"], runner)  # 1 = staged changes
-            if code == 1:
-                msg = f"chore: auto-backup {datetime.now():%Y-%m-%d %H:%M}"
-                c, out = _git(["commit", "-m", msg], runner)
-                result["auto_commit"] = "committed" if c == 0 else f"failed: {out[:120]}"
+            # Development happens ON main here (we branch only at commit time), so the
+            # branch check alone is not enough: a dirty main would still get 'git add -u'
+            # and be pushed. The DB/data backups are separate + gitignored, so the nightly
+            # commit only ever sweeps up tracked SOURCE/BUILD edits = un-gated dev work
+            # (this once pushed a half-finished mid-session change to the live branch).
+            # If ANY tracked code/build file is modified, SKIP the commit and flag it for
+            # the gated PR flow; only non-code tracked changes (data/reports) may commit.
+            _, _st = _git(["status", "--porcelain", "--untracked-files=no"], runner)
+            _PROTECT = ("quoteforge/", "quoteforge_tests/", "docs/", "src/",
+                        "members_reader/", ".github/")
+            _CODE_EXT = (".py", ".js", ".ts", ".tsx", ".html", ".css")
+            dirty_code = []
+            for line in (_st or "").splitlines():
+                if not line.strip() or line.startswith("??"):
+                    continue                 # blank / untracked ('git add -u' never stages these)
+                path = line[3:].split(" -> ")[-1].strip().strip('"')
+                if path.startswith(_PROTECT) or path.endswith(_CODE_EXT):
+                    dirty_code.append(path)
+            if dirty_code:
+                result["auto_commit"] = (
+                    f"skipped ({len(dirty_code)} uncommitted code/build change(s) on main "
+                    "- not auto-committing un-gated work; commit via the gated PR flow)")
+                result["auto_commit_skipped"] = dirty_code[:10]
             else:
-                result["auto_commit"] = "nothing to commit"
+                _git(["add", "-u"], runner)
+                code, _ = _git(["diff", "--cached", "--quiet"], runner)  # 1 = staged changes
+                if code == 1:
+                    msg = f"chore: auto-backup {datetime.now():%Y-%m-%d %H:%M}"
+                    c, out = _git(["commit", "-m", msg], runner)
+                    result["auto_commit"] = "committed" if c == 0 else f"failed: {out[:120]}"
+                else:
+                    result["auto_commit"] = "nothing to commit"
 
     # 3. Push to GitHub.
     if push:

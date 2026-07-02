@@ -759,7 +759,11 @@ def test_quick_design_front_and_back_file_dropzones(tmp_path):
     # side, and each side keeps its OWN uploaded design (per-side capture).
     js = _page(tmp_path)
     assert 'id="quickdesign"' in js                              # the quick-design panel
-    assert "Front picture" in js and "Back picture" in js       # two labelled drop-zones
+    assert "Front picture" in js and "Back picture" in js       # front + back drop-zones
+    # sleeves get their OWN optional picture drop-zones too (photo on a sleeve, not just text)
+    assert "Left sleeve picture" in js and "Right sleeve picture" in js
+    assert "quickSideUpload('sleeve-left',this)" in js and "quickSideUpload('sleeve-right',this)" in js
+    assert "'sleeve-left':{t:'qsleeveLthumb'" in js              # sleeve upload maps to its own thumb
     # explicit, exact instruction: click the + and upload from your computer
     assert "Click ＋ to upload from your computer" in js
     assert "choose a picture from your computer" in js

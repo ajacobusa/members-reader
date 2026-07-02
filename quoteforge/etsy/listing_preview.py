@@ -3976,7 +3976,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        <div class="esec" id="esec2" style="display:none">
          <div id="quickdesign" style="display:none">
-           <div class="lbl">📷 Add your pictures - one for the front, one for the back</div>
+           <div class="lbl">📷 Add your pictures - front, back &amp; sleeves</div>
            <div class="qdrow">
              <label class="qdbox" id="qdfront">
                <span class="qdthumb" id="qfrontthumb"><span class="qdplus">＋</span></span>
@@ -3991,7 +3991,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('back',this)" aria-label="Upload the back picture from your computer">
              </label>
            </div>
-           <div class="note"><b>Click the ＋ in each box and choose a picture from your computer</b> - one for the front, one for the back. Each picture drops straight onto that side, sized to the print area; fine-tune the position, zoom or add wording on the left. (JPG or PNG.)</div>
+           <div class="qdrow">
+             <label class="qdbox" id="qdsleeveL">
+               <span class="qdthumb" id="qsleeveLthumb"><span class="qdplus">＋</span></span>
+               <span class="qdcap">Left sleeve picture</span>
+               <span class="qdhint">Optional &middot; click ＋ to upload</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('sleeve-left',this)" aria-label="Upload the left sleeve picture from your computer">
+             </label>
+             <label class="qdbox" id="qdsleeveR">
+               <span class="qdthumb" id="qsleeveRthumb"><span class="qdplus">＋</span></span>
+               <span class="qdcap">Right sleeve picture</span>
+               <span class="qdhint">Optional &middot; click ＋ to upload</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('sleeve-right',this)" aria-label="Upload the right sleeve picture from your computer">
+             </label>
+           </div>
+           <div class="note"><b>Click the ＋ in each box and choose a picture from your computer.</b> Front &amp; back are the main areas; the sleeves are optional. Each picture drops straight onto that side, sized to the print area; fine-tune the position, zoom or add wording on the left. (JPG or PNG.)</div>
          </div>
          <div class="uploadbox">
            <div id="singlepick">
@@ -4735,7 +4749,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      LOGO_ON=false;                    // reset the logo toggle + back hint per open
      var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
-     ['qfrontthumb','qbackthumb'].forEach(function(id){{      // clear quick-design previews
+     ['qfrontthumb','qbackthumb','qsleeveLthumb','qsleeveRthumb'].forEach(function(id){{      // clear quick-design previews
        var t=document.getElementById(id); if(t){{ t.style.backgroundImage=''; t.classList.remove('filled'); }} }});
    }}
    renderTierRow();                    // quality picker (apparel, multi-tier only)
@@ -5922,11 +5936,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var z=document.getElementById('mphotozoom'); if(z)z.value=1;
      setDragMode('photo'); _showPhotoCtl(true); drawArt();
      SIDES[side]=_captureSide();                      // persist this side immediately
-     var th=document.getElementById(side==='front'?'qfrontthumb':'qbackthumb');
+     var _QD={{'front':{{t:'qfrontthumb',n:'Front'}},'back':{{t:'qbackthumb',n:'Back'}},
+       'sleeve-left':{{t:'qsleeveLthumb',n:'Left sleeve'}},'sleeve-right':{{t:'qsleeveRthumb',n:'Right sleeve'}}}}[side]||{{t:'',n:side}};
+     var th=_QD.t?document.getElementById(_QD.t):null;
      if(th){{ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }}
      if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
      if(typeof guide==='function') guide();
-     toast((side==='front'?'Front':'Back')+' design added ✓');
+     toast(_QD.n+' design added ✓');
    }};
    img.onerror=function(){{ toast('Could not read that image - try another file.'); }};
    img.src=URL.createObjectURL(f);
