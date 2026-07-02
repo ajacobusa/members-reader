@@ -726,3 +726,14 @@ def test_sleeve_frame_resizes_width_and_length_independently(tmp_path):
     assert "BOX.s=2*Math.abs(px.x-cx)/(0.16*W)" in js           # horizontal drag -> width
     # The clamp keeps the independent length in range so it can't invert or run away.
     assert "BOX.sy=Math.min(3.0,Math.max(0.30,BOX.sy))" in js
+
+
+def test_sleeve_text_defaults_to_vertical(tmp_path):
+    # REGRESSION: a sleeve is long + narrow, so wording reads best VERTICALLY down the
+    # arm. Opening a fresh sleeve must seed the text rotation to sideways (mirrored per
+    # arm), while the existing Upright/Sideways buttons still let the buyer switch.
+    js = _page(tmp_path)
+    assert "TROT=(p==='sleeve-left'?-90:90)" in js               # new sleeve -> vertical text
+    assert "if(_tr)_tr.value=TROT" in js                         # slider reflects the default
+    # The horizontal/vertical switch controls still exist so it's not locked vertical.
+    assert "setRot(0)" in js and "setRot(-90)" in js and "setRot(90)" in js
