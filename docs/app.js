@@ -601,6 +601,10 @@
    // Quick-design two-file (front + back) drop-zones are apparel-only (needs 2 sides).
    const qd=document.getElementById('quickdesign');
    if(qd) qd.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';
+   // ...and when those drop-zones are showing they REPLACE the single "add a photo"
+   // picker (no duplication); the status/AI lines stay for the drop-zone uploads.
+   const sp=document.getElementById('singlepick');
+   if(sp) sp.style.display = (IS_APPAREL && MULTI_AREA) ? 'none' : 'block';
    // Movable design-frame controls run for apparel AND branded.
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = PRINT ? 'block' : 'none';

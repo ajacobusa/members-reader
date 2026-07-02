@@ -75,6 +75,35 @@ def test_build_emits_nojekyll(tmp_path):
     assert (out.parent / ".nojekyll").exists()
 
 
+def test_build_auto_update_banner(tmp_path):
+    # REGRESSION: repeat visitors kept seeing a STALE cached app.js (the browser held
+    # the old file), so shipped fixes looked "not working" until a manual hard-refresh.
+    # The production build must emit a version.txt marker and bake the SAME digest into
+    # an auto-update check that shows a one-tap Refresh bar when the live build is newer
+    # - and never auto-reloads (that would drop an in-progress design).
+    import re
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"
+    g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "index.html", external_assets=True)
+    vt = out.parent / "version.txt"
+    assert vt.exists()
+    digest = vt.read_text(encoding="utf-8").strip()
+    assert re.fullmatch(r"[0-9a-f]{12}", digest)          # a real content hash
+    html = out.read_text(encoding="utf-8")
+    # the loaded app.js, the version marker, and the baked check version all AGREE
+    assert f"app.js?v={digest}" in html
+    assert f'var B="{digest}"' in html
+    # fresh (no-store) check + one-tap refresh; never an automatic reload
+    assert "version.txt?_=" in html and "cache:'no-store'" in html
+    assert "A new version is ready" in html and "location.reload()" in html
+
+
 def test_shipping_models_mug_and_calendar_heavier_than_poster():
     # REGRESSION: mugs (heavy/fragile) and calendars (bulkier) must not fall back to
     # flat-poster shipping, or the variance tripwire never fires on their real cost.
