@@ -71,7 +71,7 @@ def test_mug_wrap_preview_in_proof(tmp_path):
     h = _page(tmp_path)
     assert "function _drawMugMockup" in h
     assert "function _mugMockupURL" in h
-    assert "IS_MUG?_mugMockupURL()" in h
+    assert "if(IS_MUG){" in h and "_mugMockupURL()" in h    # mug proof still wraps on a real mug
 
 
 def test_mug_wrap_preserves_design_aspect(tmp_path):

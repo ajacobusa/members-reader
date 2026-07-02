@@ -229,8 +229,8 @@ def test_apparel_final_proof_rotates_front_back(tmp_path):
     h = _page(tmp_path)
     assert 'id="proofFlip"' in h and 'id="proofFlipLbl"' in h     # the flip control + label
     assert "function proofFlip" in h                              # toggle handler
-    assert "function _proofRenderSide" in h                       # switch side + recompose
-    assert "setPlacement(side)" in h                              # reuses the editor's side swap
+    assert "function _proofRenderView" in h                       # switch view (front-with-sleeves / back)
+    assert "setPlacement('back')" in h                            # back view reuses the editor's side swap
     assert "_composedProofURL()" in h                             # recomposes garment+design
     # drag-to-spin wired onto the proof image (mouse + touch)
     assert "_proofDown(event)" in h and "function _proofMove" in h
