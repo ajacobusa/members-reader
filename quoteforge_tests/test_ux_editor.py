@@ -721,9 +721,11 @@ def test_sleeve_frame_resizes_width_and_length_independently(tmp_path):
     # A second, independent length scale exists and drives the sleeve bound's height.
     assert "sy:1.0" in js or "sy:1.5" in js                     # BOX carries an sy dimension
     assert "H*0.20*(BOX.sy" in js                               # sleeve LENGTH uses BOX.sy, not BOX.s
-    # The corner-resize gesture sets width and length on separate axes for a sleeve.
-    assert "BOX.sy=2*Math.abs(px.y-cy)/(0.20*H)" in js          # vertical drag -> length
-    assert "BOX.s=2*Math.abs(px.x-cx)/(0.16*W)" in js           # horizontal drag -> width
+    # The corner-resize gesture sets width and length on separate axes for a sleeve
+    # (anchored at the opposite corner - see the anchor test for the down-the-arm feel).
+    assert "BOX.s=wpx/(0.16*W); BOX.sy=hpx/(0.20*H)" in js      # width from X, length from Y
+    assert "wpx=Math.max(0.048*W, ax-px.x)" in js               # width tracks the handle
+    assert "hpx=Math.max(0.06*H, px.y-ay)" in js                # length tracks the handle
     # The clamp keeps the independent length in range so it can't invert or run away.
     assert "BOX.sy=Math.min(3.0,Math.max(0.30,BOX.sy))" in js
 
@@ -764,3 +766,16 @@ def test_quick_design_front_and_back_file_dropzones(tmp_path):
     assert "SIDES[side]=_captureSide()" in js                   # persists that side's own design
     # apparel-only (needs two sides); gated with the front/back placement bar.
     assert "qd.style.display = (IS_APPAREL && MULTI_AREA)" in js
+
+
+def test_sleeve_resize_anchors_opposite_corner_extends_down_arm(tmp_path):
+    # REGRESSION: the green resize handle grew the sleeve frame from its CENTRE, so
+    # lengthening pushed it UP off the shoulder ("moves little up or down"). The sleeve
+    # resize now anchors the OPPOSITE (top-right) corner so the handle tracks the finger
+    # and dragging DOWN extends the length down the arm, with a wider vertical range.
+    js = _page(tmp_path)
+    assert "let RESIZE_ANCHOR=null" in js                        # anchor state exists
+    assert "x:APPAREL_BOUND.x+APPAREL_BOUND.w, y:APPAREL_BOUND.y" in js  # top-right corner captured
+    assert "RESIZE_ANCHOR?RESIZE_ANCHOR.x:cx" in js             # move uses the anchor
+    assert "BOX.x=((ax+px.x)/2)/W; BOX.y=((ay+px.y)/2)/H" in js # recentre keeps anchor fixed
+    assert "H*0.94-bh" in js                                     # wider downward range (was 0.82)
