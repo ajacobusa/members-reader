@@ -5320,6 +5320,40 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    _SNAPPING=false;
    return url;
  }}
+ // FRONT proof view = the front-facing garment showing the FRONT design AND both
+ // designed SLEEVES on the arms (a real shirt shows its sleeves from the front). The
+ // BACK is a SEPARATE view with only the back design - there are no sleeves on the
+ // back. Each sleeve is overlaid by its OWN bound region so it never covers the chest.
+ function _composedFrontURL(){{
+   const cv=document.getElementById('mcanvas'); if(!cv) return '';
+   if(!IS_APPAREL) return _composedProofURL();
+   const mg=document.getElementById('mgarment');
+   const prev=APPLACEMENT;
+   _SNAPPING=true; _CLEAN=true;
+   const tc=document.createElement('canvas'); tc.width=cv.width; tc.height=cv.height;
+   const tx=tc.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,tc.width,tc.height);
+   // 1) front: the garment photo (if any) behind the front design
+   setPlacement('front'); drawArt();
+   if(mg && mg.style.display!=='none' && mg.complete && mg.naturalWidth){{
+     const ir=mg.naturalWidth/mg.naturalHeight, cr=tc.width/tc.height; let dw,dh;
+     if(ir>cr){{ dw=tc.width; dh=dw/ir; }} else {{ dh=tc.height; dw=dh*ir; }}
+     tx.drawImage(mg,(tc.width-dw)/2,(tc.height-dh)/2,dw,dh);
+   }}
+   tx.drawImage(cv,0,0);                       // front silhouette (if drawn on canvas) + front design
+   // 2) overlay each DESIGNED sleeve, copying ONLY its bound region so the chest stays
+   ['sleeve-left','sleeve-right'].forEach(function(a){{
+     if(!_sideHas(SIDES[a])) return;
+     setPlacement(a); drawArt();
+     var b=_apparelBound(cv.width,cv.height), pad=4;
+     var sx=Math.max(0,b.x-pad), sy=Math.max(0,b.y-pad);
+     var sw=Math.min(cv.width-sx,b.w+2*pad), sh=Math.min(cv.height-sy,b.h+2*pad);
+     tx.drawImage(cv, sx,sy,sw,sh, sx,sy,sw,sh);
+   }});
+   setPlacement(prev);
+   _CLEAN=false; drawArt(); _SNAPPING=false;
+   var url=''; try{{ url=tc.toDataURL('image/png'); }}catch(e){{ url=''; }}
+   return url;
+ }}
  // A small (~240px) JPEG snapshot of the composed proof, captured at add-to-basket
  // so every basket + confirm row can SHOW the exact design the buyer approves
  // ("exactly as shown"). In-memory only (CART is not persisted) and kept tiny on
@@ -5358,34 +5392,47 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    return out;
  }}
  function _areaLabel(a){{ return a==='sleeve-left'?'left sleeve':(a==='sleeve-right'?'right sleeve':a); }}
+ // The proof has at most TWO views: FRONT (front + both sleeve designs on the arms)
+ // and BACK (back design only - a shirt has no sleeves on its back side).
+ let PROOFVIEW='front';
+ function _proofViews(){{
+   var v=['front']; if(MULTI_AREA && _sideHas(SIDES['back'])) v.push('back'); return v;
+ }}
  function _syncProofFlip(){{
    var l=document.getElementById('proofFlipLbl'), fl=document.getElementById('proofFlip');
-   var areas=_designedAreas();
-   if(fl) fl.style.display=(IS_APPAREL && areas.length>1)?'flex':'none';   // flip only when >1 area
+   var views=_proofViews();
+   if(fl) fl.style.display=(IS_APPAREL && views.length>1)?'flex':'none';   // flip only if a back was designed
    var nt=document.getElementById('proofAreas');
-   if(nt){{ nt.style.display=(areas.length>1)?'block':'none';
-     nt.innerHTML='You designed: <b>'+areas.map(_areaLabel).join(' &middot; ')
-       +'</b> &mdash; flip to review each area before you approve.'; }}
+   if(nt){{
+     var areas=_designedAreas();
+     var extra=areas.filter(function(a){{ return a==='sleeve-left'||a==='sleeve-right'; }}).map(_areaLabel);
+     var frontPart='front'+(extra.length?(' + '+extra.join(' + ')):'');
+     var parts=[frontPart]; if(areas.indexOf('back')>=0) parts.push('back');
+     var show=(areas.length>1);
+     nt.style.display=show?'block':'none';
+     nt.innerHTML='You designed: <b>'+parts.join('</b> &middot; <b>')+'</b>'
+       + (extra.length?' &mdash; the front view shows your sleeves on the arms':'')
+       + (views.length>1?'; flip to see the back':'') + '.';
+   }}
    if(!l) return;
-   if(areas.length<2){{ l.textContent='See the back'; return; }}
-   var i=areas.indexOf(APPLACEMENT); if(i<0) i=0;
-   l.textContent='See the '+_areaLabel(areas[(i+1)%areas.length]);
+   if(views.length<2){{ l.textContent='See the back'; return; }}
+   var i=views.indexOf(PROOFVIEW); if(i<0) i=0;
+   l.textContent=(views[(i+1)%views.length]==='back')?'See the back':'See the front';
  }}
- function _proofRenderSide(side){{
+ function _proofRenderView(view){{
    if(!IS_APPAREL) return;
-   setPlacement(side);                        // swap the editor to that area's design
+   PROOFVIEW=view;
    var img=document.getElementById('proofImg');
-   var paint=function(){{ var du=_composedProofURL(); if(du&&img){{ img.src=du; }} }};
-   paint();                                   // show now (blank if the photo is still loading)
-   if(PHOTO && PHOTO.src && !PHOTO.complete){{ // repaint once the area's photo arrives
-     PHOTO.addEventListener('load',paint,{{once:true}});
-     PHOTO.addEventListener('error',paint,{{once:true}}); }}
+   var du = (view==='back')
+     ? (setPlacement('back'), _composedProofURL())     // back: only the back design
+     : _composedFrontURL();                            // front: front + both sleeves
+   if(du && img){{ img.src=du; }}
    _syncProofFlip();
  }}
- function proofFlip(){{                          // cycle through EVERY designed area
-   var areas=_designedAreas(); if(areas.length<2) return;
-   var i=areas.indexOf(APPLACEMENT); if(i<0) i=0;
-   _proofRenderSide(areas[(i+1)%areas.length]);
+ function proofFlip(){{                          // toggle FRONT (with sleeves) <-> BACK
+   var views=_proofViews(); if(views.length<2) return;
+   var i=views.indexOf(PROOFVIEW); if(i<0) i=0;
+   _proofRenderView(views[(i+1)%views.length]);
  }}
  // Drag the proof image sideways to spin it (mirrors the editor's garment spin).
  let _PROOFDRAG=null;
@@ -5502,8 +5549,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      _loadContact(); finalStep(1);
    }} else {{
      REVIEWED=true; guide();              // review opened: that task is done
-     if(cv&&img){{ const _du=IS_MUG?_mugMockupURL():_composedProofURL();  // mugs: wrap on a real mug
-       if(_du){{ img.src=_du; img.style.display='block'; }} }}
+     if(cv&&img){{
+       if(IS_MUG){{ const _du=_mugMockupURL(); if(_du){{ img.src=_du; img.style.display='block'; }} }}      // mugs: wrap on a real mug
+       else if(IS_APPAREL){{ _proofRenderView('front'); img.style.display='block'; }}                        // apparel: front + sleeves, flip for back
+       else {{ const _du=_composedProofURL(); if(_du){{ img.src=_du; img.style.display='block'; }} }} }}
      // Apparel: let the buyer spin the garment to review the BACK too before approving
      // (only when multi-area is on; otherwise the design is front-only).
      if(_fl)_fl.style.display=(IS_APPAREL && MULTI_AREA)?'flex':'none';
