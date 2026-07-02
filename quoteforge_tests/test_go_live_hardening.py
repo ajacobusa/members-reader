@@ -75,6 +75,32 @@ def test_build_emits_nojekyll(tmp_path):
     assert (out.parent / ".nojekyll").exists()
 
 
+def test_generated_app_js_is_valid_javascript(tmp_path):
+    # REGRESSION: test_source_integrity byte-compiles the PYTHON, but the generated app.js
+    # is JS - a brace/scope slip (e.g. a redeclared const) is a SyntaxError that breaks the
+    # ENTIRE storefront (no global defines) while every Python test still passes. Syntax-
+    # check the freshly-built app.js with `node --check` so a JS break is caught in the gate.
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if not node:
+        import pytest
+        pytest.skip("node not available to syntax-check app.js")
+    from PIL import Image
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"
+    g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                    out_path=tmp_path / "index.html", external_assets=True)
+    appjs = tmp_path / "app.js"
+    assert appjs.exists()
+    r = subprocess.run([node, "--check", str(appjs)], capture_output=True, text=True)
+    assert r.returncode == 0, f"generated app.js has a JS syntax error:\n{r.stderr}"
+
+
 def test_build_auto_update_banner(tmp_path):
     # REGRESSION: repeat visitors kept seeing a STALE cached app.js (the browser held
     # the old file), so shipped fixes looked "not working" until a manual hard-refresh.
