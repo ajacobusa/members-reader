@@ -645,6 +645,32 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("shipping_shortfall_flagged", False, str(exc)))
 
+    # 32) Sleeve order integrity + single-source compositing (from the sleeve-subsystem
+    #     audit): a designed sleeve is previewed AND priced (upcharge), so its CONTENT must
+    #     ride in the order payload, and EVERY front-facing render (live proof, spin flip,
+    #     basket thumbnail, submitted checkout proof) must go through the ONE
+    #     front-with-sleeves compositor - else a paid sleeve ships blank, or the approved
+    #     proof doesn't match production. (structural: the generator SOURCE carries the
+    #     exact tokens; a comment mention would not satisfy them.)
+    try:
+        from quoteforge.etsy import listing_preview as _lp
+        _src = inspect.getsource(_lp)
+        _markers = {
+            "order payload carries left sleeve": "'sleeve-left':_stripPhoto(SIDES['sleeve-left'])",
+            "order payload carries right sleeve": "'sleeve-right':_stripPhoto(SIDES['sleeve-right'])",
+            "one front+sleeves compositor": "function _composedFrontURL(maxDim)",
+            "basket thumbnail uses it": "_composedFrontURL(240)",
+            "checkout proof uses it": "proof:(IS_APPAREL?_composedFrontURL()",
+        }
+        _missing = [k for k, tok in _markers.items() if tok not in _src]
+        ok = not _missing
+        checks.append(_c("sleeve_order_integrity_grounded", ok,
+                         "sleeve content rides the order payload + one compositor feeds "
+                         "proof/spin/thumbnail/checkout"
+                         if ok else f"sleeve integrity regressed: {_missing}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("sleeve_order_integrity_grounded", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

@@ -792,6 +792,40 @@ def test_sleeve_resize_anchors_opposite_corner_extends_down_arm(tmp_path):
     assert "H*0.94-bh" in js                                     # wider downward range (was 0.82)
 
 
+def test_sleeve_editing_contract(tmp_path):
+    # REGRESSION (from the full sleeve-subsystem audit): these are the load-bearing
+    # invariants that kept regressing at the SEAMS. Pin them so a future edit can't
+    # silently drop a sleeve from the order, the thumbnail, or the submitted proof.
+    js = _page(tmp_path)
+    # ORDER INTEGRITY: the per-item design payload carries ALL FOUR areas - a designed
+    # sleeve is previewed AND priced, so dropping its content would ship a paid sleeve blank.
+    assert "'sleeve-left':_stripPhoto(SIDES['sleeve-left'])" in js
+    assert "'sleeve-right':_stripPhoto(SIDES['sleeve-right'])" in js
+    # SINGLE-SOURCE COMPOSITING: the basket thumbnail + the submitted checkout proof use the
+    # SAME front-with-sleeves compositor as the live proof/spin, so they can't drift apart.
+    assert "function _composedFrontURL(maxDim)" in js                       # one compositor, sized
+    assert "if(IS_APPAREL){ var _u=_composedFrontURL(240)" in js            # thumbnail path
+    assert "proof:(IS_APPAREL?_composedFrontURL():_composedProofURL())" in js  # checkout proof
+    # LAYOUTS: sleeves are freeform-only (Layout Studio hidden + CURLAYOUT forced freeform).
+    assert "if(_sleeveNow){ CURLAYOUT='freeform'; if(_lb)_lb.style.display='none'; }" in js
+    # TEXT FIT: horizontal sleeve text shrinks to the narrow WIDTH, not just the height.
+    assert "_wideAt()) && fs>9" in js
+    # RESET: the placement reset restores a sleeve's FRAME (BOX), not just TPOS.
+    assert "if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') resetFrame();" in js
+    # the contract spec itself ships as a durable in-code guard for future changes.
+    assert "SLEEVE EDITING CONTRACT" in js
+
+
+def test_sleeve_design_moves_as_a_unit(tmp_path):
+    # REGRESSION: on a small sleeve, grabbing the design returned 'text' (nudge the
+    # wording WITHIN the frame), so the whole design felt stuck - the buyer "couldn't
+    # move the left/right sleeve design". Any grab inside a SLEEVE frame (past the resize
+    # corner) must move the WHOLE frame as a unit onto the arm.
+    js = _page(tmp_path)
+    assert "if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right') return 'frame';" in js
+    assert "moves as a UNIT" in js
+
+
 def test_sleeve_grab_moves_frame_not_flips_garment(tmp_path):
     # REGRESSION: the sleeve frame is small, so a near-miss grab hit 'rotate' and FLIPPED
     # the shirt front/back - the sleeve felt un-editable ("cannot edit sleeve"). A grab
