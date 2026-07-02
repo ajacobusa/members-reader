@@ -1575,10 +1575,34 @@ def _externalize_main_js(html: str, out) -> str:
     digest = hashlib.sha256(js.encode("utf-8")).hexdigest()[:12]
     try:
         (out.parent / "app.js").write_text(js, encoding="utf-8")
+        # A tiny plain-text version marker, fetched FRESH (no-store) by the auto-update
+        # check below so a cached page learns when a newer build has shipped.
+        (out.parent / "version.txt").write_text(digest, encoding="utf-8")
     except OSError:
         return html
     tag = f'<script defer src="app.js?v={digest}"></script>'
-    return html[:open_tag] + tag + html[close_tag + len("</script>"):]
+    new_html = html[:open_tag] + tag + html[close_tag + len("</script>"):]
+    # Auto-update nudge: compare THIS build's digest (baked into B) against version.txt
+    # (fetched fresh). When the live build is newer than the cached page, show a one-tap
+    # Refresh bar so a buyer is never stranded on a stale cached version. Never
+    # auto-reloads (that would drop an in-progress design) - the buyer taps Refresh.
+    updater = ('<script>(function(){try{var B="__B__";'
+               "function bar(){if(document.getElementById('updbar'))return;"
+               "var d=document.createElement('div');d.id='updbar';"
+               "d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#103d2e;color:#fff;padding:10px 14px;text-align:center;font:600 14px/1.35 Montserrat,system-ui,sans-serif;box-shadow:0 -2px 12px rgba(0,0,0,.28)';"
+               "d.innerHTML='\\u2728 A new version is ready. "
+               "<button id=\"updref\" style=\"margin:0 6px;background:#e9c46a;color:#103d2e;border:none;border-radius:16px;padding:6px 15px;font-weight:700;cursor:pointer\">Refresh</button>"
+               "<span id=\"updx\" style=\"cursor:pointer;opacity:.8;padding:0 8px\">\\u00d7</span>';"
+               "document.body.appendChild(d);"
+               "document.getElementById('updref').onclick=function(){location.reload();};"
+               "document.getElementById('updx').onclick=function(){d.remove();};}"
+               "function chk(){fetch('version.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():'';}).then(function(t){t=(t||'').trim();if(t&&t!==B)bar();}).catch(function(){});}"
+               "chk();window.addEventListener('focus',chk);setInterval(chk,300000);}catch(e){}})();</script>"
+               ).replace("__B__", digest)
+    bc = new_html.rfind("</body>")
+    if bc != -1:
+        new_html = new_html[:bc] + updater + new_html[bc:]
+    return new_html
 
 
 def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
@@ -3121,6 +3145,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    background:#f4f2ec center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#b9b3a7;font-size:26px}}
  .qdthumb.filled .qdplus{{display:none}}
  .qdcap{{font-weight:600;font-size:13px;color:#2a2a2a}}
+ .qdhint{{font-size:11px;color:#8a8577;text-align:center;line-height:1.3}}
  .tdirbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-weight:600;cursor:pointer;font-size:13px}}
  .tdirbtn:hover{{border-color:var(--gold)}}
  .tposreset{{background:#fff;border:1px solid var(--line);border-radius:14px;
@@ -3951,31 +3976,35 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        <div class="esec" id="esec2" style="display:none">
          <div id="quickdesign" style="display:none">
-           <div class="lbl">⚡ Quick design - drop a ready-made file for each side</div>
+           <div class="lbl">📷 Add your pictures - one for the front, one for the back</div>
            <div class="qdrow">
              <label class="qdbox" id="qdfront">
                <span class="qdthumb" id="qfrontthumb"><span class="qdplus">＋</span></span>
-               <span class="qdcap">Front file</span>
-               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('front',this)" aria-label="Upload a design file for the front">
+               <span class="qdcap">Front picture</span>
+               <span class="qdhint">Click ＋ to upload from your computer</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('front',this)" aria-label="Upload the front picture from your computer">
              </label>
              <label class="qdbox" id="qdback">
                <span class="qdthumb" id="qbackthumb"><span class="qdplus">＋</span></span>
-               <span class="qdcap">Back file</span>
-               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('back',this)" aria-label="Upload a design file for the back">
+               <span class="qdcap">Back picture</span>
+               <span class="qdhint">Click ＋ to upload from your computer</span>
+               <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('back',this)" aria-label="Upload the back picture from your computer">
              </label>
            </div>
-           <div class="note">Each file drops straight onto that side, sized to the print area. Fine-tune the position, zoom or add wording on the left - or use the single uploader below to do one side at a time.</div>
+           <div class="note"><b>Click the ＋ in each box and choose a picture from your computer</b> - one for the front, one for the back. Each picture drops straight onto that side, sized to the print area; fine-tune the position, zoom or add wording on the left. (JPG or PNG.)</div>
          </div>
          <div class="uploadbox">
-           <div class="lbl">📷 Add your own photo (optional)</div>
-           <input type="file" id="mupload"
-             accept="image/jpeg,image/png,application/pdf,image/tiff"
-             onchange="checkUpload()">
+           <div id="singlepick">
+             <div class="lbl">📷 Add your own photo (optional)</div>
+             <input type="file" id="mupload"
+               accept="image/jpeg,image/png,application/pdf,image/tiff"
+               onchange="checkUpload()">
+             <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
+               auto-checks quality and asks for a better photo if needed; your
+               approved photo is sent with the order to our print partner.</div>
+           </div>
            <div id="muploadmsg" class="note" role="status" aria-live="polite"></div>
            <div id="maicheck" class="note" role="status" aria-live="polite"></div>
-           <div class="note">High-resolution JPG/PNG/PDF/TIFF only - our AI
-             auto-checks quality and asks for a better photo if needed; your
-             approved photo is sent with the order to our print partner.</div>
          </div>
          <div class="note">🖼️ After uploading, the <b>photo zoom &amp; move
            controls appear under the preview</b> on the left. No photo? Just
@@ -4646,6 +4675,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Quick-design two-file (front + back) drop-zones are apparel-only (needs 2 sides).
    const qd=document.getElementById('quickdesign');
    if(qd) qd.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';
+   // ...and when those drop-zones are showing they REPLACE the single "add a photo"
+   // picker (no duplication); the status/AI lines stay for the drop-zone uploads.
+   const sp=document.getElementById('singlepick');
+   if(sp) sp.style.display = (IS_APPAREL && MULTI_AREA) ? 'none' : 'block';
    // Movable design-frame controls run for apparel AND branded.
    const fb=document.getElementById('mframebar');
    if(fb) fb.style.display = PRINT ? 'block' : 'none';

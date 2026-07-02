@@ -759,7 +759,13 @@ def test_quick_design_front_and_back_file_dropzones(tmp_path):
     # side, and each side keeps its OWN uploaded design (per-side capture).
     js = _page(tmp_path)
     assert 'id="quickdesign"' in js                              # the quick-design panel
-    assert "Front file" in js and "Back file" in js             # two labelled drop-zones
+    assert "Front picture" in js and "Back picture" in js       # two labelled drop-zones
+    # explicit, exact instruction: click the + and upload from your computer
+    assert "Click ＋ to upload from your computer" in js
+    assert "choose a picture from your computer" in js
+    # the drop-zones REPLACE the single uploader for apparel (no duplicate picker)
+    assert 'id="singlepick"' in js
+    assert "sp.style.display = (IS_APPAREL && MULTI_AREA) ? 'none' : 'block'" in js
     assert "quickSideUpload('front',this)" in js                # front input -> front side
     assert "quickSideUpload('back',this)" in js                 # back input -> back side
     assert "function quickSideUpload" in js
