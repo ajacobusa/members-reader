@@ -281,10 +281,12 @@ def test_apparel_editor_front_back_flip_and_logo(tmp_path):
     assert "APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]" in h
     # the Back control + a hint that you're now designing the back
     assert 'data-p="back"' in h and 'id="mbackhint"' in h
-    # optional logo on both sides, wired + carried into the cart line
-    assert 'id="mlogo"' in h and "function toggleLogo" in h
-    assert "const GARMENT_LOGO_SRC" in h
-    assert "logo:(IS_APPAREL&&LOGO_ON)" in h
+    # REGRESSION (#172): we do NOT stamp the shop's own brand logo on a customer's
+    # personalized garment. The whole "Add our logo (front & back)" feature is gone -
+    # the checkbox, its toggle, the logo asset const, and the cart-line logo field.
+    assert 'id="mlogo"' not in h and "toggleLogo" not in h
+    assert "GARMENT_LOGO_SRC" not in h and "LOGO_ON" not in h
+    assert "Add our logo" not in h
     # with external assets the front/back tiles are DISTINCT real files (true back)
     from quoteforge.etsy.listing_preview import build_shop_home
     from quoteforge.etsy.launch_pack import LAUNCH_PACK_20

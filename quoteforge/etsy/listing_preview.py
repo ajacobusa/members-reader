@@ -2318,26 +2318,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         logger.debug("mockup-sync catalog skipped: %s", exc)
     mockup_photos_json = json.dumps(mockup_photos)
 
-    # Optional shop-logo overlay for the 'logo on front & back' toggle. Emitted as
-    # PNG so its transparency is preserved on the garment (a flattened JPG boxes it
-    # in white).
-    def _emit_png(src: Path, fname: str, max_dim: int = 260) -> str:
-        """Emit a transparency-preserving PNG (asset file, or a data URI inline)."""
-        from PIL import Image
-        im = Image.open(src).convert("RGBA")
-        im.thumbnail((max_dim, max_dim))
-        if external_assets:
-            assets.mkdir(parents=True, exist_ok=True)
-            im.save(assets / fname)
-            return f"assets/{fname}"
-        import base64
-        import io
-        buf = io.BytesIO()
-        im.save(buf, format="PNG")
-        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
-    _glogo = next((brand / n for n in ("joffiels_logo.png",
-                   "joffiels_logo_green_gold.png") if (brand / n).exists()), None)
-    garment_logo_src = _emit_png(_glogo, "garment-logo.png") if _glogo else ""
 
     pw_hash = hashlib.sha256(password.encode("utf-8")).hexdigest() if password else ""
 
@@ -3226,9 +3206,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .dmbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 10px;
    font-size:12px;cursor:pointer;color:var(--green)}}
  .dmbtn.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
- .mlogorow{{display:flex;align-items:center;gap:8px;margin:8px 0 2px;font-size:13px;
-   font-weight:700;color:var(--green);cursor:pointer}}
- .mlogorow input{{width:17px;height:17px;accent-color:var(--green);cursor:pointer}}
  /* Photo-fit tool card: same gold-cream system as the wordbox/dragbar. */
  #mphotoctl{{background:#fffdf4;border:1.5px solid var(--gold);
    border-radius:12px;padding:12px 14px;margin:0 0 10px}}
@@ -3840,7 +3817,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          </div>
          <div class="dbhint">Each extra area you design adds to the price: <b>back +${back_upcharge_js}</b>, <b>each sleeve +${sleeve_upcharge_js}</b>. Front is included.</div>
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
-         <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
        <details class="dragbar mcsec" id="mframebar" style="display:none" open>
          <summary>&#128208; Move &amp; resize your design</summary>
@@ -4403,7 +4379,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
  // and the buyer can design the back too: {{garment_id:{{front,back}}}}.
  const APPAREL_SIDE_IMG = {apparel_side_img_json};
- const GARMENT_LOGO_SRC = "{garment_logo_src}";   // optional logo overlay (both sides)
  const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
  // Quality tiers per garment: Classic name -> [{{tier,name,from}}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
@@ -4769,8 +4744,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      SIDES={{front:null,back:null,'sleeve-left':null,'sleeve-right':null}};   // clear all areas for the new garment
      document.querySelectorAll('#mplacement .plbtn').forEach(function(b){{
        b.classList.toggle('sel', b.dataset.p==='front'); }});
-     LOGO_ON=false;                    // reset the logo toggle + back hint per open
-     var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
      ['qfrontthumb','qbackthumb','qsleeveLthumb','qsleeveRthumb'].forEach(function(id){{      // clear quick-design previews
        var t=document.getElementById(id); if(t){{ t.style.backgroundImage=''; t.classList.remove('filled'); }} }});
@@ -5012,7 +4985,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      sides:_sides, extra_print:+(_extra).toFixed(2), wording:_slotWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
-     logo:(IS_APPAREL&&LOGO_ON)?'front+back':'',
      design:_fullDesign(),                 // FULL per-item design (both sides, cal, wording)
      thumb:_proofThumb()}}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
@@ -5297,7 +5269,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        'sleeve-left':_stripPhoto(SIDES['sleeve-left']),
        'sleeve-right':_stripPhoto(SIDES['sleeve-right'])}};
      d.placement=APPLACEMENT;
-     d.logo=(typeof LOGO_ON!=='undefined'&&LOGO_ON)?'front+back':'';
    }}
    return d;
  }}
@@ -6057,7 +6028,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      if(v && !seen[s.slot]){{ seen[s.slot]=1; out.push(v); }} }});
    return out.join(' / ');
  }}
- let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
  let BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}};   // s = width scale; sy = INDEPENDENT length (sleeves)
@@ -6183,11 +6153,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    drawArt();
  }}
  // Toggle the shop-logo overlay (added to BOTH the front and the back).
- function toggleLogo(){{
-   const cb=document.getElementById('mlogo');
-   LOGO_ON=!!(cb&&cb.checked);
-   drawArt();
- }}
  // Print-safe boundary = the movable design FRAME (front or back). Silhouette mode
  // is relative to the garment box; mockup mode is relative to the whole canvas.
  function _placeBound(x,y,w,h){{
@@ -7449,16 +7414,6 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var _off=block/2+15;               // _th (rotation) is already computed above
      TEXT_HANDLE={{x:ax+_off*Math.sin(_th), y:ay-_off*Math.cos(_th)}};
    }}
-   }}
-   // Optional shop-logo overlay (front & back) - a small brand mark below the
-   // design. Drawn on whichever side is in view, since the toggle adds it to both.
-   if(IS_APPAREL && LOGO_ON && GARMENT_LOGO_SRC){{
-     const _lg=_mockupImg(GARMENT_LOGO_SRC);
-     if(_lg&&_lg.complete&&_lg.naturalWidth){{
-       const _lw=W*0.12, _lh=_lw*(_lg.naturalHeight/_lg.naturalWidth);
-       ctx.save(); ctx.globalAlpha=0.96;
-       ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
-     }}
    }}
    if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
      ctx.save();
