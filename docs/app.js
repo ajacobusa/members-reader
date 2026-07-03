@@ -1924,7 +1924,7 @@
  function resetFrame(){
    if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right'){
      // Back to the on-arm long-narrow sleeve default (matches setPlacement).
-     BOX={x:(APPLACEMENT==='sleeve-left'?0.24:0.76), y:0.30, s:0.75, sy:1.5};
+     BOX=_sleeveDefaultBox(APPLACEMENT);
    } else { BOX={x:0.50,y:0.35,s:1.0,sy:1.0}; }
    var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }
  const _PLACE_LBL={front:'Front',back:'Back','sleeve-left':'Left sleeve','sleeve-right':'Right sleeve'};
@@ -1967,6 +1967,19 @@
    var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
    renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }
+ // The sleeve print frame's on-open default. On a LONG sleeve (longsleeve/hoodie/
+ // sweatshirt) the wording runs DOWN THE OUTER SIDE of the arm (shoulder->cuff; the
+ // silhouette's outer sleeve edge is ~x0.07-0.13, cuff at y0.82), so it prints on the side
+ // like a real sleeve print - NOT clustered on the inner/body edge by the shoulder. A SHORT
+ // sleeve gets a small patch on the upper outer sleeve. Garment-aware so it lands on the
+ // real sleeve whatever the garment.
+ function _sleeveDefaultBox(p){
+   var _t=(typeof _garmentType==='function')?_garmentType():'';
+   var _long=(_t==='longsleeve'||_t==='hoodie'||_t==='sweatshirt');
+   var _l=(p==='sleeve-left');
+   return _long ? {x:(_l?0.13:0.87), y:0.52, s:0.72, sy:2.4}    // down the outer arm
+               : {x:(_l?0.20:0.80), y:0.28, s:0.70, sy:1.3};    // short-sleeve patch
+ }
  // == SLEEVE EDITING CONTRACT (keep true; pinned by test_sleeve_editing_contract) =========
  // A sleeve (sleeve-left/right) is an independent print area, enabled only with MULTI_AREA.
  // PERSISTENCE: each area's full design lives in SIDES[area]; switching tabs saves via
@@ -2000,7 +2013,7 @@
    if(_wasEmpty && (p==='sleeve-left'||p==='sleeve-right')){
      // Start the sleeve frame ON the arm (image-left / image-right), small - so it's
      // visible on the sleeve and the buyer can drag/resize/rotate it from there.
-     BOX={x:(p==='sleeve-left'?0.24:0.76), y:0.30, s:0.75, sy:1.5};
+     BOX=_sleeveDefaultBox(p);                // garment-aware: down the outer sleeve
      // A sleeve is long + narrow, so wording reads best VERTICALLY down the arm.
      // Default new sleeve text to sideways (mirrored: each arm's text ascends toward
      // the shoulder). The Upright button flips it back to horizontal anytime.

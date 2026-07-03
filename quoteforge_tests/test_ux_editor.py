@@ -816,6 +816,18 @@ def test_front_back_picture_is_its_own_box_text_is_free(tmp_path):
     assert "blue box = your picture" in js                      # layers caption
 
 
+def test_sleeve_default_runs_down_the_outer_arm(tmp_path):
+    # REGRESSION: sleeve wording must sit on the OUTER side of the sleeve, running DOWN the
+    # arm (shoulder->cuff) like a real sleeve print - not clustered on the inner/body edge
+    # by the shoulder. The default is garment-aware: a LONG sleeve opens on the outer edge
+    # (x 0.13/0.87) running the arm length (sy 2.4); a short sleeve gets a small patch.
+    js = _page(tmp_path)
+    assert "function _sleeveDefaultBox(p)" in js
+    assert "_long ? {x:(_l?0.13:0.87), y:0.52, s:0.72, sy:2.4}" in js   # down the outer long sleeve
+    assert "BOX=_sleeveDefaultBox(p)" in js                             # seeded on open
+    assert "BOX=_sleeveDefaultBox(APPLACEMENT)" in js                   # and on reset
+
+
 def test_sleeve_editing_contract(tmp_path):
     # REGRESSION (from the full sleeve-subsystem audit): these are the load-bearing
     # invariants that kept regressing at the SEAMS. Pin them so a future edit can't
