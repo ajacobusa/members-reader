@@ -697,6 +697,38 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("apparel_preview_matches_print_guard", False, str(exc)))
 
+    # 34) The DAILY product-photo (mockup) update is wired end to end so the real Gelato
+    #     product pictures actually refresh every day and the job can't silently fall out
+    #     of the schedule: a daily `mockup-sync` job exists, its command maps to a real
+    #     admin handler, it runs BEFORE the 01:50 site rebuild (so fresh confirmed photos
+    #     are what publishes), and the rebuild consumes live_mockups(). Without this, a
+    #     product (e.g. a tumbler) shows the generated fallback forever even after go-live.
+    #     (scheduled + structural; no network / no side effects.)
+    try:
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS
+        from quoteforge.admin import COMMANDS as _CMDS
+        from quoteforge.etsy import listing_preview as _lp3
+        _msjobs = [j for j in SCHEDULED_JOBS if j.admin_args.startswith("mockup-sync")]
+        scheduled = bool(_msjobs)
+        wired = "mockup-sync" in _CMDS
+        # runs before the daily rebuild so the fresh photos are what gets published
+        def _hhmm(j):
+            """The job's daily /ST start time (HH:MM), or a late sentinel if none."""
+            f = j.schtasks_flags
+            return f[f.index("/ST") + 1] if "/ST" in f else "99:99"
+        _reb = [j for j in SCHEDULED_JOBS if j.admin_args.startswith("rebuild-site")]
+        before_rebuild = bool(_msjobs and _reb and _hhmm(_msjobs[0]) < _hhmm(_reb[0]))
+        consumed = "live_mockups" in inspect.getsource(_lp3)   # the rebuild reads confirmed mockups
+        ok = bool(scheduled and wired and before_rebuild and consumed)
+        checks.append(_c("daily_mockup_update_scheduled", ok,
+                         "daily product-photo sync scheduled + wired + runs before the "
+                         "rebuild + consumed by the storefront"
+                         if ok else "daily product-photo (mockup) update not fully wired: "
+                         f"scheduled={scheduled} wired={wired} before_rebuild={before_rebuild} "
+                         f"consumed={consumed}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("daily_mockup_update_scheduled", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
