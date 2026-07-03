@@ -605,9 +605,9 @@
    // picker (no duplication); the status/AI lines stay for the drop-zone uploads.
    const sp=document.getElementById('singlepick');
    if(sp) sp.style.display = (IS_APPAREL && MULTI_AREA) ? 'none' : 'block';
-   // Movable design-frame controls run for apparel AND branded.
-   const fb=document.getElementById('mframebar');
-   if(fb) fb.style.display = PRINT ? 'block' : 'none';
+   // Movable design-frame controls run for apparel AND branded. Visibility is shared
+   // with the photo panel via _syncCtlPanels (one contextual card at a time, #171).
+   _syncCtlPanels();
    // Layout Studio panel runs for apparel AND branded; (re)build it.
    const lb=document.getElementById('mlayoutbar');
    if(lb) lb.style.display = PRINT ? 'block' : 'none';
@@ -1817,9 +1817,19 @@
  }
  let PHOTO=null, PHOTO_ZOOM=1, PHOTO_FX=0.5, PHOTO_FY=0.5, PHOTO_RECT=null;
  let TEXT_HANDLE=null;   // on-canvas "drag the wording" badge (front/back); chrome-only, never prints
- function _showPhotoCtl(on){
-   var c=document.getElementById('mphotoctl'); if(c)c.style.display=on?'block':'none';
+ // ONE contextual controls panel at a time (no duplicate Size/Move cards, #171):
+ // the Wording|Photo selector swaps between the photo panel (Photo mode) and the
+ // whole-design move/resize panel (Wording mode). mframebar is PRINT-only and is the
+ // sleeve/whole-design positioner, so it is never removed - just hidden in Photo mode.
+ function _syncCtlPanels(){
+   var PRINT=(typeof IS_APPAREL!=='undefined')&&(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL);
+   var hasPhoto=(typeof PHOTO!=='undefined' && !!PHOTO);
+   var photoMode=(typeof DRAGMODE!=='undefined' && DRAGMODE==='photo');
+   var pc=document.getElementById('mphotoctl'); if(pc)pc.style.display=(hasPhoto&&photoMode)?'block':'none';
+   var fb=document.getElementById('mframebar'); if(fb)fb.style.display=(PRINT&&!photoMode)?'block':'none';
  }
+ // Kept for call-site compatibility; visibility is now derived from PHOTO + DRAGMODE.
+ function _showPhotoCtl(on){ _syncCtlPanels(); }
  // Apparel can SHRINK the photo (size 0.2x); wall art fills the frame (min 1x).
  function setPhotoZoom(v){
    const lo=(typeof IS_APPAREL!=='undefined' && (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL))?0.2:1;
@@ -2134,7 +2144,8 @@
    b.textContent=_textIsVertical()?'↕ Vertical — tap for horizontal':'↔ Horizontal — tap for vertical';
  }
  function setDragMode(m){ DRAGMODE=m;
-   document.querySelectorAll('.dmbtn').forEach(b=>b.classList.toggle('sel',b.dataset.m===m)); }
+   document.querySelectorAll('.dmbtn').forEach(b=>b.classList.toggle('sel',b.dataset.m===m));
+   _syncCtlPanels(); }
  // Explicit MOVE controls for the wording (besides dragging it on the preview), so
  // placement is obvious and works on any device.
  function nudgeText(dx,dy){ TPOS.x=_clamp(TPOS.x+dx,0.04,0.96);
