@@ -50,6 +50,16 @@ def test_realphoto_manifest_empty_by_default(tmp_path):
     assert json.loads(m.group(1)) == {}
 
 
+def test_tier_variants_reuse_the_base_garment_photo(tmp_path):
+    # REGRESSION (#178): an apparel tier variant ("(Value)"/"(Premium)") with no
+    # photo of its own reuses its BASE garment's real photo, so the owner sources ONE
+    # photo per garment (e.g. a Men's T-Shirt) instead of one per tier. _mockBase drops
+    # the tier suffix and looks up the base name in MOCKUP_PHOTOS.
+    h = _page(tmp_path)
+    assert r"k.replace(/\s*\((?:Value|Premium)\)\s*$/,'')" in h   # strips the tier suffix
+    assert "MOCKUP_PHOTOS[_bk]" in h                              # falls back to the base photo
+
+
 # ── REGRESSION: the blank-white-cylinder bug ─────────────────────
 
 def test_cylinder_routes_to_realistic_spin(tmp_path):

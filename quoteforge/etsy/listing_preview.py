@@ -6883,6 +6883,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function _mockBase(){{
    var k=_mockKey();
    if(k && typeof MOCKUP_PHOTOS!=='undefined' && MOCKUP_PHOTOS[k]) return MOCKUP_PHOTOS[k];
+   // Tier variants reuse the base garment's real photo (#178): a Men's T-Shirt mockup
+   // serves its "(Value)"/"(Premium)" variants too, so the owner sources ONE photo per
+   // garment, not one per tier. The variant name drops the tier suffix to find its base.
+   if(k && typeof MOCKUP_PHOTOS!=='undefined'){{
+     var _bk=k.replace(/\\s*\\((?:Value|Premium)\\)\\s*$/,'').trim();
+     if(_bk && _bk!==k && MOCKUP_PHOTOS[_bk]) return MOCKUP_PHOTOS[_bk];
+   }}
    // The grid's tile-<id>.jpg are MARKETING photos with a SAMPLE design baked in,
    // so they are deliberately NOT used as a compositing base for mug/branded/
    // calendar - that would show the sample art, not the buyer's design. Those
