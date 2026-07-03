@@ -1,62 +1,59 @@
-# Real Gelato product photos — drop sheet (exact-match previews)
+# Real product photos (brand/mockups/)
 
-We resell Gelato products, so the customization preview should look like the
-**actual Gelato product**. Drop the real Gelato photo for a product in here and the
-editor + preview composite the customer's design **onto that exact photo**. The
-image is **re-hosted locally** on build, so the published page never contains the
-word "gelato" (the hard no-supplier-leak rule still holds — checked on every build).
+Drop a REAL blank product photo here so the storefront shows customers the
+ACTUAL product they will receive (their design is composited onto it live).
 
-> Until a photo is added, a product uses a clean generated preview (flat products
-> show a recognizable silhouette; mugs/bottles show the print field + spin). Adding
-> a photo here **upgrades that product to the real picture** — nothing breaks while
-> it's empty.
+- File name MUST be exactly <product_id>.jpg (or .png) as listed below.
+- Export the blank product mockup from the print partner's mockup studio.
+- Optional sidecar <product_id>.json = {"area":[x,y,w,h fractions],"cyl":bool,"span":float}
+  marks where the print sits on the photo (sensible defaults are used otherwise).
+- Apparel TIER variants (Value/Premium) automatically reuse their base garment
+  photo, so you only need ONE photo per garment below - not one per tier.
 
-## What to export from Gelato
+## Apparel (13)
+- [ ] m_tshirt.jpg  -  Men's T-Shirt
+- [ ] w_tshirt.jpg  -  Women's T-Shirt
+- [ ] m_tank.jpg  -  Men's Tank Top
+- [ ] w_tank.jpg  -  Women's Tank Top
+- [ ] m_longsleeve.jpg  -  Men's Long Sleeve Shirt
+- [ ] w_longsleeve.jpg  -  Women's Long Sleeve Shirt
+- [ ] m_raglan.jpg  -  Men's 3/4 Sleeve Shirt
+- [ ] w_raglan.jpg  -  Women's 3/4 Sleeve Shirt
+- [ ] m_polo.jpg  -  Men's Polo Shirt
+- [ ] m_hoodie.jpg  -  Men's Hoodie
+- [ ] w_hoodie.jpg  -  Women's Hoodie
+- [ ] m_sweatshirt.jpg  -  Men's Sweatshirt
+- [ ] w_sweatshirt.jpg  -  Women's Sweatshirt
 
-For each product, in your **Gelato dashboard → the product → Mockups / product
-image**, export **one clean, front-on shot on a white/neutral background** with
-**no sample design on it** (a blank product). PNG or JPG. Then save it here with the
-exact filename below and run `python -m quoteforge.admin rebuild-site`
-(or just send me the files and I'll name, re-host, tune, and rebuild).
+## Mug (7)
+- [ ] classic_mug.jpg  -  Classic Ceramic Mug (11oz)
+- [ ] large_mug.jpg  -  Large Ceramic Mug (15oz)
+- [ ] color_mug.jpg  -  Colour-Interior Mug (11oz)
+- [ ] accent_mug.jpg  -  Accent Mug
+- [ ] enamel_mug.jpg  -  Enamel Camp Mug (12oz)
+- [ ] travel_mug.jpg  -  Stainless Travel Mug (15oz)
+- [ ] xl_mug.jpg  -  Tall Mug (17oz)
 
-> **Blank is important.** Use the *plain* product shot — not a marketing image that
-> already has a sample design printed on it (that would show the sample, not the
-> customer's art).
+## Bottle (2)
+- [ ] bottle.jpg  -  Insulated Stainless Water Bottle
+- [ ] tumbler.jpg  -  Insulated Stainless Tumbler
 
-## Filenames (`<product_id>.png`)
+## Branded (7)
+- [ ] tote.jpg  -  Organic Cotton Tote Bag
+- [ ] mousepad.jpg  -  Rectangular Mouse Pad
+- [ ] notebook.jpg  -  Softcover Notebook
+- [ ] journal.jpg  -  Hardcover Journal
+- [ ] sticker.jpg  -  Die-Cut Vinyl Sticker
+- [ ] phonecase.jpg  -  Tough Phone Case
+- [ ] keychain.jpg  -  Metal Keychain
 
-**🍵 Mugs** — `classic_mug` · `large_mug` · `color_mug` · `accent_mug` ·
-`enamel_mug` · `travel_mug` · `xl_mug`
+## Calendar (7)
+- [ ] wall_cal.jpg  -  Wall Calendar
+- [ ] desk_cal.jpg  -  Desk Calendar
+- [ ] family_cal.jpg  -  Family Organizer Calendar
+- [ ] corporate_cal.jpg  -  Corporate Branded Calendar
+- [ ] photo_cal.jpg  -  Photo Calendar
+- [ ] event_cal.jpg  -  Event & Countdown Calendar
+- [ ] promo_cal.jpg  -  Business Promotional Calendar
 
-**🎁 Branded** — `tote` · `bottle` · `tumbler` · `mousepad` · `notebook` ·
-`journal` · `sticker` · `phonecase` · `keychain`
-
-**📅 Calendars** — `wall_cal` · `desk_cal` · `family_cal` · `corporate_cal` ·
-`photo_cal` · `event_cal` · `promo_cal`
-
-**👕 Apparel** — by `garment_id` (a colour-neutral / white shot, one per garment):
-`m_tshirt` · `w_tshirt` · `m_tank` · `w_tank` · `m_longsleeve` · `w_longsleeve` ·
-`m_raglan` · `w_raglan` · `m_polo` · `m_hoodie` · `w_hoodie` · `m_sweatshirt` ·
-`w_sweatshirt`
-
-## Optional: tell it where the print sits (`<product_id>.json`)
-
-I'll tune these for you once your photos are in, but for reference — a sidecar next
-to the image marks the print rectangle as fractions `0–1` of the photo:
-
-```json
-{ "area": [0.30, 0.34, 0.40, 0.34], "cyl": true, "span": 1.9 }
-```
-- `area` = `[x, y, width, height]` of the print zone on the photo.
-- `cyl` = `true` for round products (mug / bottle / tumbler) so the design wraps on
-  the barrel; `false` for flat products (tote / phone case / tee …).
-- `span` = how much of the barrel front is visible (radians; ~1.9 default).
-
-With no sidecar, sensible defaults are used (centred print; `cyl` inferred from the
-product name).
-
-## The simplest hand-off
-
-**Send me the exported photos** (or drop them in this folder). I'll re-host them,
-set the print-area geometry per product so the design lands exactly right, rebuild,
-and give you the UAT link — and confirm no "gelato" leaks into the page.
+Total distinct product photos needed: 36
