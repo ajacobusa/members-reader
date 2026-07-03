@@ -148,6 +148,21 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
             return {"status": "manual", "vendor": "gelato", "id": "",
                     "detail": "multi-area apparel (back/sleeve design) - manual two-sided "
                               "production until per-area files are wired"}
+        # Preview-vs-print safety (UNCONDITIONAL): the storefront apparel editor's design
+        # (photo / wording / template / chest position / rotation) is NOT yet rendered into
+        # the print file - the pipeline substitutes a generic poster (render_local_poster),
+        # so what the buyer APPROVED is not what would print. Until the faithful
+        # clean-composite render is wired, a designed apparel order must NEVER auto-submit a
+        # poster in place of the buyer's design. Hold for manual placement. A real per-side
+        # print file (extra_files) OR an explicit faithful_artwork flag (set once the
+        # composite render is wired) is the escape hatch.
+        if (str(order.get("product_type", "")).lower() == "apparel"
+                and not order.get("extra_files")
+                and not order.get("faithful_artwork")):
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "apparel design not yet rendered to a faithful print file "
+                              "(preview != print) - hold for manual placement until the "
+                              "clean-composite render is wired"}
         if not (product_uid and recipient and artwork_url):
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",
