@@ -130,11 +130,13 @@ services:
     # women's/new/best views), validates images and emails the daily audit;
     # gelato-review re-checks every mapped Gelato UID (discontinued guard) and
     # flags new/removed product lines, emailing the owner only when action is needed;
-    # rebuild-site then regenerates docs/index.html + studio.html and backup-all
+    # mockup-sync refreshes each product's real product photo (no-op until go-live) so
+    # the fresh pictures are what publishes; rebuild-site then regenerates docs/index.html
+    # + studio.html and backup-all
     # commits + pushes so the GitHub-Pages storefront stays current on the Render path
     # (otherwise the daily rebuild lives only in the Windows scheduler and the hosted
     # site goes stale after catalog/price/availability changes).
-    startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync ; python -m quoteforge.admin catalog-sync email ; python -m quoteforge.admin gelato-review email ; python -m quoteforge.admin rebuild-site ; python -m quoteforge.admin backup-all"
+    startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync ; python -m quoteforge.admin catalog-sync email ; python -m quoteforge.admin gelato-review email ; python -m quoteforge.admin mockup-sync ; python -m quoteforge.admin rebuild-site ; python -m quoteforge.admin backup-all"
     envVars:
       - fromGroup: joffiels-env
   - type: cron

@@ -277,6 +277,14 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "Emails repeat-gifting reminders for saved gift profiles whose occasion "
         "date is within 21 days (idempotent per year), driving repeat purchases."),
     ScheduledJob(
+        "QuoteForge Gelato Mockup Sync", "mockup-sync",
+        ["/SC", "DAILY", "/ST", "01:40"],
+        "Daily base-mockup sync (checkpoints 1-6): fetches each product's real product "
+        "photo, re-hosts it locally (customer-safe, no supplier name emitted), and "
+        "derives the print geometry - only products both confirming agents pass reach "
+        "live_mockups(). No-op until go-live. Runs BEFORE the 01:50 rebuild so the fresh "
+        "real product photos are what publishes."),
+    ScheduledJob(
         "QuoteForge Site Rebuild", "rebuild-site",
         ["/SC", "DAILY", "/ST", "01:50"],
         "Rebuilds the public shop-home page (docs/index.html) with the latest "
