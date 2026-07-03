@@ -292,7 +292,6 @@
  // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
  // and the buyer can design the back too: {garment_id:{front,back}}.
  const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg"}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg"}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg"}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg"}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg"}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg"}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg"}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg"}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg"}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg"}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg"}};
- const GARMENT_LOGO_SRC = "assets/garment-logo.png";   // optional logo overlay (both sides)
  const APPGID = {"Men's T-Shirt": "m_tshirt", "Men's T-Shirt (Value)": "m_tshirt_value", "Men's T-Shirt (Premium)": "m_tshirt_premium", "Women's T-Shirt": "w_tshirt", "Women's T-Shirt (Value)": "w_tshirt_value", "Women's T-Shirt (Premium)": "w_tshirt_premium", "Men's Tank Top": "m_tank", "Men's Tank Top (Value)": "m_tank_value", "Men's Tank Top (Premium)": "m_tank_premium", "Women's Tank Top": "w_tank", "Women's Tank Top (Value)": "w_tank_value", "Women's Tank Top (Premium)": "w_tank_premium", "Men's Long Sleeve Shirt": "m_longsleeve", "Men's Long Sleeve Shirt (Value)": "m_longsleeve_value", "Men's Long Sleeve Shirt (Premium)": "m_longsleeve_premium", "Women's Long Sleeve Shirt": "w_longsleeve", "Women's Long Sleeve Shirt (Value)": "w_longsleeve_value", "Women's Long Sleeve Shirt (Premium)": "w_longsleeve_premium", "Men's 3/4 Sleeve Shirt": "m_raglan", "Men's 3/4 Sleeve Shirt (Value)": "m_raglan_value", "Men's 3/4 Sleeve Shirt (Premium)": "m_raglan_premium", "Women's 3/4 Sleeve Shirt": "w_raglan", "Women's 3/4 Sleeve Shirt (Value)": "w_raglan_value", "Women's 3/4 Sleeve Shirt (Premium)": "w_raglan_premium", "Men's Polo Shirt": "m_polo", "Men's Polo Shirt (Value)": "m_polo_value", "Men's Polo Shirt (Premium)": "m_polo_premium", "Men's Hoodie": "m_hoodie", "Men's Hoodie (Value)": "m_hoodie_value", "Men's Hoodie (Premium)": "m_hoodie_premium", "Women's Hoodie": "w_hoodie", "Women's Hoodie (Value)": "w_hoodie_value", "Women's Hoodie (Premium)": "w_hoodie_premium", "Men's Sweatshirt": "m_sweatshirt", "Men's Sweatshirt (Value)": "m_sweatshirt_value", "Men's Sweatshirt (Premium)": "m_sweatshirt_premium", "Women's Sweatshirt": "w_sweatshirt", "Women's Sweatshirt (Value)": "w_sweatshirt_value", "Women's Sweatshirt (Premium)": "w_sweatshirt_premium"};            // garment name -> garment_id (editor lookup)
  // Quality tiers per garment: Classic name -> [{tier,name,from}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
@@ -658,8 +657,6 @@
      SIDES={front:null,back:null,'sleeve-left':null,'sleeve-right':null};   // clear all areas for the new garment
      document.querySelectorAll('#mplacement .plbtn').forEach(function(b){
        b.classList.toggle('sel', b.dataset.p==='front'); });
-     LOGO_ON=false;                    // reset the logo toggle + back hint per open
-     var _lc=document.getElementById('mlogo'); if(_lc) _lc.checked=false;
      var _bh=document.getElementById('mbackhint'); if(_bh) _bh.style.display='none';
      ['qfrontthumb','qbackthumb','qsleeveLthumb','qsleeveRthumb'].forEach(function(id){      // clear quick-design previews
        var t=document.getElementById(id); if(t){ t.style.backgroundImage=''; t.classList.remove('filled'); } });
@@ -901,7 +898,6 @@
      sides:_sides, extra_print:+(_extra).toFixed(2), wording:_slotWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
-     logo:(IS_APPAREL&&LOGO_ON)?'front+back':'',
      design:_fullDesign(),                 // FULL per-item design (both sides, cal, wording)
      thumb:_proofThumb()}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
@@ -1186,7 +1182,6 @@
        'sleeve-left':_stripPhoto(SIDES['sleeve-left']),
        'sleeve-right':_stripPhoto(SIDES['sleeve-right'])};
      d.placement=APPLACEMENT;
-     d.logo=(typeof LOGO_ON!=='undefined'&&LOGO_ON)?'front+back':'';
    }
    return d;
  }
@@ -1946,7 +1941,6 @@
      if(v && !seen[s.slot]){ seen[s.slot]=1; out.push(v); } });
    return out.join(' / ');
  }
- let LOGO_ON=false;        // optional shop-logo overlay on front & back
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
  let BOX={x:0.50,y:0.35,s:1.0,sy:1.0};   // s = width scale; sy = INDEPENDENT length (sleeves)
@@ -2072,11 +2066,6 @@
    drawArt();
  }
  // Toggle the shop-logo overlay (added to BOTH the front and the back).
- function toggleLogo(){
-   const cb=document.getElementById('mlogo');
-   LOGO_ON=!!(cb&&cb.checked);
-   drawArt();
- }
  // Print-safe boundary = the movable design FRAME (front or back). Silhouette mode
  // is relative to the garment box; mockup mode is relative to the whole canvas.
  function _placeBound(x,y,w,h){
@@ -3338,16 +3327,6 @@
      var _off=block/2+15;               // _th (rotation) is already computed above
      TEXT_HANDLE={x:ax+_off*Math.sin(_th), y:ay-_off*Math.cos(_th)};
    }
-   }
-   // Optional shop-logo overlay (front & back) - a small brand mark below the
-   // design. Drawn on whichever side is in view, since the toggle adds it to both.
-   if(IS_APPAREL && LOGO_ON && GARMENT_LOGO_SRC){
-     const _lg=_mockupImg(GARMENT_LOGO_SRC);
-     if(_lg&&_lg.complete&&_lg.naturalWidth){
-       const _lw=W*0.12, _lh=_lw*(_lg.naturalHeight/_lg.naturalWidth);
-       ctx.save(); ctx.globalAlpha=0.96;
-       ctx.drawImage(_lg, W/2-_lw/2, H*0.60, _lw, _lh); ctx.restore();
-     }
    }
    if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && APPAREL_BOUND && !_CLEAN){ const b=APPAREL_BOUND;
      ctx.save();
