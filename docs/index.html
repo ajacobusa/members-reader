@@ -856,6 +856,17 @@
  .dragbar .plbtn{flex:1;border:0;border-radius:0;margin:0;padding:10px 4px;
    background:transparent;font-size:13px;font-weight:700;cursor:pointer;color:var(--green)}
  .dragbar .plbtn.sel{background:var(--green);color:#fff}
+ /* Collapsible control sections: a tap-to-expand header keeps every panel present
+    but compact, so nothing is buried below a long panel (#169/#170). The `open`
+    state is user-controlled and independent of the JS that shows/hides a panel
+    per product type (which only toggles display:none/block). */
+ .mcsec>summary{cursor:pointer;list-style:none;font-size:14px;font-weight:700;
+   color:var(--green);display:flex;align-items:center;gap:8px;user-select:none;
+   text-align:left}
+ .mcsec>summary::-webkit-details-marker{display:none}
+ .mcsec>summary::after{content:'\25be';margin-left:auto;color:var(--muted);font-size:12px}
+ .mcsec:not([open])>summary::after{content:'\25b8'}
+ .mcsec[open]>summary{margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #efe1b6}
  .layoutgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px;margin:6px 0}
  .layoutthumb{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}
  .layoutthumb.sel{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
@@ -1437,12 +1448,9 @@
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
          <label class="mlogorow"><input type="checkbox" id="mlogo" onchange="toggleLogo()"> Add our logo (front &amp; back)</label>
        </div>
-       <div class="dragbar" id="mlayoutbar" style="display:none">
-         <div class="dbq">&#127912; Pick a <b>layout</b> &mdash; we arrange your logo &amp; words professionally. Type your words in <b>Step 1</b>, then tweak anything.</div>
-         <div id="mlayouts" class="layoutgrid"></div>
-       </div>
-       <div class="dragbar" id="mframebar" style="display:none">
-         <div class="dbq">&#128208; <b>Move &amp; resize your design</b> &mdash; drag the dashed box to move it, or
+       <details class="dragbar mcsec" id="mframebar" style="display:none" open>
+         <summary>&#128208; Move &amp; resize your design</summary>
+         <div class="dbhint" style="text-align:left;margin-top:0">Drag the dashed box to move it, or
            <span class="grabtip"><span class="grabsq"></span> drag the green corner with your mouse to resize</span>.</div>
          <div class="photorow">
            <span class="plbl">Size</span>
@@ -1464,7 +1472,7 @@
            <button type="button" id="mtdirbtn" class="tdirbtn" onclick="toggleTextOrientation()">↕ Vertical / ↔ Horizontal</button>
          </div>
          <div class="dbhint">Move the whole design (wording + photo) anywhere on the garment and size it up or down.</div>
-       </div>
+       </details>
        <div class="dragbar" id="mcalbar" style="display:none">
          <div class="dbq">&#128197; Build your <b>12-month calendar</b> &mdash; add a photo for each month, then preview the whole calendar.<br><span style="font-size:11px;color:#7a7466">&#128247; Photos are centered &amp; cropped to a landscape frame &mdash; landscape shots look best.</span></div>
          <div class="calyear"><label>Year <input type="number" id="mcalyear" value="2026" min="2025" max="2030" onchange="setCalYear(this.value)" style="width:84px"></label></div>
@@ -1472,8 +1480,8 @@
          <div id="calcountbar" class="calcountbar"><b id="calcount">0</b> of 12 months added &mdash; add all 12 for the full calendar (you can finish any you skip after your cover is approved).</div>
          <button type="button" class="savebtn" onclick="openFlipbook()">&#128214; Preview calendar</button>
        </div>
-       <div class="dragbar">
-         <div class="dbq">&#8596;&#65039; Reposition the wording or photo</div>
+       <details class="dragbar mcsec">
+         <summary>&#8596;&#65039; Reposition the wording or photo</summary>
          <div class="dseg" role="group" aria-label="Select what to move">
            <button type="button" class="dmbtn sel" data-m="text" aria-label="Move the wording" onclick="setDragMode('text')">✍️ Wording</button>
            <button type="button" class="dmbtn" data-m="photo" aria-label="Move the photo" onclick="setDragMode('photo')">🖼️ Photo</button>
@@ -1481,9 +1489,9 @@
            <button type="button" class="dmbtn" aria-label="Reset placement" onclick="resetPlacement()">↺ Reset</button>
          </div>
          <div class="dbhint">Drag any word or the photo on the preview to move it &middot; drag a corner to resize &middot; <b>Reset</b> restores the template.</div>
-       </div>
-           <div id="mphotoctl" style="display:none">
-             <div class="pctitle">🖼️ Resize &amp; place your photo</div>
+       </details>
+           <details id="mphotoctl" class="mcsec" style="display:none" open>
+             <summary>🖼️ Resize &amp; place your photo</summary>
              <div class="photorow">
                <span class="plbl">Size</span>
                <span class="zico" aria-hidden="true">−</span>
@@ -1506,7 +1514,12 @@
              <button type="button" class="pcenter" style="margin-top:4px" aria-label="Remove the photo background" onclick="removeBg()">&#9986;&#65039; Remove background</button>
              <span class="tposhint">best for logos &amp; solid backdrops</span>
              <button type="button" class="pdone" onclick="setDragMode('text')">&#10003; Done - edit text</button>
-           </div>
+           </details>
+       <details class="dragbar mcsec" id="mlayoutbar" style="display:none">
+         <summary>&#127912; Pick a layout</summary>
+         <div class="dbhint" style="text-align:left;margin-top:0">We arrange your logo &amp; words professionally &mdash; type your words in <b>Step 1</b>, then tweak anything.</div>
+         <div id="mlayouts" class="layoutgrid"></div>
+       </details>
 
        <div class="swrow" id="mwalltip" style="font-size:11px;color:#6b7a72;margin:8px 0 0">🛋️ Tip: try the <b>Your room wall</b> colors to preview it in your space.</div>
        <div class="mdescbox">
