@@ -804,6 +804,18 @@ def test_front_back_text_has_a_visible_drag_handle(tmp_path):
     assert "TEXT_HANDLE={x:ax+_off*Math.sin(_th)" in js               # handle sits on the wording
 
 
+def test_front_back_picture_is_its_own_box_text_is_free(tmp_path):
+    # REGRESSION (independent-layers request): when a PICTURE is present on front/back it
+    # gets its OWN blue box (move/resize it), the print-area frame fades to a faint
+    # boundary, and the wording is a separate free layer dragged anywhere in the print
+    # area - "move the text out of the box, box = just the picture".
+    js = _page(tmp_path)
+    assert "var _hasPic=!!(PHOTO && PHOTO_RECT && (IS_APPAREL||IS_BRANDED))" in js
+    assert "ctx.strokeRect(_pr.x,_pr.y,_pr.w,_pr.h)" in js       # the picture's own box outline
+    assert "rgba(0,0,0,.16)" in js                              # print area faded when a picture is present
+    assert "blue box = your picture" in js                      # layers caption
+
+
 def test_sleeve_editing_contract(tmp_path):
     # REGRESSION (from the full sleeve-subsystem audit): these are the load-bearing
     # invariants that kept regressing at the SEAMS. Pin them so a future edit can't

@@ -7384,15 +7384,26 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      }}
    }}
    if((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) && APPAREL_BOUND && !_CLEAN){{ const b=APPAREL_BOUND;
-     ctx.save(); ctx.setLineDash([6,5]); ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=1.5;
+     ctx.save();
+     var _hasPic=!!(PHOTO && PHOTO_RECT && (IS_APPAREL||IS_BRANDED));
+     // Print area = the movable design boundary. When a PICTURE is present it's shown
+     // FAINT: the prominent dashed box is then the picture's OWN box, and the wording is a
+     // free layer you drag anywhere inside the print area (independent layers).
+     ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
+     ctx.strokeStyle = _hasPic ? 'rgba(0,0,0,.16)' : 'rgba(0,0,0,.55)';
      ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.setLineDash([]);
      const hs=9;
      function _handle(cx,cy,col){{ ctx.fillStyle=col; ctx.fillRect(cx-hs,cy-hs,hs*2,hs*2);
        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(cx-hs,cy-hs,hs*2,hs*2); }}
-     // FRAME resize handle (green, bottom-LEFT) - sizes the whole design.
+     // PICTURE box (its own blue dashed outline) - the buyer moves/resizes the picture on
+     // its own, separately from the wording, so "the box = just the picture".
+     if(_hasPic){{ var _pr=PHOTO_RECT;
+       ctx.setLineDash([5,4]); ctx.strokeStyle='rgba(23,99,184,.92)'; ctx.lineWidth=1.7;
+       ctx.strokeRect(_pr.x,_pr.y,_pr.w,_pr.h); ctx.setLineDash([]); }}
+     // FRAME resize handle (green, bottom-LEFT) - sizes the whole print area.
      _handle(b.x, b.y+b.h, '#15643c');
-     // PHOTO resize handle (blue, bottom-RIGHT of the photo) - sizes just the photo.
-     if(PHOTO && PHOTO_RECT){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
+     // PICTURE resize handle (blue, bottom-RIGHT of the picture) - sizes just the picture.
+     if(_hasPic){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
      // WORDING drag handle (gold circle + 4-way move arrow) - shows the wording is
      // grabbable and can be dragged ANYWHERE, including over the photo.
      if(TEXT_HANDLE){{ var _hx=TEXT_HANDLE.x, _hy=TEXT_HANDLE.y, _R=11;
@@ -7411,8 +7422,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        : (IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
        : ((APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right')
          ? ('👕 '+(_PLACE_LBL[APPLACEMENT])+' - drag to move · corner: sideways = width, up/down = length')
-         : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')+' - green corner to resize'
-            +(TEXT_HANDLE?' · ✥ drag the wording anywhere (even over the photo)':' · drag to move')))));
+         : ('👕 '+(_PLACE_LBL[APPLACEMENT]||'Front')
+            +(_hasPic?' · 🖼️ blue box = your picture (drag it / blue corner resizes)':' - green corner to resize')
+            +(TEXT_HANDLE?' · ✥ drag the wording anywhere':(_hasPic?'':' · drag to move'))))));
      ctx.fillText(_cap, b.x+b.w/2, b.y-7); ctx.restore(); }}
    const crop=document.getElementById('mcrop');
    if(crop){{ const sv=((document.getElementById('msize')||{{}}).value||'').split('|')[0];
