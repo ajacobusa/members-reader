@@ -582,7 +582,7 @@
      md.innerHTML = IS_CAL ? CAL_DESC_HTML : (IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
        : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML)))); }
    const e3=document.getElementById('e3lbl');
-   if(e3) e3.textContent = PRINT ? '3. Size' : '3. Frame & size';
+   if(e3) e3.textContent = PRINT ? 'Size' : 'Frame & size';
    // Step 1 colour row is the SHIRT colour in apparel mode / product colour in
    // branded mode (the wall-art "Background" fill is not printed on a product).
    const bl=document.getElementById('mbglbl');
@@ -1047,7 +1047,7 @@
      const s=document.getElementById('esec'+i);
      if(s) s.style.display=(i===n)?'block':'none';
    }
-   document.querySelectorAll('#esectabs button').forEach(function(b){
+   document.querySelectorAll('#esectabs .estep').forEach(function(b){
      const e=parseInt(b.dataset.e), cur=e===n;
      b.classList.toggle('sel',cur);
      b.classList.toggle('done', e<n);     // finished sections read as progress
@@ -1078,7 +1078,7 @@
      e.classList.remove('attn'); });
    // The active section tab breathes softly (the strong pulse stays on the
    // ONE action that finishes the current task).
-   document.querySelectorAll('#esectabs button').forEach(function(b){
+   document.querySelectorAll('#esectabs .estep').forEach(function(b){
      b.classList.toggle('tabglow', b.classList.contains('sel')); });
    // Once frame selection is done (past the design/photo sections, not yet
    // added), the order card becomes the active NEXT STEP - light it up and
