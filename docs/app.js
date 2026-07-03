@@ -1406,18 +1406,48 @@
  function proofFlip(){                          // toggle FRONT (with sleeves) <-> BACK
    var views=_proofViews(); if(views.length<2) return;
    var i=views.indexOf(PROOFVIEW); if(i<0) i=0;
+   if(typeof _proofResetZoom==='function') _proofResetZoom();   // start each side at fit
    _proofRenderView(views[(i+1)%views.length]);
  }
- // Drag the proof image sideways to spin it (mirrors the editor's garment spin).
- let _PROOFDRAG=null;
+ // Final-preview PAN & ZOOM: the buyer inspects EVERY CORNER of the finished design on the
+ // garment, like a premium product page. Scroll or pinch to zoom (1x..4x); when zoomed,
+ // drag to look around; double-click toggles zoom. At fit (1x) a sideways drag still spins
+ // front<->back. Purely a VIEW transform on the proof image - it never changes the design.
+ let _PROOFDRAG=null, PROOF_ZOOM=1, PROOF_PX=0, PROOF_PY=0, _PROOF_PINCH=0;
+ function _proofApplyZoom(){
+   var img=document.getElementById('proofImg'); if(!img) return;
+   var lim=Math.max(0,(PROOF_ZOOM-1)*50);                 // clamp pan so the image can't leave the frame
+   PROOF_PX=Math.max(-lim,Math.min(lim,PROOF_PX)); PROOF_PY=Math.max(-lim,Math.min(lim,PROOF_PY));
+   img.style.transformOrigin='center center';
+   img.style.transform='scale('+PROOF_ZOOM.toFixed(3)+') translate('+PROOF_PX.toFixed(2)+'%,'+PROOF_PY.toFixed(2)+'%)';
+   img.style.cursor=PROOF_ZOOM>1?'grab':'';
+   var rz=document.getElementById('proofZoomReset'); if(rz) rz.style.display=PROOF_ZOOM>1?'inline-block':'none';
+ }
+ function _proofResetZoom(){ PROOF_ZOOM=1; PROOF_PX=0; PROOF_PY=0; _proofApplyZoom(); }
+ function _proofSetZoom(z){ PROOF_ZOOM=Math.max(1,Math.min(4,z)); if(PROOF_ZOOM===1){ PROOF_PX=0; PROOF_PY=0; } _proofApplyZoom(); }
+ function _proofWheel(ev){ if(ev.preventDefault)ev.preventDefault(); _proofSetZoom(PROOF_ZOOM*((ev.deltaY||0)<0?1.18:1/1.18)); }
+ function _proofDbl(){ _proofSetZoom(PROOF_ZOOM>1?1:2.5); }
+ function _pinchDist(ev){ var a=ev.touches[0],b=ev.touches[1]; return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); }
  function _proofDown(ev){ if(!IS_APPAREL||PROOFMODE!=='item') return;
+   if(ev.touches && ev.touches.length===2){ _PROOF_PINCH=_pinchDist(ev); return; }
    var x=(ev.touches&&ev.touches[0])?ev.touches[0].clientX:ev.clientX;
-   _PROOFDRAG={last:x,acc:0}; }
- function _proofMove(ev){ if(!_PROOFDRAG) return;
+   var y=(ev.touches&&ev.touches[0])?ev.touches[0].clientY:ev.clientY;
+   _PROOFDRAG={last:x, lastY:y, acc:0}; }
+ function _proofMove(ev){
+   if(ev.touches && ev.touches.length===2){ if(ev.preventDefault)ev.preventDefault();
+     var d=_pinchDist(ev); if(_PROOF_PINCH) _proofSetZoom(PROOF_ZOOM*(d/_PROOF_PINCH)); _PROOF_PINCH=d; return; }
+   if(!_PROOFDRAG) return;
    var x=(ev.touches&&ev.touches[0])?ev.touches[0].clientX:ev.clientX;
-   _PROOFDRAG.acc+=Math.abs(x-_PROOFDRAG.last); _PROOFDRAG.last=x;
+   var y=(ev.touches&&ev.touches[0])?ev.touches[0].clientY:ev.clientY;
+   if(PROOF_ZOOM>1){                                     // zoomed in -> PAN to look around
+     if(ev.preventDefault)ev.preventDefault();
+     var img=document.getElementById('proofImg'); var rw=(img&&img.clientWidth)||300, rh=(img&&img.clientHeight)||300;
+     PROOF_PX+=((x-_PROOFDRAG.last)/rw)*100/PROOF_ZOOM; PROOF_PY+=((y-_PROOFDRAG.lastY)/rh)*100/PROOF_ZOOM;
+     _PROOFDRAG.last=x; _PROOFDRAG.lastY=y; _proofApplyZoom(); return;
+   }
+   _PROOFDRAG.acc+=Math.abs(x-_PROOFDRAG.last); _PROOFDRAG.last=x;   // at fit -> sideways drag spins
    if(_PROOFDRAG.acc>55){ proofFlip(); _PROOFDRAG=null; } }
- function _proofUp(){ _PROOFDRAG=null; }
+ function _proofUp(){ _PROOFDRAG=null; _PROOF_PINCH=0; }
  // ── Cross-department cross-sell ─────────────────────────────────────
  // At the final-design step, offer the SAME design on products from OTHER
  // departments ("make it a gift set"), carrying the wording across so the buyer
@@ -1525,7 +1555,7 @@
      REVIEWED=true; guide();              // review opened: that task is done
      if(cv&&img){
        if(IS_MUG){ const _du=_mugMockupURL(); if(_du){ img.src=_du; img.style.display='block'; } }      // mugs: wrap on a real mug
-       else if(IS_APPAREL){ _proofRenderView('front'); img.style.display='block'; }                        // apparel: front + sleeves, flip for back
+       else if(IS_APPAREL){ _proofRenderView('front'); img.style.display='block'; if(typeof _proofResetZoom==='function')_proofResetZoom(); }   // apparel: front + sleeves, flip for back
        else { const _du=_composedProofURL(); if(_du){ img.src=_du; img.style.display='block'; } } }
      // Apparel: let the buyer spin the garment to review the BACK too before approving
      // (only when multi-area is on; otherwise the design is front-only).

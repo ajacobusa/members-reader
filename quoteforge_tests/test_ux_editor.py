@@ -828,6 +828,21 @@ def test_sleeve_default_runs_down_the_outer_arm(tmp_path):
     assert "BOX=_sleeveDefaultBox(APPLACEMENT)" in js                   # and on reset
 
 
+def test_final_proof_has_pan_and_zoom(tmp_path):
+    # REGRESSION (premium product-page feel): on the final preview the buyer can ZOOM into
+    # every corner of the finished design on the garment and PAN around - scroll/pinch to
+    # zoom (clamped 1..4x), drag to look around when zoomed, double-click toggles, and it
+    # resets on flip/open. It's a VIEW transform on the proof image only - never the design.
+    js = _page(tmp_path)
+    assert 'id="proofZoomWrap"' in js and "overflow:hidden" in js       # clipped zoom container
+    assert "function _proofApplyZoom" in js and "function _proofSetZoom" in js
+    assert 'onwheel="_proofWheel(event)"' in js and 'ondblclick="_proofDbl(event)"' in js
+    assert "Math.max(1,Math.min(4,z))" in js                            # zoom clamped 1..4x
+    assert "if(PROOF_ZOOM>1){" in js                                    # zoomed -> pan; at fit -> spin
+    assert "Scroll or pinch to zoom" in js                             # discoverable hint
+    assert "function _proofResetZoom" in js                             # resets on flip/open
+
+
 def test_sleeve_editing_contract(tmp_path):
     # REGRESSION (from the full sleeve-subsystem audit): these are the load-bearing
     # invariants that kept regressing at the SEAMS. Pin them so a future edit can't
