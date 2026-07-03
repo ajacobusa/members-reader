@@ -620,7 +620,8 @@ def test_photo_fit_controls_are_a_vibrant_card(tmp_path):
     slider - matching the wordbox/dragbar design system."""
     h = _page(tmp_path)
     assert "#mphotoctl{" in h                 # dedicated card styling
-    assert 'class="pctitle"' in h
+    # The card title is now the collapsible section's <summary> header (#170).
+    assert "Resize &amp; place your photo" in h
     assert h.count('class="zico"') >= 2       # -/+ ends on the zoom slider
     photorow_btn = h.split(".photorow button{", 1)[1].split("}", 1)[0]
     assert "999px" in photorow_btn            # round tactile buttons
@@ -693,6 +694,49 @@ def test_layout_gallery_has_descriptions_and_product_filtering(tmp_path):
     assert "only styles that suit this product" in h       # the per-product filter
     assert "f:['apparel']" in h                            # apparel-only tagging
     assert ".layoutthumb small" in h                        # description caption style
+
+
+def test_edit_controls_sit_above_the_layout_picker(tmp_path):
+    # REGRESSION (#169): the frequently-used manipulation controls (Move & resize,
+    # Reposition the wording/photo, photo controls) must appear BEFORE the one-time
+    # layout-picker grid in the editor's left column. Previously the big layout grid
+    # sat between the placement tabs and the controls, burying them ~2 screens below
+    # the fold on mobile ("customer won't even know it exists"). Order must be:
+    # placement tabs -> Move & resize -> Wording/Photo -> layout grid.
+    h = _page(tmp_path)
+    i_place = h.find('id="mplacement"')
+    i_frame = h.find('id="mframebar"')
+    i_wording = h.find("Reposition the wording or photo")
+    i_layout = h.find('id="mlayoutbar"')
+    assert i_place != -1 and i_frame != -1 and i_wording != -1 and i_layout != -1
+    assert i_place < i_frame, "Move & resize must come after the placement tabs"
+    assert i_frame < i_layout, "Move & resize must come BEFORE the layout picker grid"
+    assert i_wording < i_layout, "Wording/Photo controls must come BEFORE the layout picker grid"
+
+
+def test_control_panels_are_collapsible_sections(tmp_path):
+    # REGRESSION (#170): each control panel is a native <details>/<summary> accordion
+    # so all section headers stay visible (compact) while keeping 100% functionality.
+    # Move & resize is expanded by default; the big layout-picker grid is collapsed so
+    # it can't bury the controls again. Every panel keeps its id (JS still shows/hides
+    # per product via display:none, independent of the open/closed state).
+    h = _page(tmp_path)
+    # The move/resize panel is a <details ... open> (expanded by default).
+    assert '<details class="dragbar mcsec" id="mframebar"' in h
+    assert 'id="mframebar" style="display:none" open>' in h
+    # The layout picker is a <details> WITHOUT `open` -> collapsed by default.
+    lay = h.split('id="mlayoutbar"', 1)[1].split(">", 1)[0]
+    assert "open" not in lay, "layout picker must be collapsed by default"
+    # Each collapsible carries a <summary> header + the accordion marker styling.
+    assert ".mcsec>summary" in h
+    # Each section has a <summary> header ending in its label (an emoji prefixes it).
+    for label in ("Move &amp; resize your design", "Reposition the wording or photo",
+                  "Resize &amp; place your photo", "Pick a layout"):
+        assert f"{label}</summary>" in h, label
+    # Functionality preserved: the same handlers are still wired inside the sections.
+    for handler in ("setFrameSize(", "moveFrame(", "resetFrame(", "setDragMode(",
+                    "setPhotoZoom(", "autoCenterPhoto(", "toggleTextOrientation("):
+        assert handler in h, handler
 
 
 def test_background_removal_available_on_every_product(tmp_path):
