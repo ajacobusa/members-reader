@@ -464,7 +464,8 @@ def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):
     # apparel-specific copy is wired in
     assert "T-Shirt, Hoodie or Sweatshirt" in h          # apparel availability line
     assert "made to order just for you" in h             # apparel about-copy
-    assert "'3. Size'" in h                               # step-3 is size-only in apparel
+    assert "'Size'" in h                                  # step-3 is size-only in apparel
+    # (the step number now lives in the progress-tracker dot, not the label - #173)
 
 
 def test_apparel_native_step1_shirt_colour(tmp_path):

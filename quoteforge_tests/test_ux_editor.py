@@ -318,7 +318,7 @@ def test_editor_is_sectioned_with_next_buttons(tmp_path):
     assert "function editStep" in h
     assert "Next: add your photo" in h
     assert "Next: frame &amp; size" in h or "Next: frame & size" in h
-    assert 'id="esectabs"' in h           # clickable section chips
+    assert 'id="esectabs"' in h           # step progress tracker (non-clickable)
 
 
 def test_photo_upload_is_its_own_section(tmp_path):
@@ -521,21 +521,26 @@ def test_modal_trust_line_removed(tmp_path):
     assert 'class="mtrust"' not in h
 
 
-def test_section_tabs_are_bold_icon_cards(tmp_path):
-    """The section chips are big visual cards: an icon over a bold label,
-    not faint text pills."""
+def test_section_progress_is_a_nonclickable_tracker(tmp_path):
+    """REGRESSION (#173): the top step row is a NON-clickable progress tracker
+    (numbered dots 1-2-3 with labels), not a second set of clickable tabs. The
+    big Next/Back buttons are the only navigation - the dual nav felt redundant."""
     h = _page(tmp_path)
-    assert h.count('class="eicon"') >= 3      # one icon per section card
-    assert h.count('class="elbl"') >= 3
-    assert "#esectabs .eicon" in h            # dedicated icon styling
+    assert 'id="esectabs"' in h and 'role="list"' in h
+    assert h.count('class="estep') >= 3           # three progress steps (divs)
+    assert h.count('class="edot"') >= 3           # numbered dots
+    assert h.count('class="elbl"') >= 3           # step labels
+    # the tracker itself carries no click handler (Next/Back navigate instead)
+    tracker = h.split('id="esectabs"', 1)[1].split('id="esec1"', 1)[0]
+    assert "onclick" not in tracker, "progress steps must not be clickable"
+    assert "function editStep" in h               # Next/Back still call editStep
 
 
 def test_section_tabs_show_completion(tmp_path):
-    """Finished sections get a visible done state so the chips read as
-    progress, and the styling is prominent (not faint gray pills)."""
+    """Finished steps get a visible done state so the tracker reads as progress."""
     h = _page(tmp_path)
-    assert "#esectabs button.done" in h           # completion styling exists
-    assert "classList.toggle('done'" in h         # JS marks finished tabs
+    assert "#esectabs .estep.done" in h           # completion styling exists
+    assert "classList.toggle('done'" in h         # JS marks finished steps
 
 
 def test_guidance_engine_one_beacon_to_checkout(tmp_path):

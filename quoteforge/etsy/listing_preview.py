@@ -3405,20 +3405,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    margin-bottom:6px}}
  .wordbox textarea{{font-size:15px;min-height:88px;background:#fff}}
  .wordbox .cc{{margin-top:4px}}
- #esectabs{{display:flex;gap:10px;margin:14px 0 12px}}
- #esectabs button{{flex:1;display:flex;flex-direction:column;align-items:center;
-   gap:4px;padding:13px 8px 11px;border-radius:14px;cursor:pointer;
-   border:2px solid #cdbf98;background:#fffdf4;color:var(--green);
-   transition:transform .15s, box-shadow .15s}}
- #esectabs .eicon{{font-size:24px;line-height:1}}
- #esectabs .elbl{{font-size:14px;font-weight:800;letter-spacing:.2px}}
- #esectabs button.sel{{background:var(--green);color:#fff;
-   border-color:var(--green);transform:translateY(-2px);
-   box-shadow:0 6px 16px rgba(16,61,46,.28)}}
- #esectabs button:not(.sel):hover{{transform:translateY(-1px);
-   box-shadow:0 3px 10px rgba(16,61,46,.12)}}
- #esectabs button.done{{background:#eaf4ed;border-color:#0f7a3d;color:#0f7a3d}}
- #esectabs button.done .elbl::before{{content:"✓ "}}
+ /* Step PROGRESS indicator (non-clickable): the big Next/Back buttons drive the
+    flow; these numbered dots (1-2-3) just show where you are. #173. */
+ #esectabs{{display:flex;margin:14px 0 14px;padding:0}}
+ #esectabs .estep{{flex:1;display:flex;flex-direction:column;align-items:center;
+   gap:6px;position:relative}}
+ #esectabs .eicon{{display:none}}
+ #esectabs .estep .edot{{width:28px;height:28px;border-radius:50%;display:flex;
+   align-items:center;justify-content:center;font-weight:800;font-size:14px;
+   background:#eef3f0;color:#8a978d;border:2px solid #dde6e0;position:relative;
+   z-index:1;transition:background .2s,border-color .2s,color .2s}}
+ #esectabs .estep .elbl{{font-size:12.5px;font-weight:700;color:#8a978d;
+   letter-spacing:.2px;text-align:center}}
+ #esectabs .estep::before{{content:"";position:absolute;top:14px;right:50%;
+   width:100%;height:2px;background:#dde6e0;z-index:0}}
+ #esectabs .estep:first-child::before{{display:none}}
+ #esectabs .estep.sel .edot{{background:var(--green);color:#fff;border-color:var(--green)}}
+ #esectabs .estep.sel .elbl{{color:var(--green)}}
+ #esectabs .estep.done .edot{{background:#0f7a3d;color:#fff;border-color:#0f7a3d}}
+ #esectabs .estep.done .edot::after{{content:"✓";font-size:15px}}
+ #esectabs .estep.done .edot{{font-size:0}}
+ #esectabs .estep.done .elbl{{color:#0f7a3d}}
+ #esectabs .estep.done::before{{background:#0f7a3d}}
  .sizeprompt{{background:#fffdf4;border:2px solid var(--gold);border-radius:10px;
    padding:8px 12px;margin-bottom:8px;font-size:13.5px;color:var(--green)}}
  @keyframes ctapulse{{0%{{box-shadow:0 0 0 0 rgba(16,61,46,.45)}}
@@ -3452,7 +3460,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     the strong pulse marks the one action that completes the task. */
  @keyframes tabglowk{{0%,100%{{box-shadow:0 6px 16px rgba(16,61,46,.28)}}
    50%{{box-shadow:0 2px 22px 6px rgba(16,61,46,.12)}}}}
- #esectabs button.tabglow{{animation:tabglowk 1.8s ease-in-out infinite}}
+ #esectabs .estep.tabglow .edot{{animation:tabglowk 1.8s ease-in-out infinite}}
  .esecnav{{display:flex;gap:8px;justify-content:space-between;margin-top:12px}}
  .esecnav .esecnext{{flex:1;padding:11px 14px;border-radius:999px;border:0;
    cursor:pointer;background:var(--green);color:#fff;font-weight:700;
@@ -3906,13 +3914,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
        </div>
        <!-- One section at a time: finish it, tap Next - no scrolling hunt. -->
-       <div id="esectabs" role="tablist" aria-label="Customize sections">
-         <button type="button" data-e="1" class="sel" aria-current="step" onclick="editStep(1)">
-           <span class="eicon">🎨</span><span class="elbl">1. Design</span></button>
-         <button type="button" data-e="2" onclick="editStep(2)">
-           <span class="eicon">📷</span><span class="elbl">2. Photo</span></button>
-         <button type="button" data-e="3" onclick="editStep(3)">
-           <span class="eicon">🖼️</span><span class="elbl" id="e3lbl">3. Frame &amp; size</span></button>
+       <div id="esectabs" role="list" aria-label="Your progress">
+         <div class="estep sel" data-e="1" role="listitem" aria-current="step">
+           <span class="edot">1</span><span class="elbl">Design</span></div>
+         <div class="estep" data-e="2" role="listitem">
+           <span class="edot">2</span><span class="elbl">Photo</span></div>
+         <div class="estep" data-e="3" role="listitem">
+           <span class="edot">3</span><span class="elbl" id="e3lbl">Frame &amp; size</span></div>
        </div>
        <div class="esec" id="esec1">
        <div class="perso">
@@ -4669,7 +4677,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      md.innerHTML = IS_CAL ? CAL_DESC_HTML : (IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
        : (IS_APPAREL ? APPAREL_DESC_HTML : (WALLART_DESC || md.innerHTML)))); }}
    const e3=document.getElementById('e3lbl');
-   if(e3) e3.textContent = PRINT ? '3. Size' : '3. Frame & size';
+   if(e3) e3.textContent = PRINT ? 'Size' : 'Frame & size';
    // Step 1 colour row is the SHIRT colour in apparel mode / product colour in
    // branded mode (the wall-art "Background" fill is not printed on a product).
    const bl=document.getElementById('mbglbl');
@@ -5134,7 +5142,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const s=document.getElementById('esec'+i);
      if(s) s.style.display=(i===n)?'block':'none';
    }}
-   document.querySelectorAll('#esectabs button').forEach(function(b){{
+   document.querySelectorAll('#esectabs .estep').forEach(function(b){{
      const e=parseInt(b.dataset.e), cur=e===n;
      b.classList.toggle('sel',cur);
      b.classList.toggle('done', e<n);     // finished sections read as progress
@@ -5165,7 +5173,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      e.classList.remove('attn'); }});
    // The active section tab breathes softly (the strong pulse stays on the
    // ONE action that finishes the current task).
-   document.querySelectorAll('#esectabs button').forEach(function(b){{
+   document.querySelectorAll('#esectabs .estep').forEach(function(b){{
      b.classList.toggle('tabglow', b.classList.contains('sel')); }});
    // Once frame selection is done (past the design/photo sections, not yet
    // added), the order card becomes the active NEXT STEP - light it up and
