@@ -864,6 +864,11 @@
  .mcsec>summary::after{content:'\25be';margin-left:auto;color:var(--muted);font-size:12px}
  .mcsec:not([open])>summary::after{content:'\25b8'}
  .mcsec[open]>summary{margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #efe1b6}
+ /* Bare collapsible (not inside a gold dragbar), e.g. Step-1 text-styling: a light
+    chip look so the summary clearly reads as a tappable expander (#174). */
+ .mtextfx{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+   margin:10px 0;background:#f7faf8}
+ .mtextfx[open]{background:#fff}
  .layoutgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px;margin:6px 0}
  .layoutthumb{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}
  .layoutthumb.sel{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
@@ -1569,6 +1574,11 @@
            <div class="wordlbl">✍️ Your wording - type each line</div>
            <div id="mslots" class="slotinputs"></div>
          </div>
+         <div class="esecnav">
+           <button type="button" class="esecnext" id="esec1next" onclick="editStep(2)">Next: add your photo →</button>
+         </div>
+         <details class="mcsec mtextfx">
+         <summary>&#10024; Style your text &mdash; font, size &amp; rotation <span style="font-weight:400;color:var(--muted)">(optional)</span></summary>
          <div class="swrow">Font</div>
          <div class="fonts" id="mfonts"></div>
          <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span></div>
@@ -1598,13 +1608,11 @@
            <button type="button" onclick="setRot(90)">Sideways ⟳</button>
            <button type="button" onclick="setRot(180)">Flip</button>
          </div>
+         </details>
          <div class="freebar" role="note">
            <span class="fchk">✓ Personalization is 100% FREE</span>
            <span class="fchk">✓ Preview updates instantly</span>
          </div>
-       </div>
-       <div class="esecnav">
-         <button type="button" class="esecnext" id="esec1next" onclick="editStep(2)">Next: add your photo →</button>
        </div>
        </div>
        <div class="esec" id="esec2" style="display:none">
