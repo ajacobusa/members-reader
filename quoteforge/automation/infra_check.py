@@ -671,6 +671,32 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("sleeve_order_integrity_grounded", False, str(exc)))
 
+    # 33) Preview-vs-print safety for apparel: the storefront design is not yet rendered
+    #     into the print file (the pipeline substitutes a poster), so an apparel order with
+    #     no faithful print file must be HELD for manual, never auto-submitting a poster in
+    #     place of the buyer's approved design. (behavioral: route a designed apparel order
+    #     with a poster URL and confirm the router returns 'manual', not a submission.)
+    try:
+        from quoteforge.fulfillment.router import _route_order_impl
+        rec = {"name": "Q", "address1": "1 St", "city": "NYC", "state": "NY",
+               "postal_code": "10001", "country": "US"}
+        import quoteforge.config as _cfg
+        _prev_mode = getattr(_cfg, "GELATO_FULFILLMENT_MODE", "native")
+        try:
+            _cfg.GELATO_FULFILLMENT_MODE = "api"   # force the submit path (not native pull)
+            r = _route_order_impl({"order_id": "", "product_type": "apparel",
+                                   "vendor": "gelato", "gelato_product_uid": "uid-x"},
+                                  recipient=rec, artwork_url="https://x/y.png")
+        finally:
+            _cfg.GELATO_FULFILLMENT_MODE = _prev_mode
+        held = r.get("status") == "manual" and "faithful" in r.get("detail", "")
+        checks.append(_c("apparel_preview_matches_print_guard", held,
+                         "apparel without a faithful print file is held for manual "
+                         "(no poster auto-submitted in place of the approved design)"
+                         if held else "apparel would auto-submit a non-faithful poster print"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("apparel_preview_matches_print_guard", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

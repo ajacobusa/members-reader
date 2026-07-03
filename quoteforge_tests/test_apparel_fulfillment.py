@@ -221,6 +221,33 @@ def test_apparel_inventory_payload_two_axes_priced():
     assert "gelato" not in json.dumps(p).lower().replace("gel-", "")  # no supplier name
 
 
+def test_apparel_without_faithful_artwork_is_held_for_manual(tmp_path, monkeypatch):
+    # REGRESSION (print-fidelity audit): the storefront apparel design (photo/wording/
+    # template/position/rotation) is NOT yet rendered into the print file - the pipeline
+    # substitutes a generic poster (render_local_poster), so "what the buyer approved" is
+    # not "what would print". An apparel order must therefore NEVER auto-submit that poster;
+    # it is HELD for manual until a faithful per-side print file (extra_files) or an explicit
+    # faithful_artwork flag is present. Guards preview!=print from shipping at go-live.
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.GELATO_FULFILLMENT_MODE", "api", raising=False)
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", True, raising=False)
+    from quoteforge.db import database as db
+    db.init_db()
+    from quoteforge.fulfillment.router import _route_order_impl
+    rec = {"name": "Sam", "address1": "1 St", "city": "NYC", "state": "NY",
+           "postal_code": "10001", "country": "US"}
+    held = _route_order_impl({"order_id": "", "product_type": "apparel", "vendor": "gelato",
+                              "gelato_product_uid": "uid-x"},
+                             recipient=rec, artwork_url="https://x/y.png")
+    assert held["status"] == "manual" and "faithful" in held["detail"]   # poster NOT auto-submitted
+    # once a faithful print file is confirmed, this specific guard no longer force-holds
+    ok = _route_order_impl({"order_id": "", "product_type": "apparel", "vendor": "gelato",
+                            "gelato_product_uid": "uid-x", "faithful_artwork": True},
+                           recipient=rec, artwork_url="https://x/y.png")
+    assert not (ok["status"] == "manual" and "faithful" in ok.get("detail", ""))
+
+
 # ── End-to-end: an apparel order through the live pipeline ────────
 
 def test_apparel_order_through_pipeline(tmp_path, monkeypatch):
