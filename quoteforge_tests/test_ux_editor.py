@@ -739,6 +739,28 @@ def test_control_panels_are_collapsible_sections(tmp_path):
         assert handler in h, handler
 
 
+def test_photo_and_design_panels_are_mutually_exclusive(tmp_path):
+    # REGRESSION (#171): the whole-design "Move & resize" card (mframebar) and the
+    # "Resize & place your photo" card (mphotoctl) used to show at the same time once a
+    # photo was uploaded - two look-alike Size/Move/Reset cards = a "duplicate". Now a
+    # single contextual panel shows at a time, driven by the Wording|Photo selector via
+    # _syncCtlPanels: photo panel in Photo mode, whole-design panel (PRINT products)
+    # otherwise. mframebar is the sleeve/whole-design positioner, so it is hidden in
+    # Photo mode - never removed (sleeves still need it).
+    h = _page(tmp_path)
+    assert "function _syncCtlPanels(" in h
+    # setDragMode swaps the panels
+    after = h.split("function setDragMode(m)", 1)[1][:220]
+    assert "_syncCtlPanels()" in after, "setDragMode must re-sync the contextual panels"
+    # the helper gates BOTH panels on photo mode (mutually exclusive)
+    assert "DRAGMODE==='photo'" in h
+    assert "getElementById('mphotoctl')" in h and "getElementById('mframebar')" in h
+    # both photo-specific and whole-design handlers remain wired (nothing lost)
+    for handler in ("setPhotoZoom(", "nudgePhoto(", "autoCenterPhoto(", "removeBg(",
+                    "setFrameSize(", "moveFrame(", "resetFrame("):
+        assert handler in h, handler
+
+
 def test_background_removal_available_on_every_product(tmp_path):
     # Client-side, free, private background removal on the shared photo controls -
     # so every product that takes a photo/logo gets it. 3D stays cylindrical-only.
