@@ -1811,17 +1811,48 @@ def get_api_costs(since_iso: str = "", until_iso: str = "") -> list[dict]:
 
 # ── Backup / recovery ────────────────────────────────────────────
 
+EVENT_RETENTION_DAYS = 365
+
+
+def prune_event_tables(days: int = EVENT_RETENTION_DAYS) -> dict:
+    """Retention prune for the append-only heartbeat + audit tables (sync_runs,
+    security_events): delete rows older than `days`. Both grow slowly, so a 1-year
+    window keeps them tiny without losing recent history (security_events is a security
+    audit trail, hence the generous default). The cutoff uses datetime('now', ...) (UTC),
+    matching how the columns are written. Never raises; returns {table: deleted_count}.
+    Table/column names are hardcoded literals (no injection); the cutoff is parameterized.
+    """
+    out: dict = {}
+    if not DB_PATH.exists():
+        return out
+    cutoff = f"-{int(days)} days"
+    try:
+        with _conn() as conn:
+            for table, col in (("sync_runs", "ran_at"), ("security_events", "at")):
+                try:
+                    cur = conn.execute(
+                        f"DELETE FROM {table} WHERE {col} < datetime('now', ?)", (cutoff,))
+                    out[table] = cur.rowcount
+                except sqlite3.OperationalError:
+                    out[table] = 0          # table absent on a very old DB - skip
+    except Exception as exc:  # noqa: BLE001 - hygiene must never break maintenance
+        logger.debug("prune_event_tables skipped: %s", exc)
+    return out
+
+
 def db_maintenance() -> dict:
     """Run database health + performance maintenance.
 
     - integrity_check : detects corruption early
+    - retention prune : trims the sync_runs / security_events history (1-year window)
     - wal_checkpoint  : flushes the write-ahead log back into the main file
     - VACUUM          : reclaims space and defragments for faster queries
-    Returns metrics (size before/after, integrity result). Safe to run daily.
+    Returns metrics (size before/after, integrity result, pruned counts). Safe daily.
     """
     if not DB_PATH.exists():
         return {"ran": False, "reason": "no database yet"}
     size_before = DB_PATH.stat().st_size
+    pruned = prune_event_tables()            # trim heartbeat/audit history before VACUUM
     with _conn() as conn:
         integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -1838,6 +1869,7 @@ def db_maintenance() -> dict:
         "size_before_kb": round(size_before / 1024, 1),
         "size_after_kb": round(size_after / 1024, 1),
         "reclaimed_kb": round((size_before - size_after) / 1024, 1),
+        "pruned": pruned,                            # {sync_runs, security_events} rows deleted
     }
 
 

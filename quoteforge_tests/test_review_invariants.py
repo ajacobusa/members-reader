@@ -45,6 +45,8 @@ def test_new_infra_checks_are_wired():
     assert "utc_local_datetime_hygiene" in names             # the two UTC-vs-local sites that bit us stay UTC-aware
     assert "route_paths_thread_product_type" in names        # BOTH route_order sites thread product_type (apparel gate can't be bypassed)
     assert "product_photo_override_wired" in names            # owner real-photo override shows the real product in TEST_MODE (no go-live)
+    assert "sleeveless_garment_gated" in names                # a tank never offers sleeve areas/upcharge; back proof != front photo
+    assert "event_retention_pruned" in names                  # sync_runs/security_events are pruned (bounded growth)
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -290,6 +292,26 @@ def test_utc_hygiene_tripwire_is_grounded():
     def _regressed_sweep():
         return _d.datetime.now().isoformat(timespec="seconds")   # naive local, the bug
     assert not ic._references(_regressed_sweep, "utc")
+
+
+def test_prune_event_tables_trims_old_rows(tmp_path, monkeypatch):
+    # HYGIENE (#realphotos follow-up): the append-only heartbeat + audit tables get a
+    # 1-year retention prune (via db_maintenance) so they can't grow unbounded. Old rows
+    # go; recent rows stay. UTC cutoff matches how the columns are written.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    with db._conn() as c:
+        c.execute("INSERT INTO sync_runs (job, ran_at) VALUES ('old', datetime('now','-400 days'))")
+        c.execute("INSERT INTO sync_runs (job) VALUES ('new')")
+        c.execute("INSERT INTO security_events (event, at) VALUES ('old', datetime('now','-400 days'))")
+        c.execute("INSERT INTO security_events (event) VALUES ('new')")
+    res = db.prune_event_tables()
+    assert res == {"sync_runs": 1, "security_events": 1}       # exactly the old rows
+    assert db.last_sync_run("new") and db.last_sync_run("old") == {}
+    assert len(db.recent_security_events()) == 1                # only the recent audit row
+    # db_maintenance surfaces the pruned counts
+    assert "pruned" in db.db_maintenance()
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():
