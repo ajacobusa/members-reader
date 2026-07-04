@@ -841,6 +841,23 @@ def existing_listing_id(gelato_sku: str, template_id: str = "") -> str:
         return (row[0] if row else "") or ""
 
 
+def orphan_products() -> list[dict]:
+    """ACTIVE products that are mapped to fulfillment (a gelato_sku) but have NO Etsy
+    listing linked (etsy_listing_id NULL/empty) — i.e. a sellable product that was
+    never published, so a customer can't actually buy it (#182-P0b). The auto-link
+    write path (create_draft_listing -> upsert_product) is what CLEARS these; this
+    detector is the visibility side so a stuck/never-published product doesn't hide.
+    Returns [{product_id, gelato_sku, title}]; empty when every active product is
+    linked (or none exist yet)."""
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT product_id, gelato_sku, title FROM products "
+            "WHERE active=1 AND gelato_sku IS NOT NULL AND gelato_sku!='' "
+            "AND (etsy_listing_id IS NULL OR etsy_listing_id='') "
+            "ORDER BY product_id").fetchall()
+        return [dict(r) for r in rows]
+
+
 def get_products_by_category(category: str) -> list[dict]:
     """Return active products in a category."""
     with _conn() as conn:

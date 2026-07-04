@@ -940,6 +940,55 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("sync_heartbeat_wired", False, str(exc)))
 
+    # 41) Listing auto-link closed loop (#182-P0b): the dedupe invariant (#38) only
+    #     guards the READ side (create_draft_listing consults existing_listing_id).
+    #     This guards the WRITE side: create_draft_listing must PERSIST the new
+    #     listing id via upsert_product, or the map never fills and a re-run
+    #     duplicates. Plus an orphan detector so a mapped-but-never-published product
+    #     (sellable but unbuyable) is visible. Grounded: structural ref + the
+    #     orphan_products detector behaves against an isolated temp DB.
+    try:
+        from quoteforge.automation import etsy_publisher as _ep11
+        from quoteforge.db import database as _db11
+        writes = _references(_ep11.create_draft_listing, "upsert_product")
+        detector = hasattr(_db11, "orphan_products") and callable(_db11.orphan_products)
+        behaves = False
+        if detector:
+            import tempfile
+            from pathlib import Path as _P11
+            _o11 = _db11.DB_PATH
+            _t11 = _P11(tempfile.gettempdir()) / "qf_infra_orphan.db"
+            try:
+                if _t11.exists():
+                    _t11.unlink()
+                _db11.DB_PATH = _t11
+                _db11.init_db()
+                _base = {"category": "c", "title": "t", "price_usd": 1.0,
+                         "gelato_cost_usd": 0.2, "product_type": "print",
+                         "size": "", "template_id": ""}
+                _db11.upsert_product({**_base, "product_id": "linked",
+                                      "gelato_sku": "sku-linked",
+                                      "etsy_listing_id": "L9"})        # published
+                _db11.upsert_product({**_base, "product_id": "orphan",
+                                      "gelato_sku": "sku-orphan",
+                                      "etsy_listing_id": ""})          # never published
+                orphans = {o["product_id"] for o in _db11.orphan_products()}
+                behaves = orphans == {"orphan"}                       # exactly the unlinked one
+            finally:
+                _db11.DB_PATH = _o11
+                try:
+                    _t11.unlink()
+                except OSError as _e11:
+                    logger.debug("infra orphan temp cleanup skipped: %s", _e11)
+        ok = bool(writes and detector and behaves)
+        checks.append(_c("listing_autolink_wired", ok,
+                         "create_draft_listing persists the SKU->listing link + an "
+                         "orphan detector surfaces never-published products"
+                         if ok else "listing auto-link loop broken: "
+                         f"writes={writes} detector={detector} behaves={behaves}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("listing_autolink_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
