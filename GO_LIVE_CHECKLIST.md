@@ -122,7 +122,15 @@ Task Scheduler) so backups, healthcheck, infra-check, and the sync jobs actually
 
 ---
 
-### Still-open build blocker (not an owner step)
-`#167 faithful apparel print render` — the apparel design must print exactly as the
-customer previewed/approved. Until that's shipped, apparel is held behind the safety
-gate; wall-art / mugs / other flat products are unaffected.
+### Apparel print calibration (`APPAREL_PRINT_CALIBRATED`) — do a test print first
+Apparel is DTG-printed directly onto the garment, so the on-screen placement must land
+correctly on the real print zone — only a **physical Gelato test print** can confirm it.
+Until you flip `APPAREL_PRINT_CALIBRATED=true`, apparel orders **hold for manual
+placement** even with the faithful per-side print files attached, so a mis-calibrated
+mapping can never auto-print on real garments. Wall-art / mugs / other flat products are
+unaffected and can go live independently.
+
+**To calibrate:** place one apparel test order to yourself, review the per-side print
+files in Gelato's editor against your approved proof, order the physical sample, and only
+after it looks right set `APPAREL_PRINT_CALIBRATED=true`. (The faithful per-side render
+that fills those files is the remaining build item — see `#167`.)

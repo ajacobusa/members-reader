@@ -240,12 +240,22 @@ def test_apparel_without_faithful_artwork_is_held_for_manual(tmp_path, monkeypat
     held = _route_order_impl({"order_id": "", "product_type": "apparel", "vendor": "gelato",
                               "gelato_product_uid": "uid-x"},
                              recipient=rec, artwork_url="https://x/y.png")
-    assert held["status"] == "manual" and "faithful" in held["detail"]   # poster NOT auto-submitted
-    # once a faithful print file is confirmed, this specific guard no longer force-holds
+    assert held["status"] == "manual" and "not yet rendered" in held["detail"]  # poster NOT auto-submitted
+    # With a faithful print file the preview!=print guard is satisfied - BUT the #167
+    # calibration gate still HOLDS it for manual until the owner signs off a test print,
+    # so a mis-calibrated mapping can't auto-print on real garments.
+    held2 = _route_order_impl({"order_id": "", "product_type": "apparel", "vendor": "gelato",
+                               "gelato_product_uid": "uid-x", "faithful_artwork": True},
+                              recipient=rec, artwork_url="https://x/y.png")
+    assert held2["status"] == "manual" and "calibration" in held2["detail"]
+    # ...and once the owner has calibrated (a good test print), the calibration gate no
+    # longer force-holds (the order may still hold for unrelated reasons, but NOT for
+    # calibration - that specific block is released).
+    monkeypatch.setattr("quoteforge.config.APPAREL_PRINT_CALIBRATED", True, raising=False)
     ok = _route_order_impl({"order_id": "", "product_type": "apparel", "vendor": "gelato",
                             "gelato_product_uid": "uid-x", "faithful_artwork": True},
                            recipient=rec, artwork_url="https://x/y.png")
-    assert not (ok["status"] == "manual" and "faithful" in ok.get("detail", ""))
+    assert not (ok["status"] == "manual" and "calibration" in ok.get("detail", ""))
 
 
 # ── End-to-end: an apparel order through the live pipeline ────────
