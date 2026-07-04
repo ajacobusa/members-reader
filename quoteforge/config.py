@@ -347,6 +347,12 @@ AIRTABLE_BASE_ID: str = os.getenv("AIRTABLE_BASE_ID", "")
 # Gelato API (for programmatic order creation)
 GELATO_API_KEY: str = os.getenv("GELATO_API_KEY", "")
 GELATO_BASE_URL: str = os.getenv("GELATO_BASE_URL", "https://order.gelatoapis.com")
+# Gelato ECOMMERCE API (connected store) — used to auto-pull official product mockup
+# images (previewUrl) once the owner creates a product. GELATO_STORE_ID is the
+# connected store's UUID (empty = the ecommerce image sync stays a safe no-op).
+GELATO_ECOMMERCE_URL: str = os.getenv(
+    "GELATO_ECOMMERCE_URL", "https://ecommerce.gelatoapis.com").rstrip("/")
+GELATO_STORE_ID: str = os.getenv("GELATO_STORE_ID", "").strip()
 # Gelato Order API version (current = v4; v3 is the older API). v4 additionally
 # requires orderType + shipmentMethodUid on create.
 GELATO_API_VERSION: str = os.getenv("GELATO_API_VERSION", "v4").strip().lower()

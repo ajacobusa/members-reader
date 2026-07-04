@@ -3046,6 +3046,22 @@ def _cmd_mockup_sync(args: list[str]) -> int:
     return 0
 
 
+def _cmd_ecommerce_images(args: list[str]) -> int:
+    """Auto-pull official product images from the connected Gelato ecommerce store.
+    `ecommerce-images`. No-op (safe) until TEST_MODE=false + GELATO_STORE_ID set +
+    the owner creates a product; self-reports the real previewUrl/join shape."""
+    from quoteforge.automation import ecommerce_images as ei
+    st = ei.status()
+    print("Ecommerce images:", ", ".join(f"{k}={v}" for k, v in st.items()))
+    if not st.get("enabled"):
+        print("  (no-op: needs TEST_MODE=false, GELATO_API_KEY, GELATO_STORE_ID)")
+    elif st.get("products") and not st.get("mapped"):
+        print("  Product(s) present but not yet mapped to a SKU. Raw keys seen:",
+              st.get("unmapped_sample_keys"),
+              "- use these to finalise the SKU join.")
+    return 0
+
+
 def _cmd_mockup_confirm(args: list[str]) -> int:
     """Compute confirmation from the two agents' recorded verdicts (run the
     gelato-mockup-reviewer + gelato-sku-image-match agents over the READY set
@@ -3124,6 +3140,7 @@ def _cmd_mockup_publish(args: list[str]) -> int:
 COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "mockup-sync": _cmd_mockup_sync,
+    "ecommerce-images": _cmd_ecommerce_images,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,
     "mockup-override": _cmd_mockup_override,
