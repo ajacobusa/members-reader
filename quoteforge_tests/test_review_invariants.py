@@ -48,6 +48,7 @@ def test_new_infra_checks_are_wired():
     assert "sleeveless_garment_gated" in names                # a tank never offers sleeve areas/upcharge; back proof != front photo
     assert "event_retention_pruned" in names                  # sync_runs/security_events are pruned (bounded growth)
     assert "mug_wrap_ability_gated" in names                   # single-panel mugs never sold a full wrap
+    assert "framed_sizes_fulfillable" in names                 # no framed size sold without a prepared UID
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -293,6 +294,19 @@ def test_utc_hygiene_tripwire_is_grounded():
     def _regressed_sweep():
         return _d.datetime.now().isoformat(timespec="seconds")   # naive local, the bug
     assert not ic._references(_regressed_sweep, "utc")
+
+
+def test_framed_sizes_match_fulfillable_catalog():
+    # REGRESSION (wall-art fulfillability audit, CRITICAL): the editor derived framed
+    # sizes from POSTER sizes (12x16, 24x36), but build_wallart_map prepares framed UIDs
+    # ONLY for the framed catalog sizes - so a customer could pay for a framed size with
+    # no prepared UID. Every framed size sold must have a framed catalog entry.
+    from quoteforge.etsy.variations import build_variations, _ns
+    from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
+    sold = {_ns(v.size) for v in build_variations() if v.material == "framed"}
+    catalog = {_ns(p.size) for p in GELATO_CATALOG if p.category == "framed"}
+    assert sold <= catalog, f"framed sizes sold without a UID: {sorted(sold - catalog)}"
+    assert _ns("12x16") not in sold and _ns("24x36") not in sold   # the two removed
 
 
 def test_single_panel_mugs_are_not_sold_a_full_wrap():

@@ -196,8 +196,15 @@ def build_variations(floor_pct: int = None) -> list[Variation]:
             price=price, margin_pct=net_margin_pct(price, cost),
             tier=tier))
 
-    # Framed = poster print + a chosen frame (only frames Gelato can fulfill).
+    # Framed = poster print + a chosen frame (only frames Gelato can fulfill). Offer
+    # framed ONLY at sizes we have a PREPARED framed Gelato UID for (the framed catalog
+    # sizes) - build_wallart_map builds framed UIDs solely from the GEL-FRAMED-* catalog,
+    # so selling a framed size with no framed catalog entry (#wallart: e.g. 12x16, 24x36)
+    # is a fulfilment gap / mischarge risk. Restrict to the fulfillable set.
+    _framed_sizes = {_ns(c.size) for c in GELATO_CATALOG if c.category == "framed"}
     for size, p in posters.items():
+        if _ns(size) not in _framed_sizes:
+            continue                     # no prepared framed UID for this size - don't sell it
         base = _live_cost(p.gelato_sku, p.gelato_cost_usd)
         for fr in available_frames():
             cost = round(base + fr.upcharge, 2)
