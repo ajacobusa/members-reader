@@ -91,7 +91,9 @@ def test_wrap_covers_most_of_the_mug_leaving_the_handle_gap(tmp_path):
     # arc so the handle gap stays bare and the front is always centred at rest.
     h = _page(tmp_path)
     assert "Math.abs(rel)<=arc/2" in h            # print confined to its wrap arc
-    assert "arc:(handle?5.3:5.6)" in h            # ~300-degree wrap (was a 97-degree panel)
+    # Per-mug (#mugwrap): a WRAP mug wraps ~300 degrees (5.3); a single-panel mug prints
+    # one panel (1.9). Both confined to the arc; the full-wrap case is preserved.
+    assert "arc:(handle?(_mw?5.3:1.9):5.6)" in h
 
 
 # ── The WebGL flat-panel path is still intact (unchanged products) ─

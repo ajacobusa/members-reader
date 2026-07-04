@@ -55,11 +55,12 @@ def test_mug_prints_full_360_wrap_band(tmp_path):
 
 
 def test_mug_spin_shows_full_wrap_front_and_back(tmp_path):
-    # REGRESSION: the mug spin wraps the design ~300 degrees (not a 97-degree front
-    # panel) and auto-spins a full turn, so the buyer sees front AND back.
+    # REGRESSION: a WRAP mug spins the design ~300 degrees (front AND back). The arc is
+    # now per-mug (#mugwrap): 5.3 for a wrap mug, 1.9 for a single-panel mug that only
+    # prints one panel - so the proof matches what prints. Full-wrap behaviour preserved.
     js = _page(tmp_path)
-    assert "arc:(handle?5.3:5.6)" in js                 # full-circumference wrap (was arc:1.7)
-    assert "rot+=0.010" in js                           # full 360 auto-spin (was a gentle rock)
+    assert "arc:(handle?(_mw?5.3:1.9):5.6)" in js       # wrap mug 5.3; single-panel 1.9
+    assert "rot+=0.010" in js                           # full 360 auto-spin (wrap mugs)
 
 
 def test_proof_reviews_every_designed_area(tmp_path):

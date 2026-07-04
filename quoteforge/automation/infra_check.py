@@ -1198,6 +1198,30 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("event_retention_pruned", False, str(exc)))
 
+    # 48) Mug wrap-ability gated (fulfillability audit): single-panel mugs (handle breaks
+    #     the wrap: colour-interior/accent/travel, wraps=False) must NOT be sold the
+    #     full-360 "Wraparound" story or shown a full-wrap spin proof - the buyer would
+    #     approve a wrap that prints as one panel. Grounded: the catalog has non-wrap mugs
+    #     AND the page emits MUG_WRAPS and consumes it (_mugWraps) at the layout + proof.
+    try:
+        import inspect as _insp48
+        from quoteforge.etsy.mug_catalog import MUG_CATALOG as _MC48
+        from quoteforge.etsy import listing_preview as _lp48
+        _src48 = _insp48.getsource(_lp48)
+        has_nonwrap = any(not m.wraps for m in _MC48)
+        emitted = "MUG_WRAPS" in _src48 and "_p.wraps" in _src48
+        consumed = ("function _mugWraps()" in _src48
+                    and "!_mugWraps()" in _src48                 # layout gate
+                    and "_mw?5.3:1.9" in _src48)                 # proof arc gated
+        ok = bool(has_nonwrap and emitted and consumed)
+        checks.append(_c("mug_wrap_ability_gated", ok,
+                         "single-panel mugs hide the Wraparound layout + full-wrap proof"
+                         if ok else "mug wrap-ability not consumed by the editor - a "
+                         f"single-panel mug can be sold a full wrap: nonwrap={has_nonwrap} "
+                         f"emitted={emitted} consumed={consumed}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("mug_wrap_ability_gated", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
