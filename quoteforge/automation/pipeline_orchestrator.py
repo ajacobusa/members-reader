@@ -651,10 +651,16 @@ def resume_after_proof_approval(order_id: str,
         # multi-vendor support - not a gelato-only direct call.
         from quoteforge.fulfillment.router import route_order
         from quoteforge.automation.retry import retry_call
+        # product_type MUST reach route_order here too, exactly like the auto path:
+        # route_order reads it only from this dict (never the DB), so omitting it
+        # silently no-ops the apparel/calendar/calibration holds and a customer-
+        # approved front-only apparel order would auto-submit the generic poster.
+        # `order` is the persisted record (fetched above), so this is authoritative.
         resp = retry_call(
             route_order,
             {"order_id": order_id, "vendor": order.get("vendor", "gelato"),
-             "gelato_product_uid": gelato_product_uid},
+             "gelato_product_uid": gelato_product_uid,
+             "product_type": order.get("product_type") or ""},
             recipient=recipient_address, artwork_url=artwork_url,
         )
         status = resp.get("status")
