@@ -37,6 +37,8 @@ def test_new_infra_checks_are_wired():
     assert "listing_image_pipeline_wired" in names          # the Etsy gallery-image pipeline can't silently drop an image/rank/cap
     assert "ecommerce_image_sync_wired" in names             # official-image auto-pull is scheduled + self-activating
     assert "template_image_sync_wired" in names              # template-image persistence is scheduled + idempotent
+    assert "etsy_listing_create_dedupe" in names             # re-run can't create duplicate Etsy listings
+    assert "sync_jobs_alert_on_failure" in names             # a silently-failing image sync alerts the owner
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -70,6 +72,44 @@ def test_listing_image_check_is_grounded_not_a_substring_match(tmp_path):
 
     assert not ic._references(_build_regressed, "size_chart")
     assert not ic._has_constant(_publish_regressed, 10)
+
+
+def test_existing_listing_id_dedupe_helper(tmp_path, monkeypatch):
+    # REGRESSION (#182): the listing-create dedupe helper reuses a prior listing id
+    # for a SKU so a re-run can't POST a duplicate Etsy listing.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    db.upsert_product({"product_id": "launch-1", "gelato_sku": "launch-1",
+                       "etsy_listing_id": "L1", "template_id": "", "category": "c",
+                       "title": "t", "price_usd": 1.0, "gelato_cost_usd": 0.2,
+                       "product_type": "print", "size": ""})
+    assert db.existing_listing_id("launch-1") == "L1"
+    assert db.existing_listing_id("launch-2") == ""     # unknown -> no dupe block
+
+
+def test_create_draft_listing_reuses_existing(tmp_path, monkeypatch):
+    # REGRESSION (#182): create_draft_listing returns the existing id (no POST) when a
+    # listing already maps to the launch SKU. Forces the live branch via monkeypatch.
+    from quoteforge.automation import etsy_publisher as ep
+    from quoteforge.db import database as db
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    monkeypatch.setattr(ep, "TEST_MODE", False, raising=False)
+    monkeypatch.setattr(ep, "prerequisites", lambda: [])   # pretend live-ready
+    db.upsert_product({"product_id": "launch-1", "gelato_sku": "launch-1",
+                       "etsy_listing_id": "L1", "template_id": "", "category": "c",
+                       "title": "t", "price_usd": 1.0, "gelato_cost_usd": 0.2,
+                       "product_type": "print", "size": ""})
+    called = {"post": False}
+
+    class _R:
+        def post(self, *a, **k):
+            called["post"] = True
+            raise AssertionError("must not POST when a listing already exists")
+    r = ep.create_draft_listing(LAUNCH_PACK_20[0], 19.0, runner=_R())
+    assert r["status"] == "exists" and r["listing_id"] == "L1" and not called["post"]
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():

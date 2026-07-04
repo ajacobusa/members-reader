@@ -835,6 +835,68 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("template_image_sync_wired", False, str(exc)))
 
+    # 38) Etsy listing-create is IDEMPOTENT (from the deployment review, #182): the
+    #     create path consults the persisted SKU->listing map before POSTing, so a
+    #     re-run (e.g. publish-launch --live twice) can't create duplicate listings.
+    #     (structural: create_draft_listing references existing_listing_id + the DB
+    #     helper exists + is behaviorally correct against an isolated temp DB.)
+    try:
+        from quoteforge.automation import etsy_publisher as _ep8
+        from quoteforge.db import database as _db8
+        refs = _references(_ep8.create_draft_listing, "existing_listing_id")
+        helper = hasattr(_db8, "existing_listing_id") and callable(_db8.existing_listing_id)
+        behaves = False
+        if helper:
+            import tempfile
+            from pathlib import Path as _P8
+            _o8 = _db8.DB_PATH
+            _t8 = _P8(tempfile.gettempdir()) / "qf_infra_listdedupe.db"
+            try:
+                if _t8.exists():
+                    _t8.unlink()
+                _db8.DB_PATH = _t8
+                _db8.init_db()
+                _db8.upsert_product({"product_id": "launch-1", "gelato_sku": "launch-1",
+                                     "etsy_listing_id": "L1", "template_id": "",
+                                     "category": "c", "title": "t", "price_usd": 1.0,
+                                     "gelato_cost_usd": 0.2, "product_type": "print",
+                                     "size": ""})
+                behaves = _db8.existing_listing_id("launch-1") == "L1" \
+                    and _db8.existing_listing_id("launch-none") == ""
+            finally:
+                _db8.DB_PATH = _o8
+                try:
+                    _t8.unlink()
+                except OSError as _e8:
+                    logger.debug("infra listdedupe temp cleanup skipped: %s", _e8)
+        ok = bool(refs and helper and behaves)
+        checks.append(_c("etsy_listing_create_dedupe", ok,
+                         "listing-create checks the SKU->listing map before POST "
+                         "(a re-run reuses, never duplicates)"
+                         if ok else "listing-create has NO dedupe - re-run duplicates "
+                         f"listings: refs={refs} helper={helper} behaves={behaves}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("etsy_listing_create_dedupe", False, str(exc)))
+
+    # 39) The daily image-sync jobs SURFACE failures (from the review, #182): a
+    #     silently-failing sync (e.g. store products present but 0 map to a SKU, so the
+    #     official image never attaches) must ALERT the owner, not vanish into a log.
+    #     (structural: the ecommerce-images + template-sync admin commands reference
+    #     the _alert path.)
+    try:
+        import inspect as _insp9
+        from quoteforge import admin as _adm9
+        _cmds = {"ecommerce-images": "_cmd_ecommerce_images",
+                 "template-sync": "_cmd_template_sync"}
+        _missing = [name for name, fn in _cmds.items()
+                    if "_alert" not in _insp9.getsource(getattr(_adm9, fn))]
+        ok = not _missing
+        checks.append(_c("sync_jobs_alert_on_failure", ok,
+                         "the daily image-sync commands alert the owner on failure"
+                         if ok else f"sync jobs fail silently (no _alert): {_missing}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("sync_jobs_alert_on_failure", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
