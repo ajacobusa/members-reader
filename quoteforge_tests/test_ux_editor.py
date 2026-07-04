@@ -1006,6 +1006,24 @@ def test_final_proof_front_shows_sleeves_back_is_back_only(tmp_path):
     assert "the front view shows your sleeves on the arms" in js
 
 
+def test_sleeveless_garment_gates_sleeve_areas(tmp_path):
+    # REGRESSION (#tank): a Tank Top is sleeveless. The editor must gate sleeve
+    # placements, tabs, upload zones, the upcharge, and the compositor on
+    # _garmentSleeves() (backed by the catalog's has_sleeves) so no customer can
+    # design or be billed for a sleeve that doesn't exist (unfulfillable order).
+    import json, re
+    js = _page(tmp_path)
+    assert "function _garmentSleeves()" in js                    # the predicate exists
+    assert "MULTI_AREA && _garmentSleeves()" in js               # gates the valid placements
+    assert "_sl && _sides['sleeve-left']" in js                  # gates the sleeve upcharge
+    assert "if(_garmentSleeves()) ['sleeve-left','sleeve-right'].forEach" in js  # compositor
+    m = re.search(r"const APPHASSLEEVES = (\{[^}]*\});", js)      # per-garment sleeve map emitted
+    assert m, "APPHASSLEEVES not emitted"
+    hs = json.loads(m.group(1))
+    assert hs.get("Men's Tank Top") is False                     # tank = sleeveless
+    assert hs.get("Men's T-Shirt") is True                       # tee has sleeves
+
+
 def test_spin_review_shows_sleeves_and_hides_duplicate_button(tmp_path):
     # REGRESSION: (1) the inline spin/flip review must show the FRONT with both sleeve
     # designs so the buyer can SEE the sleeve wording (not a bare front); (2) while it is
@@ -1013,5 +1031,7 @@ def test_spin_review_shows_sleeves_and_hides_duplicate_button(tmp_path):
     # product" button is hidden - no two spin controls on screen at once.
     js = _page(tmp_path)
     assert "_composedFrontURL():_composedProofURL()" in js       # front view composites the sleeves
-    assert "Front (with sleeves)" in js
+    # "(with sleeves)" is now garment-aware (#tank): sleeveless garments drop it. The
+    # label is built as 'Front'+(_garmentSleeves()?' (with sleeves)':'').
+    assert "(with sleeves)" in js and "_garmentSleeves()?' (with sleeves)'" in js
     assert "_spinBtn.style.display='none'" in js                 # hide the duplicate spin button while open
