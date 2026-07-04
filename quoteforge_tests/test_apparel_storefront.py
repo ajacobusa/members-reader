@@ -461,8 +461,9 @@ def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):
     assert "function applyProductChrome" in h
     for el in ('id="mwallrow"', 'id="mwalltip"', 'id="mavail"', 'id="e3lbl"'):
         assert el in h, el
-    # apparel-specific copy is wired in
-    assert "T-Shirt, Hoodie or Sweatshirt" in h          # apparel availability line
+    # apparel-specific copy is wired in. The availability line lists the real garment
+    # range (not just 3 of 7) and reflects the multi-area feature (#H1 review fix).
+    assert "T-Shirt, Tank, Long Sleeve, Hoodie" in h     # apparel availability line (full range)
     assert "made to order just for you" in h             # apparel about-copy
     assert "'Size'" in h                                  # step-3 is size-only in apparel
     # (the step number now lives in the progress-tracker dot, not the label - #173)

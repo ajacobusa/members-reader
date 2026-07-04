@@ -293,6 +293,10 @@
  // and the buyer can design the back too: {garment_id:{front,back}}.
  const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg"}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg"}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg"}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg"}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg"}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg"}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg"}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg"}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg"}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg"}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg"}};
  const APPGID = {"Men's T-Shirt": "m_tshirt", "Men's T-Shirt (Value)": "m_tshirt_value", "Men's T-Shirt (Premium)": "m_tshirt_premium", "Women's T-Shirt": "w_tshirt", "Women's T-Shirt (Value)": "w_tshirt_value", "Women's T-Shirt (Premium)": "w_tshirt_premium", "Men's Tank Top": "m_tank", "Men's Tank Top (Value)": "m_tank_value", "Men's Tank Top (Premium)": "m_tank_premium", "Women's Tank Top": "w_tank", "Women's Tank Top (Value)": "w_tank_value", "Women's Tank Top (Premium)": "w_tank_premium", "Men's Long Sleeve Shirt": "m_longsleeve", "Men's Long Sleeve Shirt (Value)": "m_longsleeve_value", "Men's Long Sleeve Shirt (Premium)": "m_longsleeve_premium", "Women's Long Sleeve Shirt": "w_longsleeve", "Women's Long Sleeve Shirt (Value)": "w_longsleeve_value", "Women's Long Sleeve Shirt (Premium)": "w_longsleeve_premium", "Men's 3/4 Sleeve Shirt": "m_raglan", "Men's 3/4 Sleeve Shirt (Value)": "m_raglan_value", "Men's 3/4 Sleeve Shirt (Premium)": "m_raglan_premium", "Women's 3/4 Sleeve Shirt": "w_raglan", "Women's 3/4 Sleeve Shirt (Value)": "w_raglan_value", "Women's 3/4 Sleeve Shirt (Premium)": "w_raglan_premium", "Men's Polo Shirt": "m_polo", "Men's Polo Shirt (Value)": "m_polo_value", "Men's Polo Shirt (Premium)": "m_polo_premium", "Men's Hoodie": "m_hoodie", "Men's Hoodie (Value)": "m_hoodie_value", "Men's Hoodie (Premium)": "m_hoodie_premium", "Women's Hoodie": "w_hoodie", "Women's Hoodie (Value)": "w_hoodie_value", "Women's Hoodie (Premium)": "w_hoodie_premium", "Men's Sweatshirt": "m_sweatshirt", "Men's Sweatshirt (Value)": "m_sweatshirt_value", "Men's Sweatshirt (Premium)": "m_sweatshirt_premium", "Women's Sweatshirt": "w_sweatshirt", "Women's Sweatshirt (Value)": "w_sweatshirt_value", "Women's Sweatshirt (Premium)": "w_sweatshirt_premium"};            // garment name -> garment_id (editor lookup)
+ const APPHASSLEEVES = {"Men's T-Shirt": true, "Men's T-Shirt (Value)": true, "Men's T-Shirt (Premium)": true, "Women's T-Shirt": true, "Women's T-Shirt (Value)": true, "Women's T-Shirt (Premium)": true, "Men's Tank Top": false, "Men's Tank Top (Value)": false, "Men's Tank Top (Premium)": false, "Women's Tank Top": false, "Women's Tank Top (Value)": false, "Women's Tank Top (Premium)": false, "Men's Long Sleeve Shirt": true, "Men's Long Sleeve Shirt (Value)": true, "Men's Long Sleeve Shirt (Premium)": true, "Women's Long Sleeve Shirt": true, "Women's Long Sleeve Shirt (Value)": true, "Women's Long Sleeve Shirt (Premium)": true, "Men's 3/4 Sleeve Shirt": true, "Men's 3/4 Sleeve Shirt (Value)": true, "Men's 3/4 Sleeve Shirt (Premium)": true, "Women's 3/4 Sleeve Shirt": true, "Women's 3/4 Sleeve Shirt (Value)": true, "Women's 3/4 Sleeve Shirt (Premium)": true, "Men's Polo Shirt": true, "Men's Polo Shirt (Value)": true, "Men's Polo Shirt (Premium)": true, "Men's Hoodie": true, "Men's Hoodie (Value)": true, "Men's Hoodie (Premium)": true, "Women's Hoodie": true, "Women's Hoodie (Value)": true, "Women's Hoodie (Premium)": true, "Men's Sweatshirt": true, "Men's Sweatshirt (Value)": true, "Men's Sweatshirt (Premium)": true, "Women's Sweatshirt": true, "Women's Sweatshirt (Value)": true, "Women's Sweatshirt (Premium)": true};   // garment name -> has printable sleeves (#tank)
+ // A garment has printable sleeves unless the catalog says otherwise (tank = sleeveless).
+ // Sleeveless garments must NOT offer sleeve print areas or a sleeve upcharge.
+ function _garmentSleeves(){ return !(typeof APPHASSLEEVES!=='undefined' && APPHASSLEEVES[CURGARMENT]===false); }
  // Quality tiers per garment: Classic name -> [{tier,name,from}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
  const APPAREL_TIERS = {"Men's T-Shirt": [{"tier": "Value", "name": "Men's T-Shirt (Value)", "from": 39.99}, {"tier": "Classic", "name": "Men's T-Shirt", "from": 51.99}, {"tier": "Premium", "name": "Men's T-Shirt (Premium)", "from": 67.99}], "Women's T-Shirt": [{"tier": "Value", "name": "Women's T-Shirt (Value)", "from": 39.99}, {"tier": "Classic", "name": "Women's T-Shirt", "from": 51.99}, {"tier": "Premium", "name": "Women's T-Shirt (Premium)", "from": 67.99}], "Men's Tank Top": [{"tier": "Value", "name": "Men's Tank Top (Value)", "from": 36.99}, {"tier": "Classic", "name": "Men's Tank Top", "from": 47.99}, {"tier": "Premium", "name": "Men's Tank Top (Premium)", "from": 59.99}], "Women's Tank Top": [{"tier": "Value", "name": "Women's Tank Top (Value)", "from": 36.99}, {"tier": "Classic", "name": "Women's Tank Top", "from": 47.99}, {"tier": "Premium", "name": "Women's Tank Top (Premium)", "from": 59.99}], "Men's Long Sleeve Shirt": [{"tier": "Value", "name": "Men's Long Sleeve Shirt (Value)", "from": 55.99}, {"tier": "Classic", "name": "Men's Long Sleeve Shirt", "from": 63.99}, {"tier": "Premium", "name": "Men's Long Sleeve Shirt (Premium)", "from": 79.99}], "Women's Long Sleeve Shirt": [{"tier": "Value", "name": "Women's Long Sleeve Shirt (Value)", "from": 55.99}, {"tier": "Classic", "name": "Women's Long Sleeve Shirt", "from": 63.99}, {"tier": "Premium", "name": "Women's Long Sleeve Shirt (Premium)", "from": 79.99}], "Men's 3/4 Sleeve Shirt": [{"tier": "Value", "name": "Men's 3/4 Sleeve Shirt (Value)", "from": 51.99}, {"tier": "Classic", "name": "Men's 3/4 Sleeve Shirt", "from": 63.99}, {"tier": "Premium", "name": "Men's 3/4 Sleeve Shirt (Premium)", "from": 75.99}], "Women's 3/4 Sleeve Shirt": [{"tier": "Value", "name": "Women's 3/4 Sleeve Shirt (Value)", "from": 51.99}, {"tier": "Classic", "name": "Women's 3/4 Sleeve Shirt", "from": 63.99}, {"tier": "Premium", "name": "Women's 3/4 Sleeve Shirt (Premium)", "from": 75.99}], "Men's Polo Shirt": [{"tier": "Value", "name": "Men's Polo Shirt (Value)", "from": 71.99}, {"tier": "Classic", "name": "Men's Polo Shirt", "from": 87.99}, {"tier": "Premium", "name": "Men's Polo Shirt (Premium)", "from": 110.99}], "Men's Hoodie": [{"tier": "Value", "name": "Men's Hoodie (Value)", "from": 87.99}, {"tier": "Classic", "name": "Men's Hoodie", "from": 110.99}, {"tier": "Premium", "name": "Men's Hoodie (Premium)", "from": 134.99}], "Women's Hoodie": [{"tier": "Value", "name": "Women's Hoodie (Value)", "from": 87.99}, {"tier": "Classic", "name": "Women's Hoodie", "from": 110.99}, {"tier": "Premium", "name": "Women's Hoodie (Premium)", "from": 134.99}], "Men's Sweatshirt": [{"tier": "Value", "name": "Men's Sweatshirt (Value)", "from": 75.99}, {"tier": "Classic", "name": "Men's Sweatshirt", "from": 94.99}, {"tier": "Premium", "name": "Men's Sweatshirt (Premium)", "from": 118.99}], "Women's Sweatshirt": [{"tier": "Value", "name": "Women's Sweatshirt (Value)", "from": 75.99}, {"tier": "Classic", "name": "Women's Sweatshirt", "from": 94.99}, {"tier": "Premium", "name": "Women's Sweatshirt (Premium)", "from": 118.99}]};
@@ -498,14 +502,15 @@
      ? ('Personalized '+CURGARMENT+' - Custom Printed Apparel, You Personalize It')
      : 'Personalized Custom Apparel - Tees, Hoodies & Sweatshirts You Personalize';
  }
- const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Hoodie or Sweatshirt</b> - '
-   +'pick your garment, colour &amp; size next. Made to order, printed on the front.';
+ const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Tank, Long Sleeve, Hoodie, '
+   +'Sweatshirt &amp; more</b> - pick your garment, colour &amp; size next. Made to order, '
+   +'printed on '+(MULTI_AREA?'the front, back &amp; sleeves you design':'the front')+'.';
  const APPAREL_DESC_HTML='<b>A personalized garment, made to order just for you.</b><br>'
    +'1. Personalize it live - add the recipient name, occasion and your own words or '
    +'photo, and preview it on screen.<br>'
    +'2. Approve your free proof on screen - this is your final sign-off, locked in once '
    +'you submit.<br>'
-   +'3. Printed on a premium tee, hoodie or sweatshirt and shipped with tracking.<br>'
+   +'3. Printed on your chosen premium garment and shipped with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
    +'printing, and your chosen garment, colour &amp; size. Sizing is final - please '
    +'check the size before ordering.';
@@ -597,6 +602,18 @@
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';   // off => front-only (no unprintable back)
+   // Sleeveless garments (tank) hide the sleeve tabs + sleeve upload zones entirely
+   // (#tank): you can't design or be charged for a sleeve that doesn't exist.
+   var _sleeves = IS_APPAREL && _garmentSleeves();
+   ['sleeve-left','sleeve-right'].forEach(function(a){
+     var _b=document.querySelector('#mplacement .plbtn[data-p="'+a+'"]');
+     if(_b) _b.style.display = _sleeves ? '' : 'none';
+   });
+   ['qdsleeveL','qdsleeveR'].forEach(function(id){
+     var _z=document.getElementById(id); if(_z) _z.style.display = _sleeves ? '' : 'none';
+   });
+   // If a sleeve was the active area and we switched to a sleeveless garment, snap back.
+   if(!_sleeves && (APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right')) setPlacement('front');
    // Quick-design two-file (front + back) drop-zones are apparel-only (needs 2 sides).
    const qd=document.getElementById('quickdesign');
    if(qd) qd.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';
@@ -889,10 +906,13 @@
    const _sides = IS_APPAREL ? {front:_has(SIDES.front), back:_has(SIDES.back),
      'sleeve-left':_has(SIDES['sleeve-left']), 'sleeve-right':_has(SIDES['sleeve-right'])} : null;
    // Multi-area upcharge: each designed EXTRA area adds its loss-proof upcharge to the unit.
+   // A sleeveless garment (tank) can NEVER bill a sleeve, even if a stale SIDES['sleeve-*']
+   // survived a garment switch (#tank) - the sleeve terms are gated on _garmentSleeves().
+   const _sl = _garmentSleeves();
    const _extra = (IS_APPAREL && MULTI_AREA && _sides) ? (
        (_sides.back?BACK_UPCHARGE:0)
-       + (_sides['sleeve-left']?SLEEVE_UPCHARGE:0)
-       + (_sides['sleeve-right']?SLEEVE_UPCHARGE:0)) : 0;
+       + (_sl && _sides['sleeve-left']?SLEEVE_UPCHARGE:0)
+       + (_sl && _sides['sleeve-right']?SLEEVE_UPCHARGE:0)) : 0;
    CART.push({fmt:CURFMT,size:p[0],unit:+(parseFloat(p[1])+_extra).toFixed(2),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
      sides:_sides, extra_print:+(_extra).toFixed(2), wording:_slotWording(),
@@ -1306,8 +1326,9 @@
      tx.drawImage(mg,(tw-dw)/2,(th-dh)/2,dw,dh);
    }
    tx.drawImage(cv,0,0,tw,th);                 // front silhouette (if drawn on canvas) + front design
-   // 2) overlay each DESIGNED sleeve, copying ONLY its bound region so the chest stays
-   ['sleeve-left','sleeve-right'].forEach(function(a){
+   // 2) overlay each DESIGNED sleeve, copying ONLY its bound region so the chest stays.
+   //    Sleeveless garments (tank) never composite a sleeve (#tank, defense-in-depth).
+   if(_garmentSleeves()) ['sleeve-left','sleeve-right'].forEach(function(a){
      if(!_sideHas(SIDES[a])) return;
      setPlacement(a); drawArt();
      var b=_apparelBound(W,H), pad=4;
@@ -2033,7 +2054,10 @@
  // LAYOUTS: sleeves are FREEFORM-ONLY (Layout Studio hidden + CURLAYOUT forced freeform).
  // =========================================================================================
  function setPlacement(p){
-   var _valid = MULTI_AREA ? ['front','back','sleeve-left','sleeve-right'] : ['front','back'];
+   // Sleeves only when multi-area is on AND the garment actually HAS sleeves (#tank):
+   // a tank is sleeveless, so it never exposes the sleeve placements.
+   var _valid = (MULTI_AREA && _garmentSleeves())
+     ? ['front','back','sleeve-left','sleeve-right'] : ['front','back'];
    if(_valid.indexOf(p)<0) p='front';
    const prev=APPLACEMENT;
    if(IS_APPAREL && p!==prev) SIDES[prev]=_captureSide();   // save the side we're leaving
@@ -2986,7 +3010,7 @@
      var u = _isBack() ? ((typeof _composedProofURL==='function')?_composedProofURL():'')
              : ((typeof _composedFrontURL==='function')?_composedFrontURL():_composedProofURL());
      if(u) im.src=u;
-     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':'Front (with sleeves)')+' &mdash; drag or tap to flip';
+     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':('Front'+(_garmentSleeves()?' (with sleeves)':'')))+' &mdash; drag or tap to flip';
      fb.innerHTML='&#8635; See the '+(_isBack()?'front':'back'); }
    function _flip(){ if(typeof setPlacement==='function') setPlacement(_isBack()?'front':'back'); _render(); }
    _render();

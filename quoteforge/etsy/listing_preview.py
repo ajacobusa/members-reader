@@ -1967,9 +1967,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     try:
         from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG as _AC
         appgid = {g.name: g.garment_id for g in _AC}
+        # garment NAME -> has printable sleeves (#tank). A sleeveless garment (tank)
+        # must hide the sleeve print areas + upcharge - you can't print a sleeve that
+        # doesn't exist. Default (unknown) is True so a real sleeved garment is unaffected.
+        apphassleeves = {g.name: bool(g.has_sleeves) for g in _AC}
     except Exception:  # noqa: BLE001
         appgid = {}
+        apphassleeves = {}
     appgid_json = json.dumps(appgid)
+    apphassleeves_json = json.dumps(apphassleeves)
     # Branded products REUSE the shared SIZEMAP + size picker. Each product+colour
     # is a "format" ("{name} - {colour}") whose sizes/prices live in SIZEMAP under
     # that key - same shape as apparel. Emitted from name/colour/size/price ONLY
@@ -4396,6 +4402,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // and the buyer can design the back too: {{garment_id:{{front,back}}}}.
  const APPAREL_SIDE_IMG = {apparel_side_img_json};
  const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
+ const APPHASSLEEVES = {apphassleeves_json};   // garment name -> has printable sleeves (#tank)
+ // A garment has printable sleeves unless the catalog says otherwise (tank = sleeveless).
+ // Sleeveless garments must NOT offer sleeve print areas or a sleeve upcharge.
+ function _garmentSleeves(){{ return !(typeof APPHASSLEEVES!=='undefined' && APPHASSLEEVES[CURGARMENT]===false); }}
  // Quality tiers per garment: Classic name -> [{{tier,name,from}}]. A collapsed
  // tile opens the Classic garment; this lets the buyer switch to Value/Premium.
  const APPAREL_TIERS = {apparel_tiers_json};
@@ -4601,14 +4611,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ? ('Personalized '+CURGARMENT+' - Custom Printed Apparel, You Personalize It')
      : 'Personalized Custom Apparel - Tees, Hoodies & Sweatshirts You Personalize';
  }}
- const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Hoodie or Sweatshirt</b> - '
-   +'pick your garment, colour &amp; size next. Made to order, printed on the front.';
+ const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Tank, Long Sleeve, Hoodie, '
+   +'Sweatshirt &amp; more</b> - pick your garment, colour &amp; size next. Made to order, '
+   +'printed on '+(MULTI_AREA?'the front, back &amp; sleeves you design':'the front')+'.';
  const APPAREL_DESC_HTML='<b>A personalized garment, made to order just for you.</b><br>'
    +'1. Personalize it live - add the recipient name, occasion and your own words or '
    +'photo, and preview it on screen.<br>'
    +'2. Approve your free proof on screen - this is your final sign-off, locked in once '
    +'you submit.<br>'
-   +'3. Printed on a premium tee, hoodie or sweatshirt and shipped with tracking.<br>'
+   +'3. Printed on your chosen premium garment and shipped with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized design, a free proof before '
    +'printing, and your chosen garment, colour &amp; size. Sizing is final - please '
    +'check the size before ordering.';
@@ -4700,6 +4711,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    // Print-placement (front/back) bar is apparel-only; branded is single-side v1.
    const pl=document.getElementById('mplacement');
    if(pl) pl.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';   // off => front-only (no unprintable back)
+   // Sleeveless garments (tank) hide the sleeve tabs + sleeve upload zones entirely
+   // (#tank): you can't design or be charged for a sleeve that doesn't exist.
+   var _sleeves = IS_APPAREL && _garmentSleeves();
+   ['sleeve-left','sleeve-right'].forEach(function(a){{
+     var _b=document.querySelector('#mplacement .plbtn[data-p="'+a+'"]');
+     if(_b) _b.style.display = _sleeves ? '' : 'none';
+   }});
+   ['qdsleeveL','qdsleeveR'].forEach(function(id){{
+     var _z=document.getElementById(id); if(_z) _z.style.display = _sleeves ? '' : 'none';
+   }});
+   // If a sleeve was the active area and we switched to a sleeveless garment, snap back.
+   if(!_sleeves && (APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right')) setPlacement('front');
    // Quick-design two-file (front + back) drop-zones are apparel-only (needs 2 sides).
    const qd=document.getElementById('quickdesign');
    if(qd) qd.style.display = (IS_APPAREL && MULTI_AREA) ? 'block' : 'none';
@@ -4992,10 +5015,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const _sides = IS_APPAREL ? {{front:_has(SIDES.front), back:_has(SIDES.back),
      'sleeve-left':_has(SIDES['sleeve-left']), 'sleeve-right':_has(SIDES['sleeve-right'])}} : null;
    // Multi-area upcharge: each designed EXTRA area adds its loss-proof upcharge to the unit.
+   // A sleeveless garment (tank) can NEVER bill a sleeve, even if a stale SIDES['sleeve-*']
+   // survived a garment switch (#tank) - the sleeve terms are gated on _garmentSleeves().
+   const _sl = _garmentSleeves();
    const _extra = (IS_APPAREL && MULTI_AREA && _sides) ? (
        (_sides.back?BACK_UPCHARGE:0)
-       + (_sides['sleeve-left']?SLEEVE_UPCHARGE:0)
-       + (_sides['sleeve-right']?SLEEVE_UPCHARGE:0)) : 0;
+       + (_sl && _sides['sleeve-left']?SLEEVE_UPCHARGE:0)
+       + (_sl && _sides['sleeve-right']?SLEEVE_UPCHARGE:0)) : 0;
    CART.push({{fmt:CURFMT,size:p[0],unit:+(parseFloat(p[1])+_extra).toFixed(2),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
      sides:_sides, extra_print:+(_extra).toFixed(2), wording:_slotWording(),
@@ -5409,8 +5435,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      tx.drawImage(mg,(tw-dw)/2,(th-dh)/2,dw,dh);
    }}
    tx.drawImage(cv,0,0,tw,th);                 // front silhouette (if drawn on canvas) + front design
-   // 2) overlay each DESIGNED sleeve, copying ONLY its bound region so the chest stays
-   ['sleeve-left','sleeve-right'].forEach(function(a){{
+   // 2) overlay each DESIGNED sleeve, copying ONLY its bound region so the chest stays.
+   //    Sleeveless garments (tank) never composite a sleeve (#tank, defense-in-depth).
+   if(_garmentSleeves()) ['sleeve-left','sleeve-right'].forEach(function(a){{
      if(!_sideHas(SIDES[a])) return;
      setPlacement(a); drawArt();
      var b=_apparelBound(W,H), pad=4;
@@ -6136,7 +6163,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // LAYOUTS: sleeves are FREEFORM-ONLY (Layout Studio hidden + CURLAYOUT forced freeform).
  // =========================================================================================
  function setPlacement(p){{
-   var _valid = MULTI_AREA ? ['front','back','sleeve-left','sleeve-right'] : ['front','back'];
+   // Sleeves only when multi-area is on AND the garment actually HAS sleeves (#tank):
+   // a tank is sleeveless, so it never exposes the sleeve placements.
+   var _valid = (MULTI_AREA && _garmentSleeves())
+     ? ['front','back','sleeve-left','sleeve-right'] : ['front','back'];
    if(_valid.indexOf(p)<0) p='front';
    const prev=APPLACEMENT;
    if(IS_APPAREL && p!==prev) SIDES[prev]=_captureSide();   // save the side we're leaving
@@ -7089,7 +7119,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var u = _isBack() ? ((typeof _composedProofURL==='function')?_composedProofURL():'')
              : ((typeof _composedFrontURL==='function')?_composedFrontURL():_composedProofURL());
      if(u) im.src=u;
-     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':'Front (with sleeves)')+' &mdash; drag or tap to flip';
+     if(ttl) ttl.innerHTML='&#128085; '+(_isBack()?'Back':('Front'+(_garmentSleeves()?' (with sleeves)':'')))+' &mdash; drag or tap to flip';
      fb.innerHTML='&#8635; See the '+(_isBack()?'front':'back'); }}
    function _flip(){{ if(typeof setPlacement==='function') setPlacement(_isBack()?'front':'back'); _render(); }}
    _render();
