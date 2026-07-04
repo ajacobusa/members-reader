@@ -729,6 +729,35 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("daily_mockup_update_scheduled", False, str(exc)))
 
+    # 35) The Etsy listing-IMAGE pipeline stays wired end to end: listing_pack GENERATES
+    #     its full owner-side gallery set (hero, closeup, size chart, how-it-works,
+    #     what's-included - images 3-6 of the best-practice six; the two "official" shots
+    #     come from Gelato's native Etsy connector) AND VALIDATES each one non-blank, and
+    #     the publisher UPLOADS them RANKED under Etsy's 10-image cap. Without this a
+    #     refactor could drop a gallery image or the rank/cap and quietly ship a weak,
+    #     conversion-killing gallery. (structural: build_listing_pack references every
+    #     generator + the non-blank validator; publish uploads ranked with the 10-cap.)
+    try:
+        from quoteforge.images import listing_pack as _lp5
+        from quoteforge.automation import etsy_publisher as _ep5
+        _generators = ("hero_room", "closeup", "size_chart",
+                       "how_it_works", "whats_included")
+        _gens_wired = all(_references(_lp5.build_listing_pack, g) for g in _generators)
+        _validated = _references(_lp5.build_listing_pack, "_check_image")
+        _ranked = (_references(_ep5.publish_launch_kit, "upload_image")
+                   and _references(_ep5.publish_launch_kit, "rank")
+                   and _references(_ep5.publish_launch_kit, "enumerate"))
+        _capped = _has_constant(_ep5.publish_launch_kit, 10)   # imgs[:10] Etsy cap
+        ok = bool(_gens_wired and _validated and _ranked and _capped)
+        checks.append(_c("listing_image_pipeline_wired", ok,
+                         "listing gallery generates all 5 owner-side images + validates "
+                         "non-blank + uploads ranked under the 10-image cap"
+                         if ok else "listing-image pipeline regressed: "
+                         f"gens={_gens_wired} validated={_validated} "
+                         f"ranked={_ranked} capped={_capped}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("listing_image_pipeline_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
