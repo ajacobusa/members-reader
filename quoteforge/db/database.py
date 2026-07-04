@@ -872,7 +872,7 @@ def orphan_products() -> list[dict]:
         rows = conn.execute(
             "SELECT product_id, gelato_sku, title FROM products "
             "WHERE active=1 AND gelato_sku IS NOT NULL AND gelato_sku!='' "
-            "AND (etsy_listing_id IS NULL OR etsy_listing_id='') "
+            "AND (etsy_listing_id IS NULL OR TRIM(etsy_listing_id)='') "
             "ORDER BY product_id").fetchall()
         return [dict(r) for r in rows]
 

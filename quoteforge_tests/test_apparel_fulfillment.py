@@ -282,6 +282,34 @@ def test_apparel_order_through_pipeline(tmp_path, monkeypatch):
     assert not o.get("mockup_url")           # no room mockup for apparel
 
 
+def test_resume_proof_path_threads_product_type_into_route_order(monkeypatch):
+    # REGRESSION (#167 audit, HIGH): resume_after_proof_approval (the customer-proof
+    # path) omitted product_type from its route_order dict, so the apparel calibration
+    # gate silently no-op'd and a customer-approved front-only apparel order would
+    # auto-submit the generic poster. Pin that product_type now reaches route_order on
+    # THIS path too (the classic 'two call sites drifted' bug).
+    import quoteforge.automation.pipeline_orchestrator as po
+    captured = {}
+
+    def _spy(order, recipient=None, artwork_url=""):
+        captured.update(order)
+        return {"status": "manual", "vendor": "gelato", "id": "", "detail": "spy"}
+    monkeypatch.setattr("quoteforge.fulfillment.router.route_order", _spy)
+    monkeypatch.setattr(po, "get_order",
+                        lambda oid: {"order_id": oid, "vendor": "gelato",
+                                     "product_type": "apparel",
+                                     "artwork_url": "https://x/y.png"})
+    monkeypatch.setattr(po, "update_order", lambda *a, **k: None)
+    monkeypatch.setattr(po, "log_pipeline_stage", lambda *a, **k: None)
+    monkeypatch.setattr(po, "validate_for_fulfillment",
+                        lambda *a, **k: {"ok": True, "issues": []})
+    po.resume_after_proof_approval(
+        "APRX", gelato_product_uid="uid-1",
+        recipient_address={"name": "A", "line1": "1 St", "city": "X",
+                           "postcode": "12345", "country": "US"})
+    assert captured.get("product_type") == "apparel"   # gate can now see it on the proof path
+
+
 def test_pipeline_threads_product_type_into_route_order(tmp_path, monkeypatch):
     # REGRESSION (#167): route_order is a thin wrapper that does NOT enrich product_type
     # from the DB, so its apparel/calendar safety HOLDS silently no-op'd on the auto-

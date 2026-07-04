@@ -43,6 +43,7 @@ def test_new_infra_checks_are_wired():
     assert "listing_autolink_wired" in names                 # create persists the SKU->listing link; orphans are visible
     assert "audit_log_wired" in names                        # a privileged order-lock override leaves an accountable record
     assert "utc_local_datetime_hygiene" in names             # the two UTC-vs-local sites that bit us stay UTC-aware
+    assert "route_paths_thread_product_type" in names        # BOTH route_order sites thread product_type (apparel gate can't be bypassed)
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -193,6 +194,19 @@ def test_orphan_products_detects_unpublished_only(tmp_path, monkeypatch):
                        "etsy_listing_id": ""})                # never published -> orphan
     ids = {o["product_id"] for o in db.orphan_products()}
     assert ids == {"orphan"}
+
+
+def test_orphan_detector_treats_whitespace_listing_id_as_unlinked(tmp_path, monkeypatch):
+    # REGRESSION (#182-P0b audit): a whitespace-only etsy_listing_id is unbuyable but the
+    # exact =='' filter missed it (only NULL/'' were caught). TRIM()='' must surface it.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "o.db")
+    db.init_db()
+    base = {"category": "c", "title": "t", "price_usd": 1.0, "gelato_cost_usd": 0.2,
+            "product_type": "print", "size": "", "template_id": ""}
+    db.upsert_product({**base, "product_id": "ws", "gelato_sku": "s",
+                       "etsy_listing_id": "   "})          # whitespace-only -> unbuyable
+    assert "ws" in {o["product_id"] for o in db.orphan_products()}
 
 
 def test_create_draft_listing_persists_the_link_write_side():
