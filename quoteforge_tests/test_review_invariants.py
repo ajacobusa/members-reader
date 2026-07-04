@@ -42,6 +42,7 @@ def test_new_infra_checks_are_wired():
     assert "sync_heartbeat_wired" in names                   # uptime: jobs stamp sync_runs; a stopped job is detectable
     assert "listing_autolink_wired" in names                 # create persists the SKU->listing link; orphans are visible
     assert "audit_log_wired" in names                        # a privileged order-lock override leaves an accountable record
+    assert "utc_local_datetime_hygiene" in names             # the two UTC-vs-local sites that bit us stay UTC-aware
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -254,6 +255,26 @@ def test_record_security_event_is_best_effort(tmp_path, monkeypatch):
         raise RuntimeError("db down")
     monkeypatch.setattr(db, "_conn", _boom)
     db.record_security_event("x", detail="d")               # must not raise
+
+
+def test_utc_hygiene_tripwire_is_grounded():
+    # REGRESSION (#182 audit): the utc_local_datetime_hygiene invariant is live + green,
+    # AND grounded - a function that reverts to naive-local datetime.now() (the bug)
+    # drops the .utc reference and would flip the same helper red.
+    from quoteforge.automation import infra_check as ic
+    from quoteforge.automation import healthcheck as hc
+    from quoteforge.automation import template_image_sync as tis
+    chk = next(c for c in ic.check_infrastructure()["checks"]
+               if c["name"] == "utc_local_datetime_hygiene")
+    assert chk["ok"], chk["detail"]
+    # the real fixed sites reference UTC...
+    assert ic._references(hc.check_sync_freshness, "utc")
+    assert ic._references(tis.sync_template_images, "utc")
+    # ...a naive-local decoy (the bug shape) does NOT -> the tripwire would fire
+    import datetime as _d
+    def _regressed_sweep():
+        return _d.datetime.now().isoformat(timespec="seconds")   # naive local, the bug
+    assert not ic._references(_regressed_sweep, "utc")
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():

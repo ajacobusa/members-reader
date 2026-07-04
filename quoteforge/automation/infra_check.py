@@ -1032,6 +1032,27 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("audit_log_wired", False, str(exc)))
 
+    # 43) UTC/local datetime hygiene (recurring bug class, #182 audit): a naive
+    #     datetime.now() (LOCAL) compared against a SQLite datetime('now') (UTC)
+    #     column is a silent, time-of-day-dependent break. It bit us twice - the
+    #     sync-freshness age (healthcheck) and the template stale-sweep (which
+    #     RETIRED freshly-written rows). Both now compare in UTC. This tripwire pins
+    #     that they STAY UTC-aware: a refactor back to naive-local drops the .utc
+    #     reference and flips this red. (Grounded via AST, not a comment/substring.)
+    try:
+        from quoteforge.automation import healthcheck as _hc13
+        from quoteforge.automation import template_image_sync as _tis13
+        fresh_utc = _references(_hc13.check_sync_freshness, "utc")
+        sweep_utc = _references(_tis13.sync_template_images, "utc")
+        ok = bool(fresh_utc and sweep_utc)
+        checks.append(_c("utc_local_datetime_hygiene", ok,
+                         "the two UTC-vs-local sites that bit us stay UTC-aware "
+                         "(sync-freshness + template stale-sweep)"
+                         if ok else "REGRESSION - a UTC/local comparator went naive-local: "
+                         f"fresh_utc={fresh_utc} sweep_utc={sweep_utc}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("utc_local_datetime_hygiene", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
