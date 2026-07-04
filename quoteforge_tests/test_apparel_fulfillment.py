@@ -280,3 +280,35 @@ def test_apparel_order_through_pipeline(tmp_path, monkeypatch):
     assert o["color"] == "Black"
     assert o["gelato_cost"] == 13.0          # true garment cost on the order
     assert not o.get("mockup_url")           # no room mockup for apparel
+
+
+def test_pipeline_threads_product_type_into_route_order(tmp_path, monkeypatch):
+    # REGRESSION (#167): route_order is a thin wrapper that does NOT enrich product_type
+    # from the DB, so its apparel/calendar safety HOLDS silently no-op'd on the auto-
+    # pipeline path when the routing dict omitted product_type. Pin that the pipeline now
+    # threads product_type through, so those holds actually protect auto-routed orders.
+    monkeypatch.setattr("quoteforge.db.database.DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr("quoteforge.db.database.OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr("quoteforge.config.OUTPUT_DIR", tmp_path)
+    from quoteforge.db import database as db
+    db.init_db()
+    seen = {}
+    import quoteforge.fulfillment.router as router
+    import quoteforge.automation.pipeline_orchestrator as po
+
+    def _spy(order, recipient=None, artwork_url=""):
+        seen["product_type"] = order.get("product_type")
+        return {"status": "native", "vendor": "gelato-native", "id": "", "detail": "spy"}
+    monkeypatch.setattr(router, "route_order", _spy)
+    # pass the pre-routing validation gate so the order reaches route_order
+    monkeypatch.setattr(po, "validate_for_fulfillment",
+                        lambda *a, **k: {"ok": True, "issues": []})
+    from quoteforge.automation.pipeline_orchestrator import run_full_pipeline
+    run_full_pipeline({"order_id": "APY", "etsy_order_id": "APY",
+                       "recipient_name": "Sam", "occasion": "Birthday",
+                       "material": "Men's T-Shirt - Black", "product_size": "M",
+                       "recipient_address": {"name": "Sam", "address1": "1 St",
+                                             "city": "NYC", "state": "NY",
+                                             "postal_code": "10001", "country": "US"}},
+                      skip_proof=True)
+    assert seen.get("product_type") == "apparel"   # the gate can now see it
