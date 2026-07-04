@@ -3039,10 +3039,20 @@ def _cmd_mockup_sync(args: list[str]) -> int:
     """Daily Gelato base-mockup sync (checkpoints 1-6). `mockup-sync`. No-op until
     live; never publishes (that needs the two confirming agents)."""
     from quoteforge.automation import mockup_sync as ms
+    from quoteforge.db.database import record_sync_run
     s = ms.run_sync(stamp=_mockup_stamp())
     print("Mockup sync:", ", ".join(f"{k}={v}" for k, v in s.items()))
     if s.get("live_gated"):
         print("  (live-gated: no-op until GELATO_API_KEY + real UIDs are set)")
+    _errs = s.get("errors") or s.get("failed") or []
+    record_sync_run("mockup-sync", ok=not _errs, detail=str(_errs)[:400])
+    if _errs:
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE:
+            _alert("Mockup sync - failures",
+                   f"<pre>Mockup sync reported problems: {_errs}</pre>",
+                   what="mockup-sync")
+            return 1
     return 0
 
 
@@ -3068,6 +3078,9 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
                    f"Raw product keys: {st.get('unmapped_sample_keys')}\n"
                    "The official product image is not attaching - finalise the SKU "
                    "join for these keys.</pre>", what="ecommerce-images")
+    from quoteforge.db.database import record_sync_run
+    record_sync_run("ecommerce-images", ok=True,
+                    detail=f"products={st.get('products')} mapped={st.get('mapped')}")
     return 0
 
 
@@ -3081,9 +3094,12 @@ def _cmd_template_sync(args: list[str]) -> int:
         print("Template images:", ", ".join(f"{k}={v}" for k, v in st.items()))
         return 0
     from quoteforge.automation.template_image_sync import sync_template_images
+    from quoteforge.db.database import record_sync_run
     r = sync_template_images()
     print("Template image sync:", ", ".join(f"{k}={v}" for k, v in r.items()
                                             if k != "failed"))
+    record_sync_run("template-sync", ok=not r.get("failed"),
+                    detail=f"checked={r.get('checked')} upserted={r.get('upserted')}")
     if not r.get("enabled"):
         print("  (no-op: needs TEST_MODE=false, GELATO_API_KEY, GELATO_STORE_ID)")
         return 0

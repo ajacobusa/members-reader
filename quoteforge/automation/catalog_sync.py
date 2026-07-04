@@ -271,6 +271,10 @@ def enrich_from_gelato(records: dict, *, refresh_images: bool = False) -> dict:
         try:
             url = gelato_blank_image(sku, refresh=refresh_images)
             if url:
+                # OWNER-ONLY raw supplier/S3 URL (#182): this snapshot is read only by
+                # the owner console (admin catalog-sync). Any STOREFRONT consumer MUST
+                # re-host it via listing_preview._emit_url first (never emit raw - it
+                # would leak the dropship origin in view-source + taint canvas).
                 rec["image"] = url
             ov = sku_override(sku)
             if ov.get("available") is False:

@@ -89,7 +89,7 @@ def test_run_healthcheck_overall_ok(tmp_path):
         db.backup_database(tmp_path / "db_backups")  # recent backup → OK
         result = run_healthcheck(query_fn=_all_ok_tasks)
     assert result["overall"] == "OK"
-    assert len(result["checks"]) == 6
+    assert len(result["checks"]) == 7   # + Sync Uptime (#182)
 
 
 def test_run_healthcheck_overall_fail(tmp_path):

@@ -39,6 +39,7 @@ def test_new_infra_checks_are_wired():
     assert "template_image_sync_wired" in names              # template-image persistence is scheduled + idempotent
     assert "etsy_listing_create_dedupe" in names             # re-run can't create duplicate Etsy listings
     assert "sync_jobs_alert_on_failure" in names             # a silently-failing image sync alerts the owner
+    assert "sync_heartbeat_wired" in names                   # uptime: jobs stamp sync_runs; a stopped job is detectable
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -110,6 +111,38 @@ def test_create_draft_listing_reuses_existing(tmp_path, monkeypatch):
             raise AssertionError("must not POST when a listing already exists")
     r = ep.create_draft_listing(LAUNCH_PACK_20[0], 19.0, runner=_R())
     assert r["status"] == "exists" and r["listing_id"] == "L1" and not called["post"]
+
+
+def test_sync_run_heartbeat_records_and_reads(tmp_path, monkeypatch):
+    # UPTIME (#182): record_sync_run stamps a row; last_sync_run reads the latest.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    assert db.last_sync_run("template-sync") == {}          # never ran
+    db.record_sync_run("template-sync", ok=True, detail="checked=3")
+    db.record_sync_run("template-sync", ok=False, detail="boom")
+    last = db.last_sync_run("template-sync")
+    assert last["ok"] == 0 and "boom" in last["detail"]     # latest run wins
+
+
+def test_healthcheck_flags_a_failed_sync_run(tmp_path, monkeypatch):
+    # UPTIME: a job whose last run FAILED shows a WARN in the health report.
+    from quoteforge.db import database as db
+    from quoteforge.automation import healthcheck as hc
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    db.record_sync_run("template-sync", ok=False, detail="auth 403")
+    c = hc.check_sync_freshness()
+    assert c.status == "WARN" and "template-sync" in c.detail
+
+
+def test_healthcheck_ok_when_no_runs_yet(tmp_path, monkeypatch):
+    # A fresh install (no runs recorded) must NOT false-alarm.
+    from quoteforge.db import database as db
+    from quoteforge.automation import healthcheck as hc
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    assert hc.check_sync_freshness().status == "OK"
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():

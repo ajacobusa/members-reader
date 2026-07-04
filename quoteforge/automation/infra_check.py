@@ -897,6 +897,49 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("sync_jobs_alert_on_failure", False, str(exc)))
 
+    # 40) UPTIME heartbeat wired (#182): each daily automation job stamps a sync_runs
+    #     row when it runs, so a job that SILENTLY STOPPED (or whose last run failed) is
+    #     detectable. Grounded: the record/read mechanism works (behavioral, isolated
+    #     temp DB), the sync admin commands call record_sync_run, and any recorded
+    #     last-run for a job is ok (a failing job flags red). The prod RECENCY alert
+    #     ("ran <36h ago") lives in healthcheck; this guards the mechanism + health.
+    try:
+        import inspect as _insp10
+        from quoteforge import admin as _adm10
+        from quoteforge.db import database as _db10
+        recorders = all("record_sync_run" in _insp10.getsource(getattr(_adm10, fn))
+                        for fn in ("_cmd_ecommerce_images", "_cmd_template_sync",
+                                   "_cmd_mockup_sync"))
+        has_api = (hasattr(_db10, "record_sync_run") and hasattr(_db10, "last_sync_run"))
+        works = False
+        if has_api:
+            import tempfile
+            from pathlib import Path as _P10
+            _o10 = _db10.DB_PATH
+            _t10 = _P10(tempfile.gettempdir()) / "qf_infra_syncruns.db"
+            try:
+                if _t10.exists():
+                    _t10.unlink()
+                _db10.DB_PATH = _t10
+                _db10.init_db()
+                assert _db10.last_sync_run("job-x") == {}          # never ran -> empty
+                _db10.record_sync_run("job-x", ok=True, detail="d")
+                works = _db10.last_sync_run("job-x").get("ok") == 1
+            finally:
+                _db10.DB_PATH = _o10
+                try:
+                    _t10.unlink()
+                except OSError as _e10:
+                    logger.debug("infra syncruns temp cleanup skipped: %s", _e10)
+        ok = bool(recorders and has_api and works)
+        checks.append(_c("sync_heartbeat_wired", ok,
+                         "each daily job stamps sync_runs (uptime) + the record/read "
+                         "mechanism works"
+                         if ok else "uptime heartbeat not wired: "
+                         f"recorders={recorders} has_api={has_api} works={works}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("sync_heartbeat_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

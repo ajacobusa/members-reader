@@ -362,6 +362,18 @@ def init_db() -> None:
             UNIQUE(gelato_sku, gelato_product_uid, image_rank)
         );
         """)
+        # Uptime heartbeat (#182): one row per run of each daily automation job, so a
+        # job that silently STOPPED running (or keeps failing) is detectable/alertable
+        # - the core high-availability signal ("did the critical job actually run + ok").
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS sync_runs (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            job       TEXT NOT NULL,
+            ran_at    TEXT DEFAULT (datetime('now')),
+            ok        INTEGER DEFAULT 1,
+            detail    TEXT DEFAULT ''
+        );
+        """)
         _migrate(conn)
         # Indexes for the frequent lookups (additive; etsy_order_id is already
         # covered by its UNIQUE constraint). Keeps status filters + child-table
@@ -1081,6 +1093,29 @@ def deactivate_stale_product_images(seen_stamp: str) -> int:
             "UPDATE gelato_product_images SET is_active=0 "
             "WHERE is_active=1 AND last_seen_at < ?", (seen_stamp,))
         return cur.rowcount
+
+
+# ── Uptime heartbeat (#182) ─────────────────────────────────────
+
+def record_sync_run(job: str, ok: bool = True, detail: str = "") -> None:
+    """Stamp that a daily automation `job` just ran (ok or not). The uptime signal:
+    a job that stops running leaves no fresh row -> the recency check alerts."""
+    job = (job or "").strip()
+    if not job:
+        return
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO sync_runs (job, ok, detail) VALUES (?,?,?)",
+            (job, 1 if ok else 0, (detail or "")[:500]))
+
+
+def last_sync_run(job: str) -> dict:
+    """The most recent run of `job` as {ran_at, ok, detail}, or {} if it never ran."""
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT ran_at, ok, detail FROM sync_runs WHERE job=? "
+            "ORDER BY id DESC LIMIT 1", ((job or "").strip(),)).fetchone()
+        return dict(row) if row else {}
 
 
 def accept_design(email: str, design_id: str = "default") -> None:
