@@ -3059,6 +3059,15 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
         print("  Product(s) present but not yet mapped to a SKU. Raw keys seen:",
               st.get("unmapped_sample_keys"),
               "- use these to finalise the SKU join.")
+        # Silent-failure guard (#182): live store has products but 0 map to a SKU =
+        # a join regression -> the real product image silently never attaches. Alert.
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE:
+            _alert("Ecommerce images - products present but 0 mapped",
+                   f"<pre>{st.get('products')} store product(s), 0 mapped to a SKU.\n"
+                   f"Raw product keys: {st.get('unmapped_sample_keys')}\n"
+                   "The official product image is not attaching - finalise the SKU "
+                   "join for these keys.</pre>", what="ecommerce-images")
     return 0
 
 

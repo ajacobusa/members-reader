@@ -14,6 +14,7 @@ Prerequisites to go live (all from your shop, set in .env):
   ETSY_OAUTH_TOKEN (scope listings_w), ETSY_SHOP_ID, ETSY_API_KEY,
   ETSY_TAXONOMY_ID (wall-art prints), ETSY_SHIPPING_PROFILE_ID.
 """
+import logging
 from pathlib import Path
 
 import requests
@@ -22,6 +23,8 @@ from quoteforge.config import (
     TEST_MODE, ETSY_API_BASE, ETSY_API_KEY, ETSY_OAUTH_TOKEN, ETSY_SHOP_ID,
     ETSY_TAXONOMY_ID, ETSY_SHIPPING_PROFILE_ID, ETSY_DEFAULT_LISTING_PRICE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _headers() -> dict:
@@ -47,6 +50,13 @@ def create_draft_listing(bundle, price: float, runner=requests) -> dict:
     if TEST_MODE or prerequisites():
         return {"status": "dry-run", "title": bundle.title,
                 "tags": len(bundle.tags), "price": price}
+    # IDEMPOTENCY (#182): a re-run must NOT create a duplicate Etsy listing. Key each
+    # launch listing by launch-<n> (persisted in products) and reuse the prior id.
+    from quoteforge.db.database import existing_listing_id, upsert_product
+    _sku = f"launch-{getattr(bundle, 'n', '')}".rstrip("-")
+    _prior = existing_listing_id(_sku)
+    if _prior:
+        return {"status": "exists", "listing_id": _prior, "title": bundle.title}
     url = f"{ETSY_API_BASE}/application/shops/{ETSY_SHOP_ID}/listings"
     data = {
         "quantity": 999, "title": bundle.title[:140],
@@ -65,8 +75,18 @@ def create_draft_listing(bundle, price: float, runner=requests) -> dict:
     resp = runner.post(url, headers=_headers(), data=data, timeout=30)
     resp.raise_for_status()
     j = resp.json()
-    return {"status": "draft_created", "listing_id": j.get("listing_id"),
-            "title": bundle.title}
+    _lid = j.get("listing_id")
+    # Persist the SKU->listing map so the NEXT run dedupes (no duplicate listing).
+    if _lid:
+        try:
+            upsert_product({"product_id": _sku, "gelato_sku": _sku,
+                            "etsy_listing_id": str(_lid), "template_id": "",
+                            "category": bundle.category, "title": bundle.title,
+                            "price_usd": price, "gelato_cost_usd": 0.0,
+                            "product_type": "print", "size": ""})
+        except Exception as exc:  # noqa: BLE001 — mapping persist is best-effort
+            logger.warning("listing map persist failed for %s: %s", _sku, exc)
+    return {"status": "draft_created", "listing_id": _lid, "title": bundle.title}
 
 
 # Etsy custom-property slots (a listing allows at most TWO variation axes).

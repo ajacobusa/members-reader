@@ -810,6 +810,25 @@ def upsert_product(data: dict) -> None:
         ))
 
 
+def existing_listing_id(gelato_sku: str, template_id: str = "") -> str:
+    """The Etsy listing id already mapped to (gelato_sku[, template_id]), or "".
+    The dedupe key for listing-create: a caller checks this BEFORE POSTing so a
+    re-run reuses the existing listing instead of creating a duplicate (#182)."""
+    gelato_sku = (gelato_sku or "").strip()
+    if not gelato_sku:
+        return ""
+    q = ("SELECT etsy_listing_id FROM products WHERE gelato_sku=? "
+         "AND etsy_listing_id IS NOT NULL AND etsy_listing_id!=''")
+    args = [gelato_sku]
+    if template_id:
+        q += " AND template_id=?"
+        args.append(template_id)
+    q += " LIMIT 1"
+    with _conn() as conn:
+        row = conn.execute(q, args).fetchone()
+        return (row[0] if row else "") or ""
+
+
 def get_products_by_category(category: str) -> list[dict]:
     """Return active products in a category."""
     with _conn() as conn:
