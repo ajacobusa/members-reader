@@ -1205,14 +1205,19 @@ def check_infrastructure() -> dict:
     #     AND the page emits MUG_WRAPS and consumes it (_mugWraps) at the layout + proof.
     try:
         import inspect as _insp48
+        import re as _re48
         from quoteforge.etsy.mug_catalog import MUG_CATALOG as _MC48
         from quoteforge.etsy import listing_preview as _lp48
-        _src48 = _insp48.getsource(_lp48)
+        # Strip JS // comments before the token scan so a future refactor can't leave
+        # the gate token in a doc-comment while removing the executable gate (the audit's
+        # anti-substring rule; the gate lives in an emitted JS f-string, not a callable).
+        _src48 = "\n".join(_re48.sub(r"//.*$", "", _ln)
+                           for _ln in _insp48.getsource(_lp48).splitlines())
         has_nonwrap = any(not m.wraps for m in _MC48)
         emitted = "MUG_WRAPS" in _src48 and "_p.wraps" in _src48
         consumed = ("function _mugWraps()" in _src48
-                    and "!_mugWraps()" in _src48                 # layout gate
-                    and "_mw?5.3:1.9" in _src48)                 # proof arc gated
+                    and "pk==='mug' && !_mugWraps()" in _src48   # EXECUTABLE layout gate
+                    and "arc:(handle?(_mw?5.3:1.9):5.6)" in _src48)  # EXECUTABLE proof arc
         ok = bool(has_nonwrap and emitted and consumed)
         checks.append(_c("mug_wrap_ability_gated", ok,
                          "single-panel mugs hide the Wraparound layout + full-wrap proof"
@@ -1221,6 +1226,23 @@ def check_infrastructure() -> dict:
                          f"emitted={emitted} consumed={consumed}"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("mug_wrap_ability_gated", False, str(exc)))
+
+    # 49) Framed wall-art sizes sold must all be FULFILLABLE (fulfillability audit): the
+    #     editor once derived framed sizes from POSTER sizes (12x16, 24x36) but
+    #     build_wallart_map prepares framed Gelato UIDs ONLY from the framed catalog
+    #     sizes - so a customer could pay for a framed size with no prepared UID.
+    #     Grounded: every framed size build_variations sells is in the framed catalog.
+    try:
+        from quoteforge.etsy.variations import build_variations as _bv49, _ns as _ns49
+        from quoteforge.etsy.gelato_catalog import GELATO_CATALOG as _GC49
+        sold = {_ns49(v.size) for v in _bv49() if v.material == "framed"}
+        cat = {_ns49(p.size) for p in _GC49 if p.category == "framed"}
+        missing = sorted(sold - cat)
+        checks.append(_c("framed_sizes_fulfillable", not missing,
+                         "every framed size sold has a prepared framed catalog UID"
+                         if not missing else f"framed sizes sold with NO prepared UID: {missing}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("framed_sizes_fulfillable", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

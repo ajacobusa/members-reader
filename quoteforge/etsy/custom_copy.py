@@ -37,8 +37,9 @@ For the sharpest print, your photo needs to be high resolution:
 - Recommended minimums:
     8x10   ->  about 1500 x 1875 px
     11x14  ->  about 2100 x 2700 px
-    16x20  ->  about 3000 x 3750 px
+    12x16  ->  about 2250 x 3000 px
     18x24  ->  about 3300 x 4200 px
+    24x36  ->  about 4500 x 6750 px
 If a photo is too low-resolution to print well, we'll message you right away and
 ask for a better version before printing - we never print a blurry photo.
 """

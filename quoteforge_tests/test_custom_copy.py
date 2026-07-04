@@ -13,8 +13,11 @@ def test_copy_covers_quote_and_photo():
 
 
 def test_photo_requirements_list_sizes():
-    for size in ["8x10", "11x14", "16x20", "18x24"]:
+    # The recommended-resolution list must match the SOLD print sizes (#wallart): the
+    # old list included 16x20 (never sold) and omitted 12x16 / 24x36 (both sold).
+    for size in ["8x10", "11x14", "12x16", "18x24", "24x36"]:
         assert size in PHOTO_REQUIREMENTS
+    assert "16x20" not in PHOTO_REQUIREMENTS          # not a sold print size
 
 
 def test_faq_has_quote_photo_proof():
