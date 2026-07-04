@@ -36,6 +36,7 @@ def test_new_infra_checks_are_wired():
     assert "daily_mockup_update_scheduled" in names        # daily real-product-photo refresh can't drop out
     assert "listing_image_pipeline_wired" in names          # the Etsy gallery-image pipeline can't silently drop an image/rank/cap
     assert "ecommerce_image_sync_wired" in names             # official-image auto-pull is scheduled + self-activating
+    assert "template_image_sync_wired" in names              # template-image persistence is scheduled + idempotent
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():

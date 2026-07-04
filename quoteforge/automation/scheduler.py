@@ -284,6 +284,13 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "the real product image appears with no manual wiring. No-op until live + a "
         "store id is set. Runs before the mockup-sync + 01:50 rebuild."),
     ScheduledJob(
+        "QuoteForge Template Image Sync", "template-sync",
+        ["/SC", "DAILY", "/ST", "01:37"],
+        "Daily: persist each product's official template images (studio/lifestyle/"
+        "mockup) into the gelato_product_images table, retire images that disappeared, "
+        "and alert the owner on a sync failure. Idempotent (upsert by SKU+UID+rank). "
+        "No-op until live + a store id. Runs after ecommerce-images, before rebuild."),
+    ScheduledJob(
         "QuoteForge Gelato Mockup Sync", "mockup-sync",
         ["/SC", "DAILY", "/ST", "01:40"],
         "Daily base-mockup sync (checkpoints 1-6): fetches each product's real product "

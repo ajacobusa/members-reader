@@ -786,6 +786,55 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("ecommerce_image_sync_wired", False, str(exc)))
 
+    # 37) The template-image sync (#181) is wired + persists safely: a daily
+    #     `template-sync` job exists + maps to a real handler, the engine is a safe
+    #     no-op until live (returns the {enabled, failed} shape without raising), the
+    #     DB upsert is IDEMPOTENT (a double-upsert of the same SKU+UID+rank yields ONE
+    #     row, never a duplicate image), and the SKU join skips ambiguous products.
+    #     (scheduled + behavioral against an ISOLATED temp DB - never touches live data.)
+    try:
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS
+        from quoteforge.admin import COMMANDS as _CMDS3
+        from quoteforge.automation import template_image_sync as _ts
+        from quoteforge.automation import ecommerce_images as _ei7
+        scheduled = any(j.admin_args.startswith("template-sync") for j in SCHEDULED_JOBS)
+        wired = "template-sync" in _CMDS3
+        r = _ts.sync_template_images()   # TEST_MODE -> no-op, never raises
+        diagnosable = (isinstance(r, dict) and "enabled" in r and "failed" in r
+                       and r["enabled"] is False)
+        safe_join = (_ei7._sku_for({"variants": [{"productUid": "unknown-uid"}]}, {}) is None
+                     and _ei7._sku_for({"externalId": "GEL-X"}, {}) == "GEL-X")
+        # Idempotency proven behaviorally against an ISOLATED temp DB.
+        import tempfile
+        from pathlib import Path as _P
+        from quoteforge.db import database as _db
+        _orig = _db.DB_PATH
+        _tmp = _P(tempfile.gettempdir()) / "qf_infra_tplimg.db"
+        try:
+            if _tmp.exists():
+                _tmp.unlink()
+            _db.DB_PATH = _tmp
+            _db.init_db()
+            _db.upsert_product_image("SKU-A", "https://x/1.png", gelato_product_uid="U1", image_rank=0)
+            _db.upsert_product_image("SKU-A", "https://x/2.png", gelato_product_uid="U1", image_rank=0)
+            _rows = _db.get_product_images("SKU-A")
+            idempotent = len(_rows) == 1 and _rows[0]["image_url"] == "https://x/2.png"
+        finally:
+            _db.DB_PATH = _orig
+            try:
+                _tmp.unlink()
+            except OSError as _exc:
+                logger.debug("infra tpl-img temp cleanup skipped: %s", _exc)
+        ok = bool(scheduled and wired and diagnosable and safe_join and idempotent)
+        checks.append(_c("template_image_sync_wired", ok,
+                         "daily template-image sync scheduled + wired + safe no-op + "
+                         "idempotent upsert + SKU join skips ambiguous products"
+                         if ok else "template-image sync not wired/safe: "
+                         f"scheduled={scheduled} wired={wired} diagnosable={diagnosable} "
+                         f"safe_join={safe_join} idempotent={idempotent}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("template_image_sync_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
