@@ -103,7 +103,8 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
                               "the vendor) - reconcile before re-sending"}
 
     if vendor == "gelato":
-        from quoteforge.config import TEST_MODE, GELATO_FULFILLMENT_MODE
+        from quoteforge.config import (TEST_MODE, GELATO_FULFILLMENT_MODE,
+                                        APPAREL_PRINT_CALIBRATED)
         # NATIVE Etsy<->Gelato fulfilment (default): Gelato pulls the order from Etsy,
         # charges your card, prints + ships, and returns tracking to Etsy. QuoteForge
         # must NOT also submit - that would double-print + double-charge on EVERY
@@ -163,6 +164,17 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
                     "detail": "apparel design not yet rendered to a faithful print file "
                               "(preview != print) - hold for manual placement until the "
                               "clean-composite render is wired"}
+        # Calibration gate (#167): even WITH faithful per-side files attached, the on-
+        # screen placement -> real DTG print-zone mapping is unverified until the owner
+        # runs a physical Gelato test print. Until APPAREL_PRINT_CALIBRATED=true, an
+        # apparel order still HOLDS for manual - but now the faithful files ride along,
+        # so the manual step is verify-and-submit, not build-from-scratch. This makes a
+        # mis-calibrated mapping physically incapable of auto-printing on real garments.
+        if str(order.get("product_type", "")).lower() == "apparel" and not APPAREL_PRINT_CALIBRATED:
+            return {"status": "manual", "vendor": "gelato", "id": "",
+                    "detail": "apparel faithful print files attached; held for owner "
+                              "print-calibration sign-off (set APPAREL_PRINT_CALIBRATED=true "
+                              "after a good Gelato test print)"}
         if not (product_uid and recipient and artwork_url):
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",

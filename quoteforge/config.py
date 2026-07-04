@@ -249,6 +249,15 @@ AI_UPSCALE_API_URL: str = os.getenv("AI_UPSCALE_API_URL", "")
 AI_UPSCALE_PROVIDER: str = os.getenv("AI_UPSCALE_PROVIDER", "generic").strip().lower()
 AI_UPSCALE_MODEL: str = os.getenv("AI_UPSCALE_MODEL", "")
 
+# ── Apparel print calibration (#167) ─────────────────────────────
+# DTG apparel prints the design directly onto the garment; the on-screen placement
+# (chest/back/sleeve position + scale) must land correctly on the REAL print zone,
+# which can only be confirmed by a physical Gelato test print. Until the owner runs
+# that test print and is satisfied, apparel HOLDS for manual placement even when the
+# faithful per-side print files are attached - so a mis-calibrated mapping can never
+# auto-print on real garments. Flip to true ONLY after a good test print.
+APPAREL_PRINT_CALIBRATED: bool = _env_bool("APPAREL_PRINT_CALIBRATED", False)
+
 # ── UAT / feedback collection ────────────────────────────────────
 # Optional Google Form (or any survey) URL. When set, the UAT shop-home page
 # routes its feedback buttons to this form (with the listing + star rating in
