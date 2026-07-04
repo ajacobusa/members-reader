@@ -136,7 +136,7 @@ services:
     # commits + pushes so the GitHub-Pages storefront stays current on the Render path
     # (otherwise the daily rebuild lives only in the Windows scheduler and the hosted
     # site goes stale after catalog/price/availability changes).
-    startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync ; python -m quoteforge.admin catalog-sync email ; python -m quoteforge.admin gelato-review email ; python -m quoteforge.admin ecommerce-images ; python -m quoteforge.admin mockup-sync ; python -m quoteforge.admin rebuild-site ; python -m quoteforge.admin backup-all"
+    startCommand: sh -c "python -m quoteforge.admin briefing email ; python -m quoteforge.admin ledger month email ; python -m quoteforge.admin track-orders ; python -m quoteforge.admin healthcheck email ; python -m quoteforge.admin gelato-sync ; python -m quoteforge.admin catalog-sync email ; python -m quoteforge.admin gelato-review email ; python -m quoteforge.admin ecommerce-images ; python -m quoteforge.admin template-sync ; python -m quoteforge.admin mockup-sync ; python -m quoteforge.admin rebuild-site ; python -m quoteforge.admin backup-all"
     envVars:
       - fromGroup: joffiels-env
   - type: cron

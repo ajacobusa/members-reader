@@ -54,6 +54,40 @@ def get_shop_receipts(was_paid: bool = True, was_shipped: bool = False,
     return with_refresh(_do)
 
 
+def get_listing_images(listing_id) -> list[dict]:
+    """A listing's images (or [] in TEST_MODE / without creds). Returns the raw
+    Etsy ListingImage results: listing_image_id, rank (1=first), url_fullxfull, ...
+    Needs the OAuth token's `listings_r` scope. Mirrors get_shop_receipts (#181)."""
+    if TEST_MODE or not _credentials_ready():
+        return []
+    url = f"{ETSY_API_BASE}/application/listings/{listing_id}/images"
+
+    def _do():
+        """The listing-images GET, retried once on a 401 by with_refresh."""
+        resp = requests.get(url, headers=_headers(), timeout=30)
+        resp.raise_for_status()
+        return (resp.json() or {}).get("results") or []
+    from quoteforge.automation.etsy_auth import with_refresh
+    return with_refresh(_do)
+
+
+def official_listing_images(listing_id) -> dict:
+    """{'studio': url, 'lifestyle': url} from an Etsy listing's ranked images -
+    rank 1 = studio (Etsy main image), rank 2 = lifestyle (Gelato scene). Empty
+    when no creds / no such ranks. Uses url_fullxfull (the full-res image)."""
+    out: dict = {}
+    for img in sorted(get_listing_images(listing_id),
+                      key=lambda i: (i or {}).get("rank", 99)):
+        rank, u = (img or {}).get("rank"), (img or {}).get("url_fullxfull")
+        if not u:
+            continue
+        if rank == 1:
+            out["studio"] = u
+        elif rank == 2:
+            out["lifestyle"] = u
+    return out
+
+
 def create_receipt_shipment(receipt_id: str, tracking_code: str,
                             carrier_name: str = "other",
                             send_bcc: bool = False) -> dict:

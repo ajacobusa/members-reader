@@ -3062,6 +3062,32 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
     return 0
 
 
+def _cmd_template_sync(args: list[str]) -> int:
+    """Daily template-image sync: persist each product's official images into
+    gelato_product_images, retire vanished ones, and ALERT on any failure.
+    `template-sync` (or `template-sync status`). No-op (safe) until live + store id."""
+    if args and args[0] == "status":
+        from quoteforge.automation.template_image_sync import status
+        st = status()
+        print("Template images:", ", ".join(f"{k}={v}" for k, v in st.items()))
+        return 0
+    from quoteforge.automation.template_image_sync import sync_template_images
+    r = sync_template_images()
+    print("Template image sync:", ", ".join(f"{k}={v}" for k, v in r.items()
+                                            if k != "failed"))
+    if not r.get("enabled"):
+        print("  (no-op: needs TEST_MODE=false, GELATO_API_KEY, GELATO_STORE_ID)")
+        return 0
+    if r.get("failed"):
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE:
+            body = "<pre>Template image sync failures:\n\n" + "\n".join(
+                f"- {f['sku']}: {f['error']}" for f in r["failed"]) + "</pre>"
+            _alert("Template image sync - failures", body, what="template-sync")
+            return 1
+    return 0
+
+
 def _cmd_mockup_confirm(args: list[str]) -> int:
     """Compute confirmation from the two agents' recorded verdicts (run the
     gelato-mockup-reviewer + gelato-sku-image-match agents over the READY set
@@ -3141,6 +3167,7 @@ COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "mockup-sync": _cmd_mockup_sync,
     "ecommerce-images": _cmd_ecommerce_images,
+    "template-sync": _cmd_template_sync,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,
     "mockup-override": _cmd_mockup_override,

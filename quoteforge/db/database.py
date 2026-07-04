@@ -342,6 +342,26 @@ def init_db() -> None:
             UNIQUE(owner_email, recipient_name, occasion)
         );
         """)
+        # Official product images per SKU (#181): the studio/lifestyle/mockup shots
+        # synced from the connected store's template-created listings. Idempotent on
+        # (sku, uid, rank) so a daily re-sync refreshes a row instead of duplicating.
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS gelato_product_images (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            gelato_sku         TEXT NOT NULL,
+            gelato_product_uid TEXT DEFAULT '',
+            etsy_listing_id    TEXT DEFAULT '',
+            etsy_image_id      TEXT DEFAULT '',
+            image_url          TEXT NOT NULL,
+            image_rank         INTEGER DEFAULT 0,
+            image_type         TEXT DEFAULT 'mockup',
+            source             TEXT DEFAULT 'gelato_ecommerce',
+            is_active          INTEGER DEFAULT 1,
+            last_seen_at       TEXT DEFAULT (datetime('now')),
+            created_at         TEXT DEFAULT (datetime('now')),
+            UNIQUE(gelato_sku, gelato_product_uid, image_rank)
+        );
+        """)
         _migrate(conn)
         # Indexes for the frequent lookups (additive; etsy_order_id is already
         # covered by its UNIQUE constraint). Keeps status filters + child-table
@@ -357,6 +377,8 @@ def init_db() -> None:
             ("idx_customer_messages_order", "customer_messages", "order_id"),
             # Resume-your-design lookups by email (storefront draft restore).
             ("idx_saved_designs_email", "saved_designs", "email"),
+            # Official-image lookup by SKU (the storefront tile hot path, #181).
+            ("idx_gpi_sku", "gelato_product_images", "gelato_sku"),
         ):
             try:
                 conn.execute(f"CREATE INDEX IF NOT EXISTS {_idx} ON {_tbl}({_col})")
@@ -986,6 +1008,60 @@ def save_design(email: str, design_json: str = "", design_id: str = "",
             # a later /design or /confirm for the same (email, design_id).
             (email, design_id, order_id, design_json, summary))
         return cur.lastrowid or 0
+
+
+# ── Official product images (#181) ──────────────────────────────
+
+def upsert_product_image(gelato_sku: str, image_url: str, *,
+                         gelato_product_uid: str = "", etsy_listing_id: str = "",
+                         etsy_image_id: str = "", image_rank: int = 0,
+                         image_type: str = "mockup",
+                         source: str = "gelato_ecommerce") -> int:
+    """Insert or refresh one product<->official-image row. Idempotent on
+    (gelato_sku, gelato_product_uid, image_rank): a daily re-sync updates the URL +
+    stamps last_seen_at rather than inserting a duplicate. Returns 0 if no sku/url."""
+    gelato_sku = (gelato_sku or "").strip()
+    image_url = (image_url or "").strip()
+    if not gelato_sku or not image_url:
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO gelato_product_images
+                 (gelato_sku, gelato_product_uid, etsy_listing_id, etsy_image_id,
+                  image_url, image_rank, image_type, source, is_active, last_seen_at)
+               VALUES (?,?,?,?,?,?,?,?, 1, datetime('now'))
+               ON CONFLICT(gelato_sku, gelato_product_uid, image_rank) DO UPDATE SET
+                 image_url=excluded.image_url,
+                 etsy_listing_id=COALESCE(NULLIF(excluded.etsy_listing_id,''), etsy_listing_id),
+                 etsy_image_id=COALESCE(NULLIF(excluded.etsy_image_id,''), etsy_image_id),
+                 image_type=excluded.image_type, source=excluded.source,
+                 is_active=1, last_seen_at=datetime('now')""",
+            (gelato_sku, (gelato_product_uid or ""), (etsy_listing_id or ""),
+             (etsy_image_id or ""), image_url, int(image_rank), image_type, source))
+        return cur.lastrowid or 0
+
+
+def get_product_images(gelato_sku: str = "", active_only: bool = True) -> list[dict]:
+    """Official images for one SKU (or all), ranked. Empty when none."""
+    q, args = "SELECT * FROM gelato_product_images WHERE 1=1", []
+    if gelato_sku:
+        q += " AND gelato_sku=?"
+        args.append(gelato_sku.strip())
+    if active_only:
+        q += " AND is_active=1"
+    q += " ORDER BY gelato_sku, image_rank"
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(q, args)]
+
+
+def deactivate_stale_product_images(seen_stamp: str) -> int:
+    """Flag is_active=0 for rows NOT refreshed this run (last_seen_at < seen_stamp) -
+    so an image retired from the store is retired here too. Returns the count."""
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE gelato_product_images SET is_active=0 "
+            "WHERE is_active=1 AND last_seen_at < ?", (seen_stamp,))
+        return cur.rowcount
 
 
 def accept_design(email: str, design_id: str = "default") -> None:
