@@ -53,6 +53,13 @@ def _save(access: str, refresh: str, expires_in) -> None:
         "access_token": access, "refresh_token": refresh,
         "expires_at": time.time() + int(expires_in or 3600) - 60,  # 60s safety margin
     }), encoding="utf-8")
+    # Restrict the refresh-token file to the owner (#182). Best-effort: no-op on
+    # filesystems without POSIX perms (Windows), never breaks the refresh.
+    try:
+        import os as _os
+        _os.chmod(f, 0o600)
+    except OSError as exc:  # noqa: BLE001
+        logger.debug("token file chmod skipped: %s", exc)
 
 
 def current_access_token() -> str:

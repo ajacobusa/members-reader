@@ -143,6 +143,37 @@ def check_file_hosting() -> Check:
 
 # ── Aggregate ────────────────────────────────────────────────────
 
+def check_sync_freshness(max_age_hours: int = 36) -> Check:
+    """UPTIME (#182): each critical daily automation job ran recently AND its last run
+    succeeded. A job that silently STOPPED (stale) or whose last run FAILED is the
+    availability signal. Jobs that never ran (pre-first-run / not-yet-live) are skipped
+    so a fresh install doesn't false-alarm."""
+    from datetime import datetime as _dt, timedelta as _td
+    try:
+        from quoteforge.db.database import last_sync_run
+        stale, failed = [], []
+        for job in ("template-sync", "ecommerce-images", "mockup-sync"):
+            r = last_sync_run(job)
+            if not r:
+                continue                       # never ran -> not yet live, skip
+            if r.get("ok") == 0:
+                failed.append(job)
+            try:
+                ran = _dt.fromisoformat((r.get("ran_at") or "").replace(" ", "T"))
+            except ValueError:
+                continue
+            if _dt.now() - ran > _td(hours=max_age_hours):
+                stale.append(job)
+        if failed:
+            return Check("Sync Uptime", "WARN", f"last run FAILED: {failed}")
+        if stale:
+            return Check("Sync Uptime", "WARN",
+                         f"job(s) not run in {max_age_hours}h: {stale}")
+        return Check("Sync Uptime", "OK", "sync jobs fresh (or not yet live)")
+    except Exception as exc:  # noqa: BLE001
+        return Check("Sync Uptime", "WARN", str(exc))
+
+
 def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
     """Run every health check; returns {overall, timestamp, checks[]} and logs it."""
     checks = [
@@ -152,6 +183,7 @@ def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
         check_error_orders(),
         check_scheduled_jobs(query_fn),
         check_file_hosting(),
+        check_sync_freshness(),
     ]
     fails = [c for c in checks if c.status == "FAIL"]
     warns = [c for c in checks if c.status == "WARN"]
