@@ -122,6 +122,24 @@ Task Scheduler) so backups, healthcheck, infra-check, and the sync jobs actually
 
 ---
 
+### Showing the REAL product photo (all product families)
+The storefront shows a real product picture per family, and you can supply photos
+**without going live** (the print partner's catalog API does not serve product images):
+
+- **Apparel** — fill `config/product_image_overrides.csv` (`sku,url`) with the real
+  product image URL per SKU. Get the exact SKU keys with
+  `python -m quoteforge.admin photo-overrides keys`, or scaffold a pre-filled manifest
+  with `photo-overrides scaffold`, then paste URLs and `rebuild-site`. (Copy
+  `config/product_image_overrides.example.csv` to start.)
+- **Mug / branded / calendar** — drop a genuine BLANK product photo at
+  `brand/mockups/<product_id>.{jpg,png}` plus an optional `<product_id>.json` sidecar
+  marking the print area (`{"area":[x,y,w,h],"cyl":bool,"span":float}`). These need the
+  geometry, which is why they use a file + sidecar rather than a bare URL.
+
+Every override is re-hosted **same-origin** (no supplier name leaks in view-source) and
+is **display-only** — it never affects fulfilment. At full go-live, the connected store's
+official product photos also auto-populate; a manual override always wins.
+
 ### Apparel print calibration (`APPAREL_PRINT_CALIBRATED`) — do a test print first
 Apparel is DTG-printed directly onto the garment, so the on-screen placement must land
 correctly on the real print zone — only a **physical Gelato test print** can confirm it.

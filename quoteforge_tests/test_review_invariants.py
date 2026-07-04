@@ -44,6 +44,7 @@ def test_new_infra_checks_are_wired():
     assert "audit_log_wired" in names                        # a privileged order-lock override leaves an accountable record
     assert "utc_local_datetime_hygiene" in names             # the two UTC-vs-local sites that bit us stay UTC-aware
     assert "route_paths_thread_product_type" in names        # BOTH route_order sites thread product_type (apparel gate can't be bypassed)
+    assert "product_photo_override_wired" in names            # owner real-photo override shows the real product in TEST_MODE (no go-live)
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():

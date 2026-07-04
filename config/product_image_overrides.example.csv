@@ -1,0 +1,15 @@
+sku,url
+# Real product-photo overrides (#realphotos). Copy this file to
+# product_image_overrides.csv (same folder), then fill the url column with the REAL
+# product image URL for each SKU (from the print partner's product page, or your own
+# studio shot). Run `python -m quoteforge.admin photo-overrides scaffold` to generate
+# a manifest pre-filled with every apparel SKU key, or `photo-overrides keys` to list
+# them. After editing: `python -m quoteforge.admin rebuild-site`.
+#
+# The image is re-hosted same-origin (no supplier name leaks) and shows in the editor
+# WITHOUT going live - it bypasses the imageless catalog API. Display-only; it never
+# affects fulfilment. Lines starting with '#' and blank-url rows are ignored.
+#
+# Examples (replace with your real SKUs + URLs):
+GEL-M-TANK-XS-WHITE,https://your-cdn.example.com/photos/mens-tank-white.jpg
+GEL-M-TSHIRT-XS-BLACK,https://your-cdn.example.com/photos/mens-tshirt-black.jpg

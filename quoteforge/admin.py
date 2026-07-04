@@ -3084,6 +3084,54 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
     return 0
 
 
+def _cmd_photo_overrides(args: list[str]) -> int:
+    """Show / scaffold the REAL product-photo override manifest so the storefront shows
+    the actual product picture WITHOUT going live (bypasses the imageless catalog API).
+
+      photo-overrides             # show the manifest path + current overrides
+      photo-overrides keys        # list the exact SKU keys to fill (per garment+colour)
+      photo-overrides scaffold    # write a starter CSV (all apparel SKUs, blank urls)
+
+    Fill the `url` column with the real product image URL (from the print partner's
+    product page or your own studio shot), then `rebuild-site`. It's re-hosted
+    same-origin, so no supplier name leaks. Display-only; never affects fulfilment.
+    """
+    from quoteforge.images.supplier_mockup import (
+        product_photo_overrides, apparel_photo_override_keys, _overrides_path)
+    path = _overrides_path()
+    if args and args[0] == "keys":
+        rows = apparel_photo_override_keys()
+        print(f"{len(rows)} apparel SKU keys (fill these in {path.name}):")
+        for r in rows[:200]:
+            print(f"  {r['sku']}   # {r['garment']} - {r['color']}")
+        if len(rows) > 200:
+            print(f"  ... and {len(rows) - 200} more")
+        return 0
+    if args and args[0] == "scaffold":
+        rows = apparel_photo_override_keys()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            print(f"Refusing to overwrite existing {path} (edit it directly).")
+            return 1
+        import csv as _csv
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            w = _csv.writer(fh)
+            w.writerow(["sku", "url"])                 # header the loader reads
+            for r in rows:
+                w.writerow([r["sku"], ""])             # blank url -> owner fills it
+        print(f"Wrote {len(rows)} apparel SKU rows to {path}. Fill the url column, "
+              "then rebuild-site.")
+        return 0
+    ov = product_photo_overrides()
+    print(f"Override manifest: {path}  ({'present' if path.exists() else 'not created yet'})")
+    print(f"Active overrides: {len(ov)}")
+    for sku, url in list(ov.items())[:30]:
+        print(f"  {sku} -> {url}")
+    if not ov:
+        print("  (none - run 'photo-overrides scaffold' to start, or add rows sku,url)")
+    return 0
+
+
 def _cmd_image_override(args: list[str]) -> int:
     """Owner escape hatch (#182-P1): manually pull the official image(s) for a SKU when
     a sync attached a wrong image (e.g. wrong product/variant). The storefront then
@@ -3229,6 +3277,7 @@ COMMANDS = {
     "mockup-sync": _cmd_mockup_sync,
     "ecommerce-images": _cmd_ecommerce_images,
     "image-override": _cmd_image_override,
+    "photo-overrides": _cmd_photo_overrides,
     "template-sync": _cmd_template_sync,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,
