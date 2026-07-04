@@ -1073,6 +1073,50 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("route_paths_thread_product_type", False, str(exc)))
 
+    # 45) Real product-photo override wired (#realphotos). ISSUE: the storefront showed a
+    #     drawn silhouette, not the real product, because the only photo source was the
+    #     Gelato catalog API - which serves NO product images - hard-gated off in
+    #     TEST_MODE. Flipping TEST_MODE=false would NOT fix it (still no API images) and
+    #     would risk real orders. RESOLUTION: an owner override manifest checked FIRST in
+    #     gelato_blank_image (before the gate) shows the real photo per SKU in TEST_MODE,
+    #     display-only, re-hosted same-origin. This pins that the override is still wired
+    #     (structural) AND behaves (a manifest SKU resolves in TEST_MODE, isolated temp
+    #     file, env restored in finally) so the fix can't silently regress.
+    try:
+        import os as _os45
+        import tempfile as _tf45
+        from pathlib import Path as _P45
+        from quoteforge.images import supplier_mockup as _sm45
+        refs = _references(_sm45.gelato_blank_image, "product_photo_overrides")
+        has_api = all(hasattr(_sm45, n) for n in
+                      ("product_photo_overrides", "apparel_photo_override_keys"))
+        behaves = False
+        _prev = _os45.environ.get("PRODUCT_IMAGE_OVERRIDES_FILE")
+        _t45 = _P45(_tf45.gettempdir()) / "qf_infra_photo_ovr.csv"
+        try:
+            _t45.write_text("sku,url\nQF-INFRA-SKU,https://example.test/real.jpg\n",
+                            encoding="utf-8")
+            _os45.environ["PRODUCT_IMAGE_OVERRIDES_FILE"] = str(_t45)
+            # TEST_MODE is on during infra-check, so this proves the override wins the gate
+            behaves = _sm45.gelato_blank_image("QF-INFRA-SKU") == "https://example.test/real.jpg"
+        finally:
+            if _prev is None:
+                _os45.environ.pop("PRODUCT_IMAGE_OVERRIDES_FILE", None)
+            else:
+                _os45.environ["PRODUCT_IMAGE_OVERRIDES_FILE"] = _prev
+            try:
+                _t45.unlink()
+            except OSError as _e45:
+                logger.debug("infra photo-ovr temp cleanup skipped: %s", _e45)
+        ok = bool(refs and has_api and behaves)
+        checks.append(_c("product_photo_override_wired", ok,
+                         "owner real-photo override shows the real product per SKU in "
+                         "TEST_MODE (display-only, re-hosted same-origin)"
+                         if ok else "real-photo override not wired - storefront can't "
+                         f"show real product without go-live: refs={refs} api={has_api} behaves={behaves}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("product_photo_override_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

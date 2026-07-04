@@ -47,6 +47,65 @@ def _save_cache(cache: dict) -> None:
         logger.debug("supplier-mockup cache write failed: %s", exc)
 
 
+def _overrides_path() -> Path:
+    """CSV of owner-supplied REAL product photos (cols: sku,url). Override with
+    PRODUCT_IMAGE_OVERRIDES_FILE, else <repo>/config/product_image_overrides.csv."""
+    env = os.getenv("PRODUCT_IMAGE_OVERRIDES_FILE", "").strip()
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parents[2] / "config" / "product_image_overrides.csv"
+
+
+def product_photo_overrides() -> dict:
+    """Owner-supplied REAL product photos as ``{our_sku: url}``.
+
+    Lets the owner show the actual product picture for ANY product family WITHOUT
+    going live - it bypasses Gelato's (imageless) catalog API and the TEST_MODE gate
+    for DISPLAY only (never fulfilment). Read fresh each call (the file is tiny) so a
+    just-edited manifest takes effect on the next rebuild; never raises. Storefront
+    consumers re-host these same-origin (_emit_url), so no supplier URL leaks in
+    view-source. Apparel needs only this URL (print geometry is computed); mug/branded/
+    calendar instead use the brand/mockups/ file+sidecar path (they need geometry too).
+    """
+    out: dict = {}
+    try:
+        import csv
+        p = _overrides_path()
+        if not p.exists():
+            return out
+        with p.open(encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                sku = (row.get("sku") or "").strip()
+                url = (row.get("url") or "").strip()
+                if sku.startswith("#"):                # comment row (copied example)
+                    continue
+                if sku and url.startswith(("http://", "https://")):
+                    out[sku] = url
+    except Exception as exc:  # noqa: BLE001 - a bad manifest must never break the build
+        logger.debug("product photo overrides load failed: %s", exc)
+    return out
+
+
+def apparel_photo_override_keys() -> list[dict]:
+    """The exact SKU keys the owner should fill in the override manifest for apparel,
+    as ``[{sku, garment, color}]`` - one representative SKU per (garment, colour), keyed
+    the SAME way the editor looks them up (first size per colour). So the owner never
+    has to guess a SKU. Never raises."""
+    rows: list[dict] = []
+    try:
+        from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
+        for g in APPAREL_CATALOG:
+            if not (g.sizes and g.colors):
+                continue
+            for color in g.colors:
+                sku = apparel_sku_for(g.garment_id, g.sizes[0], color)
+                if sku:
+                    rows.append({"sku": sku, "garment": g.name, "color": color})
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("apparel override keys failed: %s", exc)
+    return rows
+
+
 def _extract_image_url(data: dict) -> str | None:
     """Best-effort pull of a product preview/mockup image URL from a product API
     response. The field name varies across catalog products, so try the common
@@ -91,6 +150,13 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
     (GEL-*) UID — so nothing changes until the owner is genuinely live. Results are
     cached to JSON so a rebuild doesn't re-hit the API (pass refresh=True to force).
     """
+    # Owner-supplied real photo wins first (#realphotos): the owner can drop the actual
+    # product picture per SKU into config/product_image_overrides.csv and see it NOW,
+    # in TEST_MODE, bypassing the (imageless) catalog API. Display-only, never affects
+    # fulfilment. Storefront consumers re-host it same-origin, so no supplier leak.
+    _ov = product_photo_overrides().get((our_sku or "").strip())
+    if _ov:
+        return _ov
     from quoteforge.config import TEST_MODE
     from quoteforge.automation.gelato_api import GELATO_API_KEY
     if TEST_MODE or not GELATO_API_KEY:
@@ -152,7 +218,10 @@ def apparel_tile_images(*, refresh: bool = False) -> dict:
     try:
         from quoteforge.config import TEST_MODE
         from quoteforge.automation.gelato_api import GELATO_API_KEY
-        if TEST_MODE or not GELATO_API_KEY:
+        # Skip only when there is genuinely nothing to show: not live AND no owner
+        # override manifest. When overrides exist, iterate so they surface in TEST_MODE
+        # (gelato_blank_image returns the override, else None with no API call).
+        if (TEST_MODE or not GELATO_API_KEY) and not product_photo_overrides():
             return out
         from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
     except Exception:  # noqa: BLE001
@@ -178,7 +247,9 @@ def apparel_tile_color_images(*, refresh: bool = False) -> dict:
     try:
         from quoteforge.config import TEST_MODE
         from quoteforge.automation.gelato_api import GELATO_API_KEY
-        if TEST_MODE or not GELATO_API_KEY:
+        # As above: iterate when an owner override manifest exists, so real photos show
+        # in TEST_MODE too (per colour); otherwise skip when not live.
+        if (TEST_MODE or not GELATO_API_KEY) and not product_photo_overrides():
             return out
         from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
     except Exception:  # noqa: BLE001
