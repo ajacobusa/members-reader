@@ -278,6 +278,13 @@
  // Mug product NAME -> product_id, so the editor can resolve MUG_DIMS (keyed by
  // product_id) from the name shopMug carries.
  const MUG_PID = {"Classic Ceramic Mug (11oz)": "classic_mug", "Large Ceramic Mug (15oz)": "large_mug", "Colour-Interior Mug (11oz)": "color_mug", "Accent Mug": "accent_mug", "Enamel Camp Mug (12oz)": "enamel_mug", "Stainless Travel Mug (15oz)": "travel_mug", "Tall Mug (17oz)": "xl_mug"};
+ const MUG_WRAPS = {"classic_mug": true, "large_mug": true, "color_mug": false, "accent_mug": false, "enamel_mug": true, "travel_mug": false, "xl_mug": true};      // product_id -> prints a full wrap (#mugwrap)
+ // A mug prints a full 360 wrap UNLESS the catalog says otherwise (single-panel mugs
+ // whose handle breaks the wrap). Single-panel mugs must not offer the Wraparound
+ // layout or spin a full-wrap proof. Default (unknown) is wrap, so real wrap mugs
+ // are unaffected. CURGARMENT holds the mug NAME; MUG_PID maps it to the product_id.
+ function _mugWraps(){ return !(typeof MUG_WRAPS!=='undefined'
+   && MUG_WRAPS[(typeof MUG_PID!=='undefined'&&MUG_PID[CURGARMENT])||'']===false); }
  // ── Custom Calendars: a parallel product family sharing this editor ──
  // CAL_FORMATS: one entry per product x paper-colour ("{name} - {colour}" + from-price).
  // CAL_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
@@ -2501,6 +2508,9 @@
    var box=document.getElementById('mlayouts'); if(!box) return;
    var pk=(typeof _pk==='function')?_pk():'wallart';
    box.innerHTML=LAYOUTS.filter(function(L){ var m=LAYOUT_META[L.key]||{};
+       // Single-panel mugs (#mugwrap) never offer the "Wraparound" layout - it prints
+       // one panel, so a full-wrap design would be cropped/wrong on the real product.
+       if(L.key==='wrap' && pk==='mug' && !_mugWraps()) return false;
        return !m.f || m.f.indexOf(pk)>=0; })              // only styles that suit this product
      .map(function(L){ var m=LAYOUT_META[L.key]||{};
        return `<div class="layoutthumb${L.key===CURLAYOUT?' sel':''}" role="button" tabindex="0" title="${m.d||L.name}" `+
@@ -2952,9 +2962,12 @@
        _wrapInto(ctx,snap,b,area,{span:spec.span||1.9,rot:rot,arc:1.7,shade:false});
      } else {
        area=_drawCylBody(ctx,W,H,acc,{handle:handle});
-       // A mug prints a FULL wrap (~300 degrees, leaving the handle gap), so the
-       // design covers most of the circumference and a spin reveals front AND back.
-       _wrapInto(ctx,snap,b,area,{span:1.9,rot:rot,arc:(handle?5.3:5.6),shade:true});
+       // A wrap mug prints a FULL wrap (~300 degrees) so a spin reveals front AND back.
+       // A SINGLE-PANEL mug (#mugwrap: handle breaks the wrap) prints ONE panel, so its
+       // design occupies a narrow front arc and the rest of the mug stays blank - the
+       // proof must show exactly that, not a full wrap the print can't deliver.
+       var _mw=(typeof _mugWraps!=='function')||_mugWraps();
+       _wrapInto(ctx,snap,b,area,{span:1.9,rot:rot,arc:(handle?(_mw?5.3:1.9):5.6),shade:true});
      }
    }
    c.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;c.style.cursor='grabbing';});
@@ -2973,8 +2986,11 @@
      if(hp!==hadPhoto){ hadPhoto=hp; dirty=true; }
      if(_SPIN_DIRTY){ var ns=_designSnap(); if(ns) snap=ns; _SPIN_DIRTY=false; dirty=true; }  // live edit
      if(!drag && _SPIN_PLAY){ tick++;
-       if(hp){ rot=0.42*Math.sin(tick*0.022); }   // real photo: rock around the front
-       else { rot+=0.010; }                        // generated wrap: slow full 360 spin
+       var _mw2=(typeof _mugWraps!=='function')||_mugWraps();
+       // Rock around the FRONT for a real photo OR a single-panel mug (#mugwrap: only
+       // one panel prints, so a full 360 would spin past a blank back). Full wraps spin.
+       if(hp || (handle && !_mw2)){ rot=0.42*Math.sin(tick*0.022); }
+       else { rot+=0.010; }                        // generated full wrap: slow 360 spin
        dirty=true; }
      if(dirty){ frame(); dirty=false; } requestAnimationFrame(loop); })();
  }

@@ -47,6 +47,7 @@ def test_new_infra_checks_are_wired():
     assert "product_photo_override_wired" in names            # owner real-photo override shows the real product in TEST_MODE (no go-live)
     assert "sleeveless_garment_gated" in names                # a tank never offers sleeve areas/upcharge; back proof != front photo
     assert "event_retention_pruned" in names                  # sync_runs/security_events are pruned (bounded growth)
+    assert "mug_wrap_ability_gated" in names                   # single-panel mugs never sold a full wrap
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -292,6 +293,23 @@ def test_utc_hygiene_tripwire_is_grounded():
     def _regressed_sweep():
         return _d.datetime.now().isoformat(timespec="seconds")   # naive local, the bug
     assert not ic._references(_regressed_sweep, "utc")
+
+
+def test_single_panel_mugs_are_not_sold_a_full_wrap():
+    # REGRESSION (fulfillability audit, CRITICAL): color/accent/travel mugs are single-
+    # panel (handle breaks the wrap, wraps=False). The editor must consume that flag so
+    # they never offer the Wraparound layout or spin a full-wrap proof (the buyer would
+    # approve a wrap that prints as one panel). Grounded on the catalog + the generator.
+    import inspect
+    from quoteforge.etsy.mug_catalog import MUG_CATALOG, get_mug
+    from quoteforge.etsy import listing_preview as lp
+    assert get_mug("color_mug").wraps is False and get_mug("classic_mug").wraps is True
+    assert any(not m.wraps for m in MUG_CATALOG)
+    src = inspect.getsource(lp)
+    assert "MUG_WRAPS" in src and "_p.wraps" in src            # wrap-ability crosses the seam
+    assert "function _mugWraps()" in src
+    assert "!_mugWraps()" in src                               # layout gate consumes it
+    assert "_mw?5.3:1.9" in src                                # proof arc gated per-mug
 
 
 def test_prune_event_tables_trims_old_rows(tmp_path, monkeypatch):
