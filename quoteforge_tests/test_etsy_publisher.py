@@ -48,6 +48,46 @@ def test_live_create_draft_calls_api_when_ready():
     assert kwargs["data"]["is_personalizable"] == "true"
 
 
+def test_create_draft_refreshes_on_401(monkeypatch):
+    # REGRESSION (#182-P1): Etsy access tokens expire ~1h after issuance. A 401
+    # mid-run must trigger a single refresh + retry, not a hard failure (which would
+    # silently stall publishing). Grounded on etsy_auth.with_refresh.
+    import requests as _rq
+    from quoteforge.automation import etsy_auth
+
+    class B:
+        title = "Personalized Daughter Gift"; description = "desc"
+        tags = ["t1"]; materials = ["Premium Matte Paper"]; category = "c"; n = 1
+
+    calls = {"post": 0}
+    ok = MagicMock()
+    ok.json.return_value = {"listing_id": 777}
+    ok.raise_for_status.return_value = None
+
+    def _post(*a, **k):
+        calls["post"] += 1
+        if calls["post"] == 1:                       # first call: token expired -> 401
+            err = _rq.HTTPError("401")
+            err.response = MagicMock(status_code=401)
+            r = MagicMock()
+            r.raise_for_status.side_effect = err
+            return r
+        return ok                                    # retry after refresh: success
+
+    fake = MagicMock()
+    fake.post.side_effect = _post
+    monkeypatch.setattr(etsy_auth, "refresh_access_token", lambda: "fresh-token")
+    with patch.object(pub, "TEST_MODE", False), \
+         patch.object(pub, "ETSY_OAUTH_TOKEN", "tok"), patch.object(pub, "ETSY_SHOP_ID", "9"), \
+         patch.object(pub, "ETSY_API_KEY", "k"), patch.object(pub, "ETSY_TAXONOMY_ID", "1"), \
+         patch.object(pub, "ETSY_SHIPPING_PROFILE_ID", "2"), \
+         patch("quoteforge.db.database.existing_listing_id", return_value=""), \
+         patch("quoteforge.db.database.upsert_product", lambda *a, **k: None):
+        out = pub.create_draft_listing(B(), 36.99, runner=fake)
+    assert out["status"] == "draft_created" and out["listing_id"] == 777
+    assert calls["post"] == 2                          # refreshed once and retried
+
+
 def test_format_text_shows_prereqs_when_missing():
     r = pub.publish_launch_kit(live=True)   # live but no creds -> mock + prereqs
     text = pub.format_publish_text(r)

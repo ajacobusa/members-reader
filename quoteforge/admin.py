@@ -3084,6 +3084,39 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
     return 0
 
 
+def _cmd_image_override(args: list[str]) -> int:
+    """Owner escape hatch (#182-P1): manually pull the official image(s) for a SKU when
+    a sync attached a wrong image (e.g. wrong product/variant). The storefront then
+    falls back to the tier-variant photo until the next good sync.
+
+      image-override <gelato_sku> deactivate   # pull all official images for the SKU
+      image-override <gelato_sku>              # show current official images for the SKU
+    """
+    from quoteforge.db.database import get_product_images, deactivate_product_images
+    if not args:
+        print("usage: image-override <gelato_sku> [deactivate]")
+        return 2
+    sku = args[0].strip()
+    if len(args) >= 2 and args[1] == "deactivate":
+        n = deactivate_product_images(sku)
+        print(f"Deactivated {n} official image(s) for '{sku}'. "
+              "The storefront falls back to the tier-variant photo.")
+        _alert("Official image manually overridden",
+               f"<pre>image-override {sku} deactivate -> {n} image(s) pulled.\n"
+               "Storefront now uses the tier-variant fallback for this SKU.</pre>",
+               what="image-override")
+        return 0
+    imgs = get_product_images(sku, active_only=False)
+    if not imgs:
+        print(f"No official images on record for '{sku}'.")
+        return 0
+    print(f"Official images for '{sku}':")
+    for im in imgs:
+        flag = "active" if im.get("is_active") else "inactive"
+        print(f"  rank {im.get('image_rank')}: {im.get('image_url')}  [{flag}]")
+    return 0
+
+
 def _cmd_template_sync(args: list[str]) -> int:
     """Daily template-image sync: persist each product's official images into
     gelato_product_images, retire vanished ones, and ALERT on any failure.
@@ -3192,6 +3225,7 @@ COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "mockup-sync": _cmd_mockup_sync,
     "ecommerce-images": _cmd_ecommerce_images,
+    "image-override": _cmd_image_override,
     "template-sync": _cmd_template_sync,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,

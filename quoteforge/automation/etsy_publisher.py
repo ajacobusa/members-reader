@@ -28,9 +28,12 @@ logger = logging.getLogger(__name__)
 
 
 def _headers() -> dict:
-    """Build Etsy v3 auth headers (API key + OAuth bearer token)."""
+    """Build Etsy v3 auth headers (API key + OAuth bearer token). Uses the FRESHEST
+    access token (persisted, else the env seed) so a token refreshed mid-run is
+    picked up on the retry — Etsy access tokens expire ~1h after issuance."""
+    from quoteforge.automation.etsy_auth import current_access_token
     return {"x-api-key": ETSY_API_KEY,
-            "Authorization": f"Bearer {ETSY_OAUTH_TOKEN}"}
+            "Authorization": f"Bearer {current_access_token()}"}
 
 
 def prerequisites() -> list[str]:
@@ -72,8 +75,15 @@ def create_draft_listing(bundle, price: float, runner=requests) -> dict:
             "(optional) your own exact wording.",
         "type": "physical", "state": "draft",
     }
-    resp = runner.post(url, headers=_headers(), data=data, timeout=30)
-    resp.raise_for_status()
+    # On a 401 (token expired mid-run), refresh once and retry with the fresh token.
+    from quoteforge.automation.etsy_auth import with_refresh
+    def _post():
+        """POST the draft with the CURRENT token; raise on non-2xx so with_refresh
+        can catch a 401, refresh, and retry."""
+        r = runner.post(url, headers=_headers(), data=data, timeout=30)
+        r.raise_for_status()
+        return r
+    resp = with_refresh(_post)
     j = resp.json()
     _lid = j.get("listing_id")
     # Persist the SKU->listing map so the NEXT run dedupes (no duplicate listing).
@@ -173,7 +183,10 @@ def apply_variations(listing_id, live: bool = False, floor_pct: int = None,
         return {"status": "dry-run", "variations": n,
                 "axes": ["Size", "Format"]}
     url = f"{ETSY_API_BASE}/application/listings/{listing_id}/inventory"
+    from quoteforge.automation.etsy_auth import refresh_access_token
     resp = runner.put(url, headers=_headers(), json=payload, timeout=60)
+    if resp.status_code == 401 and refresh_access_token():
+        resp = runner.put(url, headers=_headers(), json=payload, timeout=60)
     ok = resp.status_code in (200, 201)
     return {"status": "applied" if ok else f"error {resp.status_code}",
             "variations": n}
@@ -185,9 +198,14 @@ def upload_image(listing_id, image_path: Path, rank: int, runner=requests) -> bo
         return False
     url = (f"{ETSY_API_BASE}/application/shops/{ETSY_SHOP_ID}"
            f"/listings/{listing_id}/images")
+    from quoteforge.automation.etsy_auth import refresh_access_token
     with open(image_path, "rb") as fh:
         resp = runner.post(url, headers=_headers(),
                            files={"image": fh}, data={"rank": rank}, timeout=60)
+        if resp.status_code == 401 and refresh_access_token():
+            fh.seek(0)
+            resp = runner.post(url, headers=_headers(),
+                               files={"image": fh}, data={"rank": rank}, timeout=60)
     return resp.status_code in (200, 201)
 
 
