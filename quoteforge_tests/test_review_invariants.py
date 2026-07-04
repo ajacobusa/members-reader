@@ -145,6 +145,36 @@ def test_healthcheck_ok_when_no_runs_yet(tmp_path, monkeypatch):
     assert hc.check_sync_freshness().status == "OK"
 
 
+def test_healthcheck_staleness_is_utc_correct(tmp_path, monkeypatch):
+    # REGRESSION (#182 verify): ran_at is SQLite datetime('now') == UTC. A ~40h-old
+    # UTC row must read as STALE and a ~1h-old UTC row must read as FRESH regardless
+    # of the host timezone (the old code compared UTC against naive-local -> off by
+    # the host's UTC offset). We write ran_at directly in UTC and pin both branches.
+    from datetime import datetime, timedelta, timezone
+    from quoteforge.db import database as db
+    from quoteforge.automation import healthcheck as hc
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+
+    def _stamp(job, hours_ago):
+        ts = (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).strftime(
+            "%Y-%m-%d %H:%M:%S")                        # SQLite's space-separated UTC form
+        with db._conn() as conn:
+            conn.execute("INSERT INTO sync_runs (job, ran_at, ok, detail) "
+                         "VALUES (?,?,1,'')", (job, ts))
+
+    _stamp("template-sync", 40)                          # older than the 36h window
+    c = hc.check_sync_freshness()
+    assert c.status == "WARN" and "template-sync" in c.detail
+
+    # a 1h-old run for every job -> fresh, OK (proves no false-alarm off-UTC)
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t2.db")
+    db.init_db()
+    for job in ("template-sync", "ecommerce-images", "mockup-sync"):
+        _stamp(job, 1)
+    assert hc.check_sync_freshness().status == "OK"
+
+
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():
     # The daily Gelato cost/discontinued/UID discovery agent is part of infra-check.
     from quoteforge.automation.infra_check import check_infrastructure

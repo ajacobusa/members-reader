@@ -148,7 +148,7 @@ def check_sync_freshness(max_age_hours: int = 36) -> Check:
     succeeded. A job that silently STOPPED (stale) or whose last run FAILED is the
     availability signal. Jobs that never ran (pre-first-run / not-yet-live) are skipped
     so a fresh install doesn't false-alarm."""
-    from datetime import datetime as _dt, timedelta as _td
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
     try:
         from quoteforge.db.database import last_sync_run
         stale, failed = [], []
@@ -158,11 +158,14 @@ def check_sync_freshness(max_age_hours: int = 36) -> Check:
                 continue                       # never ran -> not yet live, skip
             if r.get("ok") == 0:
                 failed.append(job)
+            # ran_at is SQLite datetime('now') == UTC. Compare in UTC (not naive
+            # local) or the age is off by the host's UTC offset -> false alarms.
             try:
-                ran = _dt.fromisoformat((r.get("ran_at") or "").replace(" ", "T"))
+                ran = _dt.fromisoformat(
+                    (r.get("ran_at") or "").replace(" ", "T")).replace(tzinfo=_tz.utc)
             except ValueError:
                 continue
-            if _dt.now() - ran > _td(hours=max_age_hours):
+            if _dt.now(_tz.utc) - ran > _td(hours=max_age_hours):
                 stale.append(job)
         if failed:
             return Check("Sync Uptime", "WARN", f"last run FAILED: {failed}")

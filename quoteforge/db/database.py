@@ -1103,10 +1103,16 @@ def record_sync_run(job: str, ok: bool = True, detail: str = "") -> None:
     job = (job or "").strip()
     if not job:
         return
-    with _conn() as conn:
-        conn.execute(
-            "INSERT INTO sync_runs (job, ok, detail) VALUES (?,?,?)",
-            (job, 1 if ok else 0, (detail or "")[:500]))
+    # Best-effort by construction: a monitoring write must NEVER take down the
+    # monitored job. On a locked/read-only/corrupt DB _conn() can raise, so swallow
+    # it here (the recency check then sees a stale row and alerts, as intended).
+    try:
+        with _conn() as conn:
+            conn.execute(
+                "INSERT INTO sync_runs (job, ok, detail) VALUES (?,?,?)",
+                (job, 1 if ok else 0, (detail or "")[:500]))
+    except Exception as exc:  # noqa: BLE001 - uptime stamp must not break the job
+        logger.debug("record_sync_run skipped for %s: %s", job, exc)
 
 
 def last_sync_run(job: str) -> dict:
