@@ -34,6 +34,40 @@ def test_new_infra_checks_are_wired():
     assert "sleeve_order_integrity_grounded" in names   # a paid sleeve can't be dropped from the order
     assert "apparel_preview_matches_print_guard" in names  # no poster auto-submitted in place of the design
     assert "daily_mockup_update_scheduled" in names        # daily real-product-photo refresh can't drop out
+    assert "listing_image_pipeline_wired" in names          # the Etsy gallery-image pipeline can't silently drop an image/rank/cap
+
+
+def test_listing_image_pipeline_invariant_passes_and_is_grounded():
+    # The listing-image pipeline invariant (#35) is live and currently green.
+    from quoteforge.automation.infra_check import check_infrastructure
+    chk = next(c for c in check_infrastructure()["checks"]
+               if c["name"] == "listing_image_pipeline_wired")
+    assert chk["ok"], chk["detail"]
+
+
+def test_listing_image_check_is_grounded_not_a_substring_match(tmp_path):
+    # REGRESSION: prove the invariant is GROUNDED - if build_listing_pack stopped
+    # generating an image (here: size_chart) or the publisher lost the 10-cap, the
+    # structural helpers must go False (not a comment/substring false-pass).
+    from quoteforge.automation import infra_check as ic
+    from quoteforge.images import listing_pack as lp
+    from quoteforge.automation import etsy_publisher as ep
+    # the real pipeline is fully wired today
+    assert all(ic._references(lp.build_listing_pack, g)
+               for g in ("hero_room", "closeup", "size_chart",
+                         "how_it_works", "whats_included"))
+    assert ic._has_constant(ep.publish_launch_kit, 10)
+
+    # decoys that dropped size_chart / the cap must FAIL the same grounded helpers
+    def _build_regressed(poster_path, output_dir=None):
+        _hero(); _close(); _how(); _incl()          # size_chart intentionally dropped
+
+    def _publish_regressed(live=False, kit_dir=None):
+        for rank, img in enumerate(_imgs, 1):        # imgs[:10] cap removed
+            _upload("x", img, rank)
+
+    assert not ic._references(_build_regressed, "size_chart")
+    assert not ic._has_constant(_publish_regressed, 10)
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():
