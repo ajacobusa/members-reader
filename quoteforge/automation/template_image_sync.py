@@ -21,7 +21,7 @@ is a live write with an unobservable payload and needs write creds + a real temp
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,11 @@ def sync_template_images() -> dict:
         return {"enabled": False, "checked": 0, "upserted": 0, "retired": 0,
                 "failed": [], "reason": "TEST_MODE / no key / no store id"}
 
-    stamp = datetime.now().isoformat(timespec="seconds")
+    # The cutoff for the stale-sweep MUST match how last_seen_at is written -
+    # SQLite datetime('now') is UTC, space-separated, second-resolution. A naive-local
+    # or 'T'-separated stamp string-compares wrong once local-date == UTC-date (the
+    # separator byte then decides), which would retire the rows we just wrote. Match it.
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     checked = upserted = 0
     failed: list[dict] = []
     try:

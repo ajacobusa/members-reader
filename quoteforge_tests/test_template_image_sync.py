@@ -57,6 +57,12 @@ def test_sync_is_safe_noop_in_test_mode(tmp_path, monkeypatch):
 
 
 def test_sync_persists_mapped_products(tmp_path, monkeypatch):
+    # REGRESSION: the stale-sweep cutoff must match how last_seen_at is written
+    # (SQLite datetime('now') == UTC, space-separated). A naive-local / 'T'-separated
+    # stamp string-compares wrong once local-date == UTC-date and RETIRES the row the
+    # same run just wrote -> the storefront silently loses its official photos. This
+    # asserts the freshly-synced row SURVIVES its own run's sweep (retired == 0),
+    # deterministically at any host timezone / time of day.
     _isolate_db(monkeypatch, tmp_path)
     _go_live(monkeypatch)
     # one product carrying our SKU as externalId, with a resolvable image
@@ -66,6 +72,7 @@ def test_sync_persists_mapped_products(tmp_path, monkeypatch):
                         lambda p: [{"url": "https://s3/mug.jpg", "uid": "u", "type": "mockup"}])
     r = ts.sync_template_images()
     assert r["enabled"] is True and r["checked"] == 1 and r["upserted"] == 1
+    assert r["retired"] == 0                          # fresh row must NOT be swept
     rows = db.get_product_images("GEL-MUG")
     assert len(rows) == 1 and rows[0]["image_url"] == "https://s3/mug.jpg"
 

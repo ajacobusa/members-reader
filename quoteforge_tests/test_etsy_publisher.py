@@ -88,6 +88,43 @@ def test_create_draft_refreshes_on_401(monkeypatch):
     assert calls["post"] == 2                          # refreshed once and retried
 
 
+def _live_env():
+    """A single patch putting the publisher into a live-ready state (multiple attrs)."""
+    return patch.multiple(pub, TEST_MODE=False, ETSY_OAUTH_TOKEN="tok", ETSY_SHOP_ID="9",
+                          ETSY_API_KEY="k", ETSY_TAXONOMY_ID="1", ETSY_SHIPPING_PROFILE_ID="2")
+
+
+def test_upload_image_reports_failure_on_persistent_401(tmp_path, monkeypatch):
+    # REGRESSION (#182-P1 audit follow-up): if a 401 persists AFTER a refresh, the
+    # upload must report FAILURE (False), never silently claim success. Also proves the
+    # retry re-uses the same file handle (fh.seek(0)) rather than sending an empty body.
+    from quoteforge.automation import etsy_auth
+    img = tmp_path / "g.png"; img.write_bytes(b"\x89PNG\r\n")
+    posts = {"n": 0}
+
+    def _post(*a, **k):
+        posts["n"] += 1
+        assert k["files"]["image"].read() == b"\x89PNG\r\n"   # body present on BOTH tries
+        return MagicMock(status_code=401)                      # still unauthorized
+
+    fake = MagicMock(); fake.post.side_effect = _post
+    monkeypatch.setattr(etsy_auth, "refresh_access_token", lambda: "fresh")
+    with _live_env():
+        ok = pub.upload_image(999, img, 1, runner=fake)
+    assert ok is False and posts["n"] == 2                     # retried once, then failed honestly
+
+
+def test_apply_variations_reports_error_on_persistent_401(monkeypatch):
+    # REGRESSION: apply_variations must surface an error status on a persistent 401,
+    # never a false "applied".
+    from quoteforge.automation import etsy_auth
+    fake = MagicMock(); fake.put.return_value = MagicMock(status_code=401)
+    monkeypatch.setattr(etsy_auth, "refresh_access_token", lambda: "fresh")
+    with _live_env():
+        r = pub.apply_variations(999, live=True, runner=fake)
+    assert r["status"].startswith("error") and fake.put.call_count == 2
+
+
 def test_format_text_shows_prereqs_when_missing():
     r = pub.publish_launch_kit(live=True)   # live but no creds -> mock + prereqs
     text = pub.format_publish_text(r)
