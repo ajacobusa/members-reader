@@ -517,17 +517,43 @@ def run_full_pipeline(
             update_order(order_id, status="hold_validation")
             _notify("gelato_order", f"On hold (validation): {_issues}")
             return get_order(order_id) or {}
+        # product_type MUST reach route_order or its apparel/calendar safety holds
+        # (which key off order["product_type"]) silently no-op on this auto-pipeline
+        # path - route_order is a thin wrapper that does NOT enrich it from the DB.
+        # Source it from the persisted order (authoritative), else the in-memory data.
+        _dbo = get_order(order_id) or {}
+        _ptype = (_dbo.get("product_type")
+                  or (order_data.get("product_type") if isinstance(order_data, dict) else "")
+                  or "")
+        # Faithful apparel print files (#167): if the storefront exported per-side design
+        # files (transparent art at print dims), host them and route with the front as
+        # the artwork + back/sleeves as extra_files + faithful_artwork. DORMANT until
+        # print_files are supplied (no-op for every order today and all non-apparel), and
+        # even then the router's calibration gate still holds apparel for manual until
+        # APPAREL_PRINT_CALIBRATED - so this can't auto-print unverified.
+        _extra_files = None
+        _faithful = False
+        _print_files = order_data.get("print_files") if isinstance(order_data, dict) else None
+        if _print_files and str(_ptype).lower() == "apparel":
+            from quoteforge.images.apparel_print_files import build_apparel_print_files
+            _apf = build_apparel_print_files(_print_files)
+            if _apf["front_url"]:
+                artwork_url = _apf["front_url"]      # faithful front replaces the poster
+            _extra_files = _apf["extra_files"] or None
+            _faithful = bool(_apf["hosted"])
+            _log(order_id, "apparel_print_files",
+                 "success" if _apf["hosted"] else "skipped",
+                 f"hosted={_apf['hosted']} all_public={_apf['all_public']}")
         try:
             from quoteforge.fulfillment.router import route_order
             from quoteforge.automation.retry import retry_call
-            try:
-                vendor = (get_order(order_id) or {}).get("vendor", "gelato")
-            except Exception:  # noqa: BLE001
-                vendor = "gelato"
+            vendor = _dbo.get("vendor", "gelato") or "gelato"
             resp = retry_call(
                 route_order,
                 {"order_id": order_id, "vendor": vendor,
-                 "gelato_product_uid": gelato_product_uid},
+                 "gelato_product_uid": gelato_product_uid,
+                 "product_type": _ptype,
+                 "extra_files": _extra_files, "faithful_artwork": _faithful},
                 recipient=recipient_address, artwork_url=artwork_url,
             )
             status = resp.get("status")
