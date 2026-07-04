@@ -758,6 +758,34 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("listing_image_pipeline_wired", False, str(exc)))
 
+    # 36) The official-product-image AUTO-PULL is wired end to end so it needs no manual
+    #     handoff: a daily `ecommerce-images` job exists + maps to a real admin handler,
+    #     and `status()` is a working self-diagnosing probe (returns the enabled/mapped
+    #     shape). It is a SAFE no-op until live (TEST_MODE / no store id), and auto-
+    #     activates the moment the owner creates the first store product - the real
+    #     product photo then appears with zero further wiring. (scheduled + structural.)
+    try:
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS
+        from quoteforge.admin import COMMANDS as _CMDS2
+        from quoteforge.automation import ecommerce_images as _ei6
+        scheduled = any(j.admin_args.startswith("ecommerce-images") for j in SCHEDULED_JOBS)
+        wired = "ecommerce-images" in _CMDS2
+        st = _ei6.status()   # never raises; no network in TEST_MODE (gate returns first)
+        diagnosable = isinstance(st, dict) and "enabled" in st and "mapped" in st
+        # Money-bug guard: the SKU join must SKIP an ambiguous product (return None) and
+        # only map a confident key - so it can never put product A's photo on product B.
+        safe_join = (_ei6._sku_for({"variants": [{"productUid": "unknown-uid"}]}, {}) is None
+                     and _ei6._sku_for({"externalId": "GEL-X"}, {}) == "GEL-X")
+        ok = bool(scheduled and wired and diagnosable and safe_join)
+        checks.append(_c("ecommerce_image_sync_wired", ok,
+                         "daily official-image auto-pull scheduled + wired + self-diagnosing "
+                         "+ SKU join skips ambiguous products"
+                         if ok else "ecommerce image auto-pull not wired/safe: "
+                         f"scheduled={scheduled} wired={wired} diagnosable={diagnosable} "
+                         f"safe_join={safe_join}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("ecommerce_image_sync_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
