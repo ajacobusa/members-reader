@@ -50,9 +50,14 @@ def create_replacement_order(order: dict) -> dict:
         return {"status": "needs_input", "missing": missing,
                 "detail": "cannot auto-reprint - " + ", ".join(missing) + " missing"}
     from quoteforge.fulfillment.router import route_order
+    # product_type MUST reach route_order or its calendar/apparel/calibration holds
+    # (keyed on order["product_type"]) silently no-op on this reprint path - a calendar
+    # reprint would then auto-submit COVER-ONLY. route_order never enriches it from the
+    # DB, so pass it from the original order we already hold.
     return route_order(
         {"order_id": str(order.get("order_id")) + "-R", "vendor": "gelato",
-         "gelato_product_uid": product_uid},
+         "gelato_product_uid": product_uid,
+         "product_type": order.get("product_type") or ""},
         recipient=recipient, artwork_url=artwork)
 
 

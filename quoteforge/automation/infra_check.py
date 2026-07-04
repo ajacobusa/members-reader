@@ -1053,23 +1053,37 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("utc_local_datetime_hygiene", False, str(exc)))
 
-    # 44) BOTH route_order call sites must thread product_type (#167 audit): route_order
-    #     reads product_type ONLY from its arg dict (never the DB), so a caller that
-    #     omits it silently no-ops the apparel/calendar/calibration holds. The auto path
-    #     AND the customer-proof-approval path must both pass it, or a front-only apparel
-    #     order auto-submits the generic poster on real garments. Grounded per site.
+    # 44) ALL FOUR route_order callers must thread product_type (#167 audit): route_order
+    #     reads product_type ONLY from its arg dict (never the DB), so ANY caller that
+    #     omits it silently no-ops the apparel/calendar/calibration holds - e.g. a calendar
+    #     reprint auto-submits COVER-ONLY, or front-only apparel auto-submits a poster. The
+    #     two orchestrator paths AND the claim-reprint AND the retry path must all pass it.
+    #     Grounded per site + a behavioral proof that the calendar hold fires with the key.
     try:
         from quoteforge.automation import pipeline_orchestrator as _po13
-        resume_ok = (_references(_po13.resume_after_proof_approval, "route_order")
-                     and _uses_string(_po13.resume_after_proof_approval, "product_type"))
-        auto_ok = (_references(_po13.run_full_pipeline, "route_order")
-                   and _uses_string(_po13.run_full_pipeline, "product_type"))
-        ok = bool(resume_ok and auto_ok)
+        from quoteforge.fulfillment import claim_workflow as _cw13
+        from quoteforge.automation import fulfillment_retry as _fr13
+        from quoteforge.fulfillment.router import _route_order_impl as _impl13
+        callers = {
+            "auto": _po13.run_full_pipeline,
+            "resume": _po13.resume_after_proof_approval,
+            "reprint": _cw13.create_replacement_order,
+            "retry": _fr13.retry_failed_fulfillments,
+        }
+        missing = [n for n, fn in callers.items()
+                   if not (_references(fn, "route_order") and _uses_string(fn, "product_type"))]
+        # behavioral: a calendar dict carrying product_type MUST hold to manual (never submit)
+        held = _impl13({"order_id": "", "product_type": "calendar",
+                        "gelato_product_uid": "UID-REAL"},
+                       recipient={"a": 1}, artwork_url="https://x/y.png")
+        calendar_holds = held.get("status") == "manual"
+        ok = bool(not missing and calendar_holds)
         checks.append(_c("route_paths_thread_product_type", ok,
-                         "both route_order call sites pass product_type (apparel/"
-                         "calibration holds fire on the auto AND proof paths)"
-                         if ok else "a route_order call site dropped product_type - "
-                         f"apparel can bypass the gate: auto={auto_ok} resume={resume_ok}"))
+                         "all 4 route_order callers thread product_type; the calendar/"
+                         "apparel holds fire on every path (auto/proof/reprint/retry)"
+                         if ok else "a route_order caller dropped product_type - a "
+                         f"calendar reprint can auto-submit cover-only: missing={missing} "
+                         f"calendar_holds={calendar_holds}"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("route_paths_thread_product_type", False, str(exc)))
 

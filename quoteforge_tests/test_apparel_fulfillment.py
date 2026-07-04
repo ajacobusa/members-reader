@@ -310,6 +310,44 @@ def test_resume_proof_path_threads_product_type_into_route_order(monkeypatch):
     assert captured.get("product_type") == "apparel"   # gate can now see it on the proof path
 
 
+def test_tank_is_sleeveless_in_catalog():
+    # REGRESSION (#tank): a Tank Top is sleeveless - the catalog must say so, so the
+    # editor can hide sleeve print areas + upcharge for it (single source of truth).
+    from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, garment_has_sleeves
+    assert garment_has_sleeves("tshirt") and not garment_has_sleeves("tank")
+    tanks = [g for g in APPAREL_CATALOG if g.garment_type == "tank"]
+    assert tanks and all(g.has_sleeves is False for g in tanks)
+    assert all(g.has_sleeves for g in APPAREL_CATALOG if g.garment_type == "tshirt")
+
+
+def test_claim_reprint_threads_product_type(monkeypatch):
+    # REGRESSION (end-to-end audit, HIGH): create_replacement_order (claim reprint)
+    # dropped product_type, so the calendar hold in route_order no-op'd and a calendar
+    # reprint could auto-submit COVER-ONLY. Pin that product_type reaches route_order.
+    from quoteforge.fulfillment import claim_workflow as cw
+    seen = {}
+
+    def _spy(order, recipient=None, artwork_url=""):
+        seen.update(order)
+        return {"status": "manual", "vendor": "gelato", "id": "", "detail": "spy"}
+    monkeypatch.setattr("quoteforge.fulfillment.router.route_order", _spy)
+    cw.create_replacement_order({
+        "order_id": "CAL-1", "product_type": "calendar",
+        "gelato_product_uid": "UID-REAL", "artwork_url": "https://x/cover.png",
+        "ship_to": '{"name":"A","address1":"1 St","city":"C","state":"CA",'
+                   '"postal_code":"12345","country":"US"}'})
+    assert seen.get("product_type") == "calendar"   # the calendar hold can now see it
+
+
+def test_retry_threads_product_type_into_route_order():
+    # REGRESSION: fulfillment_retry.retry_failed_fulfillments must also thread
+    # product_type (grounded structural check - the 4th route_order caller).
+    from quoteforge.automation import infra_check as ic
+    from quoteforge.automation import fulfillment_retry as fr
+    assert ic._references(fr.retry_failed_fulfillments, "route_order")
+    assert ic._uses_string(fr.retry_failed_fulfillments, "product_type")
+
+
 def test_pipeline_threads_product_type_into_route_order(tmp_path, monkeypatch):
     # REGRESSION (#167): route_order is a thin wrapper that does NOT enrich product_type
     # from the DB, so its apparel/calendar safety HOLDS silently no-op'd on the auto-

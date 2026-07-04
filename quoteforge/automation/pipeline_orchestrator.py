@@ -656,6 +656,12 @@ def resume_after_proof_approval(order_id: str,
         # silently no-ops the apparel/calendar/calibration holds and a customer-
         # approved front-only apparel order would auto-submit the generic poster.
         # `order` is the persisted record (fetched above), so this is authoritative.
+        # NOTE (#167 Phase 2b): extra_files / faithful_artwork are intentionally NOT
+        # threaded here yet - the per-side print files live only in the in-memory
+        # order_data on the auto path and are not persisted, so this proofed path can't
+        # reconstruct them. This is FAIL-SAFE: calibrated faithful apparel simply holds
+        # to manual on the proof path (never a wrong/duplicate submit). Wiring it needs
+        # print-file persistence at proof time - tracked with the Phase 2b render.
         resp = retry_call(
             route_order,
             {"order_id": order_id, "vendor": order.get("vendor", "gelato"),

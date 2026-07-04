@@ -90,7 +90,10 @@ def retry_failed_fulfillments(limit: int = 500, max_retries: int = MAX_RETRIES,
             resp = retry_call(
                 route_order,
                 {"order_id": o["order_id"], "vendor": o.get("vendor") or "gelato",
-                 "gelato_product_uid": product_uid},
+                 "gelato_product_uid": product_uid,
+                 # product_type MUST reach route_order or the calendar/apparel holds
+                 # no-op on this retry path too (route_order reads it only from the dict).
+                 "product_type": o.get("product_type") or ""},
                 recipient=recipient, artwork_url=artwork_url)
         except Exception as exc:  # noqa: BLE001 - a raise here just means try again next tick
             logger.error("retry-fulfillment %s raised: %s", o["order_id"], exc)
