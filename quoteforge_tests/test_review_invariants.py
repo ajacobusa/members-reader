@@ -41,6 +41,7 @@ def test_new_infra_checks_are_wired():
     assert "sync_jobs_alert_on_failure" in names             # a silently-failing image sync alerts the owner
     assert "sync_heartbeat_wired" in names                   # uptime: jobs stamp sync_runs; a stopped job is detectable
     assert "listing_autolink_wired" in names                 # create persists the SKU->listing link; orphans are visible
+    assert "audit_log_wired" in names                        # a privileged order-lock override leaves an accountable record
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -207,6 +208,52 @@ def test_create_draft_listing_persists_the_link_write_side():
         resp = runner.post("u")                               # POSTs but never persists
         return {"status": "created", "listing_id": resp}
     assert not ic._references(_create_regressed, "upsert_product")
+
+
+def test_lock_override_writes_an_audit_record(tmp_path, monkeypatch):
+    # REGRESSION (#182-P2): update_order's docstring promises an "audited admin
+    # override". Prove it: overriding a locked field on a customer-approved order with
+    # allow_locked=True writes a security_events row; a NON-override edit does not.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    oid = db.create_order({"order_id": "O-1", "recipient_name": "A", "occasion": "B"})
+    db.update_order(oid, proof_approved=1)                    # lock it
+    # a normal lifecycle edit (status) must NOT create an audit event
+    db.update_order(oid, status="printing")
+    assert db.recent_security_events(event="order_lock_override") == []
+    # the privileged override MUST
+    db.update_order(oid, occasion="CHANGED", allow_locked=True)
+    evs = db.recent_security_events(event="order_lock_override")
+    assert len(evs) == 1 and oid in evs[0]["detail"] and evs[0]["actor"] == "admin"
+
+
+def test_locked_order_still_raises_without_override(tmp_path, monkeypatch):
+    # REGRESSION (#182-P2): the audit refactor must NOT weaken the lock - a locked-field
+    # edit WITHOUT allow_locked still raises OrderLockedError (and writes no audit row).
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    oid = db.create_order({"order_id": "O-2", "recipient_name": "A", "occasion": "B"})
+    db.update_order(oid, proof_approved=1)
+    import pytest
+    with pytest.raises(db.OrderLockedError):
+        db.update_order(oid, occasion="X")                   # no override -> blocked
+    assert db.recent_security_events(event="order_lock_override") == []
+
+
+def test_record_security_event_is_best_effort(tmp_path, monkeypatch):
+    # An audit write must never crash the action it records (bad/locked DB) - it logs
+    # and returns. Empty event is a no-op.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    db.record_security_event("")                             # no-op, no row
+    assert db.recent_security_events() == []
+    def _boom(*a, **k):
+        raise RuntimeError("db down")
+    monkeypatch.setattr(db, "_conn", _boom)
+    db.record_security_event("x", detail="d")               # must not raise
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():

@@ -374,6 +374,20 @@ def init_db() -> None:
             detail    TEXT DEFAULT ''
         );
         """)
+        # Audit trail (#182-P2): an append-only record of SENSITIVE / privileged
+        # actions - an admin overriding a customer-approved order lock, a manual
+        # official-image override, etc. The record is what makes those actions
+        # accountable after the fact (the update_order docstring already promises an
+        # "audited admin override"; this is where that promise is kept).
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS security_events (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            at        TEXT DEFAULT (datetime('now')),
+            event     TEXT NOT NULL,
+            actor     TEXT DEFAULT 'system',
+            detail    TEXT DEFAULT ''
+        );
+        """)
         _migrate(conn)
         # Indexes for the frequent lookups (additive; etsy_order_id is already
         # covered by its UNIQUE constraint). Keeps status filters + child-table
@@ -723,21 +737,26 @@ def update_order(order_id: str, *, allow_locked: bool = False, **fields) -> None
     same value is a no-op and allowed. An audited admin edit can pass
     ``allow_locked=True`` to override the lock.
     """
-    if not allow_locked:
-        touched = LOCKED_FIELDS & set(fields)
-        if touched:
-            current = get_order(order_id)
-            if current and current.get("proof_approved"):
-                # None and "" are equivalent "empty"; compare as strings so a
-                # re-write of the same value is a no-op rather than a false lock hit.
-                _norm = lambda v: "" if v is None else str(v)
-                changed = [k for k in sorted(touched)
-                           if _norm(fields[k]) != _norm(current.get(k))]
-                if changed:
+    touched = LOCKED_FIELDS & set(fields)
+    if touched:
+        current = get_order(order_id)
+        if current and current.get("proof_approved"):
+            # None and "" are equivalent "empty"; compare as strings so a
+            # re-write of the same value is a no-op rather than a false lock hit.
+            _norm = lambda v: "" if v is None else str(v)
+            changed = [k for k in sorted(touched)
+                       if _norm(fields[k]) != _norm(current.get(k))]
+            if changed:
+                if not allow_locked:
                     raise OrderLockedError(
                         f"order {order_id} is locked after customer approval; "
                         f"cannot edit {', '.join(changed)} "
                         f"(pass allow_locked=True for an audited admin override)")
+                # allow_locked=True is a PRIVILEGED override of a customer-approved
+                # order -> audit it (#182-P2), keeping the docstring's promise.
+                record_security_event(
+                    "order_lock_override", actor="admin",
+                    detail=f"order={order_id} fields={changed}")
     fields["updated_at"] = datetime.now().isoformat()
     set_clause = ", ".join(f"{k}=?" for k in fields)
     values = list(fields.values()) + [order_id]
@@ -1154,6 +1173,38 @@ def last_sync_run(job: str) -> dict:
             "SELECT ran_at, ok, detail FROM sync_runs WHERE job=? "
             "ORDER BY id DESC LIMIT 1", ((job or "").strip(),)).fetchone()
         return dict(row) if row else {}
+
+
+# ── Audit trail (#182-P2) ───────────────────────────────────────
+
+def record_security_event(event: str, detail: str = "", actor: str = "system") -> None:
+    """Append one SENSITIVE/privileged action to the audit trail (an admin lock
+    override, a manual image override, ...). Best-effort by construction: an audit
+    write must never crash the action it records, but a failure IS logged at WARNING
+    (not debug) because a missing security record matters more than a missing heartbeat."""
+    event = (event or "").strip()
+    if not event:
+        return
+    try:
+        with _conn() as conn:
+            conn.execute(
+                "INSERT INTO security_events (event, actor, detail) VALUES (?,?,?)",
+                (event, (actor or "system").strip() or "system", (detail or "")[:1000]))
+    except Exception as exc:  # noqa: BLE001 - audit write must not break the action
+        logger.warning("SECURITY audit write failed for %s: %s", event, exc)
+
+
+def recent_security_events(limit: int = 50, event: str = "") -> list[dict]:
+    """The most recent audit rows (optionally filtered to one `event`), newest first."""
+    q = "SELECT at, event, actor, detail FROM security_events"
+    args: list = []
+    if event:
+        q += " WHERE event=?"
+        args.append(event.strip())
+    q += " ORDER BY id DESC LIMIT ?"
+    args.append(int(limit))
+    with _conn() as conn:
+        return [dict(r) for r in conn.execute(q, args)]
 
 
 def accept_design(email: str, design_id: str = "default") -> None:

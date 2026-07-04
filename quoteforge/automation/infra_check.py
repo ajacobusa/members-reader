@@ -989,6 +989,49 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("listing_autolink_wired", False, str(exc)))
 
+    # 42) Audit trail wired (#182-P2): a PRIVILEGED override of a customer-approved
+    #     order lock must leave an accountable record (the update_order docstring
+    #     promises an "audited admin override"). Grounded: update_order references
+    #     record_security_event, AND behaviorally an allow_locked override of an
+    #     approved order writes a security_events row (isolated temp DB).
+    try:
+        from quoteforge.db import database as _db12
+        refs = _references(_db12.update_order, "record_security_event")
+        has_api = all(hasattr(_db12, n) for n in
+                      ("record_security_event", "recent_security_events"))
+        behaves = False
+        if has_api:
+            import tempfile
+            from pathlib import Path as _P12
+            _o12 = _db12.DB_PATH
+            _t12 = _P12(tempfile.gettempdir()) / "qf_infra_audit.db"
+            try:
+                if _t12.exists():
+                    _t12.unlink()
+                _db12.DB_PATH = _t12
+                _db12.init_db()
+                _oid = _db12.create_order({"order_id": "AUDIT-1",
+                                           "recipient_name": "A", "occasion": "B"})
+                _db12.update_order(_oid, proof_approved=1)          # lock the order
+                _db12.update_order(_oid, occasion="CHANGED",
+                                   allow_locked=True)              # audited override
+                evs = _db12.recent_security_events(event="order_lock_override")
+                behaves = any(_oid in (e.get("detail") or "") for e in evs)
+            finally:
+                _db12.DB_PATH = _o12
+                try:
+                    _t12.unlink()
+                except OSError as _e12:
+                    logger.debug("infra audit temp cleanup skipped: %s", _e12)
+        ok = bool(refs and has_api and behaves)
+        checks.append(_c("audit_log_wired", ok,
+                         "privileged order-lock overrides are recorded to the audit "
+                         "trail (accountable)"
+                         if ok else "audit trail NOT wired: a privileged override "
+                         f"leaves no record: refs={refs} has_api={has_api} behaves={behaves}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("audit_log_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

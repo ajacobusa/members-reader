@@ -3092,13 +3092,16 @@ def _cmd_image_override(args: list[str]) -> int:
       image-override <gelato_sku> deactivate   # pull all official images for the SKU
       image-override <gelato_sku>              # show current official images for the SKU
     """
-    from quoteforge.db.database import get_product_images, deactivate_product_images
+    from quoteforge.db.database import (get_product_images, deactivate_product_images,
+                                         record_security_event)
     if not args:
         print("usage: image-override <gelato_sku> [deactivate]")
         return 2
     sku = args[0].strip()
     if len(args) >= 2 and args[1] == "deactivate":
         n = deactivate_product_images(sku)
+        record_security_event("image_override", actor="admin",
+                              detail=f"sku={sku} deactivated={n}")   # audit (#182-P2)
         print(f"Deactivated {n} official image(s) for '{sku}'. "
               "The storefront falls back to the tier-variant photo.")
         _alert("Official image manually overridden",
