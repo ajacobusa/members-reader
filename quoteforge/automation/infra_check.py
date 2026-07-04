@@ -59,6 +59,7 @@ from __future__ import annotations
 import ast
 import inspect
 import logging
+import os
 import textwrap
 from pathlib import Path
 
@@ -523,7 +524,7 @@ def check_infrastructure() -> dict:
         import tempfile
         from quoteforge.db import database as db
         _orig = db.DB_PATH
-        tmp = Path(tempfile.gettempdir()) / "qf_infra_uidcheck.db"
+        tmp = Path(tempfile.gettempdir()) / f"qf_infra_uidcheck_{os.getpid()}.db"
         try:
             if tmp.exists():
                 tmp.unlink()
@@ -809,7 +810,7 @@ def check_infrastructure() -> dict:
         from pathlib import Path as _P
         from quoteforge.db import database as _db
         _orig = _db.DB_PATH
-        _tmp = _P(tempfile.gettempdir()) / "qf_infra_tplimg.db"
+        _tmp = _P(tempfile.gettempdir()) / f"qf_infra_tplimg_{os.getpid()}.db"
         try:
             if _tmp.exists():
                 _tmp.unlink()
@@ -850,7 +851,7 @@ def check_infrastructure() -> dict:
             import tempfile
             from pathlib import Path as _P8
             _o8 = _db8.DB_PATH
-            _t8 = _P8(tempfile.gettempdir()) / "qf_infra_listdedupe.db"
+            _t8 = _P8(tempfile.gettempdir()) / f"qf_infra_listdedupe_{os.getpid()}.db"
             try:
                 if _t8.exists():
                     _t8.unlink()
@@ -916,7 +917,7 @@ def check_infrastructure() -> dict:
             import tempfile
             from pathlib import Path as _P10
             _o10 = _db10.DB_PATH
-            _t10 = _P10(tempfile.gettempdir()) / "qf_infra_syncruns.db"
+            _t10 = _P10(tempfile.gettempdir()) / f"qf_infra_syncruns_{os.getpid()}.db"
             try:
                 if _t10.exists():
                     _t10.unlink()
@@ -957,7 +958,7 @@ def check_infrastructure() -> dict:
             import tempfile
             from pathlib import Path as _P11
             _o11 = _db11.DB_PATH
-            _t11 = _P11(tempfile.gettempdir()) / "qf_infra_orphan.db"
+            _t11 = _P11(tempfile.gettempdir()) / f"qf_infra_orphan_{os.getpid()}.db"
             try:
                 if _t11.exists():
                     _t11.unlink()
@@ -1004,7 +1005,7 @@ def check_infrastructure() -> dict:
             import tempfile
             from pathlib import Path as _P12
             _o12 = _db12.DB_PATH
-            _t12 = _P12(tempfile.gettempdir()) / "qf_infra_audit.db"
+            _t12 = _P12(tempfile.gettempdir()) / f"qf_infra_audit_{os.getpid()}.db"
             try:
                 if _t12.exists():
                     _t12.unlink()
@@ -1106,7 +1107,7 @@ def check_infrastructure() -> dict:
                       ("product_photo_overrides", "apparel_photo_override_keys"))
         behaves = False
         _prev = _os45.environ.get("PRODUCT_IMAGE_OVERRIDES_FILE")
-        _t45 = _P45(_tf45.gettempdir()) / "qf_infra_photo_ovr.csv"
+        _t45 = _P45(_tf45.gettempdir()) / f"qf_infra_photo_ovr_{os.getpid()}.csv"
         try:
             _t45.write_text("sku,url\nQF-INFRA-SKU,https://example.test/real.jpg\n",
                             encoding="utf-8")
@@ -1130,6 +1131,72 @@ def check_infrastructure() -> dict:
                          f"show real product without go-live: refs={refs} api={has_api} behaves={behaves}"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("product_photo_override_wired", False, str(exc)))
+
+    # 46) Apparel editor correctness (end-to-end review): a SLEEVELESS garment (tank)
+    #     must never offer sleeve print areas/upcharge - that's an unfulfillable order -
+    #     and the BACK proof must not reuse the FRONT photo (misleading). Grounded: the
+    #     catalog marks the tank sleeveless AND the page generator gates sleeves on
+    #     _garmentSleeves() AND no longer falls the back tile back to the front photo.
+    try:
+        import inspect as _insp46
+        from quoteforge.etsy.apparel_catalog import garment_has_sleeves as _ghs
+        from quoteforge.etsy import listing_preview as _lp46
+        _src46 = _insp46.getsource(_lp46)
+        tank_sleeveless = (_ghs("tank") is False and _ghs("tshirt") is True)
+        sleeve_gated = ("MULTI_AREA && _garmentSleeves()" in _src46
+                        and "APPHASSLEEVES" in _src46
+                        and "_sl && _sides['sleeve-left']" in _src46)  # upcharge gated too
+        back_not_front = 'if _bk else _front}' not in _src46          # #M3: no misleading fallback
+        ok = bool(tank_sleeveless and sleeve_gated and back_not_front)
+        checks.append(_c("sleeveless_garment_gated", ok,
+                         "sleeveless garments hide sleeve areas/upcharge + back proof "
+                         "doesn't reuse the front photo"
+                         if ok else "apparel editor correctness regressed: "
+                         f"tank_sleeveless={tank_sleeveless} sleeve_gated={sleeve_gated} "
+                         f"back_not_front={back_not_front}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("sleeveless_garment_gated", False, str(exc)))
+
+    # 47) Event-table retention wired (hygiene): the append-only heartbeat + audit tables
+    #     (sync_runs, security_events) get a retention prune in db_maintenance, else they
+    #     grow unbounded. Grounded: db_maintenance references prune_event_tables AND the
+    #     prune behaves (deletes an old row, keeps a fresh one) against an isolated temp DB.
+    try:
+        import tempfile as _tf47
+        from pathlib import Path as _P47
+        from quoteforge.db import database as _db47
+        refs = _references(_db47.db_maintenance, "prune_event_tables")
+        has_api = hasattr(_db47, "prune_event_tables")
+        behaves = False
+        if has_api:
+            _o47 = _db47.DB_PATH
+            _t47 = _P47(_tf47.gettempdir()) / f"qf_infra_prune_{os.getpid()}.db"
+            try:
+                if _t47.exists():
+                    _t47.unlink()
+                _db47.DB_PATH = _t47
+                _db47.init_db()
+                with _db47._conn() as _c47:
+                    _c47.execute("INSERT INTO sync_runs (job, ran_at) VALUES "
+                                 "('old', datetime('now','-400 days'))")
+                    _c47.execute("INSERT INTO sync_runs (job) VALUES ('new')")
+                _pr = _db47.prune_event_tables()
+                behaves = (_pr.get("sync_runs") == 1
+                           and bool(_db47.last_sync_run("new"))
+                           and _db47.last_sync_run("old") == {})
+            finally:
+                _db47.DB_PATH = _o47
+                try:
+                    _t47.unlink()
+                except OSError as _e47:
+                    logger.debug("infra prune temp cleanup skipped: %s", _e47)
+        ok = bool(refs and has_api and behaves)
+        checks.append(_c("event_retention_pruned", ok,
+                         "sync_runs/security_events get a retention prune (bounded growth)"
+                         if ok else "event-table retention not wired - unbounded growth: "
+                         f"refs={refs} has_api={has_api} behaves={behaves}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("event_retention_pruned", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

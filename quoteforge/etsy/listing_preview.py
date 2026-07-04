@@ -2140,9 +2140,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             continue
         _bk = next((brand / f"tile-{_gid}-back.{e}" for e in ("jpg", "png")
                     if (brand / f"tile-{_gid}-back.{e}").exists()), None)
+        # No back photo -> leave back EMPTY so the editor renders the neutral recolouring
+        # silhouette for the back view. Reusing the FRONT photo (#M3) showed front-only
+        # details (collar/pocket/front design) behind the buyer's BACK design - misleading.
         _apparel_side_img[_gid] = {
             "front": _front,
-            "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else _front}
+            "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else ""}
     apparel_side_img_json = json.dumps(_apparel_side_img)
 
     # Per-product tile photos for the Custom Branded Products grid, keyed by
