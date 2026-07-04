@@ -177,6 +177,17 @@ def check_sync_freshness(max_age_hours: int = 36) -> Check:
         return Check("Sync Uptime", "WARN", str(exc))
 
 
+def check_etsy_token() -> Check:
+    """PROACTIVE (#182-P1): warn BEFORE the Etsy access token expires with no refresh
+    token (which silently stalls order intake). No-network, no false-alarm pre-launch."""
+    try:
+        from quoteforge.automation.etsy_auth import token_expiry_status
+        s = token_expiry_status()
+        return Check("Etsy Token", "OK" if s["ok"] else "WARN", s["detail"])
+    except Exception as exc:  # noqa: BLE001
+        return Check("Etsy Token", "WARN", str(exc))
+
+
 def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
     """Run every health check; returns {overall, timestamp, checks[]} and logs it."""
     checks = [
@@ -187,6 +198,7 @@ def run_healthcheck(query_fn: Optional[Callable[[], dict]] = None) -> dict:
         check_scheduled_jobs(query_fn),
         check_file_hosting(),
         check_sync_freshness(),
+        check_etsy_token(),
     ]
     fails = [c for c in checks if c.status == "FAIL"]
     warns = [c for c in checks if c.status == "WARN"]

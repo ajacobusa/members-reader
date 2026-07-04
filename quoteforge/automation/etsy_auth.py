@@ -114,6 +114,30 @@ def with_refresh(call):
         raise
 
 
+def token_expiry_status(warn_within_hours: int = 24) -> dict:
+    """PROACTIVE, no-network health probe (#182-P1): is the Etsy access token healthy,
+    or about to expire with NO way to refresh? A token that expires with no refresh
+    token silently stalls order intake (see module docstring), so we want to catch it
+    BEFORE the first 401, not after. Returns {ok, detail}. TEST_MODE / no creds is a
+    skipped OK (a fresh install must not false-alarm). Auto-refreshable near-expiry is
+    OK (with_refresh handles it); only near-expiry WITHOUT a refresh token is a WARN."""
+    from quoteforge.config import TEST_MODE, ETSY_API_KEY
+    if TEST_MODE or not ETSY_API_KEY:
+        return {"ok": True, "detail": "skipped (TEST_MODE / creds not set)"}
+    data = _load()
+    exp = data.get("expires_at")
+    if not exp:                                        # env seed in use, expiry unknown
+        return {"ok": True, "detail": "no persisted token yet (env seed)"}
+    remaining = float(exp) - time.time()
+    if remaining > warn_within_hours * 3600:
+        return {"ok": True, "detail": f"access token valid ~{int(remaining / 3600)}h"}
+    if current_refresh_token():                        # near/at expiry but recoverable
+        return {"ok": True, "detail": "near expiry but a refresh token is available"}
+    return {"ok": False,
+            "detail": "access token expiring and NO refresh token — order intake "
+                      "will stall; re-run the Etsy OAuth flow"}
+
+
 def verify_etsy_auth() -> dict:
     """Cheap authenticated probe for healthcheck: True iff a 1-row receipts call
     succeeds (refreshing if needed). {ok, detail}. TEST_MODE/no creds -> ok (skipped)."""

@@ -1112,6 +1112,21 @@ def deactivate_stale_product_images(seen_stamp: str) -> int:
         return cur.rowcount
 
 
+def deactivate_product_images(gelato_sku: str) -> int:
+    """MANUAL OVERRIDE (#182-P1): pull ALL official images for one SKU (is_active=0)
+    right now — the owner's escape hatch when a synced image is wrong (e.g. depicts the
+    wrong product/variant) and shouldn't wait for the daily stale-sweep. The storefront
+    then falls back to the tier-variant photo. Returns the number of rows deactivated."""
+    gelato_sku = (gelato_sku or "").strip()
+    if not gelato_sku:
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE gelato_product_images SET is_active=0 "
+            "WHERE gelato_sku=? AND is_active=1", (gelato_sku,))
+        return cur.rowcount
+
+
 # ── Uptime heartbeat (#182) ─────────────────────────────────────
 
 def record_sync_run(job: str, ok: bool = True, detail: str = "") -> None:

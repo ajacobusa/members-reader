@@ -120,3 +120,33 @@ def test_gelato_blank_image_prefers_ecommerce(monkeypatch):
                         lambda **k: {"SKU-1": "https://s3.example/real.jpg"})
     from quoteforge.images import supplier_mockup as sm
     assert sm.gelato_blank_image("SKU-1") == "https://s3.example/real.jpg"
+
+
+def test_image_override_deactivates_only_that_sku(tmp_path, monkeypatch):
+    # REGRESSION (#182-P1): the owner escape hatch pulls the official image(s) for ONE
+    # SKU (e.g. a wrong-product photo) and leaves every other SKU untouched, so the
+    # storefront falls back to the tier-variant photo for just that product.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    db.upsert_product_image("bad-sku", "https://x/wrong.jpg")
+    db.upsert_product_image("good-sku", "https://x/right.jpg")
+    n = db.deactivate_product_images("bad-sku")
+    assert n == 1
+    assert db.get_product_images("bad-sku", active_only=True) == []       # pulled
+    assert len(db.get_product_images("good-sku", active_only=True)) == 1  # untouched
+    assert db.deactivate_product_images("bad-sku") == 0                   # idempotent
+
+
+def test_image_override_cli(tmp_path, monkeypatch, capsys):
+    # The admin command drives the deactivate + prints the fallback note.
+    from quoteforge.db import database as db
+    from quoteforge import admin
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    db.upsert_product_image("bad-sku", "https://x/wrong.jpg")
+    monkeypatch.setattr(admin, "_alert", lambda *a, **k: None)
+    rc = admin.main(["image-override", "bad-sku", "deactivate"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "Deactivated 1" in out
+    assert db.get_product_images("bad-sku", active_only=True) == []
