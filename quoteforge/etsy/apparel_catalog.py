@@ -61,6 +61,19 @@ class ApparelGarment:
     height_px: int = DEFAULT_APPAREL_DIMS[1]
     category: str = "apparel"
     placement: str = "front"   # launch = front only (back/pocket are future)
+    has_sleeves: bool = True   # False for sleeveless (tank) - the editor then hides the
+    #                            sleeve print areas + upcharge (you can't print a sleeve
+    #                            that doesn't exist). Derived from garment_type.
+
+
+# Garment types with NO printable sleeve. A sleeveless garment must NOT offer sleeve
+# design areas or a sleeve upcharge - single source of truth for the editor gate (#tank).
+SLEEVELESS_TYPES: frozenset[str] = frozenset({"tank"})
+
+
+def garment_has_sleeves(garment_type: str) -> bool:
+    """True iff this garment type has a printable sleeve (False for tank / sleeveless)."""
+    return (garment_type or "").strip().lower() not in SLEEVELESS_TYPES
 
 
 # Gelato's full men's/women's apparel range, in 3 BRAND TIERS per garment
@@ -133,7 +146,8 @@ def _build_catalog() -> list[ApparelGarment]:
                     garment_id=gid, name=name, sizes=list(DEFAULT_SIZES),
                     colors=list(colors), base_cost=cost, sku_prefix=prefix,
                     brand=brand, gender=gender, garment_type=type_id,
-                    type_name=type_name, tier=tier))
+                    type_name=type_name, tier=tier,
+                    has_sleeves=garment_has_sleeves(type_id)))
     return out
 
 
