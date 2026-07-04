@@ -40,6 +40,7 @@ def test_new_infra_checks_are_wired():
     assert "etsy_listing_create_dedupe" in names             # re-run can't create duplicate Etsy listings
     assert "sync_jobs_alert_on_failure" in names             # a silently-failing image sync alerts the owner
     assert "sync_heartbeat_wired" in names                   # uptime: jobs stamp sync_runs; a stopped job is detectable
+    assert "listing_autolink_wired" in names                 # create persists the SKU->listing link; orphans are visible
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -173,6 +174,39 @@ def test_healthcheck_staleness_is_utc_correct(tmp_path, monkeypatch):
     for job in ("template-sync", "ecommerce-images", "mockup-sync"):
         _stamp(job, 1)
     assert hc.check_sync_freshness().status == "OK"
+
+
+def test_orphan_products_detects_unpublished_only(tmp_path, monkeypatch):
+    # REGRESSION (#182-P0b): orphan_products returns ACTIVE, fulfillment-mapped
+    # products that have NO Etsy listing linked - and ONLY those. A published product
+    # (has etsy_listing_id) and an inactive one must not show up.
+    from quoteforge.db import database as db
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    base = {"category": "c", "title": "t", "price_usd": 1.0, "gelato_cost_usd": 0.2,
+            "product_type": "print", "size": "", "template_id": ""}
+    db.upsert_product({**base, "product_id": "linked", "gelato_sku": "s1",
+                       "etsy_listing_id": "L1"})              # published -> not orphan
+    db.upsert_product({**base, "product_id": "orphan", "gelato_sku": "s2",
+                       "etsy_listing_id": ""})                # never published -> orphan
+    ids = {o["product_id"] for o in db.orphan_products()}
+    assert ids == {"orphan"}
+
+
+def test_create_draft_listing_persists_the_link_write_side():
+    # REGRESSION (#182-P0b): the dedupe invariant guards only the READ side. Prove the
+    # WRITE side is wired - create_draft_listing must reference upsert_product so the
+    # SKU->listing map actually FILLS (else a re-run duplicates). This is the exact
+    # symbol the listing_autolink_wired invariant pins.
+    from quoteforge.automation import infra_check as ic
+    from quoteforge.automation import etsy_publisher as ep
+    assert ic._references(ep.create_draft_listing, "upsert_product")
+
+    # a regressed create that dropped the persist must FAIL the same grounded helper
+    def _create_regressed(bundle, price, runner=None):
+        resp = runner.post("u")                               # POSTs but never persists
+        return {"status": "created", "listing_id": resp}
+    assert not ic._references(_create_regressed, "upsert_product")
 
 
 def test_gelato_cost_sync_invariant_passes_and_is_grounded():
