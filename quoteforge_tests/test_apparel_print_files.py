@@ -48,3 +48,18 @@ def test_non_public_url_sets_all_public_false(monkeypatch):
 def test_empty_input_is_a_clean_noop():
     out = apf.build_apparel_print_files({})
     assert out == {"front_url": "", "extra_files": {}, "hosted": [], "all_public": True}
+
+
+def test_sleeveless_garment_drops_sleeve_print_files(monkeypatch):
+    # REGRESSION (L-1 defense-in-depth): build_apparel_print_files must never host a
+    # sleeve file for a sleeveless garment, even if a caller passes one - you can't print
+    # a sleeve that doesn't exist. The frontend gates this too; this is the backend backstop.
+    monkeypatch.setattr("quoteforge.automation.file_host.publish_print_file", _fake_public)
+    out = apf.build_apparel_print_files({"front": "f.png", "sleeve-left": "sl.png", "sleeve-right": "sr.png"},
+                   has_sleeves=False)
+    assert out["front_url"] == "https://cdn/f.png"
+    assert out["extra_files"] == {}                       # sleeves dropped
+    assert "sleeve-left" not in out["hosted"] and "sleeve-right" not in out["hosted"]
+    # a sleeved garment (default) still hosts them
+    out2 = apf.build_apparel_print_files({"front": "f.png", "sleeve-left": "sl.png"})
+    assert out2["extra_files"] == {"sleeve-left": "https://cdn/sl.png"}

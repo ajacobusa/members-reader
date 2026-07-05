@@ -49,6 +49,7 @@ def test_new_infra_checks_are_wired():
     assert "event_retention_pruned" in names                  # sync_runs/security_events are pruned (bounded growth)
     assert "mug_wrap_ability_gated" in names                   # single-panel mugs never sold a full wrap
     assert "framed_sizes_fulfillable" in names                 # no framed size sold without a prepared UID
+    assert "apparel_print_files_wired" in names                 # faithful per-side DTG print files render + capture
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():

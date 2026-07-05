@@ -540,10 +540,13 @@ def run_full_pipeline(
             if _apf["front_url"]:
                 artwork_url = _apf["front_url"]      # faithful front replaces the poster
             _extra_files = _apf["extra_files"] or None
-            _faithful = bool(_apf["hosted"])
+            # faithful_artwork signals "ready to auto-submit" - only true when EVERY file
+            # is a public URL Gelato can fetch (L-2). A local:// fallback keeps it False so
+            # the order stays manual instead of handing Gelato an unfetchable file.
+            _faithful = bool(_apf["hosted"]) and _apf["all_public"]
             _log(order_id, "apparel_print_files",
                  "success" if _apf["hosted"] else "skipped",
-                 f"hosted={_apf['hosted']} all_public={_apf['all_public']}")
+                 f"hosted={_apf['hosted']} all_public={_apf['all_public']} faithful={_faithful}")
         try:
             from quoteforge.fulfillment.router import route_order
             from quoteforge.automation.retry import retry_call

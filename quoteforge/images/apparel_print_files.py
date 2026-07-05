@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 EXTRA_AREAS = ("back", "sleeve-left", "sleeve-right")
 
 
-def build_apparel_print_files(print_files: dict) -> dict:
+def build_apparel_print_files(print_files: dict, *, has_sleeves: bool = True) -> dict:
     """Host each supplied per-side print file and shape the result.
 
     ``print_files``: ``{side: local_path}`` with side in
@@ -51,6 +51,12 @@ def build_apparel_print_files(print_files: dict) -> dict:
     all_public = True
     for side, path in (print_files or {}).items():
         if not path:
+            continue
+        # Defense-in-depth (L-1): a sleeveless garment (tank) can NEVER host a sleeve
+        # print file, even if a caller passes one - you can't print a sleeve that doesn't
+        # exist. The frontend already gates this; this is the backend backstop.
+        if not has_sleeves and side in ("sleeve-left", "sleeve-right"):
+            logger.debug("apparel print file: dropping %r on a sleeveless garment", side)
             continue
         res = publish_print_file(path)
         url = res.get("url") or ""
