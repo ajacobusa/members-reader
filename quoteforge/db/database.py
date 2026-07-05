@@ -453,6 +453,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     subcols = {row["name"] for row in conn.execute("PRAGMA table_info(subscribers)")}
     if subcols and "consent" not in subcols:
         conn.execute("ALTER TABLE subscribers ADD COLUMN consent TEXT DEFAULT 'pending'")
+    # Faithful apparel print files (#167 Phase 2c): a JSON {side: local_path} of the
+    # per-side DTG print files the buyer's editor rendered, saved server-side and read
+    # onto the order at fulfilment (get_design_for_order -> build_apparel_print_files).
+    dcols = {row["name"] for row in conn.execute("PRAGMA table_info(saved_designs)")}
+    if dcols and "print_files" not in dcols:
+        conn.execute("ALTER TABLE saved_designs ADD COLUMN print_files TEXT")
     if "channel" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN channel TEXT DEFAULT 'etsy'")
     if "vendor" not in cols:
@@ -1075,6 +1081,35 @@ def save_design(email: str, design_json: str = "", design_id: str = "",
             # a later /design or /confirm for the same (email, design_id).
             (email, design_id, order_id, design_json, summary))
         return cur.lastrowid or 0
+
+
+def set_design_print_files(email: str, design_id: str, files_map: dict) -> int:
+    """Attach the faithful per-side print files ({side: local_path}) to a saved design
+    (#167 Phase 2c). Keyed by (email, design_id); skips an ACCEPTED design (immutable).
+    Returns rows updated. The fulfilment pipeline reads these back via
+    get_design_for_order and hosts them into Gelato extra_files."""
+    import json as _json
+    email = (email or "").strip().lower()
+    design_id = (design_id or "default").strip()
+    if "@" not in email or not isinstance(files_map, dict) or not files_map:
+        return 0
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE saved_designs SET print_files=?, updated_at=datetime('now') "
+            "WHERE email=? AND design_id=? AND accepted=0",
+            (_json.dumps(files_map), email, design_id))
+        return cur.rowcount
+
+
+def design_print_files_for_order(order_id: str) -> dict:
+    """The faithful per-side print files ({side: path}) for an order's linked design,
+    or {} (#167 Phase 2c). Read by the pipeline to populate order_data['print_files']."""
+    import json as _json
+    d = get_design_for_order(order_id) or {}
+    try:
+        return _json.loads(d.get("print_files") or "{}") or {}
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 # ── Official product images (#181) ──────────────────────────────

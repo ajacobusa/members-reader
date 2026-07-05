@@ -1263,7 +1263,8 @@ def check_infrastructure() -> dict:
         design_only = ("else if(_PRINTMODE)" in _src50              # transparent, no fill
                        and "!_mock && !_PRINTMODE" in _src50         # no shadow
                        and "if(_mock||_PRINTMODE)" in _src50)        # no drawn garment
-        captured = "print_files:(IS_APPAREL?_printFiles():null)" in _src50
+        captured = ("_uploadPrintFiles" in _src50                # #Phase2c: upload, not cart
+                    and "if(IS_APPAREL) _uploadPrintFiles();" in _src50)
         ok = bool(renders and design_only and captured)
         checks.append(_c("apparel_print_files_wired", ok,
                          "apparel renders faithful design-only per-side print files at "
@@ -1273,7 +1274,43 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("apparel_print_files_wired", False, str(exc)))
 
+    # 51) Print-file upload path wired (#167 Phase 2c): the browser uploads the rendered
+    #     print files to /print-files, they're saved + attached to the design, and the
+    #     pipeline reads them onto the order. Grounded: the DB API + the /print-files
+    #     endpoint + the pipeline read exist AND the decoder rejects a non-PNG side
+    #     (behavioral - a malformed upload can't reach the print file).
+    try:
+        from quoteforge.db import database as _db51
+        from quoteforge.images.apparel_print_files import save_print_file_datauris as _spf51
+        from quoteforge.automation import webhook_server as _ws51, pipeline_orchestrator as _po51
+        import inspect as _insp51
+        api = all(hasattr(_db51, n) for n in
+                  ("set_design_print_files", "design_print_files_for_order"))
+        endpoint = '"/print-files"' in _insp51.getsource(_ws51.create_app) \
+            if hasattr(_ws51, "create_app") else "/print-files" in _insp51.getsource(_ws51)
+        pipe = _references(_po51.run_full_pipeline, "design_print_files_for_order")
+        # behavioral: a non-PNG / unknown side is rejected, never saved
+        rejects = save_print_file_datauris_safe(_spf51)
+        ok = bool(api and endpoint and pipe and rejects)
+        checks.append(_c("apparel_print_files_upload_wired", ok,
+                         "print files upload to /print-files, attach to the design, and "
+                         "the pipeline reads them onto the order (malformed rejected)"
+                         if ok else "print-file upload path not wired: "
+                         f"api={api} endpoint={endpoint} pipe={pipe} rejects={rejects}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("apparel_print_files_upload_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
+
+
+def save_print_file_datauris_safe(_spf) -> bool:
+    """Behavioral probe for invariant #51: the print-file decoder rejects a non-PNG /
+    unknown side and returns {} for a bad email, never raising."""
+    try:
+        return (_spf("no-at-sign", "d", {"front": "data:image/png;base64,AAAA"}) == {}
+                and _spf("a@b.com", "d", {"collar": "x", "front": "data:text/plain,y"}) == {})
+    except Exception:  # noqa: BLE001
+        return False
 
 
 # Supplier names that must NEVER appear in a customer surface (mirror of the

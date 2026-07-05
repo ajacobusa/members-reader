@@ -5044,8 +5044,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
      design:_fullDesign(),                 // FULL per-item design (both sides, cal, wording)
-     print_files:(IS_APPAREL?_printFiles():null),  // #167: faithful per-side DTG print files
      thumb:_proofThumb()}}); renderCart();
+   // #167 Phase 2c: upload the faithful per-side print files to the backend (attached to
+   // the saved design; the order reads them at fulfilment). Not held in the cart - the
+   // multi-MB PNGs would bloat memory. Fire-and-forget; needs a known email to attach.
+   if(IS_APPAREL) _uploadPrintFiles();
    var pa=document.getElementById('postadd'); if(pa){{pa.style.display='flex'; pa.scrollIntoView({{block:'nearest'}});}}
    clearDraft(); if(typeof abConvert==='function') abConvert();
    // In a guided bundle: advance to the next selected design to personalize.
@@ -5333,6 +5336,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function _toast(t){{ const n=document.getElementById('maicheck');
    if(n){{ n.innerHTML='💾 '+t; }} }}
+ // #167 Phase 2c: POST the faithful per-side print files to the backend, attached to the
+ // buyer's saved design (design_id 'default', the one the order links to). Fire-and-forget
+ // - a print-file blip must never block saving or checkout. Needs a known email to attach;
+ // still held behind APPAREL_PRINT_CALIBRATED at fulfilment, so it can't auto-print.
+ function _uploadPrintFiles(){{
+   try{{
+     if(!IS_APPAREL) return;
+     const email=knownEmail(); if(!email) return;
+     const api=(typeof ANGE_API==='string'&&ANGE_API)?ANGE_API.replace(/\\/ask$/,'/print-files'):'';
+     if(!api) return;
+     const pf=_printFiles(); if(!pf) return;
+     fetch(api,{{method:'POST',headers:{{'Content-Type':'application/json'}},
+       body:JSON.stringify({{email:email, design_id:'default', files:pf}})}}).catch(function(){{}});
+   }}catch(e){{}}
+ }}
  function saveDesign(){{
    const s=_designState();
    try{{localStorage.setItem('jf_design', JSON.stringify(s));}}catch(e){{}}
@@ -5343,6 +5361,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          summary:`${{s.fmt}} ${{s.size}} - "${{(s.wording||CURQUOTE).slice(0,60)}}"`}})}})
        .then(()=>_toast('Your design preferences are saved.'))
        .catch(()=>_toast('Saved on this device.'));
+     _uploadPrintFiles();                 // #167 Phase 2c: faithful print files -> backend
    }} else {{ _toast('Saved on this device. (Sign up to save to your order.)'); }}
  }}
  function _taxLine(sub){{

@@ -534,6 +534,14 @@ def run_full_pipeline(
         _extra_files = None
         _faithful = False
         _print_files = order_data.get("print_files") if isinstance(order_data, dict) else None
+        # Phase 2c: a real Etsy order carries no in-memory print_files - read them from
+        # the linked design (the editor uploaded them via /print-files at checkout).
+        if not _print_files and str(_ptype).lower() == "apparel":
+            try:
+                from quoteforge.db.database import design_print_files_for_order
+                _print_files = design_print_files_for_order(order_id) or None
+            except Exception as exc:  # noqa: BLE001 - never block routing on a lookup miss
+                logger.warning("design print-files lookup failed for %s: %s", order_id, exc)
         if _print_files and str(_ptype).lower() == "apparel":
             from quoteforge.images.apparel_print_files import build_apparel_print_files
             _apf = build_apparel_print_files(_print_files)
