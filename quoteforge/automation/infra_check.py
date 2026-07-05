@@ -1618,6 +1618,30 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("resolver_size_anchored", False, str(exc)))
 
+    # 64) Automated apparel calibration is CONSENT-GATED and the router consults it. The
+    #     vision-QA auto-calibration may open apparel production only with the one-time
+    #     AUTO_CALIBRATION_ENABLED consent - so it must be False without consent (behavioral),
+    #     and the router's apparel gate must actually call auto_calibration_active
+    #     (structural), or a refactor could leave apparel permanently open OR drop the auto-
+    #     revert path. Guards the highest-risk zero-owner link.
+    try:
+        import inspect as _insp64
+        from quoteforge.automation import calibration_pipeline as _cp64
+        from quoteforge.fulfillment import router as _rt64
+        # behavioral: with consent OFF the automated gate is closed regardless of rows
+        _consent_off = not _cp64._auto_enabled() and _cp64.auto_calibration_active() is False
+        # structural: the router's apparel gate calls the automated gate (the impl the
+        # route_order wrapper delegates to)
+        _wired = "auto_calibration_active" in _insp64.getsource(_rt64)
+        ok = bool(_consent_off and _wired)
+        checks.append(_c("auto_calibration_consent_gated", ok,
+                         "automated apparel calibration is closed without consent and the "
+                         "router consults auto_calibration_active" if ok
+                         else f"auto-calibration safety broken: consent_off={_consent_off} "
+                         f"router_wired={_wired}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("auto_calibration_consent_gated", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
