@@ -166,16 +166,25 @@ def gate1_status() -> dict:
 def validate_no_gel_placeholders() -> dict:
     """Grounded Gate-1 assertion input (hard rule #1). Scans BOTH the registry ledger
     and the runtime SKU->UID map (gelato_sync._uid_map) for any GEL-* / empty value.
-    Returns {ok, registry_offenders, runtime_offenders}. Never raises."""
+    Returns {ok, registry_offenders, runtime_offenders, runtime_read_ok}. Never raises.
+
+    runtime_read_ok is False when the runtime map could not be READ (an exception) - the
+    caller must treat that as UNVERIFIED, not clean, in live mode (unverifiable != safe).
+    A genuinely empty map reads fine (runtime_read_ok True); only a raise flips it False."""
     registry_offenders = [r["sku"] for r in registry_rows() if _is_placeholder(r["product_uid"])]
     runtime_offenders: list[str] = []
+    runtime_read_ok = True
     try:
         from quoteforge.automation.gelato_sync import _uid_map
-        runtime_offenders = [sku for sku, uid in (_uid_map() or {}).items()
+        rt = _uid_map()
+        runtime_offenders = [sku for sku, uid in (rt or {}).items()
                              if _is_placeholder(uid)]
-    except Exception as exc:  # noqa: BLE001 - map unreadable -> report, don't crash
-        logger.debug("runtime uid map scan skipped: %s", exc)
+        runtime_read_ok = rt is not None
+    except Exception as exc:  # noqa: BLE001 - unreadable map -> UNVERIFIED, not clean
+        runtime_read_ok = False
+        logger.warning("runtime uid map unreadable (treated as UNVERIFIED, not clean): %s", exc)
     return {"ok": not registry_offenders and not runtime_offenders,
+            "runtime_read_ok": runtime_read_ok,
             "registry_offenders": sorted(registry_offenders),
             "runtime_offenders": sorted(runtime_offenders)}
 

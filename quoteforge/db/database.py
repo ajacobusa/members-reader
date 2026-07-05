@@ -436,6 +436,26 @@ def init_db() -> None:
             approved_at    TEXT,
             created_at     TEXT DEFAULT (datetime('now'))
         );
+        -- Automated daily UAT (self-testing the Gelato->Etsy gates without human review).
+        -- sync_audit_log: append-only per-step outcome of every UAT/sync run, so the
+        -- proof is in the logs (the operating rule: "prove the result with logs").
+        CREATE TABLE IF NOT EXISTS sync_audit_log (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            at      TEXT DEFAULT (datetime('now')),
+            run     TEXT DEFAULT 'daily-uat',
+            step    TEXT NOT NULL,
+            ok      INTEGER DEFAULT 1,
+            detail  TEXT DEFAULT ''
+        );
+        -- daily_uat_report: one stored PASS/FAIL report per run (the Step-8 report as
+        -- JSON), so history is queryable and the latest result gates production.
+        CREATE TABLE IF NOT EXISTS daily_uat_report (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            ran_at      TEXT DEFAULT (datetime('now')),
+            environment TEXT DEFAULT '',
+            overall     TEXT NOT NULL,
+            report_json TEXT NOT NULL
+        );
         """)
         _migrate(conn)
         # Indexes for the frequent lookups (additive; etsy_order_id is already

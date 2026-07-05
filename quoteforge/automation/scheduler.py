@@ -178,6 +178,15 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "every product variation + order-book health, and email the owner if any "
         "product is unmapped/below-floor or any order is stuck."),
     ScheduledJob(
+        "QuoteForge Daily UAT", "daily-uat",
+        ["/SC", "DAILY", "/ST", "06:35"],
+        "Daily: automated QuoteForge->Gelato->Etsy UAT - proves the go-live gates (UID "
+        "mapping, live probe, Etsy image sync, apparel calibration), stores a PASS/FAIL "
+        "report + audit log, and ALERTS the owner ONLY on a blocking failure (unmapped "
+        "live product, unauthorised calibration flip, registry drift, missing official "
+        "image). Pre-go-live it proves the machinery + safety wiring (pending gates await "
+        "the owner's real UIDs / physical print). No human daily review."),
+    ScheduledJob(
         "QuoteForge Customer Notifications", "notify-customers",
         ["/SC", "HOURLY", "/MO", "6"],
         "Every 6h: sends the opt-in transactional order updates (Order Received / "
