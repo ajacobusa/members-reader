@@ -368,3 +368,41 @@ def test_infra_check_catches_unquarantined_branded(monkeypatch):
     got = _check(r, "branded_non_sellable_quarantined")
     assert got["ok"] is False and "phonecase" in got["detail"]
     assert r["ok"] is False
+
+
+def test_infra_check_auditor_agents_assigned():
+    # REGRESSION (#59): the code-outcome-auditor + storefront-fulfillability-auditor
+    # agents that GROW infra-check must stay assigned. On a machine with .claude/agents
+    # the check must be green (both files present with a declared name); on a host
+    # without the dir it is skip-friendly (still green). Either way ok is True.
+    from pathlib import Path
+    import quoteforge
+    from quoteforge.automation.infra_check import check_infrastructure
+    r = check_infrastructure()
+    got = _check(r, "infra_check_auditor_agents_assigned")
+    assert got["ok"] is True
+    agents_dir = Path(quoteforge.__file__).resolve().parent.parent / ".claude" / "agents"
+    if agents_dir.is_dir():   # dev/ops host: assert the real files really are present
+        for name in ("code-outcome-auditor", "storefront-fulfillability-auditor"):
+            assert (agents_dir / f"{name}.md").is_file()
+
+
+def test_infra_check_catches_unassigned_auditor_agent(tmp_path, monkeypatch):
+    # GROUNDING: prove invariant #59 goes ok=False when a required auditor agent is
+    # NOT assigned. Point quoteforge.__file__ at a fake tree whose .claude/agents is
+    # missing the code-outcome-auditor, so the check must detect the gap.
+    import quoteforge
+    from quoteforge.automation.infra_check import check_infrastructure
+    pkg = tmp_path / "quoteforge"
+    (pkg).mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    agents = tmp_path / ".claude" / "agents"
+    agents.mkdir(parents=True)
+    # only ONE of the two required agents is assigned -> the other must be flagged
+    (agents / "storefront-fulfillability-auditor.md").write_text(
+        "---\nname: storefront-fulfillability-auditor\n---\n", encoding="utf-8")
+    monkeypatch.setattr(quoteforge, "__file__", str(pkg / "__init__.py"))
+    r = check_infrastructure()
+    got = _check(r, "infra_check_auditor_agents_assigned")
+    assert got["ok"] is False and "code-outcome-auditor" in got["detail"]
+    assert r["ok"] is False

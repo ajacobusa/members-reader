@@ -1481,6 +1481,43 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("branded_non_sellable_quarantined", False, str(exc)))
 
+    # 59) The infra-check AUDITOR AGENTS are assigned/present. This whole daily agent
+    #     GROWS by having the code-outcome-auditor discover new invariants and the
+    #     storefront-fulfillability-auditor hunt choose/design/pay-for-unfulfillable
+    #     bugs (both feed fixes back here). If an agent .md is deleted or renamed, that
+    #     growth loop silently dies. Grounded: on a machine that HAS .claude/agents
+    #     (dev/ops), each required auditor file must exist and declare its own name in
+    #     frontmatter. Skip-friendly: on a host without .claude (e.g. Render prod) there
+    #     is nothing to assign, so it passes rather than false-alarm.
+    try:
+        import re as _re59
+        from pathlib import Path as _Path59
+        import quoteforge as _qf59
+        _REQUIRED_AUDITOR_AGENTS = ("code-outcome-auditor",
+                                    "storefront-fulfillability-auditor")
+        _agents_dir = _Path59(_qf59.__file__).resolve().parent.parent / ".claude" / "agents"
+        if not _agents_dir.is_dir():
+            checks.append(_c("infra_check_auditor_agents_assigned", True,
+                             "no .claude/agents on this host (prod) - nothing to assign"))
+        else:
+            _missing59 = []
+            for _name in _REQUIRED_AUDITOR_AGENTS:
+                _f = _agents_dir / f"{_name}.md"
+                if not _f.is_file():
+                    _missing59.append(f"{_name} (file missing)")
+                    continue
+                _head = _f.read_text(encoding="utf-8", errors="ignore")[:400]
+                if not _re59.search(rf"(?m)^\s*name:\s*{_re59.escape(_name)}\s*$", _head):
+                    _missing59.append(f"{_name} (name not declared in frontmatter)")
+            ok = not _missing59
+            checks.append(_c("infra_check_auditor_agents_assigned", ok,
+                             f"infra-check auditor agents assigned: "
+                             f"{', '.join(_REQUIRED_AUDITOR_AGENTS)}" if ok
+                             else f"infra-check auditor agent NOT assigned (growth loop "
+                             f"broken): {_missing59}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("infra_check_auditor_agents_assigned", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
