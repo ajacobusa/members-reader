@@ -2773,6 +2773,34 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
     return 2
 
 
+def _cmd_gelato_live(args: list[str]) -> int:
+    """Gelato live-seam ops (Components 2-3). `gelato-live [sub]`. No-op until live.
+    Subcommands:
+      status                        live? probe? store id?
+      create-product TEMPLATE TITLE create the first store product from a Gelato template
+      sync-shapes                   pull the live Gelato/Etsy image shape into the probe
+    (The physical test order is deliberately NOT a casual CLI - it is money-out and gated.)
+    """
+    from quoteforge.db.database import init_db
+    from quoteforge.automation import gelato_live_ops as ops
+    init_db()
+    sub = (args[0] if args else "status").lower()
+    if sub == "status":
+        print("Gelato live ops:", ", ".join(f"{k}={v}" for k, v in ops.status().items()))
+        return 0
+    if sub == "create-product":
+        if len(args) < 3:
+            print("usage: gelato-live create-product TEMPLATE_ID TITLE")
+            return 2
+        print("create-product:", ops.create_first_live_product(args[1], " ".join(args[2:])))
+        return 0
+    if sub == "sync-shapes":
+        print("sync-shapes:", ops.sync_live_image_shapes())
+        return 0
+    print("usage: gelato-live [status|create-product|sync-shapes]")
+    return 2
+
+
 def _cmd_gelato_automap(args: list[str]) -> int:
     """Auto-map product families to REAL Gelato product UIDs (read-only catalog API)
     and write the GELATO_PRODUCT_FAMILY_FILE. A DRAFT for owner review - does NOT
@@ -3429,6 +3457,7 @@ COMMANDS = {
     "map-gelato": _cmd_map_gelato,
     "gelato-readiness": _cmd_gelato_readiness,
     "gelato-resolve": _cmd_gelato_resolve,
+    "gelato-live": _cmd_gelato_live,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
     "gelato-uid-template": _cmd_gelato_uid_template,

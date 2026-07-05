@@ -1678,6 +1678,66 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("apparel_revert_reads_dispute_columns", False, str(exc)))
 
+    # 66) The automated PHYSICAL test-print order is money-out, so it must stay OFF by
+    #     default, cost-capped, idempotent, and route through the SAME idempotent router as
+    #     a customer order (never a back-door create). Behavioral: with the consent flag off
+    #     it is blocked; structural: the submit routes via route_order and enforces the cap.
+    try:
+        import inspect as _insp66
+        from quoteforge.automation import gelato_live_ops as _lo66
+        from quoteforge.config import CALIBRATION_TEST_ORDER_ENABLED as _en66
+        _src66 = _insp66.getsource(_lo66.submit_calibration_test_order)
+        _routes = ("route_order" in _insp66.getsource(_lo66._route)
+                   and "CALIBRATION_TEST_ORDER_MAX_SPEND" in _src66
+                   and "_test_order_placed_for" in _src66)
+        # behavioral: consent off -> blocked no matter what (default state)
+        _blocked_default = True
+        if not _en66:
+            _r66 = _lo66.submit_calibration_test_order(
+                "real_uid", {"name": "A"}, "http://x/a.png", est_cost=15,
+                router=lambda o, r, a: {"status": "submitted", "id": "x"})
+            _blocked_default = "blocked" in _r66
+        ok = bool(_routes and _blocked_default)
+        checks.append(_c("test_order_gated_capped_idempotent", ok,
+                         "physical test order is consent-gated + capped + idempotent + routes "
+                         "through the idempotent router" if ok
+                         else f"test-order safety broken: routes={_routes} "
+                         f"blocked_default={_blocked_default}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("test_order_gated_capped_idempotent", False, str(exc)))
+
+    # 67) The test-order idempotency guarantee must be DB-ENFORCED, not just a caller-side
+    #     COUNT (which is TOCTOU). The router's own dedup is keyed on a persisted orders row
+    #     the synthetic calibration order never creates, so a concurrent duplicate must be
+    #     refused by a UNIQUE index on an OPEN (pending/test_ordered) productUid - else two
+    #     concurrent calls double-order a real garment. Behavioral in an isolated temp DB.
+    try:
+        import tempfile as _tf67, pathlib as _pl67
+        from quoteforge.db import database as _db67
+        _prev67 = _db67.DB_PATH
+        _tmp67 = _pl67.Path(_tf67.mkdtemp()) / "cal67.db"
+        try:
+            _db67.DB_PATH = _tmp67
+            _db67.init_db()
+            with _db67._conn() as _c67:
+                _c67.execute("INSERT INTO apparel_print_calibration (product_uid, status) "
+                             "VALUES ('U67','test_ordered')")
+                _dup_refused = False
+                try:
+                    _c67.execute("INSERT INTO apparel_print_calibration (product_uid, status) "
+                                 "VALUES ('U67','pending')")
+                except Exception:  # noqa: BLE001 - the UNIQUE index must refuse this
+                    _dup_refused = True
+        finally:
+            _db67.DB_PATH = _prev67
+        checks.append(_c("test_order_uid_unique_backstop", _dup_refused,
+                         "an OPEN calibration test order per productUid is UNIQUE-enforced "
+                         "at the DB (concurrent double-order impossible)" if _dup_refused
+                         else "NO DB uniqueness on apparel_print_calibration.product_uid - "
+                         "concurrent duplicate calls could double-order a real garment"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("test_order_uid_unique_backstop", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
