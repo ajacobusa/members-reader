@@ -1569,6 +1569,34 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("apparel_calibration_flag_backed", False, str(exc)))
 
+    # 62) Gate-1 UID mapping fails CLOSED when the runtime map is UNVERIFIABLE. An
+    #     unreadable runtime UID map (e.g. gelato_sync._uid_map raises) must NOT be
+    #     reported as "clean" - in live mode that would let Gate 1 false-PASS on the very
+    #     map it certifies (unverifiable != safe). Behavioral: feed a runtime map that
+    #     RAISES and assert validate_no_gel_placeholders flags it (runtime_read_ok False)
+    #     rather than silently ok. Isolated: the monkeypatch is restored in finally.
+    try:
+        import quoteforge.automation.gelato_sync as _gs62
+        from quoteforge.automation import gelato_readiness as _gr62
+        _orig62 = _gs62._uid_map
+
+        def _boom62():
+            """Decoy runtime-map reader that raises, to prove Gate-1 fails closed."""
+            raise RuntimeError("runtime map unreadable")
+        _gs62._uid_map = _boom62
+        try:
+            _v62 = _gr62.validate_no_gel_placeholders()
+        finally:
+            _gs62._uid_map = _orig62
+        _read_ok = _v62.get("runtime_read_ok", True)   # missing key => old swallow
+        checks.append(_c("uid_map_unverifiable_fails_closed", _read_ok is False,
+                         "runtime UID map read failure is surfaced (runtime_read_ok=False), "
+                         "so live Gate-1 cannot PASS on an unverifiable map" if _read_ok is False
+                         else "REGRESSION: unreadable runtime UID map is silently treated as "
+                         "clean - live Gate-1 could false-PASS"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("uid_map_unverifiable_fails_closed", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

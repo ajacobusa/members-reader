@@ -2405,6 +2405,18 @@ def _cmd_daily_qa(args: list[str]) -> int:
     return 0
 
 
+def _cmd_daily_uat(args: list[str]) -> int:
+    """Automated daily UAT: QuoteForge->Gelato->Etsy self-test. `daily-uat`. Proves the
+    go-live gates, stores a PASS/FAIL report + audit log, alerts ONLY on a blocking
+    failure. Exit 0 = PASS, 1 = FAIL (production blocked for the failed gate)."""
+    from quoteforge.db.database import init_db
+    from quoteforge.automation.daily_uat import run_daily_uat, format_report_text
+    init_db()
+    report = run_daily_uat(send=True)
+    print(format_report_text(report))
+    return 0 if report["overall"] == "PASS" else 1
+
+
 def _cmd_reconcile_unconfirmed(args: list[str]) -> int:
     """Reconcile an ambiguous 'submit_unconfirmed' order after checking the Gelato
     dashboard. `reconcile-unconfirmed <order_id> landed <gelato_order_id> | not-landed`.
@@ -3427,6 +3439,7 @@ COMMANDS = {
     "retry-fulfillment": _cmd_retry_fulfillment,
     "reconcile-unconfirmed": _cmd_reconcile_unconfirmed,
     "daily-qa": _cmd_daily_qa,
+    "daily-uat": _cmd_daily_uat,
     "safety-check": _cmd_safety_check,
     "infra-check": _cmd_infra_check,
     "runtime-health": _cmd_runtime_health,
