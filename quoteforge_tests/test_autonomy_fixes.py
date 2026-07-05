@@ -276,3 +276,95 @@ def test_infra_check_alerts_on_regression(monkeypatch):
     monkeypatch.setattr(admin, "_alert", lambda s, b, what=None: alerts.append(s))
     rc = admin.main(["infra-check"])
     assert rc == 1 and alerts and "INFRASTRUCTURE" in alerts[0]
+
+
+def test_apparel_image_key_resolve_equals_display():
+    # REGRESSION (#56): every apparel garment's image resolve-key (garment_id from
+    # apparel_sku_for on sizes[0]) must equal the editor's display-key (APPGID
+    # name->garment_id), else that garment silently shows no real product photo.
+    import re
+    from quoteforge.etsy.apparel_catalog import (
+        APPAREL_CATALOG, apparel_sku_for, parse_apparel_format)
+    display = {g.garment_id for g in APPAREL_CATALOG}
+    resolve = {g.garment_id for g in APPAREL_CATALOG
+               if g.sizes and g.colors
+               and any(apparel_sku_for(g.garment_id, g.sizes[0], c) for c in g.colors)}
+    assert resolve == display                       # no orphan on either side
+    assert all(parse_apparel_format(f"{g.name} - {g.colors[0]}")[0] == g.garment_id
+               for g in APPAREL_CATALOG)             # names unique, round-trip
+    assert all(re.sub(r"_(value|premium)$", "", g.garment_id) in display
+               for g in APPAREL_CATALOG)             # tier _bgid strips to a real base
+
+
+def test_infra_check_catches_apparel_key_drift(monkeypatch):
+    # GROUNDING: prove invariant #56 goes ok=False when a garment_id the editor
+    # would request is not produced by the resolver. Decoy: make apparel_sku_for
+    # return "" for one garment's colours so it drops out of the resolve-set.
+    # infra_check imports apparel_sku_for fresh from the catalog module each call,
+    # so patch the SOURCE symbol.
+    from quoteforge.etsy import apparel_catalog as ac
+    from quoteforge.automation.infra_check import check_infrastructure
+    victim = ac.APPAREL_CATALOG[0].garment_id
+    real_sku = ac.apparel_sku_for
+    monkeypatch.setattr(
+        "quoteforge.etsy.apparel_catalog.apparel_sku_for",
+        lambda gid, size, color: "" if gid == victim else real_sku(gid, size, color))
+    r = check_infrastructure()
+    assert _check(r, "apparel_image_key_linkage")["ok"] is False
+    assert r["ok"] is False
+
+
+def test_framed_catalog_sellable_or_explicitly_held():
+    # REGRESSION (#57): every prepared framed catalog size must be sold OR listed in
+    # _FRAMED_UNSOLD_OK. 16x20 has a real framed UID but no 16x20 poster base, so it
+    # is intentionally held (owner decision). The check must be green in this state.
+    from quoteforge.automation.infra_check import check_infrastructure, _FRAMED_UNSOLD_OK
+    from quoteforge.etsy.variations import build_variations, _ns
+    from quoteforge.etsy.gelato_catalog import GELATO_CATALOG
+    sold = {_ns(v.size) for v in build_variations() if v.material == "framed"}
+    cat = {_ns(p.size) for p in GELATO_CATALOG if p.category == "framed"}
+    assert "16x20" in _FRAMED_UNSOLD_OK and "16x20" in cat and "16x20" not in sold
+    r = check_infrastructure()
+    assert _check(r, "framed_catalog_fully_sellable")["ok"] is True
+
+
+def test_infra_check_catches_unheld_unsold_framed(monkeypatch):
+    # GROUNDING: prove invariant #57 goes ok=False when a prepared framed size is
+    # neither sold nor held. Decoy: empty the intentional-hold set so 16x20 (unsold,
+    # real UID) becomes an unguarded invisible product.
+    import quoteforge.automation.infra_check as ic
+    from quoteforge.automation.infra_check import check_infrastructure
+    monkeypatch.setattr(ic, "_FRAMED_UNSOLD_OK", set())
+    r = check_infrastructure()
+    got = _check(r, "framed_catalog_fully_sellable")
+    assert got["ok"] is False and "16x20" in got["detail"]
+    assert r["ok"] is False
+
+
+def test_branded_non_sellable_stays_quarantined():
+    # REGRESSION (#58): every branded item declared non-sellable (phonecase) must
+    # resolve NO routing SKU and report not-sellable, so we never take an order for
+    # an item we can't fulfil. The check must be green in the shipped state.
+    from quoteforge.automation.infra_check import check_infrastructure
+    from quoteforge.etsy.branded_catalog import (
+        NON_SELLABLE_BRANDED, branded_sku_for, branded_sellable)
+    assert "phonecase" in NON_SELLABLE_BRANDED
+    for p in NON_SELLABLE_BRANDED:
+        assert branded_sellable(p) is False
+        assert branded_sku_for(p, "M", "Black") is None
+    r = check_infrastructure()
+    assert _check(r, "branded_non_sellable_quarantined")["ok"] is True
+
+
+def test_infra_check_catches_unquarantined_branded(monkeypatch):
+    # GROUNDING: prove invariant #58 goes ok=False when a declared non-sellable item
+    # leaks a routing SKU. Decoy: make branded_sku_for resolve a real SKU for a
+    # quarantined item (as a refactor that stopped honouring the quarantine would).
+    from quoteforge.automation.infra_check import check_infrastructure
+    monkeypatch.setattr(
+        "quoteforge.etsy.branded_catalog.branded_sku_for",
+        lambda pid, size, color: "GEL-PHONE-LEAK")
+    r = check_infrastructure()
+    got = _check(r, "branded_non_sellable_quarantined")
+    assert got["ok"] is False and "phonecase" in got["detail"]
+    assert r["ok"] is False
