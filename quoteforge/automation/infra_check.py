@@ -1642,6 +1642,42 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("auto_calibration_consent_gated", False, str(exc)))
 
+    # 65) The apparel auto-calibration AUTO-REVERT tripwire reads the columns disputes
+    #     ACTUALLY land in. A post-delivery dispute writes orders.delivery_disputed and a
+    #     return/refund claim writes orders.claim_status - NOT orders.status. If the scan
+    #     only matched status spellings no producer writes, the owner's primary rail
+    #     ("revert on the first dispute") would silently never fire. Behavioral: a real
+    #     disputed apparel order in a temp DB must trip _apparel_issue_since.
+    try:
+        import inspect as _insp65
+        import tempfile as _tf65
+        import pathlib as _pl65
+        from quoteforge.automation import calibration_pipeline as _cp65
+        import quoteforge.db.database as _db65
+        _src65 = _insp65.getsource(_cp65._apparel_issue_since)
+        _cols_ok = ("delivery_disputed" in _src65) and ("claim_status" in _src65)
+        _prev65 = _db65.DB_PATH
+        _tmp65 = _pl65.Path(_tf65.mkdtemp()) / "cal65.db"
+        try:
+            _db65.DB_PATH = _tmp65
+            _db65.init_db()
+            with _db65._conn() as _c65:
+                _c65.execute(
+                    "INSERT INTO orders (order_id, recipient_name, occasion, product_type, "
+                    "status, delivery_disputed, created_at) VALUES "
+                    "('T65','A','x','apparel','delivered',1,datetime('now'))")
+            _behav_ok = bool(_cp65._apparel_issue_since("1970-01-01"))
+        finally:
+            _db65.DB_PATH = _prev65
+        ok = bool(_cols_ok and _behav_ok)
+        checks.append(_c("apparel_revert_reads_dispute_columns", ok,
+                         "auto-revert scans delivery_disputed/claim_status and trips on a "
+                         "real disputed apparel order" if ok
+                         else f"revert tripwire blind to real disputes: cols_ok={_cols_ok} "
+                         f"behav_ok={_behav_ok}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("apparel_revert_reads_dispute_columns", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

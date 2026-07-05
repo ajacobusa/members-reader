@@ -83,6 +83,34 @@ def test_gate_reverts_on_dispute(iso_db, monkeypatch):
     assert cp.auto_calibration_active() is False
 
 
+def test_revert_trips_on_real_delivery_dispute(iso_db, monkeypatch):
+    # REGRESSION (High): a real apparel delivery dispute (delivery_disputed=1) must close
+    # the gate. Before the fix, _apparel_issue_since only matched orphan orders.status
+    # spellings no producer writes, so the dispute rail silently never fired.
+    monkeypatch.setattr("quoteforge.config.AUTO_CALIBRATION_ENABLED", True)
+    cp.record_vision_calibration("real_uid", {"passed": True, "score": 0.95})
+    assert cp.auto_calibration_active() is True
+    import quoteforge.db.database as db
+    with db._conn() as c:
+        c.execute("INSERT INTO orders (order_id, recipient_name, occasion, product_type, "
+                  "status, delivery_disputed, created_at) VALUES "
+                  "('D1','A','x','apparel','delivered',1,datetime('now'))")
+    assert cp.auto_calibration_active() is False           # dispute closes the gate
+    assert cp.check_auto_revert()["reverted"] == 1         # and revokes the vision row
+
+
+def test_revert_trips_on_real_refund_claim(iso_db, monkeypatch):
+    # REGRESSION (High): a reviewed return/refund claim (claim_status) also closes the gate.
+    monkeypatch.setattr("quoteforge.config.AUTO_CALIBRATION_ENABLED", True)
+    cp.record_vision_calibration("real_uid", {"passed": True, "score": 0.95})
+    import quoteforge.db.database as db
+    with db._conn() as c:
+        c.execute("INSERT INTO orders (order_id, recipient_name, occasion, product_type, "
+                  "status, claim_status, created_at) VALUES "
+                  "('R1','A','x','apparel','delivered','approved_refund',datetime('now'))")
+    assert cp.auto_calibration_active() is False
+
+
 def test_gate_reverts_on_unit_cap(iso_db, monkeypatch):
     monkeypatch.setattr("quoteforge.config.AUTO_CALIBRATION_ENABLED", True)
     monkeypatch.setattr("quoteforge.config.CALIBRATION_UNIT_CAP", 5)

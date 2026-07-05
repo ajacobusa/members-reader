@@ -149,17 +149,32 @@ def _apparel_units_since(ts: str) -> int:
 
 
 def _apparel_issue_since(ts: str) -> str:
-    """A return/dispute/cancel/refund on an apparel order since `ts` -> the auto-revert
-    trigger. Returns a reason string, or '' if none. Fail-safe: on error return a reason
-    (treat as an issue -> revert), because an unverifiable safety state is not safe."""
+    """A return / dispute / claim / cancel / refund on an apparel order since `ts` -> the
+    auto-revert trigger. Returns a reason string, or '' if none. Fail-safe: on error return
+    a reason (treat as an issue -> revert), because an unverifiable safety state is not safe.
+
+    IMPORTANT: the dispute/return lifecycle is NOT recorded on orders.status - a post-
+    delivery dispute lands in orders.delivery_disputed (fulfillment_tracker.mark_delivery_
+    disputed) and a return/refund claim in orders.claim_status (claim_workflow.decide_claim).
+    Only cancel/refund reach orders.status. The scan must read all three, or the "revert on
+    first dispute" rail silently never fires. Any non-empty claim counts (over-reverting just
+    forces manual review - the safe direction)."""
     try:
         with _conn() as conn:
             row = conn.execute(
-                "SELECT status FROM orders WHERE lower(product_type)='apparel' "
-                "AND created_at >= ? AND lower(status) IN "
-                "('returned','return','disputed','dispute','cancelled','canceled','refunded') "
-                "LIMIT 1", (ts,)).fetchone()
-        return f"apparel order status={row['status']}" if row else ""
+                "SELECT status, claim_status, delivery_disputed FROM orders "
+                "WHERE lower(product_type)='apparel' AND created_at >= ? AND ("
+                "  lower(status) IN ('cancelled','canceled','refunded') "
+                "  OR delivery_disputed=1 "
+                "  OR coalesce(trim(claim_status),'') != '' "
+                ") LIMIT 1", (ts,)).fetchone()
+        if not row:
+            return ""
+        if row["delivery_disputed"]:
+            return "apparel order delivery_disputed=1"
+        if (row["claim_status"] or "").strip():
+            return f"apparel claim_status={row['claim_status']}"
+        return f"apparel order status={row['status']}"
     except Exception as exc:  # noqa: BLE001 - unknown -> treat as an issue (revert)
         logger.warning("apparel issue scan failed (assuming issue): %s", exc)
         return f"issue scan error: {exc}"
