@@ -258,6 +258,23 @@ AI_UPSCALE_MODEL: str = os.getenv("AI_UPSCALE_MODEL", "")
 # auto-print on real garments. Flip to true ONLY after a good test print.
 APPAREL_PRINT_CALIBRATED: bool = _env_bool("APPAREL_PRINT_CALIBRATED", False)
 
+# Automated apparel calibration (vision QA + capped auto-revert). When the owner turns
+# this ON (a one-time consent), a PHYSICAL test print that passes the vision QA can open
+# apparel production automatically - but only within safety rails: at least
+# CALIBRATION_MIN_QA_SCORE, at most CALIBRATION_UNIT_CAP auto-produced units before a
+# re-confirm, and an automatic REVERT (re-block apparel) on the first return/dispute. The
+# env master APPAREL_PRINT_CALIBRATED still forces apparel open on its own; this only adds
+# a reversible DB-driven path so a vision model is never the sole unchecked authority.
+AUTO_CALIBRATION_ENABLED: bool = _env_bool("AUTO_CALIBRATION_ENABLED", False)
+try:
+    CALIBRATION_MIN_QA_SCORE: float = float(os.getenv("CALIBRATION_MIN_QA_SCORE", "0.90") or 0.90)
+except ValueError:
+    CALIBRATION_MIN_QA_SCORE = 0.90
+try:
+    CALIBRATION_UNIT_CAP: int = int(os.getenv("CALIBRATION_UNIT_CAP", "25") or 25)
+except ValueError:
+    CALIBRATION_UNIT_CAP = 25
+
 # ── UAT / feedback collection ────────────────────────────────────
 # Optional Google Form (or any survey) URL. When set, the UAT shop-home page
 # routes its feedback buttons to this form (with the listing + star rating in

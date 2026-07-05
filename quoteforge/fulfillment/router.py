@@ -170,11 +170,24 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
         # apparel order still HOLDS for manual - but now the faithful files ride along,
         # so the manual step is verify-and-submit, not build-from-scratch. This makes a
         # mis-calibrated mapping physically incapable of auto-printing on real garments.
+        # Apparel is held for manual UNLESS calibration is proven - either the env master
+        # APPAREL_PRINT_CALIBRATED (manual owner sign-off) OR the automated path
+        # (auto_calibration_active: vision QA passed + owner consent + under the unit cap +
+        # NO recent return/dispute). The automated path is fail-safe (False on any doubt)
+        # and auto-reverts on the first dispute, so a mis-calibrated mapping still can't
+        # keep auto-printing on real garments.
         if str(order.get("product_type", "")).lower() == "apparel" and not APPAREL_PRINT_CALIBRATED:
-            return {"status": "manual", "vendor": "gelato", "id": "",
-                    "detail": "apparel faithful print files attached; held for owner "
-                              "print-calibration sign-off (set APPAREL_PRINT_CALIBRATED=true "
-                              "after a good Gelato test print)"}
+            _cal_ok = False
+            try:
+                from quoteforge.automation.calibration_pipeline import auto_calibration_active
+                _cal_ok = auto_calibration_active()
+            except Exception:  # noqa: BLE001 - unavailable pipeline -> stay blocked (safe)
+                _cal_ok = False
+            if not _cal_ok:
+                return {"status": "manual", "vendor": "gelato", "id": "",
+                        "detail": "apparel faithful print files attached; held for print-"
+                                  "calibration sign-off (owner APPAREL_PRINT_CALIBRATED, or "
+                                  "automated vision-QA calibration within its safety rails)"}
         if not (product_uid and recipient and artwork_url):
             return {"status": "manual", "vendor": "gelato",
                     "detail": "missing product/address/artwork - manual upload",
