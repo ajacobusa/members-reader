@@ -1597,6 +1597,27 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("uid_map_unverifiable_fails_closed", False, str(exc)))
 
+    # 63) The UID resolver must NEVER auto-write a size-specific apparel SKU from a
+    #     SIZE-AGNOSTIC Gelato product. The SKU's own 'GEL-M-' garment code once injected a
+    #     phantom 'm' size token, letting a product that names no size clear the confidence
+    #     gate and map the WRONG SIZE to a real customer (single-claimant path bypassed the
+    #     ambiguity guard). Behavioral: a lone M-size placeholder vs a product carrying only
+    #     {apparel,tshirt,white} must be BLOCKED (never resolved).
+    try:
+        from quoteforge.automation import gelato_uid_resolver as _r63
+        _item63 = {"family": "apparel", "sku": "GEL-M-TSHIRT-M-WHITE",
+                   "tokens": _r63._sku_tokens("apparel", "GEL-M-TSHIRT-M-WHITE")}
+        _prod63 = {"uid": "gel-size-agnostic", "text": "apparel tshirt white", "attrs": {}}
+        _res63 = _r63.resolve_sku(_item63, [_prod63])
+        _leaked63 = _res63.get("uid") is not None
+        checks.append(_c("resolver_size_anchored", not _leaked63,
+                         "size-agnostic Gelato product is NOT auto-written to a size-"
+                         "specific apparel SKU (size confirmed before write)" if not _leaked63
+                         else "REGRESSION: a size-agnostic product maps GEL-M-TSHIRT-M-WHITE "
+                         "- wrong garment size could ship to a real customer"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("resolver_size_anchored", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

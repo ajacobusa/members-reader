@@ -2736,6 +2736,43 @@ def _cmd_rebuild_site(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_resolve(args: list[str]) -> int:
+    """Auto-discover real Gelato productUids for placeholder SKUs. `gelato-resolve [sub]`.
+    Matches our catalog to the live Gelato catalog by confidence; writes only unambiguous
+    high-confidence 1:1 matches (BLOCKED, never guessed, for the rest).
+
+    Subcommands:
+      status          (default) live? + how many SKUs still need a UID
+      dry-run         resolve + report what WOULD be written (no writes)
+      apply           write high-confidence unambiguous matches to the registry, then
+                      run `gelato-readiness export` to feed the runtime map
+    """
+    from quoteforge.db.database import init_db
+    from quoteforge.automation import gelato_uid_resolver as rs
+    init_db()
+    sub = (args[0] if args else "status").lower()
+    if sub == "status":
+        st = rs.resolver_status()
+        print(f"Gelato UID resolver: live={st['live']} "
+              f"unmapped_candidates={st['unmapped_candidates']} threshold={st['threshold']}")
+        if not st["live"]:
+            print("  (no-op until TEST_MODE=false + GELATO_API_KEY set)")
+        return 0
+    if sub in ("dry-run", "apply"):
+        s = rs.resolve_all(apply=(sub == "apply"))
+        print(f"Gelato UID resolver ({'APPLY' if sub == 'apply' else 'DRY-RUN'}): "
+              f"catalog={s['catalog_size']} candidates={s['candidates']} "
+              f"resolved={s['resolved']} blocked={s['blocked']} written={s['written']} "
+              f"(threshold {s['threshold']}, live={s['live']})")
+        if s["catalog_size"] == 0:
+            print("  (empty catalog: no-op until live + Gelato catalog reachable)")
+        if sub == "apply" and s["written"]:
+            print("  -> now run `admin gelato-readiness export` to update the runtime map.")
+        return 0
+    print("usage: gelato-resolve [status|dry-run|apply]")
+    return 2
+
+
 def _cmd_gelato_automap(args: list[str]) -> int:
     """Auto-map product families to REAL Gelato product UIDs (read-only catalog API)
     and write the GELATO_PRODUCT_FAMILY_FILE. A DRAFT for owner review - does NOT
@@ -3391,6 +3428,7 @@ COMMANDS = {
     "mockup-readiness": _cmd_mockup_readiness,
     "map-gelato": _cmd_map_gelato,
     "gelato-readiness": _cmd_gelato_readiness,
+    "gelato-resolve": _cmd_gelato_resolve,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
     "gelato-uid-template": _cmd_gelato_uid_template,
