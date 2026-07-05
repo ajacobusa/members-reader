@@ -3029,6 +3029,99 @@ def _cmd_map_gelato(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_readiness(args: list[str]) -> int:
+    """Gelato go-live readiness pipeline - the three gates.  `gelato-readiness [sub]`
+
+    Subcommands:
+      status                       (default) print the 3-gate readiness dashboard
+      validate                     exit 1 if ANY GEL-* placeholder remains (CI/preflight
+                                   gate; hard rule #1). Safe to run anytime.
+      export                       write the verified UID registry to the runtime
+                                   SKU->UID JSON file (config/gelato_uid_map.json)
+      map-uid FAMILY SKU UID [SRC] record a VERIFIED real productUid (rejects GEL-*)
+      calibrate-approve UID WHO [NOTES]
+                                   record an owner sign-off that a PHYSICAL apparel test
+                                   print was reviewed + approved (Gate 3, hard rule #6)
+    """
+    from quoteforge.db.database import init_db
+    from quoteforge.automation import gelato_readiness as gr
+    init_db()
+    sub = (args[0] if args else "status").lower()
+
+    if sub == "validate":
+        v = gr.validate_no_gel_placeholders()
+        if v["ok"]:
+            print("[OK] no GEL-* placeholders in registry or runtime UID map")
+            return 0
+        print("[BLOCKED] GEL-* placeholders present (never orderable):")
+        if v["registry_offenders"]:
+            print(f"  registry: {v['registry_offenders'][:10]}")
+        if v["runtime_offenders"]:
+            print(f"  runtime : {v['runtime_offenders'][:10]}")
+        return 1
+
+    if sub == "export":
+        e = gr.export_registry_to_uid_map()
+        print(f"[OK] exported {e['written']} verified UID(s) -> {e['path']} "
+              f"({e['total']} total entries)")
+        return 0
+
+    if sub == "map-uid":
+        if len(args) < 4:
+            print("usage: gelato-readiness map-uid FAMILY SKU PRODUCT_UID [SOURCE]")
+            return 2
+        try:
+            row = gr.map_real_gelato_uid(args[1], args[2], args[3],
+                                         source=args[4] if len(args) > 4 else "cli")
+        except ValueError as exc:
+            print(f"[REJECTED] {exc}")
+            return 1
+        print(f"[OK] verified {row['product_family']} {row['sku']} -> {row['product_uid']}")
+        return 0
+
+    if sub == "calibrate-approve":
+        if len(args) < 3:
+            print("usage: gelato-readiness calibrate-approve PRODUCT_UID APPROVER [NOTES]")
+            return 2
+        try:
+            row = gr.record_calibration_approval(
+                args[1], args[2], notes=" ".join(args[3:]) if len(args) > 3 else "")
+        except ValueError as exc:
+            print(f"[REJECTED] {exc}")
+            return 1
+        print(f"[OK] physical print approved for {row['product_uid']} by {row['approver']}.")
+        print("     NOTE: now set APPAREL_PRINT_CALIBRATED=true to open apparel "
+              "fulfilment (the router's master gate).")
+        return 0
+
+    # default: status dashboard
+    r = gr.readiness_report()
+    print("=" * 60)
+    print("GELATO GO-LIVE READINESS")
+    print("=" * 60)
+    g1 = r["gate1_uid_mapping"]
+    print(f"Gate 1  UID mapping        {'READY' if g1['ready'] else 'NOT READY'}")
+    for fam, fs in g1["families"].items():
+        if "error" in fs:
+            print(f"          {fam:9} ERROR {fs['error'][:40]}")
+        else:
+            print(f"          {fam:9} {fs['configured']}/{fs['total']} mapped, "
+                  f"{fs['placeholders']} placeholder(s) {'[OK]' if fs['ready'] else ''}")
+    g2 = r["gate2_live_probe"]
+    print(f"Gate 2  live probe         {'READY' if g2['ready'] else 'NOT READY'}"
+          + (f"  (shape: {g2['probe']['detected_image_shape']})" if g2.get("probe") else "  (no probe yet)"))
+    g3 = r["gate3_calibration"]
+    print(f"Gate 3  print calibration  {'READY' if g3['ready'] else 'NOT READY'}"
+          f"  (flag={g3['flag']}, owner_approved={g3['owner_approved']})")
+    if g3["flag_without_approval"]:
+        print("          WARNING: APPAREL_PRINT_CALIBRATED=true with NO owner approval on "
+              "record - flip is unbacked (hard rule #6).")
+    print("-" * 60)
+    print(f"OVERALL: {'READY FOR PRODUCTION' if r['overall_ready'] else 'NOT READY'} "
+          f"(live_enabled={r['live_enabled']})")
+    return 0 if r["overall_ready"] else 1
+
+
 def _mockup_stamp() -> str:
     """UTC ISO timestamp passed into the mockup-sync engine for its checkpoints."""
     from datetime import datetime, timezone
@@ -3285,6 +3378,7 @@ COMMANDS = {
     "mockup-publish": _cmd_mockup_publish,
     "mockup-readiness": _cmd_mockup_readiness,
     "map-gelato": _cmd_map_gelato,
+    "gelato-readiness": _cmd_gelato_readiness,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
     "gelato-uid-template": _cmd_gelato_uid_template,

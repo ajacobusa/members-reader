@@ -1494,7 +1494,8 @@ def check_infrastructure() -> dict:
         from pathlib import Path as _Path59
         import quoteforge as _qf59
         _REQUIRED_AUDITOR_AGENTS = ("code-outcome-auditor",
-                                    "storefront-fulfillability-auditor")
+                                    "storefront-fulfillability-auditor",
+                                    "gelato-readiness-pilot")
         _agents_dir = _Path59(_qf59.__file__).resolve().parent.parent / ".claude" / "agents"
         if not _agents_dir.is_dir():
             checks.append(_c("infra_check_auditor_agents_assigned", True,
@@ -1517,6 +1518,56 @@ def check_infrastructure() -> dict:
                              f"broken): {_missing59}"))
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("infra_check_auditor_agents_assigned", False, str(exc)))
+
+    # 60) The Gelato readiness pipeline is WIRED and its registry does not DRIFT from the
+    #     runtime UID map. The registry is the audit entry point; it EXPORTS into the JSON
+    #     file gelato_sync._uid_map() reads, so there is one runtime source. Guards:
+    #     (a) the engine imports + readiness_report() returns the three gates, (b) the
+    #     GEL-* placeholder logic still rejects placeholders, (c) NO verified registry UID
+    #     is missing from the runtime map (mapped a UID but forgot to export it - the exact
+    #     'two sources of truth' drift to avoid). Pre-go-live both are empty -> consistent.
+    try:
+        from quoteforge.automation import gelato_readiness as _gr60
+        _rep60 = _gr60.readiness_report()
+        _has_gates = all(k in _rep60 for k in
+                         ("gate1_uid_mapping", "gate2_live_probe", "gate3_calibration",
+                          "overall_ready"))
+        _placeholder_logic = (_gr60._is_placeholder("GEL-X") is True
+                              and _gr60._is_placeholder("real_uid_123") is False)
+        _reg60 = _gr60.registry_uid_map()
+        _runtime60 = {}
+        try:
+            from quoteforge.automation.gelato_sync import _uid_map as _um60
+            _runtime60 = _um60() or {}
+        except Exception as _e60:  # noqa: BLE001
+            logger.debug("uid map read skipped in drift check: %s", _e60)
+        _drift = sorted(sku for sku, uid in _reg60.items() if _runtime60.get(sku) != uid)
+        ok = bool(_has_gates and _placeholder_logic and not _drift)
+        checks.append(_c("gelato_readiness_pipeline_wired", ok,
+                         "readiness pipeline wired; registry exports cleanly into the "
+                         "runtime UID map (no drift)" if ok
+                         else f"readiness pipeline issue: gates={_has_gates} "
+                         f"placeholder_logic={_placeholder_logic} registry_not_exported={_drift[:5]}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("gelato_readiness_pipeline_wired", False, str(exc)))
+
+    # 61) Apparel print-calibration flag is OWNER-BACKED (Gate 3, hard rule #6). The
+    #     router blocks apparel until APPAREL_PRINT_CALIBRATED=true; that flag is only
+    #     legitimate once a PHYSICAL test print is owner-approved (a row in
+    #     apparel_print_calibration). Catches the dangerous state where the flag was
+    #     flipped with NO approval on record -> unverified apparel could print. Flag OFF
+    #     (default) is safe (apparel held) -> passes.
+    try:
+        from quoteforge.config import APPAREL_PRINT_CALIBRATED as _flag61
+        from quoteforge.automation.gelato_readiness import calibration_approved as _ca61
+        _unbacked = bool(_flag61) and not _ca61("apparel")
+        checks.append(_c("apparel_calibration_flag_backed", not _unbacked,
+                         "APPAREL_PRINT_CALIBRATED is off (apparel held) or backed by an "
+                         "owner physical-print approval" if not _unbacked
+                         else "APPAREL_PRINT_CALIBRATED=true with NO owner approval on "
+                         "record - unverified apparel could print (hard rule #6)"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("apparel_calibration_flag_backed", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
