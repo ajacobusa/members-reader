@@ -379,13 +379,62 @@ def init_db() -> None:
         # official-image override, etc. The record is what makes those actions
         # accountable after the fact (the update_order docstring already promises an
         # "audited admin override"; this is where that promise is kept).
-        conn.execute("""
+        conn.executescript("""
         CREATE TABLE IF NOT EXISTS security_events (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             at        TEXT DEFAULT (datetime('now')),
             event     TEXT NOT NULL,
             actor     TEXT DEFAULT 'system',
             detail    TEXT DEFAULT ''
+        );
+        -- Gelato readiness pipeline (Gate 1/2/3). These are the AUDIT LEDGERS; the
+        -- runtime SKU->UID source stays gelato_sync._uid_map() (env + JSON file), which
+        -- the registry EXPORTS into - so there is a single runtime source, no drift.
+        --
+        -- Gate 1: a verified real productUid per (family, sku). A GEL-* value is never
+        -- written here (map_real_gelato_uid rejects it). One row per SKU.
+        CREATE TABLE IF NOT EXISTS gelato_uid_registry (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            sku            TEXT NOT NULL UNIQUE,
+            product_family TEXT NOT NULL,
+            product_uid    TEXT NOT NULL,
+            source         TEXT DEFAULT '',
+            status         TEXT DEFAULT 'verified',
+            verified_at    TEXT DEFAULT (datetime('now')),
+            updated_at     TEXT DEFAULT (datetime('now'))
+        );
+        -- Gate 2: raw API response shapes captured from the FIRST live store product
+        -- (create-from-template) and its Gelato/Etsy image structure, so the image
+        -- pipeline is confirmed against real payloads, not assumed shapes.
+        CREATE TABLE IF NOT EXISTS gelato_live_probe (
+            id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+            qf_product_id               TEXT,
+            sku                         TEXT,
+            gelato_store_id             TEXT,
+            gelato_template_id          TEXT,
+            gelato_product_id           TEXT,
+            status                      TEXT DEFAULT 'created',
+            raw_create_response         TEXT,
+            raw_gelato_product_response TEXT,
+            raw_etsy_image_response     TEXT,
+            detected_image_shape        TEXT,
+            created_at                  TEXT DEFAULT (datetime('now')),
+            updated_at                  TEXT DEFAULT (datetime('now'))
+        );
+        -- Gate 3: an auditable owner sign-off that a PHYSICAL apparel test print was
+        -- reviewed and approved. The global APPAREL_PRINT_CALIBRATED env flag stays the
+        -- router's master gate; flipping it is only legitimate once an 'approved' row
+        -- exists here (calibration_approved() + the infra-check guard enforce that).
+        CREATE TABLE IF NOT EXISTS apparel_print_calibration (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_family TEXT NOT NULL DEFAULT 'apparel',
+            product_uid    TEXT NOT NULL,
+            status         TEXT DEFAULT 'pending',
+            approver       TEXT DEFAULT '',
+            notes          TEXT DEFAULT '',
+            test_order_ref TEXT DEFAULT '',
+            approved_at    TEXT,
+            created_at     TEXT DEFAULT (datetime('now'))
         );
         """)
         _migrate(conn)

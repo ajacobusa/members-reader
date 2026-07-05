@@ -214,8 +214,36 @@ def check_software() -> list[CheckResult]:
                                "PASS" if ok else "FAIL", detail))
 
     results.extend(check_product_mappings())
+    results.extend(check_calibration_gate())
 
     return results
+
+
+def check_calibration_gate() -> list[CheckResult]:
+    """Gate 3 (hard rule #6): APPAREL_PRINT_CALIBRATED may only be true once a PHYSICAL
+    apparel test print has been owner-approved. The router already blocks apparel until
+    the flag is on; this catches the DANGEROUS state where the flag was flipped with NO
+    approval on record - which would let unverified apparel print. A flag-on-without-
+    approval is a hard FAIL; flag-off is a safe heads-up (apparel stays held)."""
+    from quoteforge import config
+    try:
+        from quoteforge.automation.gelato_readiness import calibration_approved
+        approved = calibration_approved("apparel")
+    except Exception as exc:  # noqa: BLE001 - unavailable ledger fails the gate closed
+        return [CheckResult("Apparel print calibration (Gate 3)", "FAIL",
+                            f"calibration ledger unavailable: {exc}")]
+    flag = bool(config.APPAREL_PRINT_CALIBRATED)
+    if flag and not approved:
+        return [CheckResult("Apparel print calibration (Gate 3)", "FAIL",
+                            "APPAREL_PRINT_CALIBRATED=true but NO owner approval on record "
+                            "- run `admin gelato-readiness calibrate-approve` after a "
+                            "physical test print (hard rule #6)")]
+    if flag and approved:
+        return [CheckResult("Apparel print calibration (Gate 3)", "PASS",
+                            "flag on + owner physical-print approval on record")]
+    return [CheckResult("Apparel print calibration (Gate 3)", "PASS",
+                        "flag off - apparel held for manual until a physical test print "
+                        "is approved (safe)")]
 
 
 def check_product_mappings() -> list[CheckResult]:
