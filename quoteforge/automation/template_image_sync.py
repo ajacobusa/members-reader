@@ -27,11 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 def _uid_to_sku() -> dict:
-    """{gelato_uid -> our_sku} for confident reverse joins (placeholder UIDs excluded)."""
+    """{gelato_uid -> our_sku} for confident reverse joins (placeholder UIDs excluded, and
+    a UID shared by >1 SKU is SKIPPED not guessed - #uidjoin, via the shared helper)."""
     try:
-        from quoteforge.automation.gelato_sync import _uid_map
-        return {str(u): s for s, u in (_uid_map() or {}).items()
-                if u and not str(u).startswith("GEL-")}
+        from quoteforge.automation.gelato_sync import invert_uid_map
+        return invert_uid_map()
     except Exception as exc:  # noqa: BLE001
         logger.debug("uid map read failed: %s", exc)
         return {}

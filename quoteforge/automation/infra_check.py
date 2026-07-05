@@ -1300,6 +1300,36 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("apparel_print_files_upload_wired", False, str(exc)))
 
+    # 52) UID->SKU reverse join is collision-safe (Gelato->Etsy image audit): if two of
+    #     our SKUs share one real Gelato UID, the inversion must SKIP that UID (ambiguous),
+    #     never guess a SKU - else a store product's photo lands on the WRONG SKU's tile
+    #     (the exact wrong-product-image the sync exists to prevent). Behavioral.
+    try:
+        from quoteforge.automation.gelato_sync import invert_uid_map as _inv52
+        r = _inv52({"SKU-A": "UID-1", "SKU-B": "UID-1", "SKU-C": "UID-2", "SKU-D": "GEL-X"})
+        ok = ("UID-1" not in r and r.get("UID-2") == "SKU-C" and "GEL-X" not in r)
+        checks.append(_c("uid_reverse_join_collision_safe", ok,
+                         "a UID shared by 2 SKUs is skipped (ambiguous); a unique UID "
+                         "resolves; a GEL-* placeholder is excluded"
+                         if ok else "UID->SKU reverse join is not collision-safe - a "
+                         "shared UID could put the wrong product photo on a tile"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("uid_reverse_join_collision_safe", False, str(exc)))
+
+    # 53) The durably-synced official-image table is CONSUMED by the display path, not a
+    #     write-only sink (Gelato->Etsy image audit): template-sync persists + stale-retires
+    #     images into gelato_product_images, so the display resolver must read it or that
+    #     durability/stale-retire guarantee is inert. Grounded structural ref.
+    try:
+        from quoteforge.images import supplier_mockup as _sm53
+        ok = _references(_sm53.gelato_blank_image, "get_product_images")
+        checks.append(_c("official_image_table_consumed", ok,
+                         "gelato_blank_image reads the persisted gelato_product_images table"
+                         if ok else "gelato_product_images is written but no display path "
+                         "reads it - persisted/stale-retired images are never shown"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("official_image_table_consumed", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
