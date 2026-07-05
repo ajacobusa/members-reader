@@ -84,6 +84,31 @@ def _uid_map() -> dict:
     return out
 
 
+def invert_uid_map(uid_map: dict = None) -> dict:
+    """{gelato_uid -> our_sku} for CONFIDENT reverse joins - the single source of truth
+    for resolving a store product's UID back to the SKU it depicts. Excludes GEL-*
+    placeholders, AND (the fix) DROPS any real UID that maps back to more than one of
+    our SKUs: an ambiguous UID must be SKIPPED, never guessed, or a store product's photo
+    would land on the wrong SKU's tile (the "wrong product image" the image sync exists
+    to prevent). ``uid_map`` defaults to the live _uid_map()."""
+    src = _uid_map() if uid_map is None else (uid_map or {})
+    seen: dict = {}
+    out: dict = {}
+    for sku, uid in src.items():
+        u = str(uid or "")
+        if not u or u.startswith("GEL-"):
+            continue                                   # placeholder / empty -> skip
+        if u in seen and seen[u] != sku:
+            logger.warning("Gelato UID %s maps to >1 sku (%s, %s) - skipping (ambiguous "
+                           "reverse join could show the wrong product photo)",
+                           u, seen[u], sku)
+            out.pop(u, None)
+            continue
+        seen[u] = sku
+        out[u] = sku
+    return out
+
+
 def _all_skus() -> list[str]:
     """Every Gelato SKU we sell (catalog products + frames + apparel + mugs +
     calendars + branded), sorted - so REAL costs/availability sync for ALL

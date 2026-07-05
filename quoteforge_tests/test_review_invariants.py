@@ -51,6 +51,8 @@ def test_new_infra_checks_are_wired():
     assert "framed_sizes_fulfillable" in names                 # no framed size sold without a prepared UID
     assert "apparel_print_files_wired" in names                 # faithful per-side DTG print files render + capture
     assert "apparel_print_files_upload_wired" in names          # print files upload to backend + reach the order
+    assert "uid_reverse_join_collision_safe" in names           # a shared Gelato UID can't misroute a product photo
+    assert "official_image_table_consumed" in names             # the persisted official-image table is actually read
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -326,6 +328,40 @@ def test_single_panel_mugs_are_not_sold_a_full_wrap():
     assert "function _mugWraps()" in src
     assert "!_mugWraps()" in src                               # layout gate consumes it
     assert "_mw?5.3:1.9" in src                                # proof arc gated per-mug
+
+
+def test_uid_reverse_join_drops_collisions(monkeypatch):
+    # REGRESSION (Gelato->Etsy image audit, HIGH): two of our SKUs sharing one real Gelato
+    # UID must NOT resolve that UID to an arbitrary SKU (would put the wrong product photo
+    # on the wrong tile). The colliding UID is skipped; unique UIDs still resolve;
+    # GEL-* placeholders are excluded.
+    from quoteforge.automation.gelato_sync import invert_uid_map
+    r = invert_uid_map({"SKU-A": "UID-1", "SKU-B": "UID-1",
+                        "SKU-C": "UID-2", "SKU-D": "GEL-PLACEHOLDER"})
+    assert "UID-1" not in r                    # ambiguous -> skipped, never guessed
+    assert r.get("UID-2") == "SKU-C"           # unique -> resolves
+    assert "GEL-PLACEHOLDER" not in r          # placeholder -> excluded
+    # both consumers use the shared collision-safe helper
+    import inspect
+    from quoteforge.automation import ecommerce_images as ei, template_image_sync as tis
+    assert "invert_uid_map" in inspect.getsource(ei._compute_images_by_sku)
+    assert "invert_uid_map" in inspect.getsource(tis._uid_to_sku)
+
+
+def test_gelato_blank_image_prefers_persisted_table(tmp_path, monkeypatch):
+    # REGRESSION (Gelato->Etsy image audit, MEDIUM): a persisted official image
+    # (gelato_product_images, written + stale-retired by template-sync) is returned for
+    # the SKU before falling through to the live in-memory ecommerce lookup - so the
+    # durable-persistence + stale-retire guarantee actually reaches the display.
+    import quoteforge.images.supplier_mockup as sm
+    from quoteforge.automation import gelato_api
+    import quoteforge.config as cfg
+    monkeypatch.setattr(sm, "product_photo_overrides", lambda: {})
+    monkeypatch.setattr(cfg, "TEST_MODE", False)
+    monkeypatch.setattr(gelato_api, "GELATO_API_KEY", "k", raising=False)
+    monkeypatch.setattr("quoteforge.db.database.get_product_images",
+                        lambda sku, **k: [{"image_url": "https://cdn/persisted.png"}])
+    assert sm.gelato_blank_image("QF-SKU") == "https://cdn/persisted.png"
 
 
 def test_prune_event_tables_trims_old_rows(tmp_path, monkeypatch):

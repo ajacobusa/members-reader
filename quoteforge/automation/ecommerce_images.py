@@ -140,9 +140,10 @@ def _compute_images_by_sku() -> dict:
     if not prods:
         return {}
     try:
-        from quoteforge.automation.gelato_sync import _uid_map
-        uid_to_sku = {str(u): s for s, u in (_uid_map() or {}).items()
-                      if u and not str(u).startswith("GEL-")}
+        # Collision-safe inversion (#uidjoin): a UID shared by 2 of our SKUs is SKIPPED,
+        # never guessed - else a store product's photo lands on the wrong SKU's tile.
+        from quoteforge.automation.gelato_sync import invert_uid_map
+        uid_to_sku = invert_uid_map()
     except Exception as exc:  # noqa: BLE001
         logger.debug("uid map read failed: %s", exc)
         uid_to_sku = {}

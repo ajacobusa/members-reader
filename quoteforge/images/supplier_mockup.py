@@ -161,9 +161,20 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
     from quoteforge.automation.gelato_api import GELATO_API_KEY
     if TEST_MODE or not GELATO_API_KEY:
         return None
-    # Prefer the connected ecommerce store's REAL product mockup (previewUrl) once the
-    # owner creates a product (#180). Auto-activates with zero further wiring; returns
-    # {} until then, so this falls through to the catalog path (kept for the test seam).
+    # Prefer the DURABLY-persisted official image (#uidjoin fix): the daily template-sync
+    # writes each product's real image into gelato_product_images and RETIRES stale ones,
+    # so reading it here is what makes that persistence + stale-retire actually reach the
+    # display (survives a transient store-API blip). Falls through if none persisted yet.
+    try:
+        from quoteforge.db.database import get_product_images
+        _rows = get_product_images(our_sku)            # active, ranked
+        if _rows and _rows[0].get("image_url"):
+            return _rows[0]["image_url"]
+    except Exception as exc:  # noqa: BLE001 — persisted lookup blip: try the live store
+        logger.debug("persisted image lookup failed for %s: %s", our_sku, exc)
+    # Then the connected ecommerce store's REAL product mockup (previewUrl) once the owner
+    # creates a product (#180). Auto-activates with zero further wiring; returns {} until
+    # then, so this falls through to the catalog path (kept for the test seam).
     try:
         from quoteforge.automation.ecommerce_images import images_by_sku
         _url = images_by_sku().get(our_sku)
