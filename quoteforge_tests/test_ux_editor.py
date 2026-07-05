@@ -1007,6 +1007,22 @@ def test_final_proof_front_shows_sleeves_back_is_back_only(tmp_path):
     assert "the front view shows your sleeves on the arms" in js
 
 
+def test_apparel_faithful_print_files_render_wired(tmp_path):
+    # REGRESSION (#167 Phase 2b): apparel produces faithful per-side DTG PRINT FILES -
+    # the design ONLY, on a transparent canvas, at PRINT resolution (not the screen
+    # canvas upscaled). drawArt suppresses the garment mockup/silhouette/shadow in
+    # _PRINTMODE. Structural (canvas pixels need a browser; the owner's physical test
+    # print is the visual gate, held behind APPAREL_PRINT_CALIBRATED).
+    js = _page(tmp_path)
+    assert "function _printFiles()" in js
+    assert "print_files:(IS_APPAREL?_printFiles():null)" in js   # captured with the order
+    assert "let _PRINTMODE=false" in js
+    assert "else if(_PRINTMODE)" in js                            # transparent, no studio fill
+    assert "!_mock && !_PRINTMODE" in js                          # no shadow in print mode
+    assert "if(_mock||_PRINTMODE)" in js                          # no drawn garment in print mode
+    assert "K=3000/Math.max(ow,oh)" in js                         # rendered at PRINT resolution
+
+
 def test_sleeveless_garment_gates_sleeve_areas(tmp_path):
     # REGRESSION (#tank): a Tank Top is sleeveless. The editor must gate sleeve
     # placements, tabs, upload zones, the upcharge, and the compositor on

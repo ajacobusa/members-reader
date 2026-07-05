@@ -1138,10 +1138,13 @@ def check_infrastructure() -> dict:
     #     catalog marks the tank sleeveless AND the page generator gates sleeves on
     #     _garmentSleeves() AND no longer falls the back tile back to the front photo.
     try:
-        import inspect as _insp46
+        import inspect as _insp46, re as _re46
         from quoteforge.etsy.apparel_catalog import garment_has_sleeves as _ghs
         from quoteforge.etsy import listing_preview as _lp46
-        _src46 = _insp46.getsource(_lp46)
+        # Comment-immune (I-1): strip JS // comments so a future refactor can't leave the
+        # gate token in a doc-comment while removing the executable gate (matches #48/#50).
+        _src46 = "\n".join(_re46.sub(r"//.*$", "", _ln)
+                           for _ln in _insp46.getsource(_lp46).splitlines())
         tank_sleeveless = (_ghs("tank") is False and _ghs("tshirt") is True)
         sleeve_gated = ("MULTI_AREA && _garmentSleeves()" in _src46
                         and "APPHASSLEEVES" in _src46
@@ -1243,6 +1246,32 @@ def check_infrastructure() -> dict:
                          if not missing else f"framed sizes sold with NO prepared UID: {missing}"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("framed_sizes_fulfillable", False, str(exc)))
+
+    # 50) Faithful apparel print files wired (#167 Phase 2b): the editor renders per-side
+    #     DTG print files - the DESIGN ONLY, transparent, at PRINT resolution - and
+    #     captures them with the order. drawArt must suppress the garment (mockup/
+    #     silhouette/shadow) in _PRINTMODE, or the print file would carry a picture of a
+    #     shirt. Grounded (comment-immune): the generator has the _PRINTMODE guards +
+    #     _printFiles + the order payload. Output stays gated by APPAREL_PRINT_CALIBRATED.
+    try:
+        import inspect as _insp50, re as _re50
+        from quoteforge.etsy import listing_preview as _lp50
+        _src50 = "\n".join(_re50.sub(r"//.*$", "", _ln)
+                           for _ln in _insp50.getsource(_lp50).splitlines())
+        renders = ("function _printFiles()" in _src50
+                   and "K=3000/Math.max(ow,oh)" in _src50)          # print resolution
+        design_only = ("else if(_PRINTMODE)" in _src50              # transparent, no fill
+                       and "!_mock && !_PRINTMODE" in _src50         # no shadow
+                       and "if(_mock||_PRINTMODE)" in _src50)        # no drawn garment
+        captured = "print_files:(IS_APPAREL?_printFiles():null)" in _src50
+        ok = bool(renders and design_only and captured)
+        checks.append(_c("apparel_print_files_wired", ok,
+                         "apparel renders faithful design-only per-side print files at "
+                         "print resolution + captures them with the order"
+                         if ok else "faithful apparel print-file render not wired: "
+                         f"renders={renders} design_only={design_only} captured={captured}"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("apparel_print_files_wired", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

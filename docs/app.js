@@ -926,6 +926,7 @@
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
      design:_fullDesign(),                 // FULL per-item design (both sides, cal, wording)
+     print_files:(IS_APPAREL?_printFiles():null),  // #167: faithful per-side DTG print files
      thumb:_proofThumb()}); renderCart();
    var pa=document.getElementById('postadd'); if(pa){pa.style.display='flex'; pa.scrollIntoView({block:'nearest'});}
    clearDraft(); if(typeof abConvert==='function') abConvert();
@@ -1282,6 +1283,40 @@
  // not just the wording on white. Falls back to the canvas alone for wall art (no
  // garment layer) or a cross-origin mockup that would taint the canvas.
  let _CLEAN=false;   // when true, drawArt omits the editor chrome (frame/handles)
+ let _PRINTMODE=false;   // #167: when true, drawArt renders the DESIGN ONLY on a transparent
+ //                        canvas (no garment mockup/silhouette/shadow) - a DTG print file
+ //                        prints onto the real garment, so it must carry only the artwork.
+ // #167 Phase 2b: per-side PRINT FILES. For each designed apparel side, render the DESIGN
+ // ONLY (the same canvas + coords the buyer approved) at PRINT resolution (~3000px on the
+ // long side, mcanvas ratio preserved) on a transparent background. Front is always
+ // included; back/sleeves only when designed (sleeves only on a sleeved garment). Returns
+ // {side:pngDataURL} or null. The backend hosts these into extra_files; the router's
+ // APPAREL_PRINT_CALIBRATED gate still holds apparel to manual until the owner's test
+ // print, so an uncalibrated placement can never auto-print. Never throws.
+ function _printFiles(){
+   if(!IS_APPAREL) return null;
+   const cv=document.getElementById('mcanvas'); if(!cv||!cv.width) return null;
+   const prev=APPLACEMENT, ow=cv.width, oh=cv.height, K=3000/Math.max(ow,oh);
+   const out={};
+   _SNAPPING=true; _CLEAN=true; _PRINTMODE=true;
+   try{
+     if(IS_APPAREL) SIDES[APPLACEMENT]=_captureSide();      // save the side we're on
+     cv.width=Math.round(ow*K); cv.height=Math.round(oh*K); // print resolution
+     ['front','back','sleeve-left','sleeve-right'].forEach(function(a){
+       if(a!=='front'){
+         if((a==='sleeve-left'||a==='sleeve-right') && !_garmentSleeves()) return;
+         if(!_sideHas(SIDES[a])) return;                    // only designed extra areas
+       }
+       setPlacement(a); drawArt();
+       try{ var u=cv.toDataURL('image/png'); if(u) out[a]=u; }catch(e){}
+     });
+   }catch(e){}
+   cv.width=ow; cv.height=oh;                                // restore the editor canvas
+   _PRINTMODE=false; _CLEAN=false;
+   try{ setPlacement(prev); drawArt(); }catch(e){}
+   _SNAPPING=false;
+   return Object.keys(out).length?out:null;
+ }
  function _composedProofURL(){
    const cv=document.getElementById('mcanvas'); if(!cv) return '';
    const mg=document.getElementById('mgarment');
@@ -3241,9 +3276,12 @@
      if(_bsrc){ const _i=_mockupImg(_bsrc);
        if(_i&&_i.complete&&_i.naturalWidth) _mock=_bsrc; }
    }
-   if(_mock){
+   if(_mock && !_PRINTMODE){
      if(_mg){ if(_mg.getAttribute('src')!==_mock) _mg.setAttribute('src',_mock); _mg.style.display='block'; }
      ctx.clearRect(0,0,W,H);                  // transparent so the mockup image shows
+   } else if(_PRINTMODE){
+     if(_mg) _mg.style.display='none';
+     ctx.clearRect(0,0,W,H);                  // #167 print file: DESIGN ONLY on transparent
    } else {
      if(_mg) _mg.style.display='none';
      ctx.fillStyle = (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) ? '#e9e6df' : SELWALL; ctx.fillRect(0,0,W,H);  // studio / room
@@ -3252,7 +3290,7 @@
    const ar=_printAR(), AW=W-2*m, AH=H-2*m;
    let w,h; if(AW/AH > ar){ h=AH; w=AH*ar; } else { w=AW; h=AW/ar; }
    let x=(W-w)/2, y=(H-h)/2;
-   if(!_mock){ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }  // shadow (not in real-mockup mode)
+   if(!_mock && !_PRINTMODE){ ctx.fillStyle="rgba(0,0,0,.18)"; ctx.fillRect(x+5,y+6,w,h); }  // shadow (not in real-mockup / print-file mode)
    if(IS_CAL){                               // PORTRAIT white-paper cover + movable print frame
      if(!_mock) _drawCalField(ctx,x,y,w,h);   // real photo backdrop wins when present
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
@@ -3263,7 +3301,7 @@
      if(!_mock) _drawBrandedField(ctx,x,y,w,h);
      const b=_placeBoundMock(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
    } else if(IS_APPAREL){
-     if(_mock){                              // design sits on the real mockup, per placement
+     if(_mock||_PRINTMODE){                  // real mockup OR print file: design only, no drawn garment
        const b=_apparelBound(W,H); x=b.x; y=b.y; w=b.w; h=b.h; APPAREL_BOUND=b;
      } else {
        drawGarment(ctx,x,y,w,h);
