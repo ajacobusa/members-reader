@@ -1330,6 +1330,68 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("official_image_table_consumed", False, str(exc)))
 
+    # 54) The SKU->URL supplier-image cache is UID-BOUND (Gelato->Etsy image re-audit):
+    #     after the owner REMAPS a SKU to a new Gelato UID, gelato_blank_image must return
+    #     the NEW uid's image, not a stale cached one - else the storefront shows the OLD
+    #     product forever (no self-heal). Behavioral against an isolated temp cache.
+    try:
+        import tempfile as _tf54
+        from pathlib import Path as _P54
+        from quoteforge.images import supplier_mockup as _sm54
+        from quoteforge.automation import gelato_sync as _gs54, gelato_api as _ga54
+        import quoteforge.config as _cfg54
+        _cache = _P54(_tf54.gettempdir()) / f"qf_infra_mockcache_{os.getpid()}.json"
+        _o_fetch, _o_ov, _o_map = (_sm54._fetch_product_image,
+                                   _sm54.product_photo_overrides, _gs54._uid_map)
+        _o_test, _o_key, _o_env = (_cfg54.TEST_MODE, _ga54.GELATO_API_KEY,
+                                   os.environ.get("GELATO_MOCKUP_CACHE"))
+        try:
+            if _cache.exists():
+                _cache.unlink()
+            os.environ["GELATO_MOCKUP_CACHE"] = str(_cache)
+            _cfg54.TEST_MODE = False
+            _ga54.GELATO_API_KEY = "k_infra"
+            _sm54.product_photo_overrides = lambda: {}
+            _sm54._fetch_product_image = lambda uid: f"http://cdn/{uid}.png"
+            _gs54._uid_map = lambda: {"SKU-X": "UID-OLD"}
+            first = _sm54.gelato_blank_image("SKU-X")            # caches UID-OLD
+            _gs54._uid_map = lambda: {"SKU-X": "UID-NEW"}        # owner REMAPS
+            second = _sm54.gelato_blank_image("SKU-X")           # must refetch UID-NEW
+            ok = (first == "http://cdn/UID-OLD.png" and second == "http://cdn/UID-NEW.png")
+        finally:
+            _sm54._fetch_product_image, _sm54.product_photo_overrides = _o_fetch, _o_ov
+            _gs54._uid_map, _cfg54.TEST_MODE, _ga54.GELATO_API_KEY = _o_map, _o_test, _o_key
+            if _o_env is None:
+                os.environ.pop("GELATO_MOCKUP_CACHE", None)
+            else:
+                os.environ["GELATO_MOCKUP_CACHE"] = _o_env
+            try:
+                _cache.unlink()
+            except OSError as _e54:
+                logger.debug("infra mockcache cleanup skipped: %s", _e54)
+        checks.append(_c("supplier_image_cache_uid_bound", ok,
+                         "gelato_blank_image refetches after a SKU->UID remap (uid-bound cache)"
+                         if ok else "supplier-image cache is SKU-keyed only - a UID remap keeps "
+                         "showing the OLD product's image (no self-heal)"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("supplier_image_cache_uid_bound", False, str(exc)))
+
+    # 55) Variant-UID resolution consults the STATIC uid map BEFORE the dynamic cache
+    #     (Gelato->Etsy image re-audit): a stale cached variant UID must never override a
+    #     corrected static map entry - that would route an ORDER to the wrong product.
+    try:
+        import inspect as _insp55
+        from quoteforge.automation import gelato_variant_resolver as _gvr55
+        src = _insp55.getsource(_gvr55.resolve_variant_uid)
+        i_static, i_cache = src.find("_uid_map"), src.find("_load_cache")
+        ok = (i_static != -1 and i_cache != -1 and i_static < i_cache)
+        checks.append(_c("variant_uid_static_before_cache", ok,
+                         "resolve_variant_uid checks the static uid map before the dynamic cache"
+                         if ok else "dynamic variant-UID cache can override the static map - a "
+                         "stale UID would route an order to the wrong product"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(_c("variant_uid_static_before_cache", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
