@@ -767,6 +767,36 @@ if FLASK_AVAILABLE and app:
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp, (200 if ok else 400)
 
+    @app.route("/print-files", methods=["POST", "OPTIONS"])
+    def print_files_route():
+        """Receive the faithful per-side apparel print files the editor rendered (#167
+        Phase 2c) and attach them to the saved design. POST JSON {email, design_id,
+        files:{side:dataURL}}. Decoded/validated/saved server-side; the fulfilment
+        pipeline reads them back via the design and hosts them into Gelato extra_files.
+        Display/print-only, and still held behind APPAREL_PRINT_CALIBRATED."""
+        if request.method == "OPTIONS":
+            resp = jsonify({})
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return resp
+        d = request.get_json(force=True, silent=True) or {}
+        email = (d.get("email") or "").strip()
+        saved = 0
+        try:
+            from quoteforge.images.apparel_print_files import save_print_file_datauris
+            from quoteforge.db.database import set_design_print_files
+            paths = save_print_file_datauris(email, d.get("design_id", "default"),
+                                             d.get("files") or {})
+            if paths:
+                set_design_print_files(email, d.get("design_id", "default"), paths)
+                saved = len(paths)
+        except Exception as exc:  # noqa: BLE001 - never break checkout on a print-file blip
+            logger.warning("print-files save failed: %s", exc)
+        ok = "@" in email
+        resp = jsonify({"status": "ok" if ok else "error", "saved": saved})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, (200 if ok else 400)
+
     @app.route("/confirm", methods=["POST", "OPTIONS"])
     def confirm_design_route():
         """Customer accepted the final proof. POST {email, summary, design,

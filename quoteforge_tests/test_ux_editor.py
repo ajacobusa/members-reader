@@ -1015,7 +1015,8 @@ def test_apparel_faithful_print_files_render_wired(tmp_path):
     # print is the visual gate, held behind APPAREL_PRINT_CALIBRATED).
     js = _page(tmp_path)
     assert "function _printFiles()" in js
-    assert "print_files:(IS_APPAREL?_printFiles():null)" in js   # captured with the order
+    assert "if(IS_APPAREL) _uploadPrintFiles();" in js           # #Phase2c: uploaded to backend
+    assert "function _uploadPrintFiles()" in js
     assert "let _PRINTMODE=false" in js
     assert "else if(_PRINTMODE)" in js                            # transparent, no studio fill
     assert "!_mock && !_PRINTMODE" in js                          # no shadow in print mode

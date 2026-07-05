@@ -26,6 +26,63 @@ logger = logging.getLogger(__name__)
 EXTRA_AREAS = ("back", "sleeve-left", "sleeve-right")
 
 
+_MAX_PRINT_FILE_MB = 20
+_VALID_SIDES = ("front",) + EXTRA_AREAS
+
+
+def save_print_file_datauris(email: str, design_id: str, files: dict) -> dict:
+    """Decode + SAVE the browser's per-side print-file data-URIs to disk (#167 Phase 2c),
+    returning ``{side: local_path}`` for the sides saved. Each value must be a
+    ``data:image/png;base64,...`` URI. Hardened: only known sides, PNG only, a size cap,
+    and a PIL integrity/decompression-bomb check before anything is trusted. Never raises;
+    a bad side is skipped, never guessed. Files land under OUTPUT_DIR/print_files/.
+    """
+    import base64
+    import hashlib
+    from pathlib import Path
+    out: dict = {}
+    email = (email or "").strip().lower()
+    design_id = (design_id or "default").strip()
+    if "@" not in email or not isinstance(files, dict):
+        return out
+    try:
+        from quoteforge.config import OUTPUT_DIR
+        key = hashlib.sha256(f"{email}/{design_id}".encode()).hexdigest()[:16]
+        dest_dir = Path(OUTPUT_DIR) / "print_files" / key
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("print-file dir resolve failed: %s", exc)
+        return out
+    for side, uri in files.items():
+        if side not in _VALID_SIDES or not isinstance(uri, str):
+            continue
+        if not uri.startswith("data:image/png;base64,"):
+            continue                                   # PNG data-URI only
+        b64 = uri.split(",", 1)[1] if "," in uri else ""
+        try:
+            raw = base64.b64decode(b64, validate=True)
+        except Exception:  # noqa: BLE001 - malformed base64
+            continue
+        if not raw or len(raw) > _MAX_PRINT_FILE_MB * 1024 * 1024:
+            continue                                   # empty or over the cap
+        if raw[:8] != b"\x89PNG\r\n\x1a\n":            # real PNG magic bytes
+            continue
+        try:
+            import io
+            from PIL import Image
+            with Image.open(io.BytesIO(raw)) as _im:
+                _im.verify()                           # integrity + bomb guard
+        except Exception:  # noqa: BLE001 - not a usable image
+            continue
+        try:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            path = dest_dir / f"{side}.png"
+            path.write_bytes(raw)
+            out[side] = str(path)
+        except OSError as exc:
+            logger.debug("print-file write failed for %s: %s", side, exc)
+    return out
+
+
 def build_apparel_print_files(print_files: dict, *, has_sleeves: bool = True) -> dict:
     """Host each supplied per-side print file and shape the result.
 
