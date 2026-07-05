@@ -143,6 +143,16 @@ def _has_except(func) -> bool:
     return any(isinstance(n, ast.ExceptHandler) for n in ast.walk(_tree(func)))
 
 
+# Framed catalog sizes we INTENTIONALLY do not sell, with the reason. Framed price
+# is composed as (bare poster print + frame upcharge), so a framed size needs a
+# matching POSTER base to be priced. 16x20 has a prepared framed UID but no 16x20
+# poster, so it can't be priced under that model. Owner decision 2026-07-05: leave
+# 16x20 framed OFF (safe - no mischarge, no unfulfillable order) rather than add a
+# poster size or price it all-in. Invariant #57 lets THIS known gap pass while
+# tripping on any NEW prepared framed size that is neither sold nor listed here.
+_FRAMED_UNSOLD_OK = {"16x20"}
+
+
 def check_infrastructure() -> dict:
     """Verify every infrastructure/autonomy invariant. Returns {ok, checks:[...]}.
 
@@ -1391,6 +1401,85 @@ def check_infrastructure() -> dict:
                          "stale UID would route an order to the wrong product"))
     except Exception as exc:  # noqa: BLE001
         checks.append(_c("variant_uid_static_before_cache", False, str(exc)))
+
+    # 56) Apparel image-key linkage, per item, end to end (Gelato->Etsy image-by-UID
+    #     re-audit). ISSUE guarded: the tile/editor looks up a garment_id the image
+    #     resolver never produces (or a tier variant strips to a base that doesn't
+    #     exist) -> that garment silently shows NO real product photo. Behavioral +
+    #     grounded: the key the resolver keys by (garment_id, via apparel_sku_for on
+    #     sizes[0]) must equal the key the editor looks up (APPGID name->garment_id),
+    #     for EVERY garment, and every Value/Premium id must strip (_bgid regex) to a
+    #     real Classic base. Fails closed on any missing symbol.
+    try:
+        import re as _re56
+        from quoteforge.etsy.apparel_catalog import (
+            APPAREL_CATALOG as _AC56, apparel_sku_for as _ask56,
+            parse_apparel_format as _paf56)
+        _display56 = {g.garment_id for g in _AC56}
+        _resolve56 = {g.garment_id for g in _AC56
+                      if g.sizes and g.colors
+                      and any(_ask56(g.garment_id, g.sizes[0], c) for c in g.colors)}
+        _orphan56 = _display56 - _resolve56          # editor asks, resolver never produces
+        _name_bad56 = [g.garment_id for g in _AC56
+                       if _paf56(f"{g.name} - {g.colors[0]}")[0] != g.garment_id]
+        _bgid_bad56 = [g.garment_id for g in _AC56
+                       if _re56.sub(r"_(value|premium)$", "", g.garment_id) not in _display56]
+        ok = (not _orphan56 and not _name_bad56 and not _bgid_bad56
+              and len(_resolve56) == len(_display56))
+        checks.append(_c("apparel_image_key_linkage", ok,
+                         f"every apparel garment's image resolve-key == display-key "
+                         f"({len(_resolve56)}/{len(_display56)}); tier variants strip to a real base"
+                         if ok else "apparel image key drift - a garment/tier would show NO real "
+                         f"photo: orphan_display={sorted(_orphan56)} "
+                         f"name_collisions={_name_bad56} bgid_no_base={_bgid_bad56}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("apparel_image_key_linkage", False, str(exc)))
+
+    # 57) Every PREPARED framed catalog size must be SELLABLE, or explicitly held
+    #     (Gelato->Etsy wall-art per-item re-audit). build_wallart_map prepares a
+    #     real framed UID per framed catalog size, but build_variations derives
+    #     framed sizes from POSTER sizes - so a framed size with no matching poster
+    #     (16x20) gets a UID + price yet NO listing/image/order path. Behavioral: any
+    #     framed catalog size that is neither sold NOR in _FRAMED_UNSOLD_OK is an
+    #     invisible-product regression (guards a NEW gap; the known 16x20 is held).
+    try:
+        from quoteforge.etsy.variations import build_variations as _bv57, _ns as _ns57
+        from quoteforge.etsy.gelato_catalog import GELATO_CATALOG as _GC57
+        _sold57 = {_ns57(v.size) for v in _bv57() if v.material == "framed"}
+        _cat57 = {_ns57(p.size) for p in _GC57 if p.category == "framed"}
+        _gap57 = sorted(_cat57 - _sold57 - _FRAMED_UNSOLD_OK)
+        checks.append(_c("framed_catalog_fully_sellable", not _gap57,
+                         "every prepared framed catalog size is sold or explicitly held"
+                         if not _gap57 else f"framed catalog sizes with a prepared UID but "
+                         f"NO sellable variation and not in _FRAMED_UNSOLD_OK "
+                         f"(invisible product): {_gap57}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("framed_catalog_fully_sellable", False, str(exc)))
+
+    # 58) Non-sellable branded items stay QUARANTINED (Gelato->Etsy per-item re-audit):
+    #     phonecase is offered in the catalog for future use but has NO per-model UID,
+    #     so it must never resolve a routing SKU nor count as sellable - else an order
+    #     is taken for an item we cannot fulfil. Behavioral: every id in
+    #     NON_SELLABLE_BRANDED resolves branded_sku_for -> None AND branded_sellable
+    #     -> False. Fails closed if the quarantine set is emptied or a guard is removed.
+    try:
+        from quoteforge.etsy.branded_catalog import (
+            NON_SELLABLE_BRANDED as _NSB58, branded_sku_for as _bsf58,
+            branded_sellable as _bs58)
+        # Consistency, not non-emptiness: an empty set is trivially OK (the owner may
+        # later promote phonecase once it has per-model UIDs). Anything DECLARED
+        # non-sellable must resolve no routing SKU and report not-sellable.
+        _leaks58 = [p for p in _NSB58
+                    if _bs58(p) or any(_bsf58(p, s, "Black") is not None
+                                       for s in ("", "M", "One Size"))]
+        ok = not _leaks58
+        checks.append(_c("branded_non_sellable_quarantined", ok,
+                         f"non-sellable branded items stay quarantined "
+                         f"(no routing SKU, not sellable): {sorted(_NSB58)}"
+                         if ok else f"a non-sellable branded item is NOT quarantined - it "
+                         f"could take an unfulfillable order: leaks={_leaks58} set={sorted(_NSB58)}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("branded_non_sellable_quarantined", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
