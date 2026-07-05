@@ -1678,6 +1678,34 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("apparel_revert_reads_dispute_columns", False, str(exc)))
 
+    # 66) The automated PHYSICAL test-print order is money-out, so it must stay OFF by
+    #     default, cost-capped, idempotent, and route through the SAME idempotent router as
+    #     a customer order (never a back-door create). Behavioral: with the consent flag off
+    #     it is blocked; structural: the submit routes via route_order and enforces the cap.
+    try:
+        import inspect as _insp66
+        from quoteforge.automation import gelato_live_ops as _lo66
+        from quoteforge.config import CALIBRATION_TEST_ORDER_ENABLED as _en66
+        _src66 = _insp66.getsource(_lo66.submit_calibration_test_order)
+        _routes = ("route_order" in _insp66.getsource(_lo66._route)
+                   and "CALIBRATION_TEST_ORDER_MAX_SPEND" in _src66
+                   and "_test_order_placed_for" in _src66)
+        # behavioral: consent off -> blocked no matter what (default state)
+        _blocked_default = True
+        if not _en66:
+            _r66 = _lo66.submit_calibration_test_order(
+                "real_uid", {"name": "A"}, "http://x/a.png", est_cost=15,
+                router=lambda o, r, a: {"status": "submitted", "id": "x"})
+            _blocked_default = "blocked" in _r66
+        ok = bool(_routes and _blocked_default)
+        checks.append(_c("test_order_gated_capped_idempotent", ok,
+                         "physical test order is consent-gated + capped + idempotent + routes "
+                         "through the idempotent router" if ok
+                         else f"test-order safety broken: routes={_routes} "
+                         f"blocked_default={_blocked_default}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("test_order_gated_capped_idempotent", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

@@ -275,6 +275,19 @@ try:
 except ValueError:
     CALIBRATION_UNIT_CAP = 25
 
+# Automated PHYSICAL test-print order (Component 4). Placing a real Gelato order costs real
+# money, so it is OFF by default and hard-capped: it only fires with the explicit
+# CALIBRATION_TEST_ORDER_ENABLED consent, at most one open test order per productUid
+# (idempotent), and only if the order's cost is <= CALIBRATION_TEST_ORDER_MAX_SPEND. It
+# always routes through the same idempotent router as a customer order (no back-door
+# create). A no-op in TEST_MODE.
+CALIBRATION_TEST_ORDER_ENABLED: bool = _env_bool("CALIBRATION_TEST_ORDER_ENABLED", False)
+try:
+    CALIBRATION_TEST_ORDER_MAX_SPEND: float = float(
+        os.getenv("CALIBRATION_TEST_ORDER_MAX_SPEND", "60") or 60)
+except ValueError:
+    CALIBRATION_TEST_ORDER_MAX_SPEND = 60.0
+
 # ── UAT / feedback collection ────────────────────────────────────
 # Optional Google Form (or any survey) URL. When set, the UAT shop-home page
 # routes its feedback buttons to this form (with the listing + star rating in
