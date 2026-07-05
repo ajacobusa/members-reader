@@ -207,10 +207,18 @@ def resolve_variant_uid(sku: str | None, garment_id: str | None = None,
     """
     if not sku:
         return None
-    # 1. Statically-mapped real UID wins.
+    # 1. Statically-mapped real UID wins - and CLEARS any stale dynamically-cached UID
+    #    for this SKU (#uidremap), so a corrected static entry can never be undermined by
+    #    an old dynamic value resurfacing if that static entry is later edited/removed.
     from quoteforge.automation.gelato_sync import _uid_map
     static = _uid_map().get(sku)
     if static and not str(static).upper().startswith("GEL-"):
+        try:
+            _c = _load_cache()
+            if _c.pop(sku, None) is not None:
+                _save_cache(_c)
+        except Exception as exc:  # noqa: BLE001 - cache cleanup is best-effort
+            logger.debug("variant cache cleanup skipped for %s: %s", sku, exc)
         return static
     # 2. Dynamic family resolution (no-op unless live + family mapped).
     from quoteforge.config import TEST_MODE

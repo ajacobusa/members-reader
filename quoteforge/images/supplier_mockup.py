@@ -186,11 +186,17 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
     uid = (_uid_map() or {}).get(our_sku)
     if not uid or str(uid).startswith("GEL-"):     # unmapped / placeholder seed
         return None
+    # UID-BOUND cache (#uidremap): the cached image is a function of the UID, so the
+    # entry records WHICH uid produced it. When the owner remaps a SKU to a new Gelato
+    # UID (the whole point of the map), the cached uid no longer matches -> a MISS ->
+    # refetch, instead of showing the OLD product forever. A legacy flat-string entry is
+    # treated as a miss so it re-resolves once and upgrades to the uid-bound shape.
     cache = _load_cache()
-    if not refresh and our_sku in cache:
-        return cache[our_sku] or None
+    hit = cache.get(our_sku) if not refresh else None
+    if isinstance(hit, dict) and hit.get("uid") == uid:
+        return hit.get("url") or None
     url = _fetch_product_image(uid)
-    cache[our_sku] = url or ""
+    cache[our_sku] = {"uid": uid, "url": url or ""}   # remember the uid it was resolved for
     _save_cache(cache)
     return url
 

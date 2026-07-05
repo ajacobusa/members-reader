@@ -53,6 +53,8 @@ def test_new_infra_checks_are_wired():
     assert "apparel_print_files_upload_wired" in names          # print files upload to backend + reach the order
     assert "uid_reverse_join_collision_safe" in names           # a shared Gelato UID can't misroute a product photo
     assert "official_image_table_consumed" in names             # the persisted official-image table is actually read
+    assert "supplier_image_cache_uid_bound" in names            # a UID remap refetches (no stale old-product image)
+    assert "variant_uid_static_before_cache" in names           # static UID map wins over a stale dynamic cache
 
 
 def test_listing_image_pipeline_invariant_passes_and_is_grounded():
@@ -328,6 +330,36 @@ def test_single_panel_mugs_are_not_sold_a_full_wrap():
     assert "function _mugWraps()" in src
     assert "!_mugWraps()" in src                               # layout gate consumes it
     assert "_mw?5.3:1.9" in src                                # proof arc gated per-mug
+
+
+def test_supplier_image_cache_invalidates_on_uid_remap(tmp_path, monkeypatch):
+    # REGRESSION (Gelato->Etsy image re-audit, CRITICAL): the SKU->URL cache is UID-bound,
+    # so after the owner REMAPS a SKU to a new Gelato UID, gelato_blank_image returns the
+    # NEW uid's image - not the OLD product forever (the SKU-only key showed it stale).
+    import quoteforge.images.supplier_mockup as sm
+    from quoteforge.automation import gelato_api, gelato_sync
+    import quoteforge.config as cfg
+    monkeypatch.setenv("GELATO_MOCKUP_CACHE", str(tmp_path / "mock.json"))
+    monkeypatch.setattr(cfg, "TEST_MODE", False)
+    monkeypatch.setattr(gelato_api, "GELATO_API_KEY", "k", raising=False)
+    monkeypatch.setattr(sm, "product_photo_overrides", lambda: {})
+    monkeypatch.setattr(sm, "_fetch_product_image", lambda uid: f"http://cdn/{uid}.png")
+    monkeypatch.setattr(gelato_sync, "_uid_map", lambda: {"SKU-X": "UID-OLD"})
+    assert sm.gelato_blank_image("SKU-X") == "http://cdn/UID-OLD.png"
+    monkeypatch.setattr(gelato_sync, "_uid_map", lambda: {"SKU-X": "UID-NEW"})  # remap
+    assert sm.gelato_blank_image("SKU-X") == "http://cdn/UID-NEW.png"           # not stale
+
+
+def test_variant_static_uid_clears_stale_dynamic_cache(tmp_path, monkeypatch):
+    # REGRESSION (Gelato->Etsy image re-audit, MEDIUM): a corrected static UID map entry
+    # wins over a stale dynamically-cached variant UID AND clears it, so an order can never
+    # route to the wrong product from a resurfaced old dynamic value.
+    from quoteforge.automation import gelato_variant_resolver as gvr, gelato_sync
+    monkeypatch.setenv("GELATO_VARIANT_CACHE", str(tmp_path / "vuid.json"))
+    gvr._save_cache({"AP-TEE-M-BLACK": "uid_STALE"})
+    monkeypatch.setattr(gelato_sync, "_uid_map", lambda: {"AP-TEE-M-BLACK": "uid_CORRECTED"})
+    assert gvr.resolve_variant_uid("AP-TEE-M-BLACK") == "uid_CORRECTED"
+    assert "AP-TEE-M-BLACK" not in gvr._load_cache()            # stale dynamic entry cleared
 
 
 def test_uid_reverse_join_drops_collisions(monkeypatch):

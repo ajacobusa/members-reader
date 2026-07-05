@@ -63,7 +63,10 @@ def test_real_uid_fetches_and_caches(tmp_path, monkeypatch):
     assert gm.gelato_blank_image("GEL-M-TSHIRT-M-WHITE") == "http://cdn/real-tee.png"
     assert len(calls) == 1
     cache = json.loads((tmp_path / "gelato_mockups.json").read_text())
-    assert cache["GEL-M-TSHIRT-M-WHITE"] == "http://cdn/real-tee.png"
+    # UID-bound cache (#uidremap): the entry records WHICH uid produced the url, so a
+    # remap invalidates it instead of showing the old product.
+    assert cache["GEL-M-TSHIRT-M-WHITE"] == {"uid": "real_uid_123",
+                                             "url": "http://cdn/real-tee.png"}
 
 
 def test_extract_image_url_shapes():
