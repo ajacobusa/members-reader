@@ -146,7 +146,7 @@ def _test_order_placed_for(product_uid: str) -> bool:
     with _conn() as conn:
         n = conn.execute(
             "SELECT COUNT(*) AS n FROM apparel_print_calibration WHERE product_uid=? "
-            "AND status IN ('test_ordered','approved')", (product_uid,)).fetchone()["n"]
+            "AND status IN ('pending','test_ordered','approved')", (product_uid,)).fetchone()["n"]
     return int(n) > 0
 
 
@@ -172,7 +172,22 @@ def submit_calibration_test_order(product_uid: str, recipient: dict, artwork_url
     if est_cost <= 0 or est_cost > float(CALIBRATION_TEST_ORDER_MAX_SPEND):
         return {"blocked": f"est_cost {est_cost} outside cap "
                            f"(0, {CALIBRATION_TEST_ORDER_MAX_SPEND}]"}
-    if _test_order_placed_for(product_uid):
+    if _test_order_placed_for(product_uid):    # cheap fast-path pre-check
+        return {"blocked": "a test order already exists for this productUid (idempotent)"}
+
+    # RESERVE before routing: insert a 'pending' row guarded by the UNIQUE partial index
+    # ux_apcal_open_uid, so two concurrent calls can't both reach route_order (closes the
+    # TOCTOU gap the router's orders-row dedup does not cover for a synthetic calib order).
+    import sqlite3
+    from quoteforge.db.database import _conn
+    try:
+        with _conn() as conn:
+            conn.execute(
+                "INSERT INTO apparel_print_calibration (product_family, product_uid, status, "
+                "approver, notes, created_at) VALUES "
+                "('apparel', ?, 'pending', 'auto', ?, datetime('now'))",
+                (product_uid, f"est_cost={est_cost}"))
+    except sqlite3.IntegrityError:
         return {"blocked": "a test order already exists for this productUid (idempotent)"}
 
     order = {"order_id": f"calib-{product_uid}", "gelato_product_uid": product_uid,
@@ -181,14 +196,15 @@ def submit_calibration_test_order(product_uid: str, recipient: dict, artwork_url
     route = router or _route
     result = route(order, recipient, artwork_url) or {}
     if result.get("status") in ("submitted", "ok", "success", "created"):
-        from quoteforge.db.database import _conn
-        with _conn() as conn:
+        with _conn() as conn:            # PROMOTE the reservation to a placed order
             conn.execute(
-                "INSERT INTO apparel_print_calibration (product_family, product_uid, status, "
-                "approver, notes, test_order_ref, created_at) VALUES "
-                "('apparel', ?, 'test_ordered', 'auto', ?, ?, datetime('now'))",
-                (product_uid, f"est_cost={est_cost}", str(result.get("id") or "")))
+                "UPDATE apparel_print_calibration SET status='test_ordered', test_order_ref=? "
+                "WHERE product_uid=? AND status='pending'",
+                (str(result.get("id") or ""), product_uid))
         return {"ordered": True, "vendor_id": result.get("id"), "route": result}
+    with _conn() as conn:                # RELEASE the reservation so a corrected retry can proceed
+        conn.execute("DELETE FROM apparel_print_calibration "
+                     "WHERE product_uid=? AND status='pending'", (product_uid,))
     return {"ordered": False, "route": result}
 
 

@@ -94,6 +94,35 @@ def test_test_order_places_once_then_idempotent(iso_db, monkeypatch):
     assert "blocked" in r2 and len(calls) == 1
 
 
+def test_test_order_uid_unique_index_refuses_duplicate(iso_db):
+    # REGRESSION (audit High): the idempotency guarantee must be DB-enforced. A UNIQUE
+    # index on an OPEN (pending/test_ordered) product_uid is what makes a concurrent
+    # double-order impossible; the caller-side COUNT alone is a TOCTOU check.
+    import sqlite3
+    import quoteforge.db.database as db
+    with db._conn() as c:
+        c.execute("INSERT INTO apparel_print_calibration (product_uid, status) "
+                  "VALUES ('U','test_ordered')")
+        with pytest.raises(sqlite3.IntegrityError):
+            c.execute("INSERT INTO apparel_print_calibration (product_uid, status) "
+                      "VALUES ('U','pending')")
+
+
+def test_failed_route_releases_reservation(iso_db, monkeypatch):
+    # A blocked/failed route must NOT leave a phantom 'pending' block - a corrected retry
+    # can proceed, and no 'test_ordered' row is recorded on failure.
+    monkeypatch.setattr("quoteforge.config.CALIBRATION_TEST_ORDER_ENABLED", True)
+    r = ops.submit_calibration_test_order(
+        "real_uid", {"name": "A"}, "http://x/a.png", est_cost=15,
+        router=lambda o, r, a: {"status": "manual", "id": ""})
+    assert r["ordered"] is False
+    import quoteforge.db.database as db
+    with db._conn() as c:
+        n = c.execute("SELECT COUNT(*) n FROM apparel_print_calibration "
+                      "WHERE product_uid='real_uid'").fetchone()["n"]
+    assert n == 0                                   # reservation released, no phantom block
+
+
 def test_test_order_routes_apparel_through_router(iso_db, monkeypatch):
     # the order handed to the router must be a real-UID apparel order (so it rides the
     # same GEL-* / calibration / idempotency gates a customer order does).

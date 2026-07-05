@@ -480,6 +480,17 @@ def init_db() -> None:
             except sqlite3.OperationalError as exc:
                 # table not present in an older snapshot - safe to skip, but log it
                 logger.debug("index %s skipped (%s not present?): %s", _idx, _tbl, exc)
+        # Idempotency backstop for the money-out apparel test order: at most ONE OPEN
+        # (reserved or placed) calibration test order per productUid, enforced by the DB so
+        # a concurrent duplicate call cannot double-order (the caller-side check alone is
+        # TOCTOU). Scoped to the test-order lifecycle only - vision 'approved' rows are a
+        # separate concern and are NOT constrained here.
+        try:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_apcal_open_uid "
+                         "ON apparel_print_calibration(product_uid) "
+                         "WHERE status IN ('pending','test_ordered')")
+        except sqlite3.OperationalError as exc:
+            logger.debug("ux_apcal_open_uid skipped: %s", exc)
 
 
 def upsert_ledger_snapshot(day: str, row: dict) -> None:

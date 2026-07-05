@@ -1706,6 +1706,38 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("test_order_gated_capped_idempotent", False, str(exc)))
 
+    # 67) The test-order idempotency guarantee must be DB-ENFORCED, not just a caller-side
+    #     COUNT (which is TOCTOU). The router's own dedup is keyed on a persisted orders row
+    #     the synthetic calibration order never creates, so a concurrent duplicate must be
+    #     refused by a UNIQUE index on an OPEN (pending/test_ordered) productUid - else two
+    #     concurrent calls double-order a real garment. Behavioral in an isolated temp DB.
+    try:
+        import tempfile as _tf67, pathlib as _pl67
+        from quoteforge.db import database as _db67
+        _prev67 = _db67.DB_PATH
+        _tmp67 = _pl67.Path(_tf67.mkdtemp()) / "cal67.db"
+        try:
+            _db67.DB_PATH = _tmp67
+            _db67.init_db()
+            with _db67._conn() as _c67:
+                _c67.execute("INSERT INTO apparel_print_calibration (product_uid, status) "
+                             "VALUES ('U67','test_ordered')")
+                _dup_refused = False
+                try:
+                    _c67.execute("INSERT INTO apparel_print_calibration (product_uid, status) "
+                                 "VALUES ('U67','pending')")
+                except Exception:  # noqa: BLE001 - the UNIQUE index must refuse this
+                    _dup_refused = True
+        finally:
+            _db67.DB_PATH = _prev67
+        checks.append(_c("test_order_uid_unique_backstop", _dup_refused,
+                         "an OPEN calibration test order per productUid is UNIQUE-enforced "
+                         "at the DB (concurrent double-order impossible)" if _dup_refused
+                         else "NO DB uniqueness on apparel_print_calibration.product_uid - "
+                         "concurrent duplicate calls could double-order a real garment"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("test_order_uid_unique_backstop", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
