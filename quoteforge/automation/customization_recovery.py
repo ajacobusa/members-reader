@@ -101,7 +101,8 @@ def run_recovery(older_than_minutes: int = ABANDON_AFTER_MINUTES,
                 html = (f"<html><body style='font-family:Arial'>"
                         f"<p>{msg}</p></body></html>")
                 _send_email(_STAGE_SUBJECT.get(stage, _STAGE_SUBJECT[1]),
-                            html, to=it["email"])
+                            html, to=it["email"],
+                            critical=True, bcc_owner=False)   # buyer-facing: priority send
             except Exception as exc:  # noqa: BLE001 - advance regardless, but log
                 logger.warning("customization-recovery email failed for %s: %s",
                                it.get("email"), exc)

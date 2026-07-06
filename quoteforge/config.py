@@ -521,6 +521,14 @@ REPORT_RECIPIENT: str = os.getenv("REPORT_RECIPIENT", "joffielsc@gmail.com")
 # Where the owner's per-order notices go: an INVOICE copy when an order is placed and a
 # SHIPPED + tracking copy when it ships. Defaults to the owner report inbox.
 ORDER_NOTIFY_EMAIL: str = os.getenv("ORDER_NOTIFY_EMAIL", REPORT_RECIPIENT)
+# Daily send budget (free Gmail caps ~500 recipients/24h). NON-critical emails (reports,
+# digests, marketing) are DEFERRED once the day's real-send count reaches this soft budget,
+# so headroom is always reserved for CUSTOMER transactional email (which sends regardless).
+# Set well below the provider cap. Move to a transactional provider to raise it.
+try:
+    EMAIL_DAILY_BUDGET: int = int(os.getenv("EMAIL_DAILY_BUDGET", "400") or 400)
+except ValueError:
+    EMAIL_DAILY_BUDGET = 400
 
 # Wave accounting API (https://gql.waveapps.com/graphql/public). Create a Full-Access
 # token in Wave -> Settings -> (Developer/API). Personal tokens need no Wave Pro plan.

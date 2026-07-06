@@ -66,7 +66,8 @@ def _auto_email_customer(order_data: dict, message: str) -> None:
         from quoteforge.automation.emailer import _send_email
         _send_email("A quick note about your Joffiels order",
                     f"<html><body style='font-family:Arial'><pre>{message}</pre>"
-                    f"</body></html>", to=email)
+                    f"</body></html>", to=email,
+                    critical=True, bcc_owner=False)   # buyer-facing: priority send
     except Exception as exc:  # noqa: BLE001 - never fail the pipeline on an email
         logger.warning("customer auto-reply email failed: %s", exc)
 

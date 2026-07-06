@@ -1863,6 +1863,37 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("etsy_oauth_pkce_and_no_token_leak", False, str(exc)))
 
+    # 72) Email quota guard: a customer's transactional email is never dropped because the
+    #     shared send quota was burned. TWO properties: (a) _send_email sends NO real email in
+    #     TEST_MODE (so tests/dev/CI never consume the quota), and (b) the buyer-facing send
+    #     sites are marked critical=True (never deferred by the daily budget). Behavioral +
+    #     structural. A regression that lets TEST_MODE send real email, or un-marks a customer
+    #     send, would let a real buyer email be dropped.
+    try:
+        import inspect as _insp72
+        import quoteforge.config as _cfg72
+        from quoteforge.automation import emailer as _em72
+        _prev_tm = _cfg72.TEST_MODE
+        _prev_key = _em72.GMAIL_ADDRESS
+        try:
+            _cfg72.TEST_MODE = True
+            _em72.GMAIL_ADDRESS = "probe@x.com"       # creds present, but TEST_MODE must gate
+            _no_send = _em72._send_email("probe", "b", to="x@y.com").get("status") == "skipped"
+        finally:
+            _cfg72.TEST_MODE = _prev_tm
+            _em72.GMAIL_ADDRESS = _prev_key
+        _customer_critical = all(
+            "critical=True" in _insp72.getsource(_m) for _m in (
+                __import__("quoteforge.automation.customer_notify", fromlist=["x"]),
+                __import__("quoteforge.automation.pipeline_orchestrator", fromlist=["x"])))
+        ok = bool(_no_send and _customer_critical)
+        checks.append(_c("email_quota_guarded", ok,
+                         "TEST_MODE sends no real email + buyer email is critical (never "
+                         "deferred)" if ok else f"email quota guard broken: test_mode_gated="
+                         f"{_no_send} customer_critical={_customer_critical}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("email_quota_guarded", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
