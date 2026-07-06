@@ -278,6 +278,7 @@ def first_product_doctor(*, probe=None) -> dict:
     checks: list[dict] = []
 
     def add(name, ok, detail, fix=""):
+        """Append one prerequisite check result to the doctor's report."""
         checks.append({"name": name, "ok": bool(ok), "detail": detail, "fix": fix})
 
     live = _live()
