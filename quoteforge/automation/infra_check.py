@@ -2021,7 +2021,11 @@ def check_infrastructure() -> dict:
         _shape_ok = (isinstance(_d77, dict) and _d77.get("verdict") in ("GO", "FIX-FIRST")
                      and isinstance(_d77.get("components"), dict)
                      and "etsy_scopes" in _d77["components"])
-        _scope_ok = isinstance(_im77.scope_status().get("required"), list)
+        # behavioral: the pure scope diff must actually detect a missing required scope
+        # (guards the #3 fix, not just its shape).
+        _diff77 = _im77._scope_diff("listings_r", "listings_r listings_w")
+        _scope_ok = (isinstance(_im77.scope_status().get("required"), list)
+                     and _diff77.get("missing") == ["listings_w"])
         _wired = "integration" in _cmds77
         _sched = any(j.admin_args.split()[0] == "integration" for j in _sj77)
         ok = bool(_shape_ok and _scope_ok and _wired and _sched)

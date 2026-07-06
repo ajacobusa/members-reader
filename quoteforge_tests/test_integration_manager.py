@@ -186,3 +186,41 @@ def test_infra_invariant_encryption_at_rest():
     hit = [c for c in check_infrastructure()["checks"]
            if c["name"] == "credential_encryption_at_rest"]
     assert hit and hit[0]["ok"] is True
+
+
+# ── auditor follow-ups: pure scope diff, unknown-scope WARN, encrypted PKCE state ─
+
+def test_scope_diff_pure_detects_missing():
+    # REGRESSION: the pure diff (the testable core the invariant guards) must flag
+    # exactly the required scopes absent from granted.
+    d = im._scope_diff("listings_r transactions_r", "listings_r listings_w email_r")
+    assert d["missing"] == ["email_r", "listings_w"]
+    assert im._scope_diff("a b", "a b")["missing"] == []
+
+
+def test_scope_status_warns_on_unknown_but_connected(monkeypatch):
+    # A live, connected token whose granted scopes are UNKNOWN must WARN (nudge to
+    # reconnect), not silently PASS.
+    import quoteforge.config as cfg
+    monkeypatch.setattr(cfg, "TEST_MODE", False)
+    monkeypatch.setattr(cfg, "ETSY_API_KEY", "app-key")
+    monkeypatch.setattr(etsy_auth, "current_access_token", lambda: "tok")
+    monkeypatch.setattr(etsy_auth, "current_granted_scopes", lambda: "")   # unknown
+    s = im.scope_status()
+    assert s["ok"] is True and s["warn"] is True
+    d = im.doctor(probe=False)
+    # the warn surfaces in the doctor roll-up
+    assert any("etsy_scopes" in w for w in d["warns"])
+
+
+def test_pkce_state_encrypted_at_rest(tmp_path, monkeypatch):
+    # REGRESSION: the transient PKCE state file is covered by the same at-rest
+    # encryption as the token file (every persisted credential-adjacent file).
+    from quoteforge.automation import etsy_oauth, secret_store as ss
+    monkeypatch.setenv("ETSY_OAUTH_STATE_FILE", str(tmp_path / "state.json"))
+    monkeypatch.setenv("QF_SECRET_KEY", ss.generate_key())
+    etsy_oauth._save_state("VERIFIER_SECRET", "state123")
+    raw = (tmp_path / "state.json").read_bytes()
+    assert raw.startswith(b"QF_ENC1:") and b"VERIFIER_SECRET" not in raw
+    # and exchange_code can still read it back (transparently decrypts)
+    assert ss.load_json(tmp_path / "state.json")["code_verifier"] == "VERIFIER_SECRET"

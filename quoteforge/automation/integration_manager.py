@@ -23,28 +23,35 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _scope_diff(granted: str, required: str) -> dict:
+    """Pure diff of two space-separated scope strings: which REQUIRED scopes are absent
+    from GRANTED. Deterministic, no config/network - the testable core of scope_status."""
+    grant = sorted(s for s in (granted or "").split() if s)
+    req = sorted(s for s in (required or "").split() if s)
+    return {"granted": grant, "required": req, "missing": sorted(set(req) - set(grant))}
+
+
 def scope_status() -> dict:
     """Diff the Etsy scopes GRANTED to the connected token against the REQUIRED set
-    (ETSY_OAUTH_SCOPES), with no network call. {ok, detail, granted, required, missing}.
-    Skips (ok) in TEST_MODE / not connected / when the granted set is unknown (an
-    env-seed or pre-capture token) so it never false-alarms; a genuine live token that
-    is MISSING a required scope is the only not-ok case."""
+    (ETSY_OAUTH_SCOPES), with no network call. {ok, warn, detail, granted, required,
+    missing}. Skips (ok) in TEST_MODE / not connected; a LIVE token whose granted set is
+    unknown (env-seed / pre-capture) is ok but WARN (nudge to reconnect - not a silent
+    PASS); a genuine live token MISSING a required scope is the only not-ok case."""
     from quoteforge.config import TEST_MODE, ETSY_API_KEY, ETSY_OAUTH_SCOPES
     from quoteforge.automation.etsy_auth import current_granted_scopes, current_access_token
-    required = sorted(s for s in (ETSY_OAUTH_SCOPES or "").split() if s)
+    required = _scope_diff("", ETSY_OAUTH_SCOPES)["required"]
     if TEST_MODE or not ETSY_API_KEY or not current_access_token():
-        return {"ok": True, "detail": "skipped (TEST_MODE / not connected)",
+        return {"ok": True, "warn": False, "detail": "skipped (TEST_MODE / not connected)",
                 "granted": [], "required": required, "missing": []}
-    granted = sorted(s for s in current_granted_scopes().split() if s)
-    if not granted:
-        return {"ok": True, "detail": "granted scopes unknown (env-seed / pre-capture "
-                "token) - reconnect via etsy-connect to verify scopes",
+    if not current_granted_scopes().split():
+        return {"ok": True, "warn": True,   # connected but scopes UNKNOWN -> visible WARN
+                "detail": "granted scopes UNKNOWN (env-seed / pre-capture token) - "
+                "reconnect via etsy-connect so scopes can be verified",
                 "granted": [], "required": required, "missing": []}
-    missing = sorted(set(required) - set(granted))
-    return {"ok": not missing,
-            "detail": ("all required scopes granted" if not missing
-                       else f"missing required scope(s): {', '.join(missing)}"),
-            "granted": granted, "required": required, "missing": missing}
+    d = _scope_diff(current_granted_scopes(), ETSY_OAUTH_SCOPES)
+    return {"ok": not d["missing"], "warn": False,
+            "detail": ("all required scopes granted" if not d["missing"]
+                       else f"missing required scope(s): {', '.join(d['missing'])}"), **d}
 
 
 def _store_status() -> dict:
@@ -129,8 +136,11 @@ def doctor(*, probe: bool = True) -> dict:
 
     blockers = [f"{k}: {comps[k].get('detail')}"
                 for k in _COMPONENT_ORDER if not comps.get(k, {}).get("ok", False)]
+    warns = [f"{k}: {comps[k].get('detail')}"
+             for k in _COMPONENT_ORDER if comps.get(k, {}).get("warn")]
     return {"ok": not blockers, "verdict": "GO" if not blockers else "FIX-FIRST",
-            "test_mode": bool(TEST_MODE), "components": comps, "blockers": blockers}
+            "test_mode": bool(TEST_MODE), "components": comps,
+            "blockers": blockers, "warns": warns}
 
 
 def _import(module: str, name: str):
@@ -147,13 +157,18 @@ def format_report(d: dict | None = None) -> str:
              "=" * 60]
     for name in _COMPONENT_ORDER:
         c = d["components"].get(name, {})
-        mark = "PASS" if c.get("ok") else "FIX "
-        lines.append(f"  [{mark}] {name:14} {c.get('detail', '')}")
+        mark = "WARN" if c.get("warn") else ("PASS" if c.get("ok") else "FIX ")
+        lines.append(f"  [{mark}] {name:18} {c.get('detail', '')}")
     if d["blockers"]:
         lines.append("-" * 60)
         lines.append("BLOCKERS (fix before go-live):")
         for b in d["blockers"]:
             lines.append(f"   - {b}")
+    if d.get("warns"):
+        lines.append("-" * 60)
+        lines.append("WARNINGS (non-blocking, worth resolving):")
+        for w in d["warns"]:
+            lines.append(f"   - {w}")
     return "\n".join(lines)
 
 
