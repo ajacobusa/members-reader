@@ -463,6 +463,23 @@ def init_db() -> None:
             overall     TEXT NOT NULL,
             report_json TEXT NOT NULL
         );
+        -- Automated image validation: evidence-based approval of synced Etsy/Gelato images
+        -- (replaces manual review). One row per Etsy image, with the per-check results, a
+        -- confidence score, and an AUTO_APPROVED / NEEDS_REVIEW / BLOCKED verdict.
+        CREATE TABLE IF NOT EXISTS image_validation (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id    TEXT DEFAULT '',
+            product_family TEXT DEFAULT '',
+            etsy_image_id TEXT NOT NULL UNIQUE,
+            image_url     TEXT DEFAULT '',
+            image_rank    INTEGER DEFAULT 0,
+            classification TEXT DEFAULT '',
+            checks_json   TEXT DEFAULT '{}',
+            score         REAL DEFAULT 0,
+            status        TEXT DEFAULT 'BLOCKED',
+            ahash         TEXT DEFAULT '',
+            validated_at  TEXT DEFAULT (datetime('now'))
+        );
         """)
         _migrate(conn)
         # Indexes for the frequent lookups (additive; etsy_order_id is already

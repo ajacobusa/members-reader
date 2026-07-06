@@ -1768,6 +1768,37 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("resolver_draft_needs_approval_to_go_live", False, str(exc)))
 
+    # 69) Automated image validation BLOCKS a bad image and never auto-approves a required
+    #     one it can't prove. Replacing user review with automation is only safe if the
+    #     validator actually fails closed: a blank/broken image must be BLOCKED, and a rank-1
+    #     image must NOT auto-approve without a vision detector confirming the product.
+    #     Behavioral, on synthetic images (no live data needed).
+    try:
+        import io as _io69
+        from PIL import Image as _Img69
+        from quoteforge.automation import image_validation as _iv69
+        _blank = _io69.BytesIO()
+        _Img69.new("RGB", (1600, 1600), (255, 255, 255)).save(_blank, "PNG")
+        _blocked = _iv69.validate_image_bytes(_blank.getvalue(), family="apparel",
+                                              rank=3)["status"] == "BLOCKED"
+        _broken = _iv69.validate_image_bytes(b"xx", family="apparel", rank=3)["status"] == "BLOCKED"
+        # a real image at rank 1 with NO detector must NOT auto-approve (held for review)
+        _content = _io69.BytesIO()
+        _im = _Img69.new("RGB", (1600, 1800), (245, 245, 245))
+        from PIL import ImageDraw as _Draw69
+        _Draw69.Draw(_im).rectangle([300, 300, 1200, 1500], fill=(40, 60, 90))
+        _im.save(_content, "PNG")
+        _req = _iv69.validate_image_bytes(_content.getvalue(), family="apparel",
+                                          rank=1)["status"] != "AUTO_APPROVED"
+        ok = bool(_blocked and _broken and _req)
+        checks.append(_c("image_validation_fails_closed", ok,
+                         "image validator BLOCKS blank/broken images and won't auto-approve a "
+                         "required image without product detection" if ok
+                         else f"image validator not fail-closed: blank_blocked={_blocked} "
+                         f"broken_blocked={_broken} required_held={_req}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("image_validation_fails_closed", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

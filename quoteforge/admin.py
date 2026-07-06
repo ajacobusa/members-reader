@@ -2818,6 +2818,30 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
     return 2
 
 
+def _cmd_validate_images(args: list[str]) -> int:
+    """Automated image validation (evidence-based, no user approval). `validate-images`.
+      validate-images                    (default) summary of validated images by status
+      validate-images run PID FAM LISTING validate a listing's images now (live only)
+    """
+    from quoteforge.db.database import init_db, _conn
+    init_db()
+    if args and args[0].lower() == "run" and len(args) >= 4:
+        from quoteforge.automation.image_validation import validate_synced_images
+        out = validate_synced_images(args[1], args[2], args[3])
+        print("validate-images:", ", ".join(f"{k}={v}" for k, v in out.items()
+                                             if k != "results"))
+        return 0 if out.get("required_ok") else 1
+    with _conn() as conn:
+        rows = conn.execute("SELECT status, COUNT(*) n FROM image_validation "
+                            "GROUP BY status").fetchall()
+    if not rows:
+        print("No images validated yet (no-op until a live Etsy listing exists).")
+        return 0
+    for r in rows:
+        print(f"  {r['status']:<14} {r['n']}")
+    return 0
+
+
 def _cmd_gelato_live(args: list[str]) -> int:
     """Gelato live-seam ops (Components 2-3). `gelato-live [sub]`. No-op until live.
     Subcommands:
@@ -3503,6 +3527,7 @@ COMMANDS = {
     "gelato-readiness": _cmd_gelato_readiness,
     "gelato-resolve": _cmd_gelato_resolve,
     "gelato-uid": _cmd_gelato_uid,
+    "validate-images": _cmd_validate_images,
     "gelato-live": _cmd_gelato_live,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
