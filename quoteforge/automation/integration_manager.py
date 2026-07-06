@@ -108,6 +108,7 @@ def doctor(*, probe: bool = True) -> dict:
                                 else "GELATO_API_KEY not set"}
 
     def _uids() -> dict:
+        """Gelato UID-mapping component: real (non-placeholder) mappings for every SKU."""
         m = _import("quoteforge.etsy.gelato_catalog", "verify_catalog_mappings")()
         return {"ok": bool(m.get("all_real")),
                 "detail": f"all {m.get('total')} UID mappings real" if m.get("all_real")
