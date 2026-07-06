@@ -221,13 +221,17 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
 
     written = 0
     if apply and resolved:
-        from quoteforge.automation.gelato_readiness import map_real_gelato_uid
+        # DRAFT ONLY - the resolver never writes a go-live UID. Each match is saved as a
+        # draft (approved_for_go_live=0); it reaches the runtime map only after an admin
+        # verifies + approves it (admin gelato-uid verify/approve).
+        from quoteforge.automation.gelato_readiness import draft_uid
         for r in resolved:
             try:
-                map_real_gelato_uid(r["family"], r["sku"], r["uid"], source="resolver")
+                draft_uid(r["family"], r["sku"], r["uid"], score=r["confidence"],
+                          reason="token/attribute match", source="resolver")
                 written += 1
             except Exception as exc:  # noqa: BLE001 - a rejected write is logged, not fatal
-                logger.warning("resolver write rejected for %s: %s", r["sku"], exc)
+                logger.warning("resolver draft rejected for %s: %s", r["sku"], exc)
                 blocked.append({**r, "rejected": str(exc)})
 
     summary = {"catalog_size": len(cat), "candidates": len(items),

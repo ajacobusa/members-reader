@@ -2736,6 +2736,51 @@ def _cmd_rebuild_site(args: list[str]) -> int:
     return 0
 
 
+def _cmd_gelato_uid(args: list[str]) -> int:
+    """Admin approval queue for auto-resolved Gelato UIDs. `gelato-uid [sub]`. The resolver
+    only DRAFTS; a UID reaches the runtime map only after verify + approve here.
+      list                  (default) show the pending review queue
+      verify SKU            check the drafted UID against the Gelato API (-> verified)
+      approve SKU           approve a verified UID for go-live (-> reaches the runtime map)
+      reject SKU            block a mapping (never exported)
+    """
+    from quoteforge.db.database import init_db
+    from quoteforge.automation import gelato_readiness as gr
+    init_db()
+    sub = (args[0] if args else "list").lower()
+    if sub == "list":
+        rows = gr.pending_review()
+        if not rows:
+            print("No UIDs pending review.")
+            return 0
+        print(f"{len(rows)} pending review (draft/needs_review/verified, not yet approved):")
+        for r in rows:
+            print(f"  [{r['status']:<12}] {r['sku']:<28} -> {r['product_uid']:<28} "
+                  f"score={r.get('match_score')} ({r.get('match_reason','')})")
+        print("\n  verify: admin gelato-uid verify <SKU>   approve: admin gelato-uid approve <SKU>")
+        return 0
+    if sub in ("verify", "approve", "reject"):
+        if len(args) < 2:
+            print(f"usage: gelato-uid {sub} SKU")
+            return 2
+        sku = args[1]
+        if sub == "verify":
+            v = gr.verify_uid(sku)
+            print(f"verify {sku}: {'VERIFIED' if v['verified'] else 'NOT verified'} "
+                  f"(needs live Gelato API)")
+            return 0 if v["verified"] else 1
+        if sub == "approve":
+            r = gr.approve_uid(sku)
+            print(f"approved {sku} for go-live." if r else f"{sku} not in registry")
+            print("  -> run `admin gelato-readiness export` to update the runtime map.")
+            return 0 if r else 1
+        r = gr.reject_uid(sku)
+        print(f"rejected/blocked {sku}." if r else f"{sku} not in registry")
+        return 0 if r else 1
+    print("usage: gelato-uid [list|verify SKU|approve SKU|reject SKU]")
+    return 2
+
+
 def _cmd_gelato_resolve(args: list[str]) -> int:
     """Auto-discover real Gelato productUids for placeholder SKUs. `gelato-resolve [sub]`.
     Matches our catalog to the live Gelato catalog by confidence; writes only unambiguous
@@ -3473,6 +3518,7 @@ COMMANDS = {
     "map-gelato": _cmd_map_gelato,
     "gelato-readiness": _cmd_gelato_readiness,
     "gelato-resolve": _cmd_gelato_resolve,
+    "gelato-uid": _cmd_gelato_uid,
     "gelato-live": _cmd_gelato_live,
     "real-images": _cmd_real_images,
     "gelato-automap": _cmd_gelato_automap,

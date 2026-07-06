@@ -399,7 +399,14 @@ def init_db() -> None:
             product_family TEXT NOT NULL,
             product_uid    TEXT NOT NULL,
             source         TEXT DEFAULT '',
+            -- Lifecycle: draft (auto, high score) / needs_review (auto, low) / verified
+            -- (checked vs the Gelato API) / approved (admin OK'd for go-live) / blocked.
             status         TEXT DEFAULT 'verified',
+            match_score    REAL DEFAULT 1.0,
+            match_reason   TEXT DEFAULT '',
+            -- The ONLY gate that lets a UID reach the runtime map. An auto-resolved draft is
+            -- 0 until an admin approves; an owner-entered UID is trusted (1) on write.
+            approved_for_go_live INTEGER DEFAULT 0,
             verified_at    TEXT DEFAULT (datetime('now')),
             updated_at     TEXT DEFAULT (datetime('now'))
         );
@@ -674,6 +681,19 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if accols and "recovery_stage" not in accols:
         conn.execute("ALTER TABLE abandoned_customizations "
                      "ADD COLUMN recovery_stage INTEGER DEFAULT 0")
+    # UID-registry approval lifecycle: a resolved UID must be admin-APPROVED before it can
+    # reach the runtime map. Add the lifecycle columns to a pre-existing registry.
+    rcols = {r["name"] for r in conn.execute("PRAGMA table_info(gelato_uid_registry)")}
+    if rcols:
+        if "match_score" not in rcols:
+            conn.execute("ALTER TABLE gelato_uid_registry ADD COLUMN match_score REAL DEFAULT 1.0")
+        if "match_reason" not in rcols:
+            conn.execute("ALTER TABLE gelato_uid_registry ADD COLUMN match_reason TEXT DEFAULT ''")
+        if "approved_for_go_live" not in rcols:
+            # Existing rows were written by the trusted manual path -> default them approved
+            # so the change is backward-compatible; new auto-drafts default 0 (see engine).
+            conn.execute("ALTER TABLE gelato_uid_registry "
+                         "ADD COLUMN approved_for_go_live INTEGER DEFAULT 1")
 
 
 # ── Order CRUD ───────────────────────────────────────────────────

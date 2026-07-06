@@ -384,7 +384,7 @@ def test_infra_check_auditor_agents_assigned():
     agents_dir = Path(quoteforge.__file__).resolve().parent.parent / ".claude" / "agents"
     if agents_dir.is_dir():   # dev/ops host: assert the real files really are present
         for name in ("code-outcome-auditor", "storefront-fulfillability-auditor",
-                     "gelato-readiness-pilot"):
+                     "gelato-readiness-pilot", "gelato-uid-verifier"):
             assert (agents_dir / f"{name}.md").is_file()
 
 
