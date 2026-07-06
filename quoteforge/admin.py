@@ -3518,10 +3518,26 @@ def _cmd_template_sync(args: list[str]) -> int:
 def _cmd_mockup_confirm(args: list[str]) -> int:
     """Compute confirmation from the two agents' recorded verdicts (run the
     gelato-mockup-reviewer + gelato-sku-image-match agents over the READY set
-    first; this promotes PASS&&MATCH to confirmed, else held)."""
+    first; this promotes PASS&&MATCH to confirmed, else held).
+
+    Also alerts (when live-gated) if products sit READY with no agent verdicts, so a
+    stalled Path A - real photos fetched but never confirmed/published because the two
+    agents haven't run - is LOUD, not a silent forever-fallback."""
     from quoteforge.automation import mockup_sync as ms
     c = ms.confirm(stamp=_mockup_stamp())
     print("Mockup confirm:", ", ".join(f"{k}={v}" for k, v in c.items()))
+    pending = ms.agent_pending()
+    if pending:
+        print(f"  {len(pending)} product(s) READY awaiting the two confirming agents: "
+              f"{', '.join(pending[:12])}{' ...' if len(pending) > 12 else ''}")
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE and ms._live_gated():
+            _alert("Mockup pipeline - Path A stalled (agents not run)",
+                   f"<pre>{len(pending)} product(s) have a fetched real photo at READY but "
+                   f"no gelato-mockup-reviewer/gelato-sku-image-match verdicts, so the real "
+                   f"product photo cannot publish.\n\nProducts: {', '.join(pending)}\n\n"
+                   "Run the two confirming agents over the READY set, then re-run "
+                   "mockup-confirm.</pre>", what="mockup-confirm")
     return 0
 
 

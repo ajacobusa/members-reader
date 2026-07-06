@@ -259,16 +259,28 @@ def run_sync(*, stamp: str | None = None,
             rec["status"] = rec.get("status") or "discovered"
             continue  # no Gelato calls off-live; keep any existing live block
 
-        # 2) fetched
+        # 2) fetched (WITH provenance). The fetch may return a bare url (legacy/test
+        #    seam) or a {url, uid, source} dict. resolved_uid is the UID the bytes are
+        #    PROVABLY bound to; a bare-url/legacy result is bound to this SKU's resolved
+        #    real uid by construction. A None resolved_uid = provenance unverified.
         try:
-            url = fetch_image(prod["sku"])
+            res = fetch_image(prod["sku"])
         except Exception:  # noqa: BLE001
-            url = None
+            res = None
+        if isinstance(res, dict):
+            url = res.get("url")
+            resolved_uid = res.get("uid")
+            src_kind = res.get("source")
+        else:
+            url = res
+            resolved_uid = uid if res else None   # legacy/test: bound to the resolved uid
+            src_kind = "legacy"
         if not url:
             ck["fetched"] = _ck(False, stamp, reason="no Gelato image")
             rec["status"] = "error"; summary["errors"] += 1
             continue
-        ck["fetched"] = _ck(True, stamp, src=url)
+        ck["fetched"] = _ck(True, stamp, src=url,
+                            resolved_uid=resolved_uid, source=src_kind)
         summary["fetched"] += 1
 
         # 5) rehosted (download + re-host local, web-opt) — also our change signal
@@ -311,10 +323,13 @@ def run_sync(*, stamp: str | None = None,
             rec["match"] = {"verdict": None, "reasons": None, "at": None}
             summary["requeued"] += 1
 
-        # 6) cataloged → READY
+        # 6) cataloged → READY. The candidate carries resolved_uid so confirm() can
+        #    require the image's proven origin UID to equal the SKU's real UID before
+        #    it ever publishes (the "right product" data-level guarantee).
         ck["rehosted"] = _ck(True, stamp, path=local_src, fingerprint=fingerprint)
         ck["cataloged"] = _ck(True, stamp)
-        rec["candidate"] = {"src": local_src, "fingerprint": fingerprint, **geo}
+        rec["candidate"] = {"src": local_src, "fingerprint": fingerprint,
+                            "resolved_uid": resolved_uid, **geo}
         rec["status"] = "ready"
         summary["ready"] += 1
 
@@ -378,6 +393,19 @@ def confirm(*, stamp: str | None = None) -> dict:
     summary = {"confirmed": 0, "held": 0, "pending": 0}
     for pid, rec in cat["products"].items():
         if rec.get("status") not in ("ready", "held", "published"):
+            continue
+        # PROVENANCE GATE (before verdicts): the candidate image's proven origin UID
+        # must equal both the record's gelato_uid AND the SKU's currently-resolved real
+        # UID. A None / mismatched origin (stale DB row, display-only override, a remap)
+        # is HELD and can never publish — so a wrong-product photo cannot reach live.
+        cand = rec.get("candidate") or {}
+        prov_uid = cand.get("resolved_uid")
+        real_uid = _real_uid(rec.get("sku", ""))
+        if not (prov_uid and prov_uid == rec.get("gelato_uid") and prov_uid == real_uid):
+            rec["confirmed"] = False
+            rec["status"] = "held"
+            rec["hold_reason"] = "provenance: image origin UID != SKU's real UID"
+            summary["held"] += 1
             continue
         rv = (rec.get("review") or {}).get("verdict")
         mv = (rec.get("match") or {}).get("verdict")
@@ -444,7 +472,13 @@ def live_mockups() -> dict:
     for pid, rec in cat.get("products", {}).items():
         live = rec.get("live")
         name = rec.get("name")
-        if rec.get("confirmed") and live and live.get("src") and name:
+        # REMAP INVALIDATION (Finding 3): only serve a published photo whose proven
+        # origin UID still equals the SKU's currently-resolved real UID. If the owner
+        # remapped the SKU to a new Gelato UID, the old photo's bound uid no longer
+        # matches -> it is dropped, never served (same guarantee as the uid-bound cache).
+        if not (rec.get("confirmed") and live and live.get("src") and name):
+            continue
+        if live.get("resolved_uid") and live["resolved_uid"] == _real_uid(rec.get("sku", "")):
             out[name] = {"src": live["src"], "area": live.get("area"),
                          "cyl": bool(live.get("cyl")), "span": float(live.get("span", 1.9))}
     return out
@@ -525,6 +559,24 @@ def readiness(*, floor_pct: float | None = None) -> list[dict]:
                      "sku_ok": sku_ok, "preview": preview, "margin_ok": margin_ok,
                      "margin_pct": margin_pct, "go": go, "reasons": reasons})
     return rows
+
+
+def agent_pending() -> list[str]:
+    """Product ids sitting at READY with a candidate but at least one MISSING agent
+    verdict — i.e. the two confirming agents have not run over them yet. When we are
+    live-gated, a non-empty list means Path A is STALLED (real photos can't publish
+    until the gelato-mockup-reviewer + gelato-sku-image-match verdicts are recorded);
+    the daily confirm step alerts on it so the stall is loud, never silent."""
+    cat = load_catalog()
+    out: list[str] = []
+    for pid, rec in cat.get("products", {}).items():
+        if rec.get("status") != "ready" or not rec.get("candidate"):
+            continue
+        rv = (rec.get("review") or {}).get("verdict")
+        mv = (rec.get("match") or {}).get("verdict")
+        if rv is None or mv is None:
+            out.append(pid)
+    return out
 
 
 def review_rows() -> list[dict]:
