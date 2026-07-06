@@ -80,7 +80,7 @@ def send_pending_notifications() -> dict:
                 f"<p>{body}</p></body></html>")
         try:
             res = _send_email(subject, html, to=m["customer_email"],
-                              critical=True, bcc_owner=False)   # buyer transactional: priority
+                              critical=True)   # buyer transactional: priority (always sends)
         except Exception as exc:  # noqa: BLE001 - one bad address never blocks the rest
             logger.error("notify: send failed for %s: %s", m["order_id"], exc)
             skipped.append(m["id"])
