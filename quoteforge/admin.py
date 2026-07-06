@@ -2909,6 +2909,7 @@ def _cmd_gelato_live(args: list[str]) -> int:
     """Gelato live-seam ops (Components 2-3). `gelato-live [sub]`. No-op until live.
     Subcommands:
       status                        live? probe? store id?
+      doctor                        diagnose + PROBE every first-live-product prerequisite
       create-product TEMPLATE TITLE create the first store product from a Gelato template
       sync-shapes                   pull the live Gelato/Etsy image shape into the probe
     (The physical test order is deliberately NOT a casual CLI - it is money-out and gated.)
@@ -2920,6 +2921,21 @@ def _cmd_gelato_live(args: list[str]) -> int:
     if sub == "status":
         print("Gelato live ops:", ", ".join(f"{k}={v}" for k, v in ops.status().items()))
         return 0
+    if sub == "doctor":
+        d = ops.first_product_doctor()
+        print("=" * 60)
+        print("FIRST LIVE PRODUCT - readiness")
+        print("=" * 60)
+        for c in d["checks"]:
+            mark = "[x]" if c["ok"] else "[ ]"
+            line = f"  {mark} {c['name']:<20} {c['detail']}"
+            if not c["ok"] and c["fix"]:
+                line += f"\n        -> {c['fix']}"
+            print(line)
+        print("-" * 60)
+        print("READY" if d["ready"] else f"NOT READY - next: {d['next_action']}")
+        print(d["easier_path"])
+        return 0 if d["ready"] else 1
     if sub == "create-product":
         if len(args) < 3:
             print("usage: gelato-live create-product TEMPLATE_ID TITLE")

@@ -223,3 +223,110 @@ def status() -> dict:
     return {"live": _live(), "store_id_set": bool(GELATO_STORE_ID),
             "probe": {"id": p["id"], "status": p["status"]} if p else None,
             "test_order_enabled": bool(CALIBRATION_TEST_ORDER_ENABLED)}
+
+
+# ── Doctor: diagnose (and actively probe) the FIRST LIVE PRODUCT prerequisites ──
+
+def _gelato_get_templates(store_id: str) -> list:
+    """DEFENSIVE: list the Gelato store's templates so the doctor can tell the owner whether
+    a template exists (the usual blocker). [] on any error / not live / no store id."""
+    if not _live() or not store_id:
+        return []
+    try:
+        import requests
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        from quoteforge.config import GELATO_ECOMMERCE_URL
+        resp = requests.get(f"{GELATO_ECOMMERCE_URL}/v1/stores/{store_id}/templates",
+                            headers={"X-API-KEY": GELATO_API_KEY}, timeout=30)
+        if resp.status_code != 200:
+            logger.warning("gelato templates list -> %s", resp.status_code)
+            return []
+        d = resp.json()
+        return (d if isinstance(d, list) else d.get("templates") or d.get("data") or [])
+    except Exception as exc:  # noqa: BLE001 - unverified provider shape: never crash
+        logger.warning("gelato templates list failed (defensive): %s", exc)
+        return []
+
+
+def _default_probe() -> dict:
+    """Live connectivity probe used by the doctor: is Gelato's catalog API reachable, is the
+    ecommerce store reachable, and does at least one template exist? All defensive."""
+    from quoteforge.config import GELATO_STORE_ID
+    catalog_ok = False
+    try:
+        from quoteforge.automation.gelato_api import verify_gelato_auth
+        catalog_ok = bool(verify_gelato_auth().get("ok"))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("catalog probe failed: %s", exc)
+    store_ok = False
+    try:
+        from quoteforge.automation import ecommerce_images as _ecom
+        store_ok = bool(_ecom.status().get("enabled"))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("store probe failed: %s", exc)
+    return {"catalog_ok": catalog_ok, "store_ok": store_ok,
+            "templates": _gelato_get_templates(GELATO_STORE_ID)}
+
+
+def first_product_doctor(*, probe=None) -> dict:
+    """Diagnose EVERY prerequisite for creating the first live product, and ACTIVELY probe the
+    live endpoints so a 'still not alive' state shows exactly where it breaks. Read-only;
+    never raises. Returns {ready, checks:[{name, ok, detail, fix}], next_action, easier_path}.
+    `probe` is injectable (defaults to real live probes) so it is testable without network."""
+    from quoteforge.config import GELATO_STORE_ID
+    from quoteforge.automation.gelato_api import GELATO_API_KEY
+    checks: list[dict] = []
+
+    def add(name, ok, detail, fix=""):
+        checks.append({"name": name, "ok": bool(ok), "detail": detail, "fix": fix})
+
+    live = _live()
+    add("gelato_api_key", bool(GELATO_API_KEY),
+        "set" if GELATO_API_KEY else "MISSING",
+        "" if GELATO_API_KEY else "set GELATO_API_KEY (gelato.com -> Settings -> API)")
+    add("live_mode", live,
+        "live (TEST_MODE off + key)" if live else "TEST_MODE on / no key",
+        "" if live else "set TEST_MODE=false once keys are in")
+    add("gelato_store_id", bool(GELATO_STORE_ID),
+        "set" if GELATO_STORE_ID else "MISSING",
+        "" if GELATO_STORE_ID else "connect your Gelato store to Etsy, set GELATO_STORE_ID")
+
+    # Live probes (only meaningful when live; injected in tests). A crashing probe must not
+    # crash the doctor - it degrades to all-unreachable (fail safe to not-ready).
+    try:
+        pr = probe() if probe is not None else (_default_probe() if live else
+                                                {"catalog_ok": None, "store_ok": None, "templates": []})
+    except Exception as exc:  # noqa: BLE001 - a probe error is a not-ready signal, not a crash
+        logger.warning("first-product probe failed: %s", exc)
+        pr = {"catalog_ok": False, "store_ok": False, "templates": []}
+    if live or probe is not None:
+        add("catalog_reachable", pr.get("catalog_ok"),
+            "Gelato catalog API answered" if pr.get("catalog_ok") else "catalog API unreachable",
+            "" if pr.get("catalog_ok") else "check GELATO_API_KEY validity (admin verify-keys)")
+        add("store_reachable", pr.get("store_ok"),
+            "ecommerce store answered" if pr.get("store_ok") else "store API unreachable",
+            "" if pr.get("store_ok") else "confirm GELATO_STORE_ID + store connected")
+        _tmpls = pr.get("templates") or []
+        add("template_exists", bool(_tmpls),
+            f"{len(_tmpls)} template(s) found" if _tmpls else "NO template found",
+            "" if _tmpls else "build 1 template in the Gelato dashboard (variants+mockups+price)")
+    else:
+        add("live_probes", True, "skipped (not live) - run again with keys set", "")
+
+    # A real approved UID is what a live order/product actually needs
+    uid_ready = False
+    try:
+        from quoteforge.automation.gelato_readiness import registry_uid_map
+        uid_ready = bool(registry_uid_map())
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("uid readiness read skipped: %s", exc)
+    add("approved_uid", uid_ready,
+        "at least one approved real UID" if uid_ready else "no approved UID yet",
+        "" if uid_ready else "admin gelato-resolve dry-run -> gelato-uid verify/approve")
+
+    failing = [c for c in checks if not c["ok"]]
+    next_action = next((c["fix"] for c in failing if c["fix"]), "")
+    return {"ready": not failing, "checks": checks, "next_action": next_action,
+            "easier_path": "Fastest path: create ONE product in the Gelato dashboard (or via "
+                           "Gelato's Etsy connector), then run `admin real-images pull` - no "
+                           "template ID or API create call needed from here."}
