@@ -53,15 +53,23 @@ def test_over_match_is_blocked_not_written(iso_db):
     assert registry_uid_map() == {}
 
 
-def test_clean_one_to_one_matches_are_written(iso_db, monkeypatch):
+def test_clean_one_to_one_matches_are_drafted_not_live(iso_db, monkeypatch):
+    # The resolver DRAFTS matches (approved_for_go_live=0). They must NOT reach the runtime
+    # map until an admin verifies + approves them - the staged go-live safety.
     monkeypatch.setattr(R, "_our_unmapped_items", lambda: [
         {"family": "apparel", "sku": "GEL-UNIQ-ALPHA", "tokens": R._norm_tokens("uniqalpha zzq")},
         {"family": "apparel", "sku": "GEL-UNIQ-BETA", "tokens": R._norm_tokens("uniqbeta yyw")}])
     cat = [_prod("real_alpha", "uniqalpha zzq"), _prod("real_beta", "uniqbeta yyw")]
     s = R.resolve_all(apply=True, min_confidence=0.5, catalog=cat)
     assert s["resolved"] == 2 and s["written"] == 2
-    from quoteforge.automation.gelato_readiness import registry_uid_map
-    assert registry_uid_map() == {"GEL-UNIQ-ALPHA": "real_alpha", "GEL-UNIQ-BETA": "real_beta"}
+    from quoteforge.automation.gelato_readiness import (
+        registry_uid_map, pending_review, verify_uid, approve_uid)
+    assert registry_uid_map() == {}                     # drafts are NOT live
+    assert {r["sku"] for r in pending_review()} == {"GEL-UNIQ-ALPHA", "GEL-UNIQ-BETA"}
+    # verify + approve one -> only that one goes live
+    verify_uid("GEL-UNIQ-ALPHA", checker=lambda uid: True)
+    approve_uid("GEL-UNIQ-ALPHA")
+    assert registry_uid_map() == {"GEL-UNIQ-ALPHA": "real_alpha"}
 
 
 def test_dry_run_writes_nothing(iso_db, monkeypatch):

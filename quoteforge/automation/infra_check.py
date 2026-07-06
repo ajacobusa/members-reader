@@ -1495,7 +1495,8 @@ def check_infrastructure() -> dict:
         import quoteforge as _qf59
         _REQUIRED_AUDITOR_AGENTS = ("code-outcome-auditor",
                                     "storefront-fulfillability-auditor",
-                                    "gelato-readiness-pilot")
+                                    "gelato-readiness-pilot",
+                                    "gelato-uid-verifier")
         _agents_dir = _Path59(_qf59.__file__).resolve().parent.parent / ".claude" / "agents"
         if not _agents_dir.is_dir():
             checks.append(_c("infra_check_auditor_agents_assigned", True,
@@ -1737,6 +1738,35 @@ def check_infrastructure() -> dict:
                          "concurrent duplicate calls could double-order a real garment"))
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("test_order_uid_unique_backstop", False, str(exc)))
+
+    # 68) An AUTO-resolved UID draft must NEVER reach the runtime map without admin
+    #     approval. The resolver only drafts (approved_for_go_live=0); registry_uid_map (the
+    #     runtime source) must exclude it until an admin approves. This is the staged go-live
+    #     gate - it stops an unverified auto-match from silently going live. Behavioral in an
+    #     isolated temp DB: a draft is absent from the map, and present only after approval.
+    try:
+        import tempfile as _tf68, pathlib as _pl68
+        from quoteforge.db import database as _db68
+        from quoteforge.automation import gelato_readiness as _gr68
+        _prev68 = _db68.DB_PATH
+        _tmp68 = _pl68.Path(_tf68.mkdtemp()) / "uid68.db"
+        try:
+            _db68.DB_PATH = _tmp68
+            _db68.init_db()
+            _gr68.draft_uid("apparel", "GEL-CHK-68", "real_uid_68", score=0.99, reason="t")
+            _absent = "GEL-CHK-68" not in _gr68.registry_uid_map()   # draft NOT live
+            _gr68.approve_uid("GEL-CHK-68")
+            _present = _gr68.registry_uid_map().get("GEL-CHK-68") == "real_uid_68"
+        finally:
+            _db68.DB_PATH = _prev68
+        ok = bool(_absent and _present)
+        checks.append(_c("resolver_draft_needs_approval_to_go_live", ok,
+                         "an auto-resolved UID draft is excluded from the runtime map until "
+                         "an admin approves it" if ok
+                         else f"STAGED GATE BROKEN: draft_absent={_absent} approved_present={_present} "
+                         "- an unverified auto-match could go live without approval"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("resolver_draft_needs_approval_to_go_live", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 

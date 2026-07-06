@@ -79,17 +79,118 @@ def map_real_gelato_uid(product_family: str, sku: str, product_uid: str,
     if _is_placeholder(product_uid):
         raise ValueError(f"invalid productUid {product_uid!r}: placeholder/empty rejected")
     with _conn() as conn:
+        # The MANUAL/owner map is the trusted path -> status 'verified' AND approved for
+        # go-live on write (an owner who types a real UID has vouched for it). The AUTO
+        # resolver uses draft_uid() instead, which leaves approved_for_go_live=0.
         conn.execute("""
             INSERT INTO gelato_uid_registry (sku, product_family, product_uid, source,
-                                             status, verified_at, updated_at)
-            VALUES (?,?,?,?, 'verified', datetime('now'), datetime('now'))
+                status, match_score, match_reason, approved_for_go_live, verified_at, updated_at)
+            VALUES (?,?,?,?, 'verified', 1.0, 'manual owner map', 1,
+                    datetime('now'), datetime('now'))
             ON CONFLICT(sku) DO UPDATE SET
               product_family=excluded.product_family, product_uid=excluded.product_uid,
-              source=excluded.source, status='verified',
+              source=excluded.source, status='verified', match_score=1.0,
+              match_reason='manual owner map', approved_for_go_live=1,
               verified_at=datetime('now'), updated_at=datetime('now')
         """, (sku, fam, str(product_uid).strip(), source or ""))
         row = conn.execute("SELECT * FROM gelato_uid_registry WHERE sku=?", (sku,)).fetchone()
     return dict(row)
+
+
+def draft_uid(product_family: str, sku: str, product_uid: str, *, score: float,
+              reason: str = "", source: str = "resolver") -> dict:
+    """Record an AUTO-resolved UID as a DRAFT (never go-live). status is 'draft' for a
+    high-confidence match (>=0.95) or 'needs_review' below - and approved_for_go_live stays
+    0 either way, so a draft can NEVER reach the runtime map until an admin approves it.
+    Refuses a GEL-*/empty value and an unknown family (same as the manual path)."""
+    fam = (product_family or "").strip().lower()
+    if fam not in FAMILIES:
+        raise ValueError(f"unknown product_family {product_family!r}")
+    sku = (sku or "").strip()
+    if not sku:
+        raise ValueError("sku is required")
+    if _is_placeholder(product_uid):
+        raise ValueError(f"invalid productUid {product_uid!r}: placeholder/empty rejected")
+    status = "draft" if float(score) >= 0.95 else "needs_review"
+    with _conn() as conn:
+        conn.execute("""
+            INSERT INTO gelato_uid_registry (sku, product_family, product_uid, source,
+                status, match_score, match_reason, approved_for_go_live, verified_at, updated_at)
+            VALUES (?,?,?,?, ?, ?, ?, 0, datetime('now'), datetime('now'))
+            ON CONFLICT(sku) DO UPDATE SET
+              product_family=excluded.product_family, product_uid=excluded.product_uid,
+              source=excluded.source, status=excluded.status, match_score=excluded.match_score,
+              match_reason=excluded.match_reason, approved_for_go_live=0,
+              updated_at=datetime('now')
+        """, (sku, fam, str(product_uid).strip(), source or "resolver", status,
+              float(score), reason or ""))
+        row = conn.execute("SELECT * FROM gelato_uid_registry WHERE sku=?", (sku,)).fetchone()
+    return dict(row)
+
+
+def verify_uid(sku: str, *, checker=None) -> dict:
+    """Independently VERIFY a drafted UID against the Gelato API (does the productUid exist?)
+    before it can be approved. Promotes draft/needs_review -> 'verified' on a positive check;
+    leaves it unchanged otherwise. `checker(product_uid)->bool` is injectable / defaults to a
+    defensive live Gelato lookup. Never auto-approves - an admin still has to approve."""
+    rows = [r for r in registry_rows() if r["sku"] == sku]
+    if not rows:
+        return {"sku": sku, "verified": False, "reason": "not in registry"}
+    row = rows[0]
+    ok = False
+    try:
+        chk = checker or _gelato_uid_exists
+        ok = bool(chk(row["product_uid"]))
+    except Exception as exc:  # noqa: BLE001 - a check error never verifies
+        logger.warning("verify_uid check failed for %s: %s", sku, exc)
+        ok = False
+    if ok:
+        with _conn() as conn:
+            conn.execute("UPDATE gelato_uid_registry SET status='verified', "
+                         "verified_at=datetime('now'), updated_at=datetime('now') WHERE sku=?",
+                         (sku,))
+    return {"sku": sku, "verified": ok, "product_uid": row["product_uid"]}
+
+
+def _gelato_uid_exists(product_uid: str) -> bool:
+    """DEFENSIVE live check that a productUid resolves in the Gelato product API. Never
+    raises; False without a key / in TEST_MODE / on any unexpected shape."""
+    if not _live_enabled() or _is_placeholder(product_uid):
+        return False
+    try:
+        import requests
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        resp = requests.get(f"https://product.gelatoapis.com/v3/products/{product_uid}",
+                            headers={"X-API-KEY": GELATO_API_KEY}, timeout=20)
+        return resp.status_code == 200
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("gelato uid existence check failed (defensive): %s", exc)
+        return False
+
+
+def set_uid_status(sku: str, status: str, *, approved: bool | None = None) -> dict:
+    """Admin transition of a registry row's lifecycle (approve/reject). approve sets
+    status='approved' + approved_for_go_live=1; reject sets 'blocked' + 0."""
+    with _conn() as conn:
+        if approved is None:
+            conn.execute("UPDATE gelato_uid_registry SET status=?, updated_at=datetime('now') "
+                         "WHERE sku=?", (status, sku))
+        else:
+            conn.execute("UPDATE gelato_uid_registry SET status=?, approved_for_go_live=?, "
+                         "updated_at=datetime('now') WHERE sku=?",
+                         (status, 1 if approved else 0, sku))
+        row = conn.execute("SELECT * FROM gelato_uid_registry WHERE sku=?", (sku,)).fetchone()
+    return dict(row) if row else {}
+
+
+def approve_uid(sku: str) -> dict:
+    """Admin approves a VERIFIED draft for go-live (the only thing that lets it export)."""
+    return set_uid_status(sku, "approved", approved=True)
+
+
+def reject_uid(sku: str) -> dict:
+    """Admin rejects a mapping -> blocked, never exported."""
+    return set_uid_status(sku, "blocked", approved=False)
 
 
 def registry_rows(product_family: str | None = None) -> list[dict]:
@@ -106,10 +207,20 @@ def registry_rows(product_family: str | None = None) -> list[dict]:
 
 
 def registry_uid_map() -> dict:
-    """{sku: product_uid} for every VERIFIED, non-placeholder registry row. A stray
-    GEL-* (should be impossible via map_real_gelato_uid) is defensively excluded."""
+    """{sku: product_uid} for every APPROVED-FOR-GO-LIVE, non-placeholder registry row.
+    This is THE gate: only rows an admin has approved (or the trusted manual map) reach the
+    runtime UID map. An auto-resolved draft (approved_for_go_live=0) is excluded until
+    approved; a stray GEL-* is defensively excluded."""
     return {r["sku"]: r["product_uid"] for r in registry_rows()
-            if r["status"] == "verified" and not _is_placeholder(r["product_uid"])}
+            if r.get("approved_for_go_live") and not _is_placeholder(r["product_uid"])}
+
+
+def pending_review() -> list[dict]:
+    """Registry rows awaiting admin action (drafted/needs_review/verified but not yet
+    approved) - the admin approval queue."""
+    return [r for r in registry_rows()
+            if not r.get("approved_for_go_live")
+            and r["status"] in ("draft", "needs_review", "verified")]
 
 
 def _uid_map_path() -> Path:
