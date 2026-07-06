@@ -308,6 +308,19 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "live_mockups(). No-op until go-live. Runs BEFORE the 01:50 rebuild so the fresh "
         "real product photos are what publishes."),
     ScheduledJob(
+        "QuoteForge Gelato Mockup Confirm", "mockup-confirm",
+        ["/SC", "DAILY", "/ST", "01:44"],
+        "Daily: promote products whose two confirming agents both passed (PASS && MATCH) "
+        "AND whose image origin UID matches the SKU's real UID to confirmed; hold the "
+        "rest. Alerts the owner when live products sit READY with no agent verdicts "
+        "(Path A stalled). No-op until go-live. Runs after mockup-sync, before publish."),
+    ScheduledJob(
+        "QuoteForge Gelato Mockup Publish", "mockup-publish --no-rebuild",
+        ["/SC", "DAILY", "/ST", "01:46"],
+        "Daily: promote every confirmed product's candidate photo into its live block "
+        "(what the storefront reads). Never touches unconfirmed products. --no-rebuild "
+        "so the 01:50 rebuild picks it up. No-op until go-live. Runs after mockup-confirm."),
+    ScheduledJob(
         "QuoteForge Site Rebuild", "rebuild-site",
         ["/SC", "DAILY", "/ST", "01:50"],
         "Rebuilds the public shop-home page (docs/index.html) with the latest "

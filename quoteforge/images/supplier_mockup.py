@@ -143,12 +143,20 @@ def _fetch_product_image(uid: str) -> str | None:
         return None
 
 
-def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
-    """Real product image URL for our SKU, or None to fall back to the AI tile.
+def gelato_blank_image_provenance(our_sku: str, *, refresh: bool = False) -> dict | None:
+    """Real product image for our SKU WITH provenance, or None to fall back to the AI
+    tile. Returns ``{"url", "uid", "source"}`` where ``uid`` is the Gelato UID the bytes
+    are PROVABLY bound to (only the uid-map path can assert this), or ``None`` for the
+    display-only shortcut sources whose origin UID we cannot prove:
 
-    Returns None in TEST_MODE, without an API key, or for an unmapped / placeholder
-    (GEL-*) UID — so nothing changes until the owner is genuinely live. Results are
-    cached to JSON so a rebuild doesn't re-hit the API (pass refresh=True to force).
+      * ``override``   — owner-dropped CSV photo (display-only, uid unverifiable)
+      * ``persisted``  — a prior template-sync DB row (carries its own uid if recorded)
+      * ``ecommerce``  — connected-store previewUrl (uid unverifiable here)
+      * ``uid_map``    — fetched from the Gelato product API for _uid_map()[sku] (uid PROVEN)
+
+    Path A (mockup_sync) records this so ``confirm()`` can require a published image's
+    origin UID to equal the SKU's resolved real UID — the "right product" guarantee. A
+    None uid means "provenance unverified" → Path A holds it, never auto-publishes it.
     """
     # Owner-supplied real photo wins first (#realphotos): the owner can drop the actual
     # product picture per SKU into config/product_image_overrides.csv and see it NOW,
@@ -156,7 +164,7 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
     # fulfilment. Storefront consumers re-host it same-origin, so no supplier leak.
     _ov = product_photo_overrides().get((our_sku or "").strip())
     if _ov:
-        return _ov
+        return {"url": _ov, "uid": None, "source": "override"}
     from quoteforge.config import TEST_MODE
     from quoteforge.automation.gelato_api import GELATO_API_KEY
     if TEST_MODE or not GELATO_API_KEY:
@@ -169,7 +177,8 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
         from quoteforge.db.database import get_product_images
         _rows = get_product_images(our_sku)            # active, ranked
         if _rows and _rows[0].get("image_url"):
-            return _rows[0]["image_url"]
+            return {"url": _rows[0]["image_url"],
+                    "uid": _rows[0].get("gelato_product_uid"), "source": "persisted"}
     except Exception as exc:  # noqa: BLE001 — persisted lookup blip: try the live store
         logger.debug("persisted image lookup failed for %s: %s", our_sku, exc)
     # Then the connected ecommerce store's REAL product mockup (previewUrl) once the owner
@@ -179,7 +188,7 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
         from quoteforge.automation.ecommerce_images import images_by_sku
         _url = images_by_sku().get(our_sku)
         if _url:
-            return _url
+            return {"url": _url, "uid": None, "source": "ecommerce"}
     except Exception as exc:  # noqa: BLE001 — ecommerce blip: fall back to catalog path
         logger.debug("ecommerce image lookup failed for %s: %s", our_sku, exc)
     from quoteforge.automation.gelato_sync import _uid_map
@@ -194,11 +203,24 @@ def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
     cache = _load_cache()
     hit = cache.get(our_sku) if not refresh else None
     if isinstance(hit, dict) and hit.get("uid") == uid:
-        return hit.get("url") or None
+        return {"url": hit.get("url") or None, "uid": str(uid), "source": "uid_map"}
     url = _fetch_product_image(uid)
     cache[our_sku] = {"uid": uid, "url": url or ""}   # remember the uid it was resolved for
     _save_cache(cache)
-    return url
+    # url may be None (fetch blip) but the uid is proven — caller treats no-url as no image.
+    return {"url": url, "uid": str(uid), "source": "uid_map"}
+
+
+def gelato_blank_image(our_sku: str, *, refresh: bool = False) -> str | None:
+    """Real product image URL for our SKU, or None to fall back to the AI tile.
+
+    Returns None in TEST_MODE, without an API key, or for an unmapped / placeholder
+    (GEL-*) UID — so nothing changes until the owner is genuinely live. Results are
+    cached to JSON so a rebuild doesn't re-hit the API (pass refresh=True to force).
+    Thin URL-only wrapper over ``gelato_blank_image_provenance`` (one source order).
+    """
+    prov = gelato_blank_image_provenance(our_sku, refresh=refresh)
+    return (prov or {}).get("url") or None
 
 
 def gelato_template_printarea(uid: str) -> dict | None:

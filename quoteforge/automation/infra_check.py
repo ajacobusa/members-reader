@@ -1112,7 +1112,9 @@ def check_infrastructure() -> dict:
         import tempfile as _tf45
         from pathlib import Path as _P45
         from quoteforge.images import supplier_mockup as _sm45
-        refs = _references(_sm45.gelato_blank_image, "product_photo_overrides")
+        # the override logic lives in the provenance resolver; gelato_blank_image
+        # delegates to it (URL-only wrapper), so check where the source actually is.
+        refs = _references(_sm45.gelato_blank_image_provenance, "product_photo_overrides")
         has_api = all(hasattr(_sm45, n) for n in
                       ("product_photo_overrides", "apparel_photo_override_keys"))
         behaves = False
@@ -1332,7 +1334,9 @@ def check_infrastructure() -> dict:
     #     durability/stale-retire guarantee is inert. Grounded structural ref.
     try:
         from quoteforge.images import supplier_mockup as _sm53
-        ok = _references(_sm53.gelato_blank_image, "get_product_images")
+        # the persisted-table read lives in the provenance resolver that
+        # gelato_blank_image delegates to.
+        ok = _references(_sm53.gelato_blank_image_provenance, "get_product_images")
         checks.append(_c("official_image_table_consumed", ok,
                          "gelato_blank_image reads the persisted gelato_product_images table"
                          if ok else "gelato_product_images is written but no display path "
@@ -1893,6 +1897,116 @@ def check_infrastructure() -> dict:
                          f"{_no_send} customer_critical={_customer_critical}"))
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("email_quota_guarded", False, str(exc)))
+
+    # 73) Path A reaches 'published': confirm+publish are wired into COMMANDS AND
+    #     scheduled (after mockup-sync, before rebuild), and agent_pending() exists so a
+    #     stall is detectable. Without this, mockup-sync leaves products at READY forever
+    #     (silent stall) and the two-agent wrong-product guard never publishes anything.
+    try:
+        from quoteforge.automation import mockup_sync as _ms73
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS as _sj73
+        from quoteforge.admin import COMMANDS as _cmds73
+        _wired = "mockup-confirm" in _cmds73 and "mockup-publish" in _cmds73
+        _sched = any(j.admin_args.split()[0] in ("mockup-confirm", "mockup-publish",
+                     "mockup-pipeline") for j in _sj73)
+        _stall = callable(getattr(_ms73, "agent_pending", None))
+        ok = bool(_wired and _sched and _stall)
+        checks.append(_c("mockup_confirm_publish_scheduled", ok,
+                         "confirm+publish scheduled + stall-detector present (Path A reaches live)"
+                         if ok else f"Path A stalls at READY: wired={_wired} scheduled={_sched} "
+                         f"stall_detector={_stall}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("mockup_confirm_publish_scheduled", False, str(exc)))
+
+    # 74) Provenance is bound in the persisted data: confirm() refuses to confirm a
+    #     candidate whose recorded origin UID != the SKU's real UID, so a wrong-origin
+    #     image (stale DB row / display-only override / a remap) can NEVER publish.
+    #     (behavioral: an isolated catalog with a mismatched origin UID must not reach live.)
+    try:
+        import tempfile as _tmp74, json as _json74, os as _os74
+        from quoteforge.automation import mockup_sync as _ms74
+        _f74 = _tmp74.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+        _f74.write(_json74.dumps({"version": 1, "products": {"P": {
+            "sku": "S", "name": "ProbeP", "status": "ready", "confirmed": False,
+            "gelato_uid": "UID_A",
+            "candidate": {"src": "assets/x.jpg", "fingerprint": "fp", "resolved_uid": "UID_WRONG"},
+            "review": {"verdict": "PASS"}, "match": {"verdict": "MATCH"}}}}))
+        _f74.close()
+        _pe74, _pru74 = _os74.environ.get("MOCKUP_CATALOG_FILE"), _ms74._real_uid
+        try:
+            _os74.environ["MOCKUP_CATALOG_FILE"] = _f74.name
+            _ms74._real_uid = lambda sku: "UID_A"      # the SKU's genuine real uid
+            _ms74.confirm(stamp="__probe__")
+            _ms74.publish(stamp="__probe__")
+            _served74 = _ms74.live_mockups()
+        finally:
+            _ms74._real_uid = _pru74
+            if _pe74 is None:
+                _os74.environ.pop("MOCKUP_CATALOG_FILE", None)
+            else:
+                _os74.environ["MOCKUP_CATALOG_FILE"] = _pe74
+            try:
+                _os74.unlink(_f74.name)
+            except OSError as _exc74:
+                logger.debug("mockup provenance probe cleanup skipped: %s", _exc74)
+        ok = (_served74 == {})    # wrong-origin candidate must never reach live_mockups()
+        checks.append(_c("mockup_provenance_bound", ok,
+                         "confirm() gates on image origin UID == SKU's real UID"
+                         if ok else "PROVENANCE HOLE: a wrong-origin image confirmed+published"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("mockup_provenance_bound", False, str(exc)))
+
+    # 75) A remap invalidates a published photo: live_mockups() serves a live block ONLY
+    #     while its bound origin UID still equals the SKU's current real UID. A remapped
+    #     SKU drops its stale photo (else the customer keeps seeing the old product).
+    #     (behavioral: remapped product excluded, matching product still served.)
+    try:
+        import tempfile as _tmp75, json as _json75, os as _os75
+        from quoteforge.automation import mockup_sync as _ms75
+        _f75 = _tmp75.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+        _f75.write(_json75.dumps({"version": 1, "products": {
+            "STALE": {"sku": "S_STALE", "name": "Stale", "status": "published",
+                      "confirmed": True, "gelato_uid": "OLD",
+                      "live": {"src": "assets/old.jpg", "resolved_uid": "OLD"}},
+            "OK": {"sku": "S_OK", "name": "Fresh", "status": "published",
+                   "confirmed": True, "gelato_uid": "CUR",
+                   "live": {"src": "assets/cur.jpg", "resolved_uid": "CUR"}}}}))
+        _f75.close()
+        _pe75, _pru75 = _os75.environ.get("MOCKUP_CATALOG_FILE"), _ms75._real_uid
+        try:
+            _os75.environ["MOCKUP_CATALOG_FILE"] = _f75.name
+            # S_STALE remapped to a NEW uid; S_OK still maps to its bound uid.
+            _ms75._real_uid = lambda sku: "CUR" if sku == "S_OK" else "NEW"
+            _served75 = _ms75.live_mockups()
+        finally:
+            _ms75._real_uid = _pru75
+            if _pe75 is None:
+                _os75.environ.pop("MOCKUP_CATALOG_FILE", None)
+            else:
+                _os75.environ["MOCKUP_CATALOG_FILE"] = _pe75
+            try:
+                _os75.unlink(_f75.name)
+            except OSError as _exc75:
+                logger.debug("mockup remap probe cleanup skipped: %s", _exc75)
+        ok = ("Stale" not in _served75) and ("Fresh" in _served75)
+        checks.append(_c("mockup_remap_invalidates_live", ok,
+                         "a remapped SKU's stale photo is dropped; matching one still serves"
+                         if ok else "STALE-UID HOLE: a remapped SKU keeps serving the old product"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("mockup_remap_invalidates_live", False, str(exc)))
+
+    # 76) Deterministic wrong-product backstop: invert_uid_map() DROPS any UID shared by
+    #     >1 SKU (an ambiguous reverse join would land one product's photo on another's
+    #     tile) and keeps the unambiguous ones. (behavioral)
+    try:
+        from quoteforge.automation.gelato_sync import invert_uid_map as _inv76
+        _amb = _inv76({"SKU_A": "UID_SHARED", "SKU_B": "UID_SHARED", "SKU_C": "UID_OK"})
+        ok = ("UID_SHARED" not in _amb) and (_amb.get("UID_OK") == "SKU_C")
+        checks.append(_c("mockup_wrong_family_backstop", ok,
+                         "ambiguous shared UID is dropped (no wrong-product reverse join)"
+                         if ok else "AMBIGUOUS UID not dropped - wrong-product photo risk"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("mockup_wrong_family_backstop", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
