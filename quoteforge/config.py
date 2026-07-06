@@ -478,6 +478,12 @@ ETSY_API_KEY: str = os.getenv("ETSY_API_KEY", "")
 ETSY_OAUTH_TOKEN: str = os.getenv("ETSY_OAUTH_TOKEN", "")
 ETSY_REFRESH_TOKEN: str = os.getenv("ETSY_REFRESH_TOKEN", "")
 ETSY_API_BASE: str = os.getenv("ETSY_API_BASE", "https://openapi.etsy.com/v3")
+# Etsy OAuth 2.0 (PKCE) connect flow: the redirect URI registered on your Etsy app,
+# and the scopes to request. `admin etsy-connect` walks the flow and writes the token
+# file (never printing the tokens). Defaults cover order intake + fulfilment + images.
+ETSY_OAUTH_REDIRECT_URI: str = os.getenv("ETSY_OAUTH_REDIRECT_URI", "").strip()
+ETSY_OAUTH_SCOPES: str = os.getenv(
+    "ETSY_OAUTH_SCOPES", "transactions_r listings_r listings_w email_r").strip()
 # Required to auto-create listings via the Etsy API (from your shop):
 #   taxonomy id for wall-art prints, your shipping profile id, default price.
 ETSY_TAXONOMY_ID: str = os.getenv("ETSY_TAXONOMY_ID", "")

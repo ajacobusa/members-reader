@@ -321,6 +321,19 @@ def _cmd_verify_keys() -> int:
         if m["placeholder_count"] > 8:
             print(f"           ... and {m['placeholder_count'] - 8} more")
 
+    # Etsy — connection status + a live authenticated probe (skips cleanly if not set up)
+    from quoteforge.automation.etsy_oauth import connect_status
+    from quoteforge.automation.etsy_auth import verify_etsy_auth
+    st = connect_status()
+    if not st["app_key_set"]:
+        print("  [ -- ] Etsy: ETSY_API_KEY not set (register an Etsy app)")
+    elif not (st["access_token_present"] and st["refresh_token_present"]):
+        print("  [ -- ] Etsy: app key set but not connected - run `admin etsy-connect start`")
+    else:
+        ev = verify_etsy_auth()
+        print(f"  [{'PASS' if ev['ok'] else 'FAIL'}] Etsy: {ev['detail']} "
+              f"(shop_id {'set' if st['shop_id_set'] else 'MISSING'})")
+
     print()
     if anthropic_ok and g["ok"] and m["all_real"]:
         print("Keys + UID mappings verified live. You can run the real sample flow")
@@ -329,6 +342,40 @@ def _cmd_verify_keys() -> int:
     print("Not ready: fix the keys in .env and/or replace placeholder Gelato")
     print("product UIDs with real ones from your account, then re-run.")
     return 1
+
+
+def _cmd_etsy_connect(args: list[str]) -> int:
+    """Authorize your Etsy shop via OAuth 2.0 (PKCE). `etsy-connect [sub]`. Guard-railed:
+    PKCE + state/CSRF; tokens are stored 0600 and NEVER printed.
+      status              connection status (booleans only - no secrets)
+      start               print the authorization URL to open in your browser
+      finish CODE [STATE] exchange the redirect's ?code (and ?state) for tokens
+    """
+    from quoteforge.automation import etsy_oauth as oa
+    sub = (args[0] if args else "status").lower()
+    if sub == "status":
+        st = oa.connect_status()
+        print("Etsy connect:", ", ".join(f"{k}={v}" for k, v in st.items()))
+        return 0 if st["access_token_present"] else 1
+    if sub == "start":
+        r = oa.build_auth_url()
+        if not r["ok"]:
+            print(f"[BLOCKED] {r['error']}")
+            return 1
+        print("Open this URL in your browser and approve access:\n")
+        print("  " + r["url"])
+        print("\nEtsy redirects to your redirect URI with ?code=...&state=... - then run:")
+        print("  admin etsy-connect finish <CODE> <STATE>")
+        return 0
+    if sub == "finish":
+        if len(args) < 2:
+            print("usage: etsy-connect finish CODE [STATE]")
+            return 2
+        res = oa.exchange_code(args[1], args[2] if len(args) > 2 else "")
+        print(("[OK] " if res["ok"] else "[FAILED] ") + res["detail"])
+        return 0 if res["ok"] else 1
+    print("usage: etsy-connect [status|start|finish CODE [STATE]]")
+    return 2
 
 
 def _cmd_show_proof(args: list[str]) -> int:
@@ -3650,6 +3697,7 @@ COMMANDS = {
     "daily-report": lambda args: _cmd_daily_report(),
     "preflight": lambda args: _cmd_preflight(),
     "verify-keys": lambda args: _cmd_verify_keys(),
+    "etsy-connect": _cmd_etsy_connect,
     "sample-quote": lambda args: _cmd_sample_quote(),
     "email-report": lambda args: _cmd_email_report(),
     "report": _cmd_report,
