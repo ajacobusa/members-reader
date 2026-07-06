@@ -128,3 +128,61 @@ def test_infra_invariant_integration_manager_wired():
     hit = [c for c in check_infrastructure()["checks"]
            if c["name"] == "integration_manager_wired"]
     assert hit and hit[0]["ok"] is True
+
+
+# ── #5: credential encryption at rest ─────────────────────────────────────────
+
+def test_encryption_roundtrip_and_ciphertext_on_disk(tmp_path, monkeypatch):
+    # With a key set, the token store writes CIPHERTEXT (secret not on disk) + round-trips.
+    from quoteforge.automation import secret_store as ss
+    key = ss.generate_key()
+    monkeypatch.setenv("QF_SECRET_KEY", key)
+    p = tmp_path / "tok.json"
+    payload = {"access_token": "TOP_SECRET_TOKEN", "scope": "listings_r"}
+    ss.save_json(p, payload)
+    raw = p.read_bytes()
+    assert raw.startswith(b"QF_ENC1:")
+    assert b"TOP_SECRET_TOKEN" not in raw            # plaintext secret never hits disk
+    assert ss.load_json(p) == payload                # round-trips
+    st = ss.encryption_status()
+    assert st["encrypted"] is True and st["ok"] is True
+
+
+def test_plaintext_fallback_without_key(tmp_path, monkeypatch):
+    from quoteforge.automation import secret_store as ss
+    monkeypatch.delenv("QF_SECRET_KEY", raising=False)
+    p = tmp_path / "tok.json"
+    ss.save_json(p, {"access_token": "AT"})
+    assert ss.load_json(p) == {"access_token": "AT"}   # 0600 plaintext still round-trips
+    st = ss.encryption_status()
+    assert st["encrypted"] is False and st["ok"] is True   # available-but-inactive is OK
+
+
+def test_legacy_plaintext_migrates_to_encrypted_on_next_save(tmp_path, monkeypatch):
+    import json as _json
+    from quoteforge.automation import secret_store as ss
+    p = tmp_path / "tok.json"
+    p.write_bytes(_json.dumps({"access_token": "LEGACY"}).encode())   # legacy plaintext
+    monkeypatch.setenv("QF_SECRET_KEY", ss.generate_key())
+    assert ss.load_json(p) == {"access_token": "LEGACY"}   # reads legacy transparently
+    ss.save_json(p, {"access_token": "LEGACY2"})           # re-save -> now encrypted
+    assert p.read_bytes().startswith(b"QF_ENC1:")
+
+
+def test_etsy_auth_uses_encrypted_store(tmp_path, monkeypatch):
+    # The Etsy token persistence path is encrypted end-to-end when a key is set.
+    from quoteforge.automation import etsy_auth, secret_store as ss
+    monkeypatch.setenv("ETSY_TOKEN_FILE", str(tmp_path / "etsy_tokens.json"))
+    monkeypatch.setenv("QF_SECRET_KEY", ss.generate_key())
+    etsy_auth._save("ACCESS_X", "REFRESH_Y", 3600, scope="listings_r listings_w")
+    raw = (tmp_path / "etsy_tokens.json").read_bytes()
+    assert raw.startswith(b"QF_ENC1:") and b"REFRESH_Y" not in raw
+    assert etsy_auth.current_access_token() == "ACCESS_X"
+    assert etsy_auth.current_granted_scopes() == "listings_r listings_w"
+
+
+def test_infra_invariant_encryption_at_rest():
+    from quoteforge.automation.infra_check import check_infrastructure
+    hit = [c for c in check_infrastructure()["checks"]
+           if c["name"] == "credential_encryption_at_rest"]
+    assert hit and hit[0]["ok"] is True

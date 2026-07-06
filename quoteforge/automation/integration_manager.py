@@ -68,7 +68,7 @@ def _store_status() -> dict:
 
 # The components that must be green for a GO when live (skips are green in TEST_MODE).
 _COMPONENT_ORDER = ("gelato_auth", "gelato_uids", "etsy_auth", "etsy_token",
-                    "etsy_scopes", "gelato_store", "anthropic_key")
+                    "etsy_scopes", "gelato_store", "credential_encryption", "anthropic_key")
 
 
 def doctor(*, probe: bool = True) -> dict:
@@ -122,6 +122,8 @@ def doctor(*, probe: bool = True) -> dict:
                                         "token_expiry_status")())
     _safe("etsy_scopes", scope_status)
     _safe("gelato_store", _store_status)
+    _safe("credential_encryption",
+          lambda: _import("quoteforge.automation.secret_store", "encryption_status")())
     comps["anthropic_key"] = {"ok": bool(ANTHROPIC_API_KEY),
                               "detail": "set" if ANTHROPIC_API_KEY else "ANTHROPIC_API_KEY not set"}
 
