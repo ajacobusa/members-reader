@@ -7571,6 +7571,21 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      _handle(b.x, b.y+b.h, '#15643c');
      // PICTURE resize handle (blue, bottom-RIGHT of the picture) - sizes just the picture.
      if(_hasPic){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
+     // MUG handle guide (Gelato print rules #mughandle): the handle sits to the side and
+     // designs go left/right of it, never behind it. Draw the handle just outside the
+     // print area; for a WRAP mug also shade the far (seam/handle) edge as a keep-clear
+     // dead-zone. Visual guidance only - it does not change the print bounds/geometry.
+     if(IS_MUG){{ var _mw=((typeof _mugWraps!=='function')||_mugWraps());
+       var _cy=b.y+b.h/2, _hx=b.x+b.w+8, _hr=Math.max(10,b.h*0.30);
+       ctx.save();
+       if(_mw){{ var _dz=Math.max(6,b.w*0.08);            // seam/handle dead-zone at far edge
+         ctx.fillStyle='rgba(0,0,0,.06)'; ctx.fillRect(b.x+b.w-_dz,b.y,_dz,b.h);
+         ctx.strokeStyle='rgba(0,0,0,.22)'; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+         ctx.beginPath(); ctx.moveTo(b.x+b.w-_dz,b.y); ctx.lineTo(b.x+b.w-_dz,b.y+b.h);
+         ctx.stroke(); ctx.setLineDash([]); }}
+       ctx.strokeStyle='rgba(0,0,0,.34)'; ctx.lineWidth=4; ctx.lineCap='round';
+       ctx.beginPath(); ctx.arc(_hx,_cy,_hr/2,-1.15,1.15); ctx.stroke();   // C-shaped handle
+       ctx.restore(); }}
      // WORDING drag handle (gold circle + 4-way move arrow) - shows the wording is
      // grabbable and can be dragged ANYWHERE, including over the photo.
      if(TEXT_HANDLE){{ var _hx=TEXT_HANDLE.x, _hy=TEXT_HANDLE.y, _R=11;
@@ -7585,7 +7600,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        ctx.stroke(); }}
      ctx.fillStyle='rgba(0,0,0,.62)'; ctx.font="600 12px 'Montserrat',sans-serif"; ctx.textAlign='center';
      const _cap=IS_CAL ? '📅 Cover area - drag to move · green corner to resize'
-       : (IS_MUG ? '🍵 Print area - drag to move · green corner to resize'
+       : (IS_MUG ? ('🍵 '+(((typeof _mugWraps!=='function')||_mugWraps())?'Wraps around · keep key art clear of the handle edge':'Front panel · the handle sits to the side')+' - drag to move · green corner to resize')
        : (IS_BRANDED ? '🎁 Print area - drag to move · green corner to resize'
        : ((APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right')
          ? ('👕 '+(_PLACE_LBL[APPLACEMENT])+' - drag to move · corner: sideways = width, up/down = length')
