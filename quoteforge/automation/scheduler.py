@@ -308,6 +308,14 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "live_mockups(). No-op until go-live. Runs BEFORE the 01:50 rebuild so the fresh "
         "real product photos are what publishes."),
     ScheduledJob(
+        "QuoteForge Integration Health", "integration doctor",
+        ["/SC", "DAILY", "/ST", "06:10"],
+        "Daily unified credential health: live-probes Gelato + Etsy + Anthropic auth, "
+        "diffs granted-vs-required Etsy scopes, checks the store id + real UID mappings, "
+        "auto-refreshes the Etsy token, records health and alerts on any regression - so "
+        "a silently-expired token or revoked scope surfaces before it fails an order. "
+        "No-op (informational) in TEST_MODE. Runs before the 06:20 infra-check."),
+    ScheduledJob(
         "QuoteForge Gelato Mockup Confirm", "mockup-confirm",
         ["/SC", "DAILY", "/ST", "01:44"],
         "Daily: promote products whose two confirming agents both passed (PASS && MATCH) "

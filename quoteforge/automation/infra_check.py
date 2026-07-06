@@ -2008,6 +2008,30 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("mockup_wrong_family_backstop", False, str(exc)))
 
+    # 77) The Integration Manager (unified credential lifecycle) is wired: doctor()
+    #     returns a well-formed GO/FIX-FIRST across every component, the granted-vs-
+    #     required Etsy scope diff exists, and it is in COMMANDS + scheduled daily. So a
+    #     silently-expired token / revoked scope / missing store id surfaces (and, live,
+    #     alerts) instead of failing a customer order. (behavioral + wiring.)
+    try:
+        from quoteforge.automation import integration_manager as _im77
+        from quoteforge.admin import COMMANDS as _cmds77
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS as _sj77
+        _d77 = _im77.doctor(probe=False)   # hermetic: no network; must not raise
+        _shape_ok = (isinstance(_d77, dict) and _d77.get("verdict") in ("GO", "FIX-FIRST")
+                     and isinstance(_d77.get("components"), dict)
+                     and "etsy_scopes" in _d77["components"])
+        _scope_ok = isinstance(_im77.scope_status().get("required"), list)
+        _wired = "integration" in _cmds77
+        _sched = any(j.admin_args.split()[0] == "integration" for j in _sj77)
+        ok = bool(_shape_ok and _scope_ok and _wired and _sched)
+        checks.append(_c("integration_manager_wired", ok,
+                         "integration doctor + scope diff wired + scheduled daily"
+                         if ok else f"integration manager not fully wired: shape={_shape_ok} "
+                         f"scope={_scope_ok} cmd={_wired} scheduled={_sched}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("integration_manager_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

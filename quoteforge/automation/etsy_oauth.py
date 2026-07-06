@@ -116,7 +116,10 @@ def exchange_code(code: str, state: str = "", *, poster=None) -> dict:
             return {"ok": False, "detail": "token exchange returned no tokens "
                                            "(check the code + redirect URI)"}
         from quoteforge.automation.etsy_auth import _save
-        _save(access, refresh, expires)          # persists 0600, never logs the tokens
+        # Capture the scopes Etsy actually GRANTED (resp["scope"]) so the Integration
+        # Manager can diff granted vs required offline - a revoked/insufficient scope
+        # is caught before it fails a live listing/order call.
+        _save(access, refresh, expires, scope=resp.get("scope"))   # 0600, never logs tokens
         try:
             f.unlink(missing_ok=True)            # clear the transient PKCE state
         except OSError as exc:

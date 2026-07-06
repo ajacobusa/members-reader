@@ -45,13 +45,19 @@ def _load() -> dict:
     return {}
 
 
-def _save(access: str, refresh: str, expires_in) -> None:
-    """Persist the access + (rotated) refresh token and an expiry (60s safety margin)."""
+def _save(access: str, refresh: str, expires_in, scope: str | None = None) -> None:
+    """Persist the access + (rotated) refresh token and an expiry (60s safety margin).
+    ``scope`` (the space-separated scopes Etsy granted this token) is persisted when
+    provided; when None the previously-persisted scope is preserved (a refresh that
+    omits it must not erase it) - so the Integration Manager can diff granted vs
+    required scopes without a network call."""
     f = _token_file()
     f.parent.mkdir(parents=True, exist_ok=True)
+    prev_scope = _load().get("scope", "")
     f.write_text(json.dumps({
         "access_token": access, "refresh_token": refresh,
         "expires_at": time.time() + int(expires_in or 3600) - 60,  # 60s safety margin
+        "scope": (scope if scope is not None else prev_scope) or "",
     }), encoding="utf-8")
     # Restrict the refresh-token file to the owner (#182). Best-effort: no-op on
     # filesystems without POSIX perms (Windows), never breaks the refresh.
@@ -74,6 +80,12 @@ def current_refresh_token() -> str:
     return _load().get("refresh_token") or ETSY_REFRESH_TOKEN
 
 
+def current_granted_scopes() -> str:
+    """The space-separated scopes Etsy granted the persisted token ('' if unknown -
+    e.g. an env-seed token or a pre-scope-capture connection). Non-secret."""
+    return _load().get("scope", "") or ""
+
+
 def refresh_access_token() -> "str | None":
     """Exchange the refresh token for a new access token; persist + return it. Returns
     None on failure / no creds / TEST_MODE (the caller then surfaces the auth failure)."""
@@ -90,7 +102,9 @@ def refresh_access_token() -> "str | None":
         d = resp.json()
         access = d.get("access_token")
         if access:
-            _save(access, d.get("refresh_token") or rt, d.get("expires_in"))
+            # Preserve/refresh the granted scope (Etsy echoes it on refresh too).
+            _save(access, d.get("refresh_token") or rt, d.get("expires_in"),
+                  scope=d.get("scope"))
             logger.info("Etsy access token refreshed")
             return access
     except Exception as exc:  # noqa: BLE001

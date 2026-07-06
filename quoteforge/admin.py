@@ -3606,8 +3606,48 @@ def _cmd_mockup_publish(args: list[str]) -> int:
     return 0
 
 
+def _cmd_integration(args: list[str]) -> int:
+    """Unified integration health + guided onboarding. `integration [doctor|setup] [email]`.
+
+      integration doctor [email]   one-shot GO / FIX-FIRST across Gelato + Etsy + Anthropic
+                                   auth, granted-vs-required Etsy scopes, store id, and UID
+                                   mappings; records health, (live) alerts + fails fast.
+      integration setup            the ordered onboarding checklist (what to do next).
+
+    Never prints a secret - only booleans/statuses. Fails fast (non-zero) only when live
+    AND a blocker exists, so CI/preflight can gate on it."""
+    from quoteforge.automation import integration_manager as im
+    sub = args[0] if args else "doctor"
+    if sub == "setup":
+        print("Integration onboarding - do these in order:\n")
+        for i, s in enumerate(im.setup_checklist(), 1):
+            print(f"  {i}. [{'x' if s['done'] else ' '}] {s['step']}")
+            if not s["done"]:
+                print(f"          -> {s['how']}")
+        return 0
+    d = im.doctor()
+    print(im.format_report(d))
+    from quoteforge.db.database import record_sync_run
+    record_sync_run("integration-doctor", ok=d["ok"],
+                    detail=(d["verdict"] + "; " + "; ".join(d["blockers"]))[:400])
+    from quoteforge.config import TEST_MODE
+    if "email" in args:
+        from quoteforge.automation.emailer import _send_email
+        from quoteforge.config import REPORT_RECIPIENT
+        _send_email("Joffiels Integration Health",
+                    "<html><body><pre style='font-size:12px'>"
+                    + im.format_report(d) + "</pre></body></html>", to=REPORT_RECIPIENT)
+        print("\nEmailed.")
+    if not TEST_MODE and not d["ok"]:
+        _alert("Integration health - FIX-FIRST",
+               "<pre>" + im.format_report(d) + "</pre>", what="integration-doctor")
+        return 1                                  # fail fast when live + blocked
+    return 0
+
+
 COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
+    "integration": _cmd_integration,
     "mockup-sync": _cmd_mockup_sync,
     "ecommerce-images": _cmd_ecommerce_images,
     "image-override": _cmd_image_override,
