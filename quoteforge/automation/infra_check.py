@@ -1822,6 +1822,47 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("image_validation_separate_from_customer_approval", False, str(exc)))
 
+    # 71) The Etsy OAuth connect flow keeps its guard rails: PKCE (S256) + a state/CSRF param
+    #     on the auth URL, the code_verifier is NEVER put on the URL, and the token exchange
+    #     NEVER returns/leaks the access/refresh tokens (they go only to the 0600 token file).
+    #     A refactor that drops PKCE, drops state, or echoes a token would alert. Behavioral,
+    #     isolated temp env; injected poster so no live call.
+    try:
+        import os as _os71, tempfile as _tf71, pathlib as _pl71, json as _js71
+        from quoteforge.automation import etsy_oauth as _oa71
+        import quoteforge.config as _cfg71
+        _d71 = _pl71.Path(_tf71.mkdtemp())
+        _prev = (_os71.environ.get("ETSY_OAUTH_STATE_FILE"), _os71.environ.get("ETSY_TOKEN_FILE"),
+                 _cfg71.ETSY_API_KEY, _cfg71.ETSY_OAUTH_REDIRECT_URI, _cfg71.OUTPUT_DIR)
+        try:
+            _os71.environ["ETSY_OAUTH_STATE_FILE"] = str(_d71 / "st.json")
+            _os71.environ["ETSY_TOKEN_FILE"] = str(_d71 / "tok.json")
+            _cfg71.ETSY_API_KEY = "k71"; _cfg71.ETSY_OAUTH_REDIRECT_URI = "https://x/cb"
+            _cfg71.OUTPUT_DIR = _d71
+            _u71 = _oa71.build_auth_url()
+            _pkce_ok = (_u71.get("ok") and "code_challenge_method=S256" in _u71["url"]
+                        and "state=" in _u71["url"] and "code_verifier" not in _u71["url"])
+            _res71 = _oa71.exchange_code("C", state=_u71.get("state", ""),
+                                         poster=lambda u, d: {"access_token": "SECRET_AT71",
+                                                              "refresh_token": "SECRET_RT71",
+                                                              "expires_in": 3600})
+            _no_leak = (_res71.get("ok") and "SECRET_AT71" not in _js71.dumps(_res71)
+                        and "SECRET_RT71" not in _js71.dumps(_res71))
+        finally:
+            for _k, _v in (("ETSY_OAUTH_STATE_FILE", _prev[0]), ("ETSY_TOKEN_FILE", _prev[1])):
+                if _v is None:
+                    _os71.environ.pop(_k, None)
+                else:
+                    _os71.environ[_k] = _v
+            _cfg71.ETSY_API_KEY, _cfg71.ETSY_OAUTH_REDIRECT_URI, _cfg71.OUTPUT_DIR = _prev[2], _prev[3], _prev[4]
+        ok = bool(_pkce_ok and _no_leak)
+        checks.append(_c("etsy_oauth_pkce_and_no_token_leak", ok,
+                         "Etsy connect uses PKCE(S256)+state and the exchange never leaks a "
+                         "token" if ok else f"OAuth guard rail broken: pkce_state={_pkce_ok} "
+                         f"no_token_leak={_no_leak}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("etsy_oauth_pkce_and_no_token_leak", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

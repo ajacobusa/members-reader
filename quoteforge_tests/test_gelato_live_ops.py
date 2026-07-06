@@ -123,6 +123,52 @@ def test_failed_route_releases_reservation(iso_db, monkeypatch):
     assert n == 0                                   # reservation released, no phantom block
 
 
+def test_doctor_pre_go_live_reports_blockers(iso_db):
+    d = ops.first_product_doctor()
+    assert d["ready"] is False and d["next_action"]
+    names = {c["name"] for c in d["checks"]}
+    assert {"gelato_api_key", "live_mode", "gelato_store_id", "approved_uid"} <= names
+    assert "dashboard" in d["easier_path"].lower()
+
+
+def _go_live(monkeypatch):
+    monkeypatch.setattr("quoteforge.config.TEST_MODE", False)
+    monkeypatch.setattr("quoteforge.config.GELATO_API_KEY", "k")
+    monkeypatch.setattr("quoteforge.automation.gelato_api.GELATO_API_KEY", "k")
+    monkeypatch.setattr("quoteforge.config.GELATO_STORE_ID", "store_1")
+
+
+def test_doctor_flags_missing_template(iso_db, monkeypatch):
+    # live + catalog + store reachable, an approved UID exists, but NO template -> the
+    # doctor pinpoints the template as the blocker (the usual "keeps not resolving").
+    _go_live(monkeypatch)
+    from quoteforge.automation.gelato_readiness import map_real_gelato_uid
+    map_real_gelato_uid("apparel", "GEL-A", "real_a")           # approved on write
+    d = ops.first_product_doctor(
+        probe=lambda: {"catalog_ok": True, "store_ok": True, "templates": []})
+    by = {c["name"]: c for c in d["checks"]}
+    assert by["template_exists"]["ok"] is False and "dashboard" in by["template_exists"]["fix"]
+    assert by["catalog_reachable"]["ok"] and by["store_reachable"]["ok"]
+    assert d["ready"] is False
+
+
+def test_doctor_all_green_when_everything_present(iso_db, monkeypatch):
+    _go_live(monkeypatch)
+    from quoteforge.automation.gelato_readiness import map_real_gelato_uid
+    map_real_gelato_uid("apparel", "GEL-A", "real_a")
+    d = ops.first_product_doctor(
+        probe=lambda: {"catalog_ok": True, "store_ok": True, "templates": [{"id": "t1"}]})
+    assert d["ready"] is True and not d["next_action"]
+
+
+def test_doctor_never_raises_on_probe_error(iso_db, monkeypatch):
+    _go_live(monkeypatch)
+    def boom():
+        raise RuntimeError("gelato down")
+    d = ops.first_product_doctor(probe=boom)   # a crashing probe must not crash the doctor
+    assert d["ready"] is False                 # fails safe to not-ready
+
+
 def test_test_order_routes_apparel_through_router(iso_db, monkeypatch):
     # the order handed to the router must be a real-UID apparel order (so it rides the
     # same GEL-* / calibration / idempotency gates a customer order does).
