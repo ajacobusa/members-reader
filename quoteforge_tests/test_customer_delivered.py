@@ -40,8 +40,8 @@ def test_delivered_sent_once_by_gated_sweep(tmp_path, monkeypatch):
     import quoteforge.automation.emailer as em
     sent = []
     monkeypatch.setattr(em, "_send_email",
-                        lambda subj, html, to="": (sent.append((subj, to, html)),
-                                                   {"status": "sent"})[1])
+                        lambda subj, html, to="", **_kw: (sent.append((subj, to, html)),
+                                                          {"status": "sent"})[1])
     res = cn.send_pending_notifications()
     assert "D2" not in res.get("skipped", [])
     assert len(sent) == 1

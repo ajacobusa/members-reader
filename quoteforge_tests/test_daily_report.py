@@ -100,7 +100,8 @@ def test_send_report_uses_smtp(tmp_path):
     fake_ctx = MagicMock()
     fake_ctx.__enter__ = MagicMock(return_value=fake_smtp)
     fake_ctx.__exit__ = MagicMock(return_value=False)
-    with patch.object(db, "DB_PATH", tmp_path / "t.db"), \
+    with patch("quoteforge.config.TEST_MODE", False), \
+         patch.object(db, "DB_PATH", tmp_path / "t.db"), \
          patch.object(db, "OUTPUT_DIR", tmp_path), \
          patch("quoteforge.automation.emailer.GMAIL_ADDRESS", "shop@gmail.com"), \
          patch("quoteforge.automation.emailer.GMAIL_APP_PASSWORD", "app-pass"), \
