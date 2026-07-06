@@ -55,14 +55,12 @@ def _state_file() -> Path:
 
 
 def _save_state(verifier: str, state: str) -> None:
-    """Persist the PKCE verifier + state with 0600 perms (it is a secret)."""
-    f = _state_file()
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps({"code_verifier": verifier, "state": state}), encoding="utf-8")
-    try:
-        os.chmod(f, 0o600)
-    except OSError as exc:  # noqa: BLE001 - non-POSIX fs: best effort
-        logger.debug("state file chmod skipped: %s", exc)
+    """Persist the PKCE verifier + state, ENCRYPTED at rest when QF_SECRET_KEY is set
+    (else 0600 plaintext) - so every persisted credential-adjacent file, not just the
+    token file, is covered by the same at-rest encryption story. It is a short-lived
+    secret, cleared on connect."""
+    from quoteforge.automation.secret_store import save_json
+    save_json(_state_file(), {"code_verifier": verifier, "state": state})
 
 
 def build_auth_url() -> dict:
@@ -94,10 +92,8 @@ def exchange_code(code: str, state: str = "", *, poster=None) -> dict:
     if not code:
         return {"ok": False, "detail": "no authorization code provided"}
     f = _state_file()
-    try:
-        saved = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
-    except Exception:  # noqa: BLE001
-        saved = {}
+    from quoteforge.automation.secret_store import load_json
+    saved = load_json(f)                       # decrypts transparently (or legacy plaintext)
     verifier = saved.get("code_verifier", "")
     if not verifier:
         return {"ok": False, "detail": "no pending connect (run `etsy-connect start` first)"}
@@ -116,7 +112,10 @@ def exchange_code(code: str, state: str = "", *, poster=None) -> dict:
             return {"ok": False, "detail": "token exchange returned no tokens "
                                            "(check the code + redirect URI)"}
         from quoteforge.automation.etsy_auth import _save
-        _save(access, refresh, expires)          # persists 0600, never logs the tokens
+        # Capture the scopes Etsy actually GRANTED (resp["scope"]) so the Integration
+        # Manager can diff granted vs required offline - a revoked/insufficient scope
+        # is caught before it fails a live listing/order call.
+        _save(access, refresh, expires, scope=resp.get("scope"))   # 0600, never logs tokens
         try:
             f.unlink(missing_ok=True)            # clear the transient PKCE state
         except OSError as exc:

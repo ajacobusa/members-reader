@@ -35,31 +35,26 @@ def _token_file() -> Path:
 
 
 def _load() -> dict:
-    """The persisted token dict ({} if the file is absent or corrupt)."""
-    f = _token_file()
-    if f.exists():
-        try:
-            return json.loads(f.read_text(encoding="utf-8")) or {}
-        except Exception:  # noqa: BLE001 - a corrupt token file falls back to the env seed
-            return {}
-    return {}
+    """The persisted token dict ({} if the file is absent/corrupt). Transparently
+    decrypts an at-rest-encrypted file (secret_store); a legacy plaintext file still
+    reads and is re-encrypted on the next save."""
+    from quoteforge.automation.secret_store import load_json
+    return load_json(_token_file())
 
 
-def _save(access: str, refresh: str, expires_in) -> None:
-    """Persist the access + (rotated) refresh token and an expiry (60s safety margin)."""
-    f = _token_file()
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps({
+def _save(access: str, refresh: str, expires_in, scope: str | None = None) -> None:
+    """Persist the access + (rotated) refresh token and an expiry (60s safety margin),
+    ENCRYPTED at rest when QF_SECRET_KEY is set (else 0600 plaintext). ``scope`` (the
+    space-separated scopes Etsy granted this token) is persisted when provided; when None
+    the previously-persisted scope is preserved (a refresh that omits it must not erase
+    it) - so the Integration Manager can diff granted vs required scopes offline."""
+    from quoteforge.automation.secret_store import save_json
+    prev_scope = _load().get("scope", "")
+    save_json(_token_file(), {
         "access_token": access, "refresh_token": refresh,
         "expires_at": time.time() + int(expires_in or 3600) - 60,  # 60s safety margin
-    }), encoding="utf-8")
-    # Restrict the refresh-token file to the owner (#182). Best-effort: no-op on
-    # filesystems without POSIX perms (Windows), never breaks the refresh.
-    try:
-        import os as _os
-        _os.chmod(f, 0o600)
-    except OSError as exc:  # noqa: BLE001
-        logger.debug("token file chmod skipped: %s", exc)
+        "scope": (scope if scope is not None else prev_scope) or "",
+    })
 
 
 def current_access_token() -> str:
@@ -72,6 +67,12 @@ def current_refresh_token() -> str:
     """The current Etsy refresh token: the persisted (rotated) one, else the env seed."""
     from quoteforge.config import ETSY_REFRESH_TOKEN
     return _load().get("refresh_token") or ETSY_REFRESH_TOKEN
+
+
+def current_granted_scopes() -> str:
+    """The space-separated scopes Etsy granted the persisted token ('' if unknown -
+    e.g. an env-seed token or a pre-scope-capture connection). Non-secret."""
+    return _load().get("scope", "") or ""
 
 
 def refresh_access_token() -> "str | None":
@@ -90,7 +91,9 @@ def refresh_access_token() -> "str | None":
         d = resp.json()
         access = d.get("access_token")
         if access:
-            _save(access, d.get("refresh_token") or rt, d.get("expires_in"))
+            # Preserve/refresh the granted scope (Etsy echoes it on refresh too).
+            _save(access, d.get("refresh_token") or rt, d.get("expires_in"),
+                  scope=d.get("scope"))
             logger.info("Etsy access token refreshed")
             return access
     except Exception as exc:  # noqa: BLE001

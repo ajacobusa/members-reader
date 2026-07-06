@@ -8,7 +8,7 @@ from quoteforge import admin
 
 
 def test_all_jobs_defined_with_unique_names():
-    assert len(SCHEDULED_JOBS) == 56   # + mockup-confirm + mockup-publish (Path A reaches live)
+    assert len(SCHEDULED_JOBS) == 57   # + mockup-confirm + mockup-publish + integration doctor
     assert "QuoteForge Template Image Sync" in EXPECTED_TASK_NAMES  # daily official-image persistence
     assert "QuoteForge Ecommerce Images" in EXPECTED_TASK_NAMES     # daily official-image auto-pull
     assert "QuoteForge Gelato Mockup Sync" in EXPECTED_TASK_NAMES   # daily real-product-photo refresh

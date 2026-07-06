@@ -2008,6 +2008,82 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("mockup_wrong_family_backstop", False, str(exc)))
 
+    # 77) The Integration Manager (unified credential lifecycle) is wired: doctor()
+    #     returns a well-formed GO/FIX-FIRST across every component, the granted-vs-
+    #     required Etsy scope diff exists, and it is in COMMANDS + scheduled daily. So a
+    #     silently-expired token / revoked scope / missing store id surfaces (and, live,
+    #     alerts) instead of failing a customer order. (behavioral + wiring.)
+    try:
+        from quoteforge.automation import integration_manager as _im77
+        from quoteforge.admin import COMMANDS as _cmds77
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS as _sj77
+        _d77 = _im77.doctor(probe=False)   # hermetic: no network; must not raise
+        _shape_ok = (isinstance(_d77, dict) and _d77.get("verdict") in ("GO", "FIX-FIRST")
+                     and isinstance(_d77.get("components"), dict)
+                     and "etsy_scopes" in _d77["components"])
+        # behavioral: the pure scope diff must actually detect a missing required scope
+        # (guards the #3 fix, not just its shape).
+        _diff77 = _im77._scope_diff("listings_r", "listings_r listings_w")
+        _scope_ok = (isinstance(_im77.scope_status().get("required"), list)
+                     and _diff77.get("missing") == ["listings_w"])
+        _wired = "integration" in _cmds77
+        _sched = any(j.admin_args.split()[0] == "integration" for j in _sj77)
+        ok = bool(_shape_ok and _scope_ok and _wired and _sched)
+        checks.append(_c("integration_manager_wired", ok,
+                         "integration doctor + scope diff wired + scheduled daily"
+                         if ok else f"integration manager not fully wired: shape={_shape_ok} "
+                         f"scope={_scope_ok} cmd={_wired} scheduled={_sched}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("integration_manager_wired", False, str(exc)))
+
+    # 78) Credential encryption-at-rest works end to end (#5): with a key set, the token
+    #     store writes CIPHERTEXT (sentinel + no plaintext secret on disk) and round-trips;
+    #     with no cryptography it falls back to 0600 plaintext that still round-trips.
+    #     (behavioral, hermetic: temp key + temp file, restored.)
+    try:
+        import tempfile as _t78, os as _os78
+        from pathlib import Path as _P78
+        from quoteforge.automation import secret_store as _ss78
+        _pk78 = _os78.environ.get("QF_SECRET_KEY")
+        _tf78 = _t78.NamedTemporaryFile(suffix=".json", delete=False)
+        _tf78.close()
+        _p78 = _P78(_tf78.name)
+        payload78 = {"access_token": "PROBE_SECRET_VALUE", "scope": "listings_r"}
+        try:
+            try:
+                _key78 = _ss78.generate_key()          # requires cryptography
+                _crypto78 = True
+            except Exception:  # noqa: BLE001 - lib absent -> exercise the 0600 fallback
+                _key78, _crypto78 = "", False
+            if _crypto78:
+                _os78.environ["QF_SECRET_KEY"] = _key78
+                _ss78.save_json(_p78, payload78)
+                _raw78 = _p78.read_bytes()
+                _enc = _raw78.startswith(b"QF_ENC1:") and b"PROBE_SECRET_VALUE" not in _raw78
+                _rt = _ss78.load_json(_p78) == payload78
+                _st = _ss78.encryption_status()
+                ok = bool(_enc and _rt and _st.get("encrypted") and _st.get("ok"))
+                detail = ("token file is encrypted at rest + round-trips" if ok
+                          else f"encryption probe failed: ciphertext={_enc} roundtrip={_rt}")
+            else:
+                _os78.environ.pop("QF_SECRET_KEY", None)
+                _ss78.save_json(_p78, payload78)
+                ok = (_ss78.load_json(_p78) == payload78)
+                detail = ("cryptography absent - 0600 plaintext fallback round-trips" if ok
+                          else "plaintext fallback round-trip failed")
+        finally:
+            if _pk78 is None:
+                _os78.environ.pop("QF_SECRET_KEY", None)
+            else:
+                _os78.environ["QF_SECRET_KEY"] = _pk78
+            try:
+                _os78.unlink(_p78)
+            except OSError as _e78:
+                logger.debug("encryption probe cleanup skipped: %s", _e78)
+        checks.append(_c("credential_encryption_at_rest", ok, detail))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("credential_encryption_at_rest", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
