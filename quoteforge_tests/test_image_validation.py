@@ -112,3 +112,18 @@ def test_required_gate_blocks_when_image1_fails(iso_db):
 def test_orchestrator_no_op_without_live_or_fetcher(iso_db):
     out = iv.validate_synced_images("P3", "apparel", "L3")   # TEST_MODE, no fetcher
     assert out.get("skipped") == "not live" and out["required_ok"] is False
+
+
+def test_image_validation_is_separate_from_customer_approval(iso_db):
+    # AUTO_APPROVED (catalog listing-photo QA) must NEVER be wired to a customer order.
+    # The image validator references no order/proof/production symbol - so it can't
+    # approve, route, or lock a customer's personalized order. Customer approval stays a
+    # separate, human affirmative authorization (proof_approved).
+    import inspect
+    src = inspect.getsource(iv)
+    for forbidden in ("proof_approved", "route_order", "create_order", "resume_after_proof"):
+        assert forbidden not in src, f"image_validation must not touch {forbidden}"
+    from quoteforge.automation.infra_check import check_infrastructure
+    got = next(c for c in check_infrastructure()["checks"]
+               if c["name"] == "image_validation_separate_from_customer_approval")
+    assert got["ok"] is True

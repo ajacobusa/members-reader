@@ -1799,6 +1799,29 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("image_validation_fails_closed", False, str(exc)))
 
+    # 70) AUTO_APPROVED (automated validation of the shop's catalog LISTING photos) must stay
+    #     SEPARATE from CUSTOMER proof approval. A customer's personalized order can reach
+    #     production ONLY via their own affirmative authorization (proof_approved) - the image
+    #     validator must NEVER be wired to approve/route/lock an order. Guards both directions:
+    #     image_validation references no order/proof/production symbol, AND the customer
+    #     affirmative-authorization gate still exists. A refactor that blurs the two -> alert.
+    try:
+        import inspect as _insp70
+        from quoteforge.automation import image_validation as _iv70
+        from quoteforge.etsy import listing_preview as _lp70
+        _src70 = _insp70.getsource(_iv70)
+        _forbidden70 = ("proof_approved", "route_order", "create_order", "resume_after_proof")
+        _leaks70 = [t for t in _forbidden70 if t in _src70]
+        _consent70 = "I approve this print exactly as shown" in _insp70.getsource(_lp70)
+        ok = (not _leaks70) and _consent70
+        checks.append(_c("image_validation_separate_from_customer_approval", ok,
+                         "automated image validation is separate from customer proof approval "
+                         "(no order/proof wiring; the affirmative-authorization gate stands)"
+                         if ok else f"SEPARATION BROKEN: image_validation references "
+                         f"{_leaks70} / customer_consent_present={_consent70}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("image_validation_separate_from_customer_approval", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
