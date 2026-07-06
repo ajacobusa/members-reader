@@ -1768,6 +1768,60 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
         checks.append(_c("resolver_draft_needs_approval_to_go_live", False, str(exc)))
 
+    # 69) Automated image validation BLOCKS a bad image and never auto-approves a required
+    #     one it can't prove. Replacing user review with automation is only safe if the
+    #     validator actually fails closed: a blank/broken image must be BLOCKED, and a rank-1
+    #     image must NOT auto-approve without a vision detector confirming the product.
+    #     Behavioral, on synthetic images (no live data needed).
+    try:
+        import io as _io69
+        from PIL import Image as _Img69
+        from quoteforge.automation import image_validation as _iv69
+        _blank = _io69.BytesIO()
+        _Img69.new("RGB", (1600, 1600), (255, 255, 255)).save(_blank, "PNG")
+        _blocked = _iv69.validate_image_bytes(_blank.getvalue(), family="apparel",
+                                              rank=3)["status"] == "BLOCKED"
+        _broken = _iv69.validate_image_bytes(b"xx", family="apparel", rank=3)["status"] == "BLOCKED"
+        # a real image at rank 1 with NO detector must NOT auto-approve (held for review)
+        _content = _io69.BytesIO()
+        _im = _Img69.new("RGB", (1600, 1800), (245, 245, 245))
+        from PIL import ImageDraw as _Draw69
+        _Draw69.Draw(_im).rectangle([300, 300, 1200, 1500], fill=(40, 60, 90))
+        _im.save(_content, "PNG")
+        _req = _iv69.validate_image_bytes(_content.getvalue(), family="apparel",
+                                          rank=1)["status"] != "AUTO_APPROVED"
+        ok = bool(_blocked and _broken and _req)
+        checks.append(_c("image_validation_fails_closed", ok,
+                         "image validator BLOCKS blank/broken images and won't auto-approve a "
+                         "required image without product detection" if ok
+                         else f"image validator not fail-closed: blank_blocked={_blocked} "
+                         f"broken_blocked={_broken} required_held={_req}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("image_validation_fails_closed", False, str(exc)))
+
+    # 70) AUTO_APPROVED (automated validation of the shop's catalog LISTING photos) must stay
+    #     SEPARATE from CUSTOMER proof approval. A customer's personalized order can reach
+    #     production ONLY via their own affirmative authorization (proof_approved) - the image
+    #     validator must NEVER be wired to approve/route/lock an order. Guards both directions:
+    #     image_validation references no order/proof/production symbol, AND the customer
+    #     affirmative-authorization gate still exists. A refactor that blurs the two -> alert.
+    try:
+        import inspect as _insp70
+        from quoteforge.automation import image_validation as _iv70
+        from quoteforge.etsy import listing_preview as _lp70
+        _src70 = _insp70.getsource(_iv70)
+        _forbidden70 = ("proof_approved", "route_order", "create_order", "resume_after_proof")
+        _leaks70 = [t for t in _forbidden70 if t in _src70]
+        _consent70 = "I approve this print exactly as shown" in _insp70.getsource(_lp70)
+        ok = (not _leaks70) and _consent70
+        checks.append(_c("image_validation_separate_from_customer_approval", ok,
+                         "automated image validation is separate from customer proof approval "
+                         "(no order/proof wiring; the affirmative-authorization gate stands)"
+                         if ok else f"SEPARATION BROKEN: image_validation references "
+                         f"{_leaks70} / customer_consent_present={_consent70}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed (alert)
+        checks.append(_c("image_validation_separate_from_customer_approval", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
