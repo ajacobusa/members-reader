@@ -19,7 +19,8 @@ def _capture_sendmail():
 
 def test_owner_bcc_on_customer_email():
     captured, FakeServer = _capture_sendmail()
-    with patch.object(emailer, "GMAIL_ADDRESS", "shop@gmail.com"), \
+    with patch("quoteforge.config.TEST_MODE", False), \
+         patch.object(emailer, "GMAIL_ADDRESS", "shop@gmail.com"), \
          patch.object(emailer, "GMAIL_APP_PASSWORD", "pw"), \
          patch.object(emailer, "REPORT_RECIPIENT", "ajacobusa@gmail.com"), \
          patch("smtplib.SMTP_SSL", return_value=FakeServer()):
@@ -32,7 +33,8 @@ def test_owner_bcc_on_customer_email():
 
 def test_no_duplicate_when_owner_is_recipient():
     captured, FakeServer = _capture_sendmail()
-    with patch.object(emailer, "GMAIL_ADDRESS", "shop@gmail.com"), \
+    with patch("quoteforge.config.TEST_MODE", False), \
+         patch.object(emailer, "GMAIL_ADDRESS", "shop@gmail.com"), \
          patch.object(emailer, "GMAIL_APP_PASSWORD", "pw"), \
          patch.object(emailer, "REPORT_RECIPIENT", "ajacobusa@gmail.com"), \
          patch("smtplib.SMTP_SSL", return_value=FakeServer()):

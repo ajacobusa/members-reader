@@ -156,14 +156,67 @@ def send_cost_report(period: str = "today") -> dict:
     return _send_email(subject, body)
 
 
-def _send_email(subject: str, body: str, to: str = "", attachments=None) -> dict:
-    """Send an HTML email via Gmail SMTP, BCC'ing the owner on every message.
+def _send_count_path():
+    """JSON file holding today's real-send count (per-day, resets on date change)."""
+    from pathlib import Path
+    from quoteforge.config import OUTPUT_DIR
+    return Path(OUTPUT_DIR) / "email_send_count.json"
 
+
+def _today_key() -> str:
+    """UTC date key for the daily send budget."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def sends_today() -> int:
+    """Recipients emailed so far today (best-effort; 0 if the counter is unreadable)."""
+    import json
+    try:
+        d = json.loads(_send_count_path().read_text(encoding="utf-8"))
+        return int(d.get("count", 0)) if d.get("date") == _today_key() else 0
+    except Exception:  # noqa: BLE001 - missing/corrupt counter -> treat as 0
+        return 0
+
+
+def _record_sends(n: int) -> None:
+    """Add n recipients to today's send count (resets when the date rolls over)."""
+    import json
+    try:
+        p = _send_count_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({"date": _today_key(), "count": sends_today() + int(n)}),
+                     encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 - counter is best-effort
+        logger.warning("email send counter write failed: %s", exc)
+
+
+def _send_email(subject: str, body: str, to: str = "", attachments=None, *,
+                critical: bool = False, force: bool = False, bcc_owner: bool = True) -> dict:
+    """Send an HTML email via Gmail SMTP. Quota-safe:
+
+    * NO real email in TEST_MODE (unless force=True) - so tests / dev / CI never burn the
+      shared provider send quota. This is the guard that stops a customer email being
+      dropped because a test run exhausted the daily cap.
+    * CUSTOMER transactional email passes critical=True and ALWAYS sends (never deferred,
+      never owner-BCC'd). NON-critical email (reports, digests, marketing) is DEFERRED once
+      the day's send count reaches EMAIL_DAILY_BUDGET, preserving headroom for customers,
+      and the owner is alerted.
     Skips gracefully when Gmail credentials are not configured.
     """
+    from quoteforge.config import TEST_MODE, EMAIL_DAILY_BUDGET
+    if TEST_MODE and not force:
+        return {"status": "skipped", "message": "TEST_MODE - no real email sent"}
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         return {"status": "skipped",
                 "message": "GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set in .env"}
+    if not critical and not force and sends_today() >= int(EMAIL_DAILY_BUDGET):
+        logger.warning("email deferred - daily budget %s reached (non-critical: %s)",
+                       EMAIL_DAILY_BUDGET, subject)
+        _alert_budget_reached(subject)
+        return {"status": "deferred",
+                "message": f"daily send budget {EMAIL_DAILY_BUDGET} reached; "
+                           "non-critical email deferred (customer email still sends)"}
     recipient = to or REPORT_RECIPIENT
     msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
@@ -188,16 +241,40 @@ def _send_email(subject: str, body: str, to: str = "", attachments=None) -> dict
             msg.attach(part)
         except Exception as exc:  # noqa: BLE001 - never block the email, but log
             logger.warning("email attachment skipped: %s", exc)
-    # The owner (REPORT_RECIPIENT) is BCC'd on EVERY email — including
-    # customer-facing auto-replies — so all communications are visible to you.
+    # The owner (REPORT_RECIPIENT) is BCC'd on owner/report email so all such comms are
+    # visible - but NOT on customer transactional email (bcc_owner=False): that both halves
+    # the quota a customer send costs AND avoids the owner getting a copy of every buyer note.
     envelope = [recipient]
-    if REPORT_RECIPIENT and REPORT_RECIPIENT != recipient:
-        envelope.append(REPORT_RECIPIENT)
+    bcc = REPORT_RECIPIENT if (bcc_owner and REPORT_RECIPIENT and REPORT_RECIPIENT != recipient) else ""
+    if bcc:
+        envelope.append(bcc)
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
         server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
         server.sendmail(GMAIL_ADDRESS, envelope, msg.as_string())
-    return {"status": "sent", "to": recipient, "bcc": REPORT_RECIPIENT,
-            "subject": subject}
+    _record_sends(len(envelope))                 # count recipients against the daily budget
+    return {"status": "sent", "to": recipient, "bcc": bcc, "subject": subject}
+
+
+def _alert_budget_reached(subject: str) -> None:
+    """Alert the owner ONCE per day that the send budget is reached (so they see it coming
+    before customer email is ever at risk). Best-effort; forced so it isn't self-deferred."""
+    import json
+    from pathlib import Path
+    from quoteforge.config import OUTPUT_DIR
+    flag = Path(OUTPUT_DIR) / "email_budget_alerted.json"
+    try:
+        if json.loads(flag.read_text(encoding="utf-8")).get("date") == _today_key():
+            return                                # already alerted today
+    except Exception as exc:  # noqa: BLE001 - no prior flag / unreadable -> proceed to alert
+        logger.debug("budget alert flag unreadable (will alert): %s", exc)
+    try:
+        _send_email("QuoteForge - daily email budget reached",
+                    f"<p>The daily email send budget was reached; non-critical email is "
+                    f"being deferred to protect customer transactional email. First deferred: "
+                    f"{subject}</p>", force=True, bcc_owner=False)
+        flag.write_text(json.dumps({"date": _today_key()}), encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 - alert is best-effort, never blocks
+        logger.warning("budget alert failed: %s", exc)
 
 
 def send_period_report(period: str) -> dict:

@@ -79,7 +79,8 @@ def send_pending_notifications() -> dict:
                 f"<p>Hi {m.get('recipient_name') or 'there'},</p>"
                 f"<p>{body}</p></body></html>")
         try:
-            res = _send_email(subject, html, to=m["customer_email"])
+            res = _send_email(subject, html, to=m["customer_email"],
+                              critical=True)   # buyer transactional: priority (always sends)
         except Exception as exc:  # noqa: BLE001 - one bad address never blocks the rest
             logger.error("notify: send failed for %s: %s", m["order_id"], exc)
             skipped.append(m["id"])

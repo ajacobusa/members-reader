@@ -61,13 +61,13 @@ def test_notify_sends_only_transactional_types_and_is_idempotent(tmp_path, monke
     import quoteforge.automation.customer_notify as cn
     seen = []
     monkeypatch.setattr(cn, "_send_email",
-                        lambda subj, html, to="": (seen.append((to, subj)),
-                                                   {"status": "sent"})[1], raising=False)
+                        lambda subj, html, to="", **_kw: (seen.append((to, subj)),
+                                                          {"status": "sent"})[1], raising=False)
     # patch the lazily-imported name
     import quoteforge.automation.emailer as em
     monkeypatch.setattr(em, "_send_email",
-                        lambda subj, html, to="": (seen.append((to, subj)),
-                                                   {"status": "sent"})[1])
+                        lambda subj, html, to="", **_kw: (seen.append((to, subj)),
+                                                          {"status": "sent"})[1])
     r = cn.send_pending_notifications()
     assert len(r["sent"]) == 2                            # Order Received + In Production
     assert all(to == "buyer@x.com" for to, _ in seen)
