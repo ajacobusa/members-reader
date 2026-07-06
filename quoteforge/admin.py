@@ -2773,6 +2773,22 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
     return 2
 
 
+def _cmd_real_images(args: list[str]) -> int:
+    """Get GENUINE Gelato product photos onto the storefront (no scraping). `real-images`.
+    Orchestrates the sanctioned API path (resolve UIDs -> create store product -> pull the
+    real previewUrl, re-host, map) and reports coverage + the exact next step.
+      real-images         (default) read-only status + next steps
+      real-images pull    pull the real photo(s) now (live only; no-op otherwise)
+    """
+    from quoteforge.db.database import init_db
+    from quoteforge.automation import real_images as ri
+    init_db()
+    do_pull = bool(args and args[0].lower() == "pull")
+    rep = ri.bootstrap(pull=do_pull)
+    print(ri.format_report(rep))
+    return 0
+
+
 def _cmd_gelato_live(args: list[str]) -> int:
     """Gelato live-seam ops (Components 2-3). `gelato-live [sub]`. No-op until live.
     Subcommands:
@@ -3458,6 +3474,7 @@ COMMANDS = {
     "gelato-readiness": _cmd_gelato_readiness,
     "gelato-resolve": _cmd_gelato_resolve,
     "gelato-live": _cmd_gelato_live,
+    "real-images": _cmd_real_images,
     "gelato-automap": _cmd_gelato_automap,
     "wallart-automap": _cmd_wallart_automap,
     "gelato-uid-template": _cmd_gelato_uid_template,
