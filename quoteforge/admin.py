@@ -2857,8 +2857,6 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
         # Deterministic mug UID mapping (size+material+colour, verified vs the live catalog).
         # `gelato-resolve mugs` prints the table; `mugs apply` drafts the matches;
         # `mugs approve` records them as owner-verified (reaches the runtime map on export).
-        import os as _os
-        _os.environ["QF_GELATO_DISCOVERY"] = "1"
         action = args[1] if len(args) > 1 else "show"
         if action == "show":
             rows = rs.deterministic_mug_matches()
@@ -2882,8 +2880,6 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
         print("usage: gelato-resolve mugs [show|apply|approve]")
         return 2
     if sub in ("bottle", "tote"):
-        import os as _os
-        _os.environ["QF_GELATO_DISCOVERY"] = "1"
         action = args[1] if len(args) > 1 else "show"
         if action == "show":
             fn = (rs.deterministic_bottle_matches if sub == "bottle"
@@ -2906,8 +2902,6 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
         return 2
     if sub == "reconcile":
         # Consolidated gap report across the deterministic categories.
-        import os as _os
-        _os.environ["QF_GELATO_DISCOVERY"] = "1"
         tm = tu = 0
         for cat, fn in (("mug", rs.deterministic_mug_matches),
                         ("bottle", rs.deterministic_bottle_matches),
@@ -2924,8 +2918,6 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
         # Enable read-only discovery for THIS run only (the flag keeps tests/infra hermetic).
         # Optional 3rd arg scopes to ONE Gelato catalog (e.g. `gelato-resolve dry-run mugs`)
         # so a huge apparel catalog doesn't have to be swept to see one family's matches.
-        import os as _os
-        _os.environ["QF_GELATO_DISCOVERY"] = "1"
         cat_uid = args[1] if len(args) > 1 else None
         s = rs.resolve_all(apply=(sub == "apply"), catalog_uid=cat_uid)
         scope = f" catalog={cat_uid}" if cat_uid else " (all sellable catalogs)"
