@@ -60,6 +60,42 @@ def _live() -> bool:
         return False
 
 
+# Catalog categories we sell - discovery fetches products only from these (keyword match
+# on the Gelato catalogUid/title), so we skip the ~45 irrelevant Gelato categories.
+_RELEVANT_CAT_KEYWORDS = (
+    "mug", "cup", "drinkware", "bottle", "tumbler", "flask",
+    "shirt", "tshirt", "t-shirt", "tee", "hoodie", "sweatshirt", "sweater",
+    "tank", "longsleeve", "long-sleeve", "sleeve", "raglan", "polo", "crewneck",
+    "apparel", "garment", "tote", "bag", "mousepad", "mouse-pad", "mouse pad",
+    "notebook", "journal", "sticker", "phone", "case", "keychain", "calendar")
+
+
+def _relevant_catalog(catalog_uid: str, title: str) -> bool:
+    """True if a Gelato catalog category is one WE sell (keyword match on uid/title)."""
+    hay = f"{catalog_uid} {title}".lower()
+    return any(k in hay for k in _RELEVANT_CAT_KEYWORDS)
+
+
+def _discovery() -> bool:
+    """True when READ-ONLY discovery may run: a Gelato key is present AND the owner has
+    explicitly opted in via ``QF_GELATO_DISCOVERY=1`` (the ``gelato-resolve`` command sets
+    it for its run). The explicit flag is what keeps the test suite + daily infra-check
+    HERMETIC - they never set it, so ``_fetch_catalog`` no-ops (returns []) and makes no
+    network call, exactly as before.
+
+    Discovery only READS Gelato's catalog and writes DRAFTS (approved_for_go_live=0) that
+    still require an admin verify+approve before they reach the runtime map - it never
+    routes an order, never exports, never charges. The money / routing / runtime-export
+    path stays gated on _live() (TEST_MODE=false)."""
+    try:
+        import os
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        flag = (os.getenv("QF_GELATO_DISCOVERY") or "").strip().lower()
+        return bool(GELATO_API_KEY) and flag not in ("", "0", "false", "no")
+    except Exception:  # noqa: BLE001
+        return False
+
+
 # ── The Gelato-side records (defensive live seam) ────────────────
 
 def _normalise_product(raw: dict) -> dict | None:
@@ -89,23 +125,61 @@ def _normalise_product(raw: dict) -> dict | None:
 
 def _fetch_catalog(catalog_uid: str | None = None) -> list[dict]:
     """DEFENSIVE live seam: fetch Gelato catalog products, normalised. Never raises;
-    returns [] without a key / in TEST_MODE / on any unexpected shape. The exact request +
-    response shape is the single thing to confirm against a live Gelato account."""
-    if not _live():
+    returns [] without a key / on any unexpected shape. The exact request +
+    response shape is the single thing to confirm against a live Gelato account.
+
+    Gated on _discovery() (a key present), NOT _live(): reading the catalog is safe in
+    TEST_MODE because everything it feeds writes drafts only (owner-approval-gated).
+
+    Grounded against the real Gelato v3 API: `GET /catalogs` lists the 62 catalog
+    categories (catalogUid), and `GET /catalogs/{uid}/products` lists that category's real
+    products (each with a productUid + attributes). We enumerate the categories (or just
+    ``catalog_uid`` if given) and page through each one's products, aggregating - never
+    silently truncating (a short page is logged)."""
+    if not _discovery():
         return []
     try:
         import requests
         from quoteforge.automation.gelato_api import GELATO_API_KEY
         headers = {"X-API-KEY": GELATO_API_KEY, "Content-Type": "application/json"}
-        url = f"{_PRODUCT_API}/catalogs" + (f"/{catalog_uid}/products" if catalog_uid else "")
-        resp = requests.get(url, headers=headers, timeout=30)
-        if resp.status_code != 200:
-            logger.warning("gelato catalog fetch %s -> %s", url, resp.status_code)
-            return []
-        data = resp.json()
-        rows = (data if isinstance(data, list)
-                else data.get("products") or data.get("data") or data.get("catalogs") or [])
-        out = [p for p in (_normalise_product(r) for r in rows if isinstance(r, dict)) if p]
+        if catalog_uid:
+            cat_uids = [catalog_uid]
+        else:
+            r = requests.get(f"{_PRODUCT_API}/catalogs", headers=headers, timeout=20)
+            if r.status_code != 200:
+                logger.warning("gelato catalogs list -> %s", r.status_code)
+                return []
+            cd = r.json()
+            crows = cd.get("data") if isinstance(cd, dict) else cd
+            # Only fetch catalogs for categories WE actually sell (mugs, apparel, drinkware,
+            # branded, calendars) - skip the ~45 irrelevant Gelato categories (wallpaper,
+            # brochures, wood prints...) so discovery stays fast and on-target.
+            cat_uids = [c["catalogUid"] for c in (crows or [])
+                        if isinstance(c, dict) and c.get("catalogUid")
+                        and _relevant_catalog(c.get("catalogUid", ""), c.get("title", ""))]
+        out: list[dict] = []
+        _LIMIT = 100
+        for cid in cat_uids:
+            try:
+                offset, page = 0, 0
+                while page < 40:                          # hard cap: never loop unbounded
+                    pr = requests.get(f"{_PRODUCT_API}/catalogs/{cid}/products",
+                                      headers=headers, params={"limit": _LIMIT, "offset": offset},
+                                      timeout=30)
+                    if pr.status_code != 200:
+                        logger.warning("gelato products %s -> %s", cid, pr.status_code)
+                        break
+                    pd = pr.json()
+                    rows = (pd.get("products") if isinstance(pd, dict) else pd) or []
+                    out.extend(p for p in (_normalise_product(x) for x in rows
+                                           if isinstance(x, dict)) if p)
+                    page += 1; offset += len(rows)
+                    if len(rows) < _LIMIT:                 # short page => last page (no hits needed)
+                        break
+                if page >= 40:                             # honest: surface a possible cap-out
+                    logger.warning("gelato catalog %s: hit the 40-page cap", cid)
+            except Exception as exc:  # noqa: BLE001 - one catalog must not stop the sweep
+                logger.warning("gelato products fetch %s failed: %s", cid, exc)
         return out
     except Exception as exc:  # noqa: BLE001 - unverified provider shape: never crash
         logger.warning("gelato catalog fetch failed (defensive): %s", exc)
@@ -191,7 +265,7 @@ def _min_confidence() -> float:
 
 
 def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
-                catalog: list[dict] | None = None) -> dict:
+                catalog: list[dict] | None = None, catalog_uid: str | None = None) -> dict:
     """Resolve every unmapped sellable SKU against the Gelato catalog.
 
     apply=False (default) is a DRY RUN - reports what would be written. apply=True writes
@@ -200,7 +274,7 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
     written). Never raises; live-gated (empty catalog -> nothing resolved).
     """
     thr = _min_confidence() if min_confidence is None else min_confidence
-    cat = _fetch_catalog() if catalog is None else catalog
+    cat = _fetch_catalog(catalog_uid) if catalog is None else catalog
     items = _our_unmapped_items()
     candidates, blocked = [], []
     for it in items:
@@ -237,6 +311,7 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
     summary = {"catalog_size": len(cat), "candidates": len(items),
                "threshold": thr, "resolved": len(resolved), "blocked": len(blocked),
                "written": written, "applied": bool(apply), "live": _live(),
+               "discovery": _discovery(),
                "sample_resolved": resolved[:5], "sample_blocked": blocked[:5]}
     logger.info("gelato-resolve: catalog=%d resolved=%d blocked=%d written=%d live=%s",
                 len(cat), len(resolved), len(blocked), written, _live())
@@ -246,5 +321,132 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
 def resolver_status() -> dict:
     """A quick read of resolver readiness: is it live, how many SKUs still need a UID."""
     items = _our_unmapped_items()
-    return {"live": _live(), "unmapped_candidates": len(items),
+    return {"live": _live(), "discovery": _discovery(), "unmapped_candidates": len(items),
             "threshold": _min_confidence()}
+
+
+# ── Deterministic attribute mapping (the RIGHT tool, grounded on the real UID grammar) ──
+#
+# Fuzzy token-matching scores ~0 against Gelato's coded productUids
+# (mug_product_msz_11-oz_mmat_ceramic-white_cl_4-0). But those UIDs are perfectly
+# STRUCTURED, so we parse them into attributes and match our SKU's (size, colour) exactly -
+# no guessing. A SKU either maps to a real Gelato UID or is flagged UNFULFILLABLE (Gelato
+# does not offer that variant), which is a real "never sell what we can't make" guard.
+
+# Our colour name -> Gelato colour token (as seen in the live mug UIDs). None = Gelato has
+# no such colour (flagged unfulfillable, never silently mismapped). 'navy' has no Gelato
+# equivalent (they offer 'blue') - kept None so it is surfaced, not guessed into blue.
+_MUG_COLOUR_TO_GELATO = {
+    "white": "white", "black": "black", "red": "red", "yellow": "yellow", "pink": "pink",
+    "green": "green", "forest green": "green", "royal blue": "blue", "blue": "blue",
+    "navy": None, "maroon": None, "dusty rose": None, "silver": None, "grey": None, "gray": None,
+}
+
+
+def _parse_gelato_mug_uid(uid: str) -> dict | None:
+    """Parse a real Gelato mug productUid into {size, material, colour}. Grammar (grounded
+    on the live catalog): ``mug_product_msz_<size>_mmat_<material...-colour>_cl_...``. The
+    colour is the LAST hyphen-token of the material segment, the MATERIAL is the rest
+    (ceramic-white -> ceramic/white; heat-transfer-black -> heat-transfer/black;
+    metal-enamel-white -> metal-enamel/white). Matching on material too prevents a
+    same-colour collision (ceramic-black vs heat-transfer-black) from mis-mapping."""
+    m = re.search(r"_msz_(.+?)_mmat_(.+?)_cl_", uid or "")
+    if not m:
+        return None
+    size, matcol = m.group(1), m.group(2)
+    material, _, colour = matcol.rpartition("-")
+    return {"size": size, "material": material or matcol, "colour": colour, "uid": uid}
+
+
+def _our_mug_size_token(capacity_oz: int, product_id: str) -> str | None:
+    """Our mug -> the Gelato size token. Special products carry their own size token."""
+    pid = (product_id or "").lower()
+    if "enamel" in pid:
+        return "12-oz-enamel"
+    if "travel" in pid:
+        return "15-oz-travel"
+    if "xl" in pid or capacity_oz == 17:
+        return "17-oz-tall"
+    if capacity_oz == 11:
+        return "11-oz"
+    if capacity_oz == 15:
+        return "15-oz"
+    return None
+
+
+# Our mug product_id -> the Gelato MATERIAL it must map to. Products whose material has NO
+# Gelato equivalent (colour-interior, two-tone accent) map to a sentinel that can never
+# match, so they are flagged unfulfillable rather than silently mapped to a full-colour mug.
+_MUG_MATERIAL = {
+    "classic_mug": "ceramic", "large_mug": "ceramic", "xl_mug": "ceramic",
+    "enamel_mug": "metal-enamel", "travel_mug": "stainless-steel",
+    "color_mug": "__no-gelato-colour-interior__", "accent_mug": "__no-gelato-accent__",
+}
+
+
+def deterministic_mug_matches(catalog: list[dict] | None = None) -> list[dict]:
+    """Map every mug SKU to a real Gelato UID by ATTRIBUTE (size+colour), verified against
+    the live catalog. Returns rows ``{sku, product_id, size, colour, uid, status, reason}``
+    where status is 'matched' (uid present in Gelato) or 'unfulfillable' (no such variant).
+    Read-only; never writes. catalog defaults to the live 'mugs' catalog (discovery-gated)."""
+    cat = _fetch_catalog("mugs") if catalog is None else catalog
+    parsed = [p for p in (_parse_gelato_mug_uid(c.get("uid", "")) for c in cat) if p]
+    # Index by (size, MATERIAL, colour) - material-anchored so ceramic-black and
+    # heat-transfer-black can't collide, and colour-interior/accent can't match ceramic.
+    index = {(p["size"], p["material"], p["colour"]): p["uid"] for p in parsed}
+    from quoteforge.etsy.mug_catalog import MUG_CATALOG, _variant_sku
+    rows: list[dict] = []
+    for prod in MUG_CATALOG:
+        size_tok = _our_mug_size_token(getattr(prod, "capacity_oz", 0), prod.product_id)
+        material = _MUG_MATERIAL.get(prod.product_id, "ceramic")
+        for colour in (prod.colors or ["White"]):
+            sku = _variant_sku(prod, prod.sizes[0] if prod.sizes else "", colour)
+            g_colour = _MUG_COLOUR_TO_GELATO.get(colour.strip().lower(), "__unknown__")
+            row = {"sku": sku, "product_id": prod.product_id, "name": prod.name,
+                   "size": size_tok, "material": material, "colour": colour, "uid": None,
+                   "status": "unfulfillable", "reason": ""}
+            if material.startswith("__no-gelato"):
+                row["reason"] = f"Gelato has no {prod.name} equivalent (product type not offered)"
+            elif size_tok is None:
+                row["reason"] = "no Gelato size token for this product"
+            elif g_colour is None:
+                row["reason"] = f"Gelato offers no '{colour}' (they don't make this colour)"
+            elif g_colour == "__unknown__":
+                row["reason"] = f"unmapped colour '{colour}' - confirm against the catalog"
+            else:
+                uid = index.get((size_tok, material, g_colour))
+                if uid:
+                    row.update(uid=uid, status="matched",
+                               reason="exact size+material+colour match")
+                else:
+                    row["reason"] = f"Gelato has no {size_tok} {material} mug in {g_colour}"
+            rows.append(row)
+    return rows
+
+
+def apply_deterministic_mug_matches(*, approve: bool = False,
+                                    catalog: list[dict] | None = None) -> dict:
+    """Write the deterministic mug matches to the registry. ``approve=True`` records each as
+    an owner-verified mapping (map_real_gelato_uid, reaches the runtime map on export);
+    ``approve=False`` records DRAFTS (need admin approval). Only 'matched' rows are written;
+    'unfulfillable' rows are returned for reconciliation, never mapped. Placeholder/wrong
+    UIDs are refused by the readiness layer, so nothing wrong can be laundered in."""
+    from quoteforge.automation.gelato_readiness import map_real_gelato_uid, draft_uid
+    rows = deterministic_mug_matches(catalog=catalog)
+    written, errors = 0, []
+    for r in rows:
+        if r["status"] != "matched":
+            continue
+        try:
+            if approve:
+                map_real_gelato_uid("mug", r["sku"], r["uid"], source="deterministic-mug")
+            else:
+                draft_uid("mug", r["sku"], r["uid"], score=1.0,
+                          reason="deterministic size+material+colour match",
+                          source="deterministic-mug")
+            written += 1
+        except Exception as exc:  # noqa: BLE001 - a rejected write is reported, not fatal
+            errors.append({"sku": r["sku"], "error": str(exc)})
+    return {"matched": sum(1 for r in rows if r["status"] == "matched"),
+            "unfulfillable": [r for r in rows if r["status"] == "unfulfillable"],
+            "written": written, "approved": bool(approve), "errors": errors}

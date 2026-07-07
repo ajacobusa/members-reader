@@ -1,0 +1,92 @@
+"""Deterministic mug UID mapping — attribute match against the REAL Gelato UID grammar.
+
+Fuzzy token-matching scores ~0 against Gelato's coded productUids, so we map by parsed
+attributes (size + MATERIAL + colour). These pin the correctness that matters:
+  - material-anchored, so ceramic-black is NOT mis-mapped to heat-transfer-black
+  - a product Gelato doesn't make (colour-interior, accent) is flagged UNFULFILLABLE,
+    never silently mapped to a full-colour ceramic mug
+  - a colour Gelato doesn't offer (navy) is flagged, never guessed into 'blue'
+Hermetic: an injected catalog, no network.
+"""
+from quoteforge.automation import gelato_uid_resolver as rs
+
+
+# A tiny slice of the REAL Gelato mug catalog (grammar verified live), incl. the
+# ceramic-black / heat-transfer-black collision at 11-oz.
+_CATALOG = [{"uid": u} for u in (
+    "mug_product_msz_11-oz_mmat_ceramic-white_cl_4-0",
+    "mug_product_msz_11-oz_mmat_ceramic-black_cl_4-0",
+    "mug_product_msz_11-oz_mmat_ceramic-red_cl_4-0",
+    "mug_product_msz_11-oz_mmat_ceramic-green_cl_4-0",
+    "mug_product_msz_11-oz_mmat_heat-transfer-black_cl_4-0",   # collision decoy
+    "mug_product_msz_15-oz_mmat_ceramic-white_cl_4-0",
+    "mug_product_msz_17-oz-tall_mmat_ceramic-white_cl_4-0",
+    "mug_product_msz_12-oz-enamel_mmat_metal-enamel-white_cl_4-0",
+    "mug_product_msz_15-oz-travel_mmat_stainless-steel-white_cl_4-0",
+)]
+
+
+def _by_sku():
+    return {r["sku"]: r for r in rs.deterministic_mug_matches(catalog=_CATALOG)}
+
+
+def test_parse_extracts_size_material_colour():
+    p = rs._parse_gelato_mug_uid("mug_product_msz_11-oz_mmat_heat-transfer-black_cl_4-0")
+    assert p == {"size": "11-oz", "material": "heat-transfer", "colour": "black",
+                 "uid": "mug_product_msz_11-oz_mmat_heat-transfer-black_cl_4-0"}
+
+
+def test_classic_black_maps_to_ceramic_not_heat_transfer():
+    # REGRESSION: the same-colour collision must resolve to the ceramic product (our
+    # material), never the heat-transfer variant.
+    r = _by_sku().get("GEL-CLASSIC_MUG-11OZ-BLACK")
+    assert r and r["status"] == "matched"
+    assert r["uid"] == "mug_product_msz_11-oz_mmat_ceramic-black_cl_4-0"
+
+
+def test_classic_matches_available_colours():
+    m = _by_sku()
+    assert m["GEL-CLASSIC_MUG-11OZ-WHITE"]["status"] == "matched"
+    assert m["GEL-CLASSIC_MUG-11OZ-RED"]["status"] == "matched"
+
+
+def test_navy_is_unfulfillable_not_guessed_as_blue():
+    # REGRESSION: Gelato has no navy; it must be flagged, never coerced to 'blue'.
+    r = _by_sku().get("GEL-CLASSIC_MUG-11OZ-NAVY")
+    assert r and r["status"] == "unfulfillable" and r["uid"] is None
+    assert "navy" in r["reason"].lower()
+
+
+def test_colour_interior_has_no_gelato_equivalent():
+    # REGRESSION: colour-interior is NOT a full-colour ceramic mug; every variant must be
+    # flagged unfulfillable, never mapped to ceramic-{colour}.
+    rows = [r for r in rs.deterministic_mug_matches(catalog=_CATALOG)
+            if r["product_id"] == "color_mug"]
+    assert rows and all(r["status"] == "unfulfillable" and r["uid"] is None for r in rows)
+
+
+def test_accent_has_no_gelato_equivalent():
+    rows = [r for r in rs.deterministic_mug_matches(catalog=_CATALOG)
+            if r["product_id"] == "accent_mug"]
+    assert rows and all(r["status"] == "unfulfillable" for r in rows)
+
+
+def test_15oz_black_unfulfillable_white_only():
+    m = _by_sku()
+    assert m["GEL-LARGE_MUG-15OZ-WHITE"]["status"] == "matched"
+    assert m["GEL-LARGE_MUG-15OZ-BLACK"]["status"] == "unfulfillable"
+
+
+def test_specialty_mugs_match_their_material():
+    m = _by_sku()
+    assert m["GEL-ENAMEL_MUG-12OZ-WHITE"]["uid"].endswith("metal-enamel-white_cl_4-0")
+    assert m["GEL-TRAVEL_MUG-15OZ-WHITE"]["uid"].endswith("stainless-steel-white_cl_4-0")
+    assert m["GEL-XL_MUG-17OZ-WHITE"]["uid"].startswith("mug_product_msz_17-oz-tall")
+
+
+def test_no_placeholder_or_wrong_family_uid_ever_returned():
+    # Every matched uid is a real, parseable mug uid (never a GEL-* placeholder).
+    for r in rs.deterministic_mug_matches(catalog=_CATALOG):
+        if r["status"] == "matched":
+            assert not r["uid"].upper().startswith("GEL-")
+            assert rs._parse_gelato_mug_uid(r["uid"]) is not None

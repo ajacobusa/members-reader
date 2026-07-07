@@ -2845,23 +2845,65 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
     sub = (args[0] if args else "status").lower()
     if sub == "status":
         st = rs.resolver_status()
-        print(f"Gelato UID resolver: live={st['live']} "
+        print(f"Gelato UID resolver: live={st['live']} discovery={st.get('discovery')} "
               f"unmapped_candidates={st['unmapped_candidates']} threshold={st['threshold']}")
-        if not st["live"]:
-            print("  (no-op until TEST_MODE=false + GELATO_API_KEY set)")
+        if not st.get("discovery"):
+            print("  (no-op until GELATO_API_KEY is set)")
+        elif not st["live"]:
+            print("  (read-only DISCOVERY mode: reads the live catalog + writes DRAFTS "
+                  "that still need admin approval; no order routes until TEST_MODE=false)")
         return 0
+    if sub == "mugs":
+        # Deterministic mug UID mapping (size+material+colour, verified vs the live catalog).
+        # `gelato-resolve mugs` prints the table; `mugs apply` drafts the matches;
+        # `mugs approve` records them as owner-verified (reaches the runtime map on export).
+        import os as _os
+        _os.environ["QF_GELATO_DISCOVERY"] = "1"
+        action = args[1] if len(args) > 1 else "show"
+        if action == "show":
+            rows = rs.deterministic_mug_matches()
+            for r in rows:
+                tag = "OK " if r["status"] == "matched" else "XX "
+                print(f"  {tag} {r['sku']:<32} -> {r['uid'] or '(' + r['reason'] + ')'}")
+            print(f"  matched={sum(1 for r in rows if r['status']=='matched')} "
+                  f"unfulfillable={sum(1 for r in rows if r['status']=='unfulfillable')}")
+            return 0
+        if action in ("apply", "approve"):
+            res = rs.apply_deterministic_mug_matches(approve=(action == "approve"))
+            print(f"Mug mapping ({action}): matched={res['matched']} written={res['written']} "
+                  f"approved={res['approved']} errors={len(res['errors'])}")
+            print(f"  UNFULFILLABLE ({len(res['unfulfillable'])}) - not mapped, will stay "
+                  "blocked from go-live until reconciled:")
+            for r in res["unfulfillable"]:
+                print(f"    - {r['product_id']:<13} {r['colour']:<13} :: {r['reason']}")
+            if action == "approve" and res["written"]:
+                print("  -> run `admin gelato-readiness export` to update the runtime map.")
+            return 0
+        print("usage: gelato-resolve mugs [show|apply|approve]")
+        return 2
     if sub in ("dry-run", "apply"):
-        s = rs.resolve_all(apply=(sub == "apply"))
-        print(f"Gelato UID resolver ({'APPLY' if sub == 'apply' else 'DRY-RUN'}): "
+        # Enable read-only discovery for THIS run only (the flag keeps tests/infra hermetic).
+        # Optional 3rd arg scopes to ONE Gelato catalog (e.g. `gelato-resolve dry-run mugs`)
+        # so a huge apparel catalog doesn't have to be swept to see one family's matches.
+        import os as _os
+        _os.environ["QF_GELATO_DISCOVERY"] = "1"
+        cat_uid = args[1] if len(args) > 1 else None
+        s = rs.resolve_all(apply=(sub == "apply"), catalog_uid=cat_uid)
+        scope = f" catalog={cat_uid}" if cat_uid else " (all sellable catalogs)"
+        print(f"Gelato UID resolver ({'APPLY' if sub == 'apply' else 'DRY-RUN'}){scope}: "
               f"catalog={s['catalog_size']} candidates={s['candidates']} "
               f"resolved={s['resolved']} blocked={s['blocked']} written={s['written']} "
-              f"(threshold {s['threshold']}, live={s['live']})")
+              f"(threshold {s['threshold']}, live={s['live']} discovery={s.get('discovery')})")
+        for r in (s.get("sample_resolved") or [])[:10]:
+            print(f"    RESOLVE {r.get('sku'):<30} -> {r.get('uid'):<44} "
+                  f"conf={r.get('confidence')}")
         if s["catalog_size"] == 0:
-            print("  (empty catalog: no-op until live + Gelato catalog reachable)")
+            print("  (empty catalog: check the catalog uid, or GELATO_API_KEY)")
         if sub == "apply" and s["written"]:
-            print("  -> now run `admin gelato-readiness export` to update the runtime map.")
+            print(f"  -> {s['written']} DRAFT(s) written (approval-gated). Review: "
+                  "`admin gelato-uid list`; approve: `admin gelato-uid approve <SKU>`.")
         return 0
-    print("usage: gelato-resolve [status|dry-run|apply]")
+    print("usage: gelato-resolve [status|dry-run [catalog_uid]|apply [catalog_uid]]")
     return 2
 
 
