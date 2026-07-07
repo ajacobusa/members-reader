@@ -7571,8 +7571,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      _handle(b.x, b.y+b.h, '#15643c');
      // PICTURE resize handle (blue, bottom-RIGHT of the picture) - sizes just the picture.
      if(_hasPic){{ _handle(PHOTO_RECT.x+PHOTO_RECT.w, PHOTO_RECT.y+PHOTO_RECT.h, '#1763b8'); }}
-     // MUG handle guide (Gelato print rules #mughandle): the handle sits to the side and
-     // designs go left/right of it, never behind it. Draw the handle just outside the
+     // MUG handle guide (print-partner mug rules #mughandle): the handle sits to the side
+     // and designs go left/right of it, never behind it. Draw the handle just outside the
      // print area; for a WRAP mug also shade the far (seam/handle) edge as a keep-clear
      // dead-zone. Visual guidance only - it does not change the print bounds/geometry.
      if(IS_MUG){{ var _mw=((typeof _mugWraps!=='function')||_mugWraps());
