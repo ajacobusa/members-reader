@@ -60,6 +60,42 @@ def _live() -> bool:
         return False
 
 
+# Catalog categories we sell - discovery fetches products only from these (keyword match
+# on the Gelato catalogUid/title), so we skip the ~45 irrelevant Gelato categories.
+_RELEVANT_CAT_KEYWORDS = (
+    "mug", "cup", "drinkware", "bottle", "tumbler", "flask",
+    "shirt", "tshirt", "t-shirt", "tee", "hoodie", "sweatshirt", "sweater",
+    "tank", "longsleeve", "long-sleeve", "sleeve", "raglan", "polo", "crewneck",
+    "apparel", "garment", "tote", "bag", "mousepad", "mouse-pad", "mouse pad",
+    "notebook", "journal", "sticker", "phone", "case", "keychain", "calendar")
+
+
+def _relevant_catalog(catalog_uid: str, title: str) -> bool:
+    """True if a Gelato catalog category is one WE sell (keyword match on uid/title)."""
+    hay = f"{catalog_uid} {title}".lower()
+    return any(k in hay for k in _RELEVANT_CAT_KEYWORDS)
+
+
+def _discovery() -> bool:
+    """True when READ-ONLY discovery may run: a Gelato key is present AND the owner has
+    explicitly opted in via ``QF_GELATO_DISCOVERY=1`` (the ``gelato-resolve`` command sets
+    it for its run). The explicit flag is what keeps the test suite + daily infra-check
+    HERMETIC - they never set it, so ``_fetch_catalog`` no-ops (returns []) and makes no
+    network call, exactly as before.
+
+    Discovery only READS Gelato's catalog and writes DRAFTS (approved_for_go_live=0) that
+    still require an admin verify+approve before they reach the runtime map - it never
+    routes an order, never exports, never charges. The money / routing / runtime-export
+    path stays gated on _live() (TEST_MODE=false)."""
+    try:
+        import os
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        flag = (os.getenv("QF_GELATO_DISCOVERY") or "").strip().lower()
+        return bool(GELATO_API_KEY) and flag not in ("", "0", "false", "no")
+    except Exception:  # noqa: BLE001
+        return False
+
+
 # ── The Gelato-side records (defensive live seam) ────────────────
 
 def _normalise_product(raw: dict) -> dict | None:
@@ -89,23 +125,61 @@ def _normalise_product(raw: dict) -> dict | None:
 
 def _fetch_catalog(catalog_uid: str | None = None) -> list[dict]:
     """DEFENSIVE live seam: fetch Gelato catalog products, normalised. Never raises;
-    returns [] without a key / in TEST_MODE / on any unexpected shape. The exact request +
-    response shape is the single thing to confirm against a live Gelato account."""
-    if not _live():
+    returns [] without a key / on any unexpected shape. The exact request +
+    response shape is the single thing to confirm against a live Gelato account.
+
+    Gated on _discovery() (a key present), NOT _live(): reading the catalog is safe in
+    TEST_MODE because everything it feeds writes drafts only (owner-approval-gated).
+
+    Grounded against the real Gelato v3 API: `GET /catalogs` lists the 62 catalog
+    categories (catalogUid), and `GET /catalogs/{uid}/products` lists that category's real
+    products (each with a productUid + attributes). We enumerate the categories (or just
+    ``catalog_uid`` if given) and page through each one's products, aggregating - never
+    silently truncating (a short page is logged)."""
+    if not _discovery():
         return []
     try:
         import requests
         from quoteforge.automation.gelato_api import GELATO_API_KEY
         headers = {"X-API-KEY": GELATO_API_KEY, "Content-Type": "application/json"}
-        url = f"{_PRODUCT_API}/catalogs" + (f"/{catalog_uid}/products" if catalog_uid else "")
-        resp = requests.get(url, headers=headers, timeout=30)
-        if resp.status_code != 200:
-            logger.warning("gelato catalog fetch %s -> %s", url, resp.status_code)
-            return []
-        data = resp.json()
-        rows = (data if isinstance(data, list)
-                else data.get("products") or data.get("data") or data.get("catalogs") or [])
-        out = [p for p in (_normalise_product(r) for r in rows if isinstance(r, dict)) if p]
+        if catalog_uid:
+            cat_uids = [catalog_uid]
+        else:
+            r = requests.get(f"{_PRODUCT_API}/catalogs", headers=headers, timeout=20)
+            if r.status_code != 200:
+                logger.warning("gelato catalogs list -> %s", r.status_code)
+                return []
+            cd = r.json()
+            crows = cd.get("data") if isinstance(cd, dict) else cd
+            # Only fetch catalogs for categories WE actually sell (mugs, apparel, drinkware,
+            # branded, calendars) - skip the ~45 irrelevant Gelato categories (wallpaper,
+            # brochures, wood prints...) so discovery stays fast and on-target.
+            cat_uids = [c["catalogUid"] for c in (crows or [])
+                        if isinstance(c, dict) and c.get("catalogUid")
+                        and _relevant_catalog(c.get("catalogUid", ""), c.get("title", ""))]
+        out: list[dict] = []
+        _LIMIT = 100
+        for cid in cat_uids:
+            try:
+                offset, page = 0, 0
+                while page < 40:                          # hard cap: never loop unbounded
+                    pr = requests.get(f"{_PRODUCT_API}/catalogs/{cid}/products",
+                                      headers=headers, params={"limit": _LIMIT, "offset": offset},
+                                      timeout=30)
+                    if pr.status_code != 200:
+                        logger.warning("gelato products %s -> %s", cid, pr.status_code)
+                        break
+                    pd = pr.json()
+                    rows = (pd.get("products") if isinstance(pd, dict) else pd) or []
+                    out.extend(p for p in (_normalise_product(x) for x in rows
+                                           if isinstance(x, dict)) if p)
+                    page += 1; offset += len(rows)
+                    if len(rows) < _LIMIT:                 # short page => last page (no hits needed)
+                        break
+                if page >= 40:                             # honest: surface a possible cap-out
+                    logger.warning("gelato catalog %s: hit the 40-page cap", cid)
+            except Exception as exc:  # noqa: BLE001 - one catalog must not stop the sweep
+                logger.warning("gelato products fetch %s failed: %s", cid, exc)
         return out
     except Exception as exc:  # noqa: BLE001 - unverified provider shape: never crash
         logger.warning("gelato catalog fetch failed (defensive): %s", exc)
@@ -191,7 +265,7 @@ def _min_confidence() -> float:
 
 
 def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
-                catalog: list[dict] | None = None) -> dict:
+                catalog: list[dict] | None = None, catalog_uid: str | None = None) -> dict:
     """Resolve every unmapped sellable SKU against the Gelato catalog.
 
     apply=False (default) is a DRY RUN - reports what would be written. apply=True writes
@@ -200,7 +274,7 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
     written). Never raises; live-gated (empty catalog -> nothing resolved).
     """
     thr = _min_confidence() if min_confidence is None else min_confidence
-    cat = _fetch_catalog() if catalog is None else catalog
+    cat = _fetch_catalog(catalog_uid) if catalog is None else catalog
     items = _our_unmapped_items()
     candidates, blocked = [], []
     for it in items:
@@ -237,6 +311,7 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
     summary = {"catalog_size": len(cat), "candidates": len(items),
                "threshold": thr, "resolved": len(resolved), "blocked": len(blocked),
                "written": written, "applied": bool(apply), "live": _live(),
+               "discovery": _discovery(),
                "sample_resolved": resolved[:5], "sample_blocked": blocked[:5]}
     logger.info("gelato-resolve: catalog=%d resolved=%d blocked=%d written=%d live=%s",
                 len(cat), len(resolved), len(blocked), written, _live())
@@ -246,5 +321,5 @@ def resolve_all(*, apply: bool = False, min_confidence: float | None = None,
 def resolver_status() -> dict:
     """A quick read of resolver readiness: is it live, how many SKUs still need a UID."""
     items = _our_unmapped_items()
-    return {"live": _live(), "unmapped_candidates": len(items),
+    return {"live": _live(), "discovery": _discovery(), "unmapped_candidates": len(items),
             "threshold": _min_confidence()}
