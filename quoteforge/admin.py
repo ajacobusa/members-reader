@@ -2881,6 +2881,45 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
             return 0
         print("usage: gelato-resolve mugs [show|apply|approve]")
         return 2
+    if sub in ("bottle", "tote"):
+        import os as _os
+        _os.environ["QF_GELATO_DISCOVERY"] = "1"
+        action = args[1] if len(args) > 1 else "show"
+        if action == "show":
+            fn = (rs.deterministic_bottle_matches if sub == "bottle"
+                  else rs.deterministic_bag_matches)
+            rows = fn()
+            for r in rows:
+                tag = "OK " if r["status"] == "matched" else "XX "
+                print(f"  {tag} {r['sku']:<32} -> {r['uid'] or '(' + r['reason'] + ')'}")
+            print(f"  matched={sum(1 for r in rows if r['status']=='matched')} "
+                  f"unfulfillable={sum(1 for r in rows if r['status']=='unfulfillable')}")
+            return 0
+        if action in ("apply", "approve"):
+            res = rs.apply_deterministic_matches(sub, approve=(action == "approve"))
+            print(f"{sub} mapping ({action}): matched={res['matched']} "
+                  f"written={res['written']} errors={len(res['errors'])}")
+            if action == "approve" and res["written"]:
+                print("  -> run `admin gelato-readiness export` to update the runtime map.")
+            return 0
+        print(f"usage: gelato-resolve {sub} [show|apply|approve]")
+        return 2
+    if sub == "reconcile":
+        # Consolidated gap report across the deterministic categories.
+        import os as _os
+        _os.environ["QF_GELATO_DISCOVERY"] = "1"
+        tm = tu = 0
+        for cat, fn in (("mug", rs.deterministic_mug_matches),
+                        ("bottle", rs.deterministic_bottle_matches),
+                        ("tote", rs.deterministic_bag_matches)):
+            rows = fn()
+            m = sum(1 for r in rows if r["status"] == "matched")
+            u = sum(1 for r in rows if r["status"] == "unfulfillable")
+            tm += m; tu += u
+            print(f"{cat:<8} matched={m:<3} unfulfillable={u}")
+        print(f"{'TOTAL':<8} matched={tm:<3} unfulfillable={tu}")
+        print("  (apparel + phone-cases + notebooks + calendars need owner spec decisions)")
+        return 0
     if sub in ("dry-run", "apply"):
         # Enable read-only discovery for THIS run only (the flag keeps tests/infra hermetic).
         # Optional 3rd arg scopes to ONE Gelato catalog (e.g. `gelato-resolve dry-run mugs`)

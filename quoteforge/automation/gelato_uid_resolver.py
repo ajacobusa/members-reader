@@ -424,29 +424,114 @@ def deterministic_mug_matches(catalog: list[dict] | None = None) -> list[dict]:
     return rows
 
 
-def apply_deterministic_mug_matches(*, approve: bool = False,
-                                    catalog: list[dict] | None = None) -> dict:
-    """Write the deterministic mug matches to the registry. ``approve=True`` records each as
-    an owner-verified mapping (map_real_gelato_uid, reaches the runtime map on export);
-    ``approve=False`` records DRAFTS (need admin approval). Only 'matched' rows are written;
-    'unfulfillable' rows are returned for reconciliation, never mapped. Placeholder/wrong
-    UIDs are refused by the readiness layer, so nothing wrong can be laundered in."""
+def _parse_gelato_bottle_uid(uid: str) -> dict | None:
+    """``bottle_product_bsz_<size>_bmat_<material...-colour>`` -> {size, material, colour}."""
+    m = re.search(r"_bsz_(.+?)_bmat_(.+?)_cl_", uid or "")
+    if not m:
+        return None
+    material, _, colour = m.group(2).rpartition("-")
+    return {"size": m.group(1), "material": material or m.group(2), "colour": colour, "uid": uid}
+
+
+def deterministic_bottle_matches(catalog: list[dict] | None = None) -> list[dict]:
+    """Map our bottle/tumbler SKUs to real Gelato bottle UIDs by size+colour. Gelato's
+    bottle catalog is tiny (stainless only), so most of our sizes/colours flag unfulfillable
+    - a real reconciliation signal. Read-only; never writes."""
+    cat = _fetch_catalog("bottles") if catalog is None else catalog
+    idx = {(p["size"], p["colour"]): p["uid"]
+           for p in (_parse_gelato_bottle_uid(c.get("uid", "")) for c in cat) if p}
+    from quoteforge.etsy.branded_catalog import BRANDED_CATALOG, _variant_sku
+    rows: list[dict] = []
+    for prod in BRANDED_CATALOG:
+        if prod.product_id not in ("bottle", "tumbler"):
+            continue
+        for size in prod.sizes:
+            mm = re.search(r"(\d+)\s*oz", size.lower())
+            g_size = f"{mm.group(1)}-oz" if mm else None
+            for colour in prod.colors:
+                sku = _variant_sku(prod, size, colour)
+                g_col = {"white": "white", "silver": "white",
+                         "black": "black"}.get(colour.strip().lower())
+                uid = idx.get((g_size, g_col)) if (g_size and g_col) else None
+                rows.append({"sku": sku, "product_id": prod.product_id, "size": g_size,
+                             "colour": colour, "uid": uid,
+                             "status": "matched" if uid else "unfulfillable",
+                             "reason": "exact size+colour match" if uid
+                             else f"Gelato has no {g_size or '?'} bottle in {colour}"})
+    return rows
+
+
+def _bag_canonical_colour(uid: str) -> str | None:
+    """Colour of a CANONICAL tote UID (standard quality clc, size std-t, single-side
+    full-colour print 4-0, no manufacturer variant); None for any non-canonical variant."""
+    m = re.fullmatch(r"bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_(.+?)_bpr_4-0", uid or "")
+    return m.group(1) if m else None
+
+
+def deterministic_bag_matches(catalog: list[dict] | None = None) -> list[dict]:
+    """Map our tote SKUs to real Gelato tote UIDs by colour, using the canonical single-side
+    full-colour variant. Colours Gelato doesn't offer as a clean variant are flagged."""
+    cat = _fetch_catalog("tote-bags") if catalog is None else catalog
+    idx = {c: u for c, u in ((_bag_canonical_colour(p.get("uid", "")), p.get("uid"))
+                             for p in cat) if c}
+    colmap = {"natural": "natural", "white": "white", "navy": "navy", "black": "black",
+              "red": "red", "sand": None, "sage": None}
+    from quoteforge.etsy.branded_catalog import BRANDED_CATALOG, _variant_sku
+    rows: list[dict] = []
+    for prod in BRANDED_CATALOG:
+        if prod.product_id != "tote":
+            continue
+        for colour in prod.colors:
+            sku = _variant_sku(prod, prod.sizes[0] if prod.sizes else "", colour)
+            key = colour.strip().lower()
+            g_col = colmap.get(key, "__unknown__")
+            uid = idx.get(g_col) if g_col and g_col != "__unknown__" else None
+            rows.append({"sku": sku, "product_id": "tote", "colour": colour, "uid": uid,
+                         "status": "matched" if uid else "unfulfillable",
+                         "reason": "exact colour match (single-side full-colour tote)" if uid
+                         else (f"Gelato offers no clean '{colour}' tote variant" if g_col is None
+                               else f"unmapped colour '{colour}'")})
+    return rows
+
+
+# Deterministic mappers by category name -> (matcher, registry family).
+_DETERMINISTIC = {
+    "mug": (lambda cat=None: deterministic_mug_matches(catalog=cat), "mug"),
+    "bottle": (lambda cat=None: deterministic_bottle_matches(catalog=cat), "branded"),
+    "tote": (lambda cat=None: deterministic_bag_matches(catalog=cat), "branded"),
+}
+
+
+def _apply_matches(rows: list[dict], family: str, *, approve: bool) -> dict:
+    """Write the 'matched' rows to the registry (approve -> owner-verified via
+    map_real_gelato_uid; else DRAFT). 'unfulfillable' rows are returned, never mapped."""
     from quoteforge.automation.gelato_readiness import map_real_gelato_uid, draft_uid
-    rows = deterministic_mug_matches(catalog=catalog)
     written, errors = 0, []
     for r in rows:
         if r["status"] != "matched":
             continue
         try:
             if approve:
-                map_real_gelato_uid("mug", r["sku"], r["uid"], source="deterministic-mug")
+                map_real_gelato_uid(family, r["sku"], r["uid"], source="deterministic")
             else:
-                draft_uid("mug", r["sku"], r["uid"], score=1.0,
-                          reason="deterministic size+material+colour match",
-                          source="deterministic-mug")
+                draft_uid(family, r["sku"], r["uid"], score=1.0,
+                          reason="deterministic attribute match", source="deterministic")
             written += 1
         except Exception as exc:  # noqa: BLE001 - a rejected write is reported, not fatal
             errors.append({"sku": r["sku"], "error": str(exc)})
     return {"matched": sum(1 for r in rows if r["status"] == "matched"),
             "unfulfillable": [r for r in rows if r["status"] == "unfulfillable"],
             "written": written, "approved": bool(approve), "errors": errors}
+
+
+def apply_deterministic_matches(category: str, *, approve: bool = False,
+                                catalog: list[dict] | None = None) -> dict:
+    """Map a category's deterministic matches (category in {mug, bottle, tote})."""
+    matcher, family = _DETERMINISTIC[category]
+    return _apply_matches(matcher(catalog), family, approve=approve)
+
+
+def apply_deterministic_mug_matches(*, approve: bool = False,
+                                    catalog: list[dict] | None = None) -> dict:
+    """Back-compat shim: map the deterministic MUG matches."""
+    return _apply_matches(deterministic_mug_matches(catalog=catalog), "mug", approve=approve)

@@ -90,3 +90,40 @@ def test_no_placeholder_or_wrong_family_uid_ever_returned():
         if r["status"] == "matched":
             assert not r["uid"].upper().startswith("GEL-")
             assert rs._parse_gelato_mug_uid(r["uid"]) is not None
+
+
+# ── bottle + tote deterministic mapping (same rigor: verified vs live grammar) ──
+
+def test_bottle_size_gap_flagged_unfulfillable():
+    # Gelato bottles catalog is 17oz-only; our 20oz must flag, never mis-map to 17oz.
+    cat = [{"uid": "bottle_product_bsz_17-oz_bmat_stainless-steel-white_cl_4-0"}]
+    rows = rs.deterministic_bottle_matches(catalog=cat)
+    assert rows and all(r["status"] == "unfulfillable" for r in rows if "20OZ" in r["sku"])
+
+
+def test_tote_matches_clean_colour_variant_only():
+    cat = [{"uid": u} for u in (
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_black_bpr_4-0",
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_natural_bpr_4-0",
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_navy_bpr_4-0",
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-0",
+        # decoys that must NOT match (embroidery / manufacturer variants):
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_black_bpr_4-0-emb_westford-mill_w101",
+    )]
+    by = {r["sku"]: r for r in rs.deterministic_bag_matches(catalog=cat)}
+    assert by["GEL-TOTE-ONE-SIZE-BLACK"]["uid"] == \
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_black_bpr_4-0"
+    assert by["GEL-TOTE-ONE-SIZE-NAVY"]["status"] == "matched"
+    # sand/sage have no clean Gelato variant -> unfulfillable, never guessed
+    assert by["GEL-TOTE-ONE-SIZE-SAND"]["status"] == "unfulfillable"
+    assert by["GEL-TOTE-ONE-SIZE-SAGE"]["status"] == "unfulfillable"
+
+
+def test_bag_canonical_rejects_non_canonical_variants():
+    # only the single-side full-colour, standard-quality, no-manufacturer variant is canonical
+    assert rs._bag_canonical_colour(
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-0") == "white"
+    assert rs._bag_canonical_colour(
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-4") is None
+    assert rs._bag_canonical_colour(
+        "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-0-emb_westford-mill_w101") is None
