@@ -2084,6 +2084,32 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("credential_encryption_at_rest", False, str(exc)))
 
+    # 79) Deterministic mug UID mapping is grounded: matched on size+MATERIAL+colour (so a
+    #     same-colour collision can't mis-map ceramic->heat-transfer), every matched UID is
+    #     a real non-placeholder Gelato UID, and a product Gelato doesn't make (colour-
+    #     interior) is flagged unfulfillable, never mapped. (behavioral, injected catalog.)
+    try:
+        from quoteforge.automation import gelato_uid_resolver as _rs79
+        _cat79 = [{"uid": u} for u in (
+            "mug_product_msz_11-oz_mmat_ceramic-black_cl_4-0",
+            "mug_product_msz_11-oz_mmat_heat-transfer-black_cl_4-0",  # collision decoy
+            "mug_product_msz_15-oz_mmat_ceramic-white_cl_4-0")]
+        _rows79 = _rs79.deterministic_mug_matches(catalog=_cat79)
+        _by = {r["sku"]: r for r in _rows79}
+        _black = _by.get("GEL-CLASSIC_MUG-11OZ-BLACK", {})
+        _collision_ok = _black.get("uid") == "mug_product_msz_11-oz_mmat_ceramic-black_cl_4-0"
+        _no_placeholder = all(not (r["uid"] or "").upper().startswith("GEL-")
+                              for r in _rows79 if r["status"] == "matched")
+        _ci_flagged = all(r["status"] == "unfulfillable"
+                          for r in _rows79 if r["product_id"] == "color_mug")
+        ok = bool(_collision_ok and _no_placeholder and _ci_flagged)
+        checks.append(_c("deterministic_mug_map_grounded", ok,
+                         "mug map is material-anchored + real-UID-only + flags unfulfillable"
+                         if ok else f"mug map ungrounded: collision_ok={_collision_ok} "
+                         f"no_placeholder={_no_placeholder} colour_interior_flagged={_ci_flagged}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("deterministic_mug_map_grounded", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

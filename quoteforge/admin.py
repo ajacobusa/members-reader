@@ -2853,6 +2853,34 @@ def _cmd_gelato_resolve(args: list[str]) -> int:
             print("  (read-only DISCOVERY mode: reads the live catalog + writes DRAFTS "
                   "that still need admin approval; no order routes until TEST_MODE=false)")
         return 0
+    if sub == "mugs":
+        # Deterministic mug UID mapping (size+material+colour, verified vs the live catalog).
+        # `gelato-resolve mugs` prints the table; `mugs apply` drafts the matches;
+        # `mugs approve` records them as owner-verified (reaches the runtime map on export).
+        import os as _os
+        _os.environ["QF_GELATO_DISCOVERY"] = "1"
+        action = args[1] if len(args) > 1 else "show"
+        if action == "show":
+            rows = rs.deterministic_mug_matches()
+            for r in rows:
+                tag = "OK " if r["status"] == "matched" else "XX "
+                print(f"  {tag} {r['sku']:<32} -> {r['uid'] or '(' + r['reason'] + ')'}")
+            print(f"  matched={sum(1 for r in rows if r['status']=='matched')} "
+                  f"unfulfillable={sum(1 for r in rows if r['status']=='unfulfillable')}")
+            return 0
+        if action in ("apply", "approve"):
+            res = rs.apply_deterministic_mug_matches(approve=(action == "approve"))
+            print(f"Mug mapping ({action}): matched={res['matched']} written={res['written']} "
+                  f"approved={res['approved']} errors={len(res['errors'])}")
+            print(f"  UNFULFILLABLE ({len(res['unfulfillable'])}) - not mapped, will stay "
+                  "blocked from go-live until reconciled:")
+            for r in res["unfulfillable"]:
+                print(f"    - {r['product_id']:<13} {r['colour']:<13} :: {r['reason']}")
+            if action == "approve" and res["written"]:
+                print("  -> run `admin gelato-readiness export` to update the runtime map.")
+            return 0
+        print("usage: gelato-resolve mugs [show|apply|approve]")
+        return 2
     if sub in ("dry-run", "apply"):
         # Enable read-only discovery for THIS run only (the flag keeps tests/infra hermetic).
         # Optional 3rd arg scopes to ONE Gelato catalog (e.g. `gelato-resolve dry-run mugs`)

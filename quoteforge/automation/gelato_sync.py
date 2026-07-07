@@ -75,12 +75,20 @@ def _uid_map() -> dict:
         except Exception as exc:  # noqa: BLE001 - malformed env JSON ignored
             logger.debug("GELATO_UID_MAP parse failed: %s", exc)
     path = os.getenv("GELATO_UID_MAP_FILE", "").strip()
+    if not path:
+        # Default to the standard export target: `gelato-readiness export` writes the
+        # APPROVED registry here, so reading it by default wires approve -> export ->
+        # runtime with no extra env step and no registry/runtime drift. (Only approved
+        # UIDs ever reach this file; routing still gates on TEST_MODE.)
+        _default = os.path.join("config", "gelato_uid_map.json")
+        if os.path.exists(_default):
+            path = _default
     if path:
         try:
             with open(path, encoding="utf-8") as fh:
                 out.update(json.load(fh))
         except Exception as exc:  # noqa: BLE001 - unreadable map file ignored
-            logger.debug("GELATO_UID_MAP_FILE load failed: %s", exc)
+            logger.debug("uid map file load failed: %s", exc)
     return out
 
 

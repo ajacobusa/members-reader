@@ -323,3 +323,130 @@ def resolver_status() -> dict:
     items = _our_unmapped_items()
     return {"live": _live(), "discovery": _discovery(), "unmapped_candidates": len(items),
             "threshold": _min_confidence()}
+
+
+# ── Deterministic attribute mapping (the RIGHT tool, grounded on the real UID grammar) ──
+#
+# Fuzzy token-matching scores ~0 against Gelato's coded productUids
+# (mug_product_msz_11-oz_mmat_ceramic-white_cl_4-0). But those UIDs are perfectly
+# STRUCTURED, so we parse them into attributes and match our SKU's (size, colour) exactly -
+# no guessing. A SKU either maps to a real Gelato UID or is flagged UNFULFILLABLE (Gelato
+# does not offer that variant), which is a real "never sell what we can't make" guard.
+
+# Our colour name -> Gelato colour token (as seen in the live mug UIDs). None = Gelato has
+# no such colour (flagged unfulfillable, never silently mismapped). 'navy' has no Gelato
+# equivalent (they offer 'blue') - kept None so it is surfaced, not guessed into blue.
+_MUG_COLOUR_TO_GELATO = {
+    "white": "white", "black": "black", "red": "red", "yellow": "yellow", "pink": "pink",
+    "green": "green", "forest green": "green", "royal blue": "blue", "blue": "blue",
+    "navy": None, "maroon": None, "dusty rose": None, "silver": None, "grey": None, "gray": None,
+}
+
+
+def _parse_gelato_mug_uid(uid: str) -> dict | None:
+    """Parse a real Gelato mug productUid into {size, material, colour}. Grammar (grounded
+    on the live catalog): ``mug_product_msz_<size>_mmat_<material...-colour>_cl_...``. The
+    colour is the LAST hyphen-token of the material segment, the MATERIAL is the rest
+    (ceramic-white -> ceramic/white; heat-transfer-black -> heat-transfer/black;
+    metal-enamel-white -> metal-enamel/white). Matching on material too prevents a
+    same-colour collision (ceramic-black vs heat-transfer-black) from mis-mapping."""
+    m = re.search(r"_msz_(.+?)_mmat_(.+?)_cl_", uid or "")
+    if not m:
+        return None
+    size, matcol = m.group(1), m.group(2)
+    material, _, colour = matcol.rpartition("-")
+    return {"size": size, "material": material or matcol, "colour": colour, "uid": uid}
+
+
+def _our_mug_size_token(capacity_oz: int, product_id: str) -> str | None:
+    """Our mug -> the Gelato size token. Special products carry their own size token."""
+    pid = (product_id or "").lower()
+    if "enamel" in pid:
+        return "12-oz-enamel"
+    if "travel" in pid:
+        return "15-oz-travel"
+    if "xl" in pid or capacity_oz == 17:
+        return "17-oz-tall"
+    if capacity_oz == 11:
+        return "11-oz"
+    if capacity_oz == 15:
+        return "15-oz"
+    return None
+
+
+# Our mug product_id -> the Gelato MATERIAL it must map to. Products whose material has NO
+# Gelato equivalent (colour-interior, two-tone accent) map to a sentinel that can never
+# match, so they are flagged unfulfillable rather than silently mapped to a full-colour mug.
+_MUG_MATERIAL = {
+    "classic_mug": "ceramic", "large_mug": "ceramic", "xl_mug": "ceramic",
+    "enamel_mug": "metal-enamel", "travel_mug": "stainless-steel",
+    "color_mug": "__no-gelato-colour-interior__", "accent_mug": "__no-gelato-accent__",
+}
+
+
+def deterministic_mug_matches(catalog: list[dict] | None = None) -> list[dict]:
+    """Map every mug SKU to a real Gelato UID by ATTRIBUTE (size+colour), verified against
+    the live catalog. Returns rows ``{sku, product_id, size, colour, uid, status, reason}``
+    where status is 'matched' (uid present in Gelato) or 'unfulfillable' (no such variant).
+    Read-only; never writes. catalog defaults to the live 'mugs' catalog (discovery-gated)."""
+    cat = _fetch_catalog("mugs") if catalog is None else catalog
+    parsed = [p for p in (_parse_gelato_mug_uid(c.get("uid", "")) for c in cat) if p]
+    # Index by (size, MATERIAL, colour) - material-anchored so ceramic-black and
+    # heat-transfer-black can't collide, and colour-interior/accent can't match ceramic.
+    index = {(p["size"], p["material"], p["colour"]): p["uid"] for p in parsed}
+    from quoteforge.etsy.mug_catalog import MUG_CATALOG, _variant_sku
+    rows: list[dict] = []
+    for prod in MUG_CATALOG:
+        size_tok = _our_mug_size_token(getattr(prod, "capacity_oz", 0), prod.product_id)
+        material = _MUG_MATERIAL.get(prod.product_id, "ceramic")
+        for colour in (prod.colors or ["White"]):
+            sku = _variant_sku(prod, prod.sizes[0] if prod.sizes else "", colour)
+            g_colour = _MUG_COLOUR_TO_GELATO.get(colour.strip().lower(), "__unknown__")
+            row = {"sku": sku, "product_id": prod.product_id, "name": prod.name,
+                   "size": size_tok, "material": material, "colour": colour, "uid": None,
+                   "status": "unfulfillable", "reason": ""}
+            if material.startswith("__no-gelato"):
+                row["reason"] = f"Gelato has no {prod.name} equivalent (product type not offered)"
+            elif size_tok is None:
+                row["reason"] = "no Gelato size token for this product"
+            elif g_colour is None:
+                row["reason"] = f"Gelato offers no '{colour}' (they don't make this colour)"
+            elif g_colour == "__unknown__":
+                row["reason"] = f"unmapped colour '{colour}' - confirm against the catalog"
+            else:
+                uid = index.get((size_tok, material, g_colour))
+                if uid:
+                    row.update(uid=uid, status="matched",
+                               reason="exact size+material+colour match")
+                else:
+                    row["reason"] = f"Gelato has no {size_tok} {material} mug in {g_colour}"
+            rows.append(row)
+    return rows
+
+
+def apply_deterministic_mug_matches(*, approve: bool = False,
+                                    catalog: list[dict] | None = None) -> dict:
+    """Write the deterministic mug matches to the registry. ``approve=True`` records each as
+    an owner-verified mapping (map_real_gelato_uid, reaches the runtime map on export);
+    ``approve=False`` records DRAFTS (need admin approval). Only 'matched' rows are written;
+    'unfulfillable' rows are returned for reconciliation, never mapped. Placeholder/wrong
+    UIDs are refused by the readiness layer, so nothing wrong can be laundered in."""
+    from quoteforge.automation.gelato_readiness import map_real_gelato_uid, draft_uid
+    rows = deterministic_mug_matches(catalog=catalog)
+    written, errors = 0, []
+    for r in rows:
+        if r["status"] != "matched":
+            continue
+        try:
+            if approve:
+                map_real_gelato_uid("mug", r["sku"], r["uid"], source="deterministic-mug")
+            else:
+                draft_uid("mug", r["sku"], r["uid"], score=1.0,
+                          reason="deterministic size+material+colour match",
+                          source="deterministic-mug")
+            written += 1
+        except Exception as exc:  # noqa: BLE001 - a rejected write is reported, not fatal
+            errors.append({"sku": r["sku"], "error": str(exc)})
+    return {"matched": sum(1 for r in rows if r["status"] == "matched"),
+            "unfulfillable": [r for r in rows if r["status"] == "unfulfillable"],
+            "written": written, "approved": bool(approve), "errors": errors}
