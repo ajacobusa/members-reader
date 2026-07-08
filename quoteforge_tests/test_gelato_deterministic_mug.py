@@ -150,12 +150,27 @@ def test_apparel_matches_only_verified_existing_uids():
     assert black and all(r["status"] == "unfulfillable" for r in black)
 
 
-def test_apparel_unconfirmed_garment_flagged_not_guessed():
-    # hoodie/polo/longsleeve/raglan subcategories are unconfirmed -> always unfulfillable
-    rows = rs.deterministic_apparel_matches(quality="classic", verifier=lambda u: True)
-    for gt in ("hoodie", "polo", "longsleeve", "raglan"):
-        gr = [r for r in rows if r["garment_id"] in (f"m_{gt}", f"w_{gt}")]
-        assert gr and all(r["status"] == "unfulfillable" for r in gr), gt
+def test_apparel_no_clean_variant_flagged_not_guessed():
+    # Combos Gelato does NOT offer cleanly (probed live across all 9 qualities): raglan +
+    # polo (both genders), womens longsleeve, womens sweatshirt -> always unfulfillable,
+    # even with a verifier that would accept anything (they must never be constructed).
+    rows = rs.deterministic_apparel_matches(verifier=lambda u: True)
+    for gid in ("m_raglan", "w_raglan", "m_polo", "w_longsleeve", "w_sweatshirt"):
+        gr = [r for r in rows if r["garment_id"] == gid]
+        assert gr and all(r["status"] == "unfulfillable" for r in gr), gid
+
+
+def test_apparel_per_cut_quality_is_the_offered_one():
+    # Each (type, gender) constructs with the quality Gelato actually offers: tanks are
+    # prm (unisex) / performance (womens), hoodies pullover classic/prm, tees classic.
+    seen = []
+    rows = rs.deterministic_apparel_matches(verifier=lambda u: (seen.append(u), True)[1])
+    by = {r["garment_id"]: r for r in rows if r["status"] == "matched"}
+    assert "_gqa_prm_" in by["m_tank"]["uid"] and "_gcu_unisex_" in by["m_tank"]["uid"]
+    assert "_gqa_performance_" in by["w_tank"]["uid"] and "_gcu_womens_" in by["w_tank"]["uid"]
+    assert "_gsc_pullover_" in by["m_hoodie"]["uid"] and "_gqa_classic_" in by["m_hoodie"]["uid"]
+    assert "_gqa_prm_" in by["w_hoodie"]["uid"]
+    assert "_gsc_longsleeve-crew_" in by["m_longsleeve"]["uid"]
 
 
 def test_apparel_never_returns_placeholder():
