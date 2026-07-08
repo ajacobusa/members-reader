@@ -127,3 +127,40 @@ def test_bag_canonical_rejects_non_canonical_variants():
         "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-4") is None
     assert rs._bag_canonical_colour(
         "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-0-emb_westford-mill_w101") is None
+
+
+# ── apparel: construct-and-verify (hermetic via injected verifier) ─────────────
+
+def test_apparel_uid_construction():
+    assert rs._apparel_uid("t-shirt", "crewneck", "unisex", "classic", "l", "white") == \
+        "apparel_product_gca_t-shirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_l_gco_white_gpr_0-4"
+
+
+def test_apparel_matches_only_verified_existing_uids():
+    # verifier accepts only t-shirt unisex classic L/white -> exactly that SKU matches.
+    def verify(uid):
+        return uid == ("apparel_product_gca_t-shirt_gsc_crewneck_gcu_unisex_gqa_classic"
+                       "_gsi_l_gco_white_gpr_0-4")
+    rows = rs.deterministic_apparel_matches(quality="classic", verifier=verify)
+    m = [r for r in rows if r["status"] == "matched"]
+    assert m, "expected at least one match"
+    assert all(r["uid"].endswith("_gsi_l_gco_white_gpr_0-4") for r in m)
+    # a colour Gelato didn't verify (e.g. black) must be unfulfillable, never guessed
+    black = [r for r in rows if r["colour"].lower() == "black" and r["garment_id"] == "m_tshirt"]
+    assert black and all(r["status"] == "unfulfillable" for r in black)
+
+
+def test_apparel_unconfirmed_garment_flagged_not_guessed():
+    # hoodie/polo/longsleeve/raglan subcategories are unconfirmed -> always unfulfillable
+    rows = rs.deterministic_apparel_matches(quality="classic", verifier=lambda u: True)
+    for gt in ("hoodie", "polo", "longsleeve", "raglan"):
+        gr = [r for r in rows if r["garment_id"] in (f"m_{gt}", f"w_{gt}")]
+        assert gr and all(r["status"] == "unfulfillable" for r in gr), gt
+
+
+def test_apparel_never_returns_placeholder():
+    rows = rs.deterministic_apparel_matches(quality="classic", verifier=lambda u: True)
+    for r in rows:
+        if r["status"] == "matched":
+            assert not r["uid"].upper().startswith("GEL-")
+            assert rs._parse_gelato_apparel_uid(r["uid"]) is not None

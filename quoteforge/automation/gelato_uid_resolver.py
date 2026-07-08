@@ -494,11 +494,106 @@ def deterministic_bag_matches(catalog: list[dict] | None = None) -> list[dict]:
     return rows
 
 
+# Our garment type -> (Gelato garment category token, Gelato catalog uid).
+_APPAREL_TYPE = {
+    "tshirt": ("t-shirt", "t-shirts"), "tank": ("tank-top", "tank-tops"),
+    "hoodie": ("hoodie", "hoodies"), "sweatshirt": ("sweatshirt", "sweatshirts"),
+    "polo": ("polo", "polos"),
+    # longsleeve/raglan: Gelato catalog not yet identified -> flagged, not guessed.
+}
+_APPAREL_GENDER_CUT = {"m": "unisex", "w": "womens"}    # Gelato has no 'mens' -> unisex
+
+
+def _parse_gelato_apparel_uid(uid: str) -> dict | None:
+    """Parse ``apparel_product_gca_<cat>_gsc_<sub>_gcu_<cut>_gqa_<quality>_gsi_<size>
+    _gco_<colour>_gpr_...`` -> {category, cut, quality, size, colour}."""
+    m = re.search(r"_gca_(.+?)_gsc_.+?_gcu_(.+?)_gqa_(.+?)_gsi_(.+?)_gco_(.+?)_gpr_", uid or "")
+    if not m:
+        return None
+    return {"category": m.group(1), "cut": m.group(2), "quality": m.group(3),
+            "size": m.group(4), "colour": m.group(5), "uid": uid}
+
+
+# Confirmed garment type -> (Gelato category token, subcategory token). Apparel UIDs are
+# CONSTRUCTED from attributes and verified to exist - the catalog is too large to page.
+# Types not here (hoodie/polo/longsleeve/raglan) have unconfirmed subcategories -> flagged.
+_APPAREL_BUILD = {
+    "tshirt": ("t-shirt", "crewneck"), "tank": ("t-shirt", "tank-top"),
+    "sweatshirt": ("sweatshirt", "crewneck"),
+}
+_APPAREL_PRINT = "0-4"                # single-side full-colour front print
+
+
+def _apparel_uid(gca: str, gsc: str, cut: str, quality: str, size: str, colour: str) -> str:
+    """Construct the deterministic Gelato apparel productUid from its attributes."""
+    return (f"apparel_product_gca_{gca}_gsc_{gsc}_gcu_{cut}_gqa_{quality}"
+            f"_gsi_{size}_gco_{colour}_gpr_{_APPAREL_PRINT}")
+
+
+def _apparel_uid_exists(uid: str) -> bool:
+    """True iff the constructed apparel UID is a real Gelato product (GET 200). Read-only;
+    gated on discovery + never raises."""
+    if not _discovery():
+        return False
+    try:
+        import requests
+        from quoteforge.automation.gelato_api import GELATO_API_KEY
+        r = requests.get(f"{_PRODUCT_API}/products/{uid}",
+                         headers={"X-API-KEY": GELATO_API_KEY}, timeout=15)
+        return r.status_code == 200
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def deterministic_apparel_matches(quality: str = "classic",
+                                  verifier=None) -> list[dict]:
+    """Map every apparel SKU to a real Gelato UID by CONSTRUCTING the deterministic
+    productUid (category+subcategory+cut+quality+size+colour) and VERIFYING it exists.
+    ``quality`` = Gelato garment quality (default 'classic'). Only confirmed garment types
+    (t-shirt/tank/sweatshirt) with an existing UID map; unconfirmed types (hoodie/polo/
+    longsleeve/raglan) and non-existent combos are flagged unfulfillable, never guessed.
+    ``verifier(uid)->bool`` is injectable for hermetic tests (default: live GET)."""
+    from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
+    verify = verifier if verifier is not None else _apparel_uid_exists
+    seen: dict = {}                 # uid -> exists (cache: one check per unique uid)
+    rows: list[dict] = []
+    for g in APPAREL_CATALOG:
+        gm = re.match(r"^([mw])_([a-z]+?)(?:_(value|premium))?$", g.garment_id)
+        gender = gm.group(1) if gm else ""
+        gtype = gm.group(2) if gm else ""
+        cut = _APPAREL_GENDER_CUT.get(gender)
+        build = _APPAREL_BUILD.get(gtype)
+        for size in (g.sizes or []):
+            for colour in (g.colors or []):
+                sku = apparel_sku_for(g.garment_id, size, colour)
+                g_col = colour.strip().lower().replace(" ", "-")
+                g_size = size.strip().lower()
+                row = {"sku": sku, "garment_id": g.garment_id, "size": g_size,
+                       "colour": colour, "quality": quality, "uid": None,
+                       "status": "unfulfillable", "reason": ""}
+                if not build:
+                    row["reason"] = f"garment type '{gtype}' not yet confirmed (subcategory)"
+                elif not cut:
+                    row["reason"] = f"unmapped gender '{gender}'"
+                else:
+                    uid = _apparel_uid(build[0], build[1], cut, quality, g_size, g_col)
+                    if uid not in seen:
+                        seen[uid] = verify(uid)
+                    if seen[uid]:
+                        row.update(uid=uid, status="matched",
+                                   reason="constructed + verified exists")
+                    else:
+                        row["reason"] = f"no Gelato {build[0]} {cut}/{quality}/{g_size}/{g_col}"
+                rows.append(row)
+    return rows
+
+
 # Deterministic mappers by category name -> (matcher, registry family).
 _DETERMINISTIC = {
     "mug": (lambda cat=None: deterministic_mug_matches(catalog=cat), "mug"),
     "bottle": (lambda cat=None: deterministic_bottle_matches(catalog=cat), "branded"),
     "tote": (lambda cat=None: deterministic_bag_matches(catalog=cat), "branded"),
+    "apparel": (lambda cat=None: deterministic_apparel_matches(), "apparel"),
 }
 
 

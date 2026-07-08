@@ -1540,13 +1540,20 @@ def check_infrastructure() -> dict:
         _placeholder_logic = (_gr60._is_placeholder("GEL-X") is True
                               and _gr60._is_placeholder("real_uid_123") is False)
         _reg60 = _gr60.registry_uid_map()
-        _runtime60 = {}
+        # Compare the registry against the EXPORT FILE directly (config/gelato_uid_map.json)
+        # - the file `gelato-readiness export` writes and production points
+        # GELATO_UID_MAP_FILE at. This keeps _uid_map() env-controlled (tests hermetic)
+        # while still catching a mapped-but-not-exported drift.
+        _exp60 = {}
         try:
-            from quoteforge.automation.gelato_sync import _uid_map as _um60
-            _runtime60 = _um60() or {}
+            import json as _json60, os as _os60
+            _f60 = _os60.path.join("config", "gelato_uid_map.json")
+            if _os60.path.exists(_f60):
+                with open(_f60, encoding="utf-8") as _fh60:
+                    _exp60 = _json60.load(_fh60) or {}
         except Exception as _e60:  # noqa: BLE001
-            logger.debug("uid map read skipped in drift check: %s", _e60)
-        _drift = sorted(sku for sku, uid in _reg60.items() if _runtime60.get(sku) != uid)
+            logger.debug("uid export file read skipped in drift check: %s", _e60)
+        _drift = sorted(sku for sku, uid in _reg60.items() if _exp60.get(sku) != uid)
         ok = bool(_has_gates and _placeholder_logic and not _drift)
         checks.append(_c("gelato_readiness_pipeline_wired", ok,
                          "readiness pipeline wired; registry exports cleanly into the "
@@ -2109,6 +2116,27 @@ def check_infrastructure() -> dict:
                          f"no_placeholder={_no_placeholder} colour_interior_flagged={_ci_flagged}"))
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("deterministic_mug_map_grounded", False, str(exc)))
+
+    # 80) Deterministic apparel mapping is grounded: it CONSTRUCTS the real UID grammar and
+    #     only maps a UID a verifier confirms EXISTS (never guesses); unconfirmed garment
+    #     types (hoodie/polo/longsleeve/raglan) are always flagged unfulfillable.
+    #     (behavioral, injected verifier - hermetic, no network.)
+    try:
+        from quoteforge.automation import gelato_uid_resolver as _rs80
+        _uid80 = _rs80._apparel_uid("t-shirt", "crewneck", "unisex", "classic", "l", "white")
+        _shape_ok = _uid80.endswith("_gsi_l_gco_white_gpr_0-4")
+        _rows80 = _rs80.deterministic_apparel_matches(quality="classic",
+                                                      verifier=lambda u: u == _uid80)
+        _only_verified = all(r["uid"] == _uid80 for r in _rows80 if r["status"] == "matched")
+        _hoodie = [r for r in _rows80 if r["garment_id"] in ("m_hoodie", "w_hoodie")]
+        _hoodie_flagged = bool(_hoodie) and all(r["status"] == "unfulfillable" for r in _hoodie)
+        ok = bool(_shape_ok and _only_verified and _hoodie_flagged)
+        checks.append(_c("deterministic_apparel_map_grounded", ok,
+                         "apparel maps only constructed+verified UIDs; unconfirmed types flagged"
+                         if ok else f"apparel map ungrounded: shape={_shape_ok} "
+                         f"only_verified={_only_verified} hoodie_flagged={_hoodie_flagged}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("deterministic_apparel_map_grounded", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
