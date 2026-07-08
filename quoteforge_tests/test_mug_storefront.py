@@ -17,8 +17,12 @@ def test_mug_section_renders_products_and_facets(tmp_path):
     h = _page(tmp_path)
     assert 'id="deptMug"' in h
     assert 'class="appcard mugcard"' in h
-    assert h.count('data-mpid="') >= 7
+    # FULFILLABILITY (audit gap 1): only mugs with >=1 real approved UID render a
+    # tile - 5 today (classic/large/enamel/travel/xl); colour-interior + accent have
+    # no print-partner equivalent, so their tiles are deliberately ABSENT.
+    assert h.count('data-mpid="') >= 5
     assert 'data-mpid="classic_mug"' in h and 'data-mpid="enamel_mug"' in h
+    assert 'data-mpid="color_mug"' not in h and 'data-mpid="accent_mug"' not in h
     assert 'mugfilter' in h
     assert 'shopMug(' in h
     assert 'MUG_FORMATS' in h and 'MUG_DIMS' in h
@@ -33,10 +37,14 @@ def test_mug_card_names_are_distinct(tmp_path):
     names = [p.type_name for p in MUG_CATALOG]
     assert len(names) == len(set(names)), \
         f"duplicate mug card names: {[n for n in names if names.count(n) > 1]}"
-    # and the live grid renders each distinct label exactly once
+    # and the live grid renders each FULFILLABLE product's label exactly once
+    # (unfulfillable products render no card at all - audit gap 1).
+    from quoteforge.etsy.fulfillability import fulfillable_mug_facets
     h = _page(tmp_path)
-    for label in names:
-        assert h.count(f'<span class="appname">{label}</span>') == 1, label
+    for p in MUG_CATALOG:
+        expected = 1 if fulfillable_mug_facets(p) is not None else 0
+        assert h.count(f'<span class="appname">{p.type_name}</span>') == expected, \
+            p.type_name
 
 
 def test_mug_is_a_department(tmp_path):

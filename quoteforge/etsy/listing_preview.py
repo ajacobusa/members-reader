@@ -967,6 +967,15 @@ def _apparel_section(photos: dict | None = None) -> str:
                     f'{art}</svg></span>')
         name_js = g.name.replace("\\", "\\\\").replace("'", "\\'")
         brand_disp = _brand_disp(g)
+        # FULFILLABILITY (audit gap 1): offer only colour/size combos with a real
+        # approved print-partner UID; a garment with ZERO coverage returns no card at all
+        # (raglan/polo/womens-longsleeve tiles disappear) so a customer can never
+        # pay for a variant that would park unroutable after money moved.
+        from quoteforge.etsy.fulfillability import fulfillable_apparel_facets
+        _facets = fulfillable_apparel_facets(g)
+        if _facets is None:
+            return ""
+        _f_colors, _f_sizes = _facets
         _ntiers = len(_group_tiers.get((g.gender, g.garment_type), {g.tier}))
         tier_line = ('<span class="apptier">Value · Classic · Premium</span>'
                      if _ntiers > 1 else
@@ -977,7 +986,7 @@ def _apparel_section(photos: dict | None = None) -> str:
             f'data-gender="{g.gender}" data-type="{g.type_name}" '
             f'data-brand="{brand_disp}" data-tier="{g.tier}" data-garment="{g.name}" '
             f'data-typeid="{g.garment_type}" data-gid="{g.garment_id}" '
-            f'data-colors="{"|".join(g.colors)}" data-sizes="{"|".join(g.sizes)}" '
+            f'data-colors="{"|".join(_f_colors)}" data-sizes="{"|".join(_f_sizes)}" '
             f'onclick="shopApparel(\'{name_js}\', this.dataset.activecolor||\'\')" '
             f'aria-label="Design a custom {g.name}">'
             f'{tile}'
@@ -1108,9 +1117,15 @@ def _branded_section(photos: dict | None = None, external_assets: bool = False,
         return "".join(dots)
 
     def _card(p) -> str:
-        """Render one branded product tile (product photo, else neutral SVG)."""
+        """Render one branded product tile (product photo, else neutral SVG). Offers only
+        FULFILLABLE colours (a real approved print-partner UID exists - audit gap 1); a product
+        with zero coverage (unmapped bottles/tumblers/notebooks...) renders no tile."""
         low = frm.get(p.product_id)
         if low is None:
+            return ""
+        from quoteforge.etsy.fulfillability import fulfillable_branded_facets
+        _f_colors = fulfillable_branded_facets(p)
+        if _f_colors is None:
             return ""
         src = photos.get(p.product_id)
         if src:
@@ -1125,18 +1140,18 @@ def _branded_section(photos: dict | None = None, external_assets: bool = False,
                     '<circle cx="60" cy="60" r="14" fill="#9aa79a" '
                     'opacity="0.5"/></svg></span>')
         name_js = p.name.replace("\\", "\\\\").replace("'", "\\'")
-        color0 = (p.colors[0] if p.colors else "").replace("\\", "\\\\").replace("'", "\\'")
+        color0 = (_f_colors[0] if _f_colors else "").replace("\\", "\\\\").replace("'", "\\'")
         return (
             f'<button class="brandcard" type="button" '
             f'data-bpid="{p.product_id}" data-cat="{p.category}" '
             f'data-type="{p.type_name}" data-product="{p.name}" '
-            f'data-colors="{",".join(p.colors)}" data-sizes="{",".join(p.sizes)}" '
+            f'data-colors="{",".join(_f_colors)}" data-sizes="{",".join(p.sizes)}" '
             f'onclick="shopBranded(\'{name_js}\',\'{color0}\')" '
             f'aria-label="Design a custom {p.name}">'
             f'{tile}'
             f'<span class="appname">{p.type_name}</span>'
             f'<span class="appsw" aria-label="Available colours">'
-            f'{_swatches(p.colors)}</span>'
+            f'{_swatches(_f_colors)}</span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours &rarr;</span></button>')
 
@@ -1267,9 +1282,15 @@ def _mug_section(photos: dict | None = None, external_assets: bool = False,
         return "".join(dots)
 
     def _card(p) -> str:
-        """Render one mug product tile (product photo, else neutral SVG)."""
+        """Render one mug product tile (product photo, else neutral SVG). Offers only
+        FULFILLABLE colours (a real approved print-partner UID exists - audit gap 1); a mug
+        with zero coverage (colour-interior, accent) renders no tile at all."""
         low = frm.get(p.product_id)
         if low is None:
+            return ""
+        from quoteforge.etsy.fulfillability import fulfillable_mug_facets
+        _f_colors = fulfillable_mug_facets(p)
+        if _f_colors is None:
             return ""
         src = photos.get(p.product_id)
         if src:
@@ -1284,18 +1305,18 @@ def _mug_section(photos: dict | None = None, external_assets: bool = False,
                     '<circle cx="60" cy="60" r="14" fill="#9aa79a" '
                     'opacity="0.5"/></svg></span>')
         name_js = p.name.replace("\\", "\\\\").replace("'", "\\'")
-        color0 = (p.colors[0] if p.colors else "").replace("\\", "\\\\").replace("'", "\\'")
+        color0 = (_f_colors[0] if _f_colors else "").replace("\\", "\\\\").replace("'", "\\'")
         return (
             f'<button class="appcard mugcard" type="button" '
             f'data-mpid="{p.product_id}" data-cat="{p.category}" '
             f'data-type="{p.type_name}" data-product="{p.name}" '
-            f'data-colors="{",".join(p.colors)}" data-sizes="{",".join(p.sizes)}" '
+            f'data-colors="{",".join(_f_colors)}" data-sizes="{",".join(p.sizes)}" '
             f'onclick="shopMug(\'{name_js}\',\'{color0}\')" '
             f'aria-label="Design a custom {p.name}">'
             f'{tile}'
             f'<span class="appname">{p.type_name}</span>'
             f'<span class="appsw" aria-label="Available colours">'
-            f'{_swatches(p.colors)}</span>'
+            f'{_swatches(_f_colors)}</span>'
             f'<span class="appfrom">from ${low:.2f}</span>'
             f'<span class="appcta">Design yours &rarr;</span></button>')
 
@@ -1902,7 +1923,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             # pills/swatches/default open on White - not alphabetical "Black".
             _corder = {c: i for i, c in enumerate(
                 APPAREL_CATALOG[0].colors if APPAREL_CATALOG else [])}
-            for av in build_apparel_variations():
+            # FULFILLABILITY (audit gap 1): the editor's size/colour pickers are built
+            # from this sizemap, so filtering here makes every offered (colour, size)
+            # combo one with a real approved UID - non-rectangular coverage included
+            # (a colour offered only in mapped sizes shows exactly those sizes).
+            from quoteforge.etsy.fulfillability import fulfillable_apparel_variations
+            for av in fulfillable_apparel_variations():
                 key = f"{av.name} - {av.color}"
                 sizemap.setdefault(key, []).append(
                     {"size": av.size, "price": av.price})
@@ -1988,8 +2014,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             # Only SELLABLE products seed the editor size/price map (phonecase is
             # hidden until it has a model picker), so it can't be opened/ordered.
             _bn = {p.product_id: p.name for p in _BCs if _bsell_s(p.product_id)}
+            # FULFILLABILITY (audit gap 1): only variants with a real approved
+            # print-partner UID become orderable formats (family-aware filter).
+            from quoteforge.etsy.fulfillability import fulfillable_branded_variations
             _bkeys: set = set()
-            for _v in _bbvs():
+            for _v in fulfillable_branded_variations():
                 if _v.product_id not in _bn:
                     continue
                 _bkey = f"{_bn[_v.product_id]} - {_v.color}"
@@ -2011,8 +2040,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         from quoteforge.etsy.mug_catalog import (
             MUG_CATALOG as _MUc, build_mug_variations as _bmuv)
         _mun = {p.product_id: p.name for p in _MUc}
+        # FULFILLABILITY (audit gap 1): only variants with a real approved
+        # print-partner UID become orderable formats (family-aware filter).
+        from quoteforge.etsy.fulfillability import fulfillable_mug_variations
         _mukeys: set = set()
-        for _v in _bmuv():
+        for _v in fulfillable_mug_variations():
             if _v.product_id not in _mun:
                 continue
             _muk = f"{_mun[_v.product_id]} - {_v.color}"

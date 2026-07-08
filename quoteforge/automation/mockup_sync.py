@@ -49,17 +49,40 @@ _DEFAULT_GEOMETRY = {"area": [0.30, 0.30, 0.40, 0.40], "cyl": False, "span": 1.9
 
 # ── Generic product enumeration (future-growth seam) ──────────────────────────
 
+def _pick_mapped_sku(candidates: Iterable[str], fallback: str) -> str:
+    """The representative SKU for a product: the FIRST candidate that resolves to a real
+    (non-placeholder) UID in the runtime map, else ``fallback``. Fixes the end-to-end
+    audit gap 3a: sizes[0]/colors[0] is typically XS/White, which is UNMAPPED for most
+    apparel even when 50+ other variants of the same garment ARE mapped - so the sync
+    and readiness() under-reported almost every product as 'no real UID'."""
+    try:
+        from quoteforge.automation.gelato_sync import _uid_map
+        m = _uid_map() or {}
+    except Exception:  # noqa: BLE001 - unreadable map -> keep the legacy fallback
+        return fallback
+    for sku in candidates:
+        uid = m.get(sku)
+        if sku and uid and not str(uid).upper().startswith("GEL-"):
+            return sku
+    return fallback
+
+
 def _product_family_loaders() -> list[Callable[[], list[dict]]]:
     """One loader per product line. Each returns a list of
     ``{product_id, name, category, sku, width_px, height_px}``. A new Gelato line =
-    a new loader appended here; the rest of the engine is family-agnostic."""
+    a new loader appended here; the rest of the engine is family-agnostic. The
+    representative sku prefers a MAPPED variant (see _pick_mapped_sku)."""
     def _mug() -> list[dict]:
         """Mug catalog → product dicts (bottles/tumblers split to category 'bottle')."""
         from quoteforge.etsy.mug_catalog import MUG_CATALOG, _variant_sku
         out = []
         for p in MUG_CATALOG:
-            sku = (_variant_sku(p, p.sizes[0], p.colors[0])
-                   if p.sizes and p.colors else p.sku_prefix)
+            if p.sizes and p.colors:
+                sku = _pick_mapped_sku(
+                    (_variant_sku(p, s, c) for s in p.sizes for c in p.colors),
+                    _variant_sku(p, p.sizes[0], p.colors[0]))
+            else:
+                sku = p.sku_prefix
             cat = "bottle" if any(k in p.name.lower() for k in ("bottle", "tumbler")) else "mug"
             out.append(dict(product_id=p.product_id, name=p.name, category=cat,
                             sku=sku, width_px=p.width_px, height_px=p.height_px))
@@ -70,9 +93,12 @@ def _product_family_loaders() -> list[Callable[[], list[dict]]]:
         from quoteforge.etsy.branded_catalog import BRANDED_CATALOG, _variant_sku
         out = []
         for p in BRANDED_CATALOG:
-            sku = (_variant_sku(p, p.sizes[0], p.colors[0])
-                   if getattr(p, "sizes", None) and getattr(p, "colors", None)
-                   else getattr(p, "sku_prefix", p.product_id))
+            if getattr(p, "sizes", None) and getattr(p, "colors", None):
+                sku = _pick_mapped_sku(
+                    (_variant_sku(p, s, c) for s in p.sizes for c in p.colors),
+                    _variant_sku(p, p.sizes[0], p.colors[0]))
+            else:
+                sku = getattr(p, "sku_prefix", p.product_id)
             n = p.name.lower()
             cat = "bottle" if any(k in n for k in ("bottle", "tumbler")) else "branded"
             out.append(dict(product_id=p.product_id, name=p.name, category=cat,
@@ -92,8 +118,13 @@ def _product_family_loaders() -> list[Callable[[], list[dict]]]:
         from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
         out = []
         for g in APPAREL_CATALOG:
-            sku = (apparel_sku_for(g.garment_id, g.sizes[0], g.colors[0])
-                   if g.sizes and g.colors else g.garment_id)
+            if g.sizes and g.colors:
+                sku = _pick_mapped_sku(
+                    (apparel_sku_for(g.garment_id, s, c) or ""
+                     for s in g.sizes for c in g.colors),
+                    apparel_sku_for(g.garment_id, g.sizes[0], g.colors[0]) or g.garment_id)
+            else:
+                sku = g.garment_id
             out.append(dict(product_id=g.garment_id, name=g.name, category="apparel",
                             sku=sku or g.garment_id,
                             width_px=getattr(g, "width_px", 0),
