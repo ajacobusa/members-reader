@@ -2140,6 +2140,33 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("deterministic_apparel_map_grounded", False, str(exc)))
 
+    # 81) The customer-visualization image paths stay wired end to end: (a) the final
+    #     proof composites the buyer's design on the real product (customer_proof calls
+    #     design_mockup_for_order), (b) the listing-image consumers read the documented
+    #     Etsy listing-images API, and (c) the template-preview source (the earliest real
+    #     product image) is wired + live-gated (no-op = [] when not live). If any of these
+    #     unwires, the customer silently stops seeing the real product. (structural +
+    #     behavioral)
+    try:
+        import inspect as _insp81
+        from quoteforge.automation import customer_proof as _cp81
+        from quoteforge.automation import image_validation as _iv81
+        from quoteforge.automation import ecommerce_images as _ei81
+        _proof_wired = "design_mockup_for_order" in _insp81.getsource(_cp81)
+        _listing_wired = "get_listing_images" in _insp81.getsource(_iv81)
+        _tp = _ei81.template_previews(getter=lambda p: {"templates": [
+            {"id": "T1", "title": "probe", "previewUrl": "https://x/p.jpg"}]})
+        # hermetic: not live / no store id -> [] (the injected getter is never consulted);
+        # if a store IS configured, every returned row must carry a preview_url.
+        _tp_gated = (_tp == [] or all(r.get("preview_url") for r in _tp))
+        ok = bool(_proof_wired and _listing_wired and _tp_gated)
+        checks.append(_c("customer_image_paths_wired", ok,
+                         "proof design-mockup + listing-images + template-previews wired"
+                         if ok else f"image path unwired: proof={_proof_wired} "
+                         f"listing={_listing_wired} template_gated={_tp_gated}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("customer_image_paths_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

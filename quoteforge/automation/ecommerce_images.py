@@ -89,6 +89,50 @@ def store_products() -> list[dict]:
     return prods if isinstance(prods, list) else []
 
 
+def template_previews(getter=None) -> list[dict]:
+    """The store's templates with their mockup previewUrl - the EARLIEST documented real
+    product image (a template exists before any product/listing is published; per Gelato's
+    Get Template API the response carries a previewUrl).
+
+    Returns ``[{template_id, title, preview_url}]``, [] when not live / no store / no
+    templates. Provenance-honest: a template preview is NOT yet bound to a SKU/UID (the
+    join is owner-confirmed when the product is created from it), so consumers treat it as
+    display-candidate only - it can never publish through Path A without the UID gate.
+    ``getter(path)->json`` is injectable for hermetic tests (defaults to _ecom_get)."""
+    _e, sid = _gate()
+    if not sid:
+        return []
+    get = getter if getter is not None else _ecom_get
+    data = get(f"/stores/{sid}/templates")
+    rows = (data.get("templates") or data.get("data") if isinstance(data, dict)
+            else data) or []
+    out: list[dict] = []
+    for t in rows:
+        if not isinstance(t, dict):
+            continue
+        tid = t.get("id") or t.get("templateId") or t.get("uid")
+        url = (t.get("previewUrl") or t.get("preview_url")
+               or _extract_preview(t))
+        if tid and url:
+            out.append({"template_id": str(tid), "title": t.get("title") or "",
+                        "preview_url": url})
+    return out
+
+
+def _extract_preview(t: dict) -> str | None:
+    """Best-effort previewUrl from a template's variants (shape self-reported at live)."""
+    for v in (t.get("variants") or []):
+        if isinstance(v, dict):
+            for iv in (v.get("imagePlaceholders") or []):
+                u = isinstance(iv, dict) and iv.get("previewUrl")
+                if u:
+                    return u
+            u = v.get("previewUrl")
+            if u:
+                return u
+    return None
+
+
 def _product_detail(sid: str, product_id: str) -> dict:
     """One store product's full record (the mockup ``previewUrl`` lives here)."""
     d = _ecom_get(f"/stores/{sid}/products/{product_id}")
