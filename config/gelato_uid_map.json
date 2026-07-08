@@ -23,6 +23,10 @@
   "GEL-POSTER-18X24-STD": "flat_18x24-inch-450x600-mm_170-gsm-65lb-coated-silk_4-0_ver",
   "GEL-POSTER-24X36-STD": "flat_24x36-inch-600x900-mm_170-gsm-65lb-coated-silk_4-0_ver",
   "GEL-POSTER-8X10-STD": "flat_8x10-inch-200x250-mm_170-gsm-65lb-coated-silk_4-0_ver",
+  "GEL-TOTE-ONE-SIZE-BLACK": "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_black_bpr_4-0",
+  "GEL-TOTE-ONE-SIZE-NATURAL": "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_natural_bpr_4-0",
+  "GEL-TOTE-ONE-SIZE-NAVY": "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_navy_bpr_4-0",
+  "GEL-TOTE-ONE-SIZE-WHITE": "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-0",
   "GEL-TRAVEL_MUG-15OZ-WHITE": "mug_product_msz_15-oz-travel_mmat_stainless-steel-white_cl_4-0",
   "GEL-XL_MUG-17OZ-WHITE": "mug_product_msz_17-oz-tall_mmat_ceramic-white_cl_4-0"
 }
