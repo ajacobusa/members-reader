@@ -74,15 +74,11 @@ def _uid_map() -> dict:
             out.update(json.loads(raw))
         except Exception as exc:  # noqa: BLE001 - malformed env JSON ignored
             logger.debug("GELATO_UID_MAP parse failed: %s", exc)
+    # The runtime map is env-controlled (GELATO_UID_MAP inline + GELATO_UID_MAP_FILE).
+    # Production points GELATO_UID_MAP_FILE at config/gelato_uid_map.json (the export
+    # target). Staying env-controlled keeps tests hermetic; the drift invariant checks
+    # the registry against that export file directly, so approve->export stays consistent.
     path = os.getenv("GELATO_UID_MAP_FILE", "").strip()
-    if not path:
-        # Default to the standard export target: `gelato-readiness export` writes the
-        # APPROVED registry here, so reading it by default wires approve -> export ->
-        # runtime with no extra env step and no registry/runtime drift. (Only approved
-        # UIDs ever reach this file; routing still gates on TEST_MODE.)
-        _default = os.path.join("config", "gelato_uid_map.json")
-        if os.path.exists(_default):
-            path = _default
     if path:
         try:
             with open(path, encoding="utf-8") as fh:

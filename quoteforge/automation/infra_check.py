@@ -1540,13 +1540,20 @@ def check_infrastructure() -> dict:
         _placeholder_logic = (_gr60._is_placeholder("GEL-X") is True
                               and _gr60._is_placeholder("real_uid_123") is False)
         _reg60 = _gr60.registry_uid_map()
-        _runtime60 = {}
+        # Compare the registry against the EXPORT FILE directly (config/gelato_uid_map.json)
+        # - the file `gelato-readiness export` writes and production points
+        # GELATO_UID_MAP_FILE at. This keeps _uid_map() env-controlled (tests hermetic)
+        # while still catching a mapped-but-not-exported drift.
+        _exp60 = {}
         try:
-            from quoteforge.automation.gelato_sync import _uid_map as _um60
-            _runtime60 = _um60() or {}
+            import json as _json60, os as _os60
+            _f60 = _os60.path.join("config", "gelato_uid_map.json")
+            if _os60.path.exists(_f60):
+                with open(_f60, encoding="utf-8") as _fh60:
+                    _exp60 = _json60.load(_fh60) or {}
         except Exception as _e60:  # noqa: BLE001
-            logger.debug("uid map read skipped in drift check: %s", _e60)
-        _drift = sorted(sku for sku, uid in _reg60.items() if _runtime60.get(sku) != uid)
+            logger.debug("uid export file read skipped in drift check: %s", _e60)
+        _drift = sorted(sku for sku, uid in _reg60.items() if _exp60.get(sku) != uid)
         ok = bool(_has_gates and _placeholder_logic and not _drift)
         checks.append(_c("gelato_readiness_pipeline_wired", ok,
                          "readiness pipeline wired; registry exports cleanly into the "
