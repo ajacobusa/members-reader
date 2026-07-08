@@ -514,12 +514,21 @@ def _parse_gelato_apparel_uid(uid: str) -> dict | None:
             "size": m.group(4), "colour": m.group(5), "uid": uid}
 
 
-# Confirmed garment type -> (Gelato category token, subcategory token). Apparel UIDs are
-# CONSTRUCTED from attributes and verified to exist - the catalog is too large to page.
-# Types not here (hoodie/polo/longsleeve/raglan) have unconfirmed subcategories -> flagged.
+# Confirmed (garment type, gender) -> (category, subcategory, cut, quality). Apparel UIDs
+# are CONSTRUCTED from attributes and verified to exist - the catalog is too large to page.
+# Each entry's quality is the one Gelato ACTUALLY OFFERS for that cut (probed live across
+# all 9 qualities): tanks exist only in prm/performance, womens hoodie only in prm, womens
+# longsleeve/sweatshirt and raglan have NO clean variant, polo is embroidery-only -> those
+# combos are absent here and flag unfulfillable, never guessed.
 _APPAREL_BUILD = {
-    "tshirt": ("t-shirt", "crewneck"), "tank": ("t-shirt", "tank-top"),
-    "sweatshirt": ("sweatshirt", "crewneck"),
+    ("tshirt", "m"): ("t-shirt", "crewneck", "unisex", "classic"),
+    ("tshirt", "w"): ("t-shirt", "crewneck", "womens", "classic"),
+    ("sweatshirt", "m"): ("sweatshirt", "crewneck", "unisex", "classic"),
+    ("longsleeve", "m"): ("t-shirt", "longsleeve-crew", "unisex", "classic"),
+    ("tank", "m"): ("t-shirt", "tank-top", "unisex", "prm"),
+    ("tank", "w"): ("t-shirt", "tank-top", "womens", "performance"),
+    ("hoodie", "m"): ("hoodie", "pullover", "unisex", "classic"),
+    ("hoodie", "w"): ("hoodie", "pullover", "womens", "prm"),
 }
 _APPAREL_PRINT = "0-4"                # single-side full-colour front print
 
@@ -545,14 +554,15 @@ def _apparel_uid_exists(uid: str) -> bool:
         return False
 
 
-def deterministic_apparel_matches(quality: str = "classic",
+def deterministic_apparel_matches(quality: str | None = None,
                                   verifier=None) -> list[dict]:
     """Map every apparel SKU to a real Gelato UID by CONSTRUCTING the deterministic
     productUid (category+subcategory+cut+quality+size+colour) and VERIFYING it exists.
-    ``quality`` = Gelato garment quality (default 'classic'). Only confirmed garment types
-    (t-shirt/tank/sweatshirt) with an existing UID map; unconfirmed types (hoodie/polo/
-    longsleeve/raglan) and non-existent combos are flagged unfulfillable, never guessed.
-    ``verifier(uid)->bool`` is injectable for hermetic tests (default: live GET)."""
+    Each (garment type, gender) uses the quality Gelato actually offers for that cut
+    (_APPAREL_BUILD, probed live); ``quality`` overrides it when given. Combos with no
+    clean Gelato variant (raglan, polo, womens longsleeve/sweatshirt) and non-existent
+    size/colour combos are flagged unfulfillable, never guessed. ``verifier(uid)->bool``
+    is injectable for hermetic tests (default: live GET)."""
     from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG, apparel_sku_for
     verify = verifier if verifier is not None else _apparel_uid_exists
     seen: dict = {}                 # uid -> exists (cache: one check per unique uid)
@@ -561,29 +571,29 @@ def deterministic_apparel_matches(quality: str = "classic",
         gm = re.match(r"^([mw])_([a-z]+?)(?:_(value|premium))?$", g.garment_id)
         gender = gm.group(1) if gm else ""
         gtype = gm.group(2) if gm else ""
-        cut = _APPAREL_GENDER_CUT.get(gender)
-        build = _APPAREL_BUILD.get(gtype)
+        build = _APPAREL_BUILD.get((gtype, gender))
         for size in (g.sizes or []):
             for colour in (g.colors or []):
                 sku = apparel_sku_for(g.garment_id, size, colour)
                 g_col = colour.strip().lower().replace(" ", "-")
                 g_size = size.strip().lower()
+                q = quality or (build[3] if build else "")
                 row = {"sku": sku, "garment_id": g.garment_id, "size": g_size,
-                       "colour": colour, "quality": quality, "uid": None,
+                       "colour": colour, "quality": q, "uid": None,
                        "status": "unfulfillable", "reason": ""}
                 if not build:
-                    row["reason"] = f"garment type '{gtype}' not yet confirmed (subcategory)"
-                elif not cut:
-                    row["reason"] = f"unmapped gender '{gender}'"
+                    row["reason"] = (f"no clean Gelato variant for '{gender}_{gtype}' "
+                                     "(cut/quality not offered)")
                 else:
-                    uid = _apparel_uid(build[0], build[1], cut, quality, g_size, g_col)
+                    gca, gsc, cut, _dq = build
+                    uid = _apparel_uid(gca, gsc, cut, q, g_size, g_col)
                     if uid not in seen:
                         seen[uid] = verify(uid)
                     if seen[uid]:
                         row.update(uid=uid, status="matched",
                                    reason="constructed + verified exists")
                     else:
-                        row["reason"] = f"no Gelato {build[0]} {cut}/{quality}/{g_size}/{g_col}"
+                        row["reason"] = f"no Gelato {gca}/{gsc} {cut}/{q}/{g_size}/{g_col}"
                 rows.append(row)
     return rows
 

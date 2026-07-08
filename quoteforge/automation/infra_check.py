@@ -2118,9 +2118,9 @@ def check_infrastructure() -> dict:
         checks.append(_c("deterministic_mug_map_grounded", False, str(exc)))
 
     # 80) Deterministic apparel mapping is grounded: it CONSTRUCTS the real UID grammar and
-    #     only maps a UID a verifier confirms EXISTS (never guesses); unconfirmed garment
-    #     types (hoodie/polo/longsleeve/raglan) are always flagged unfulfillable.
-    #     (behavioral, injected verifier - hermetic, no network.)
+    #     only maps a UID a verifier confirms EXISTS (never guesses); combos Gelato has NO
+    #     clean variant for (raglan/polo/womens-longsleeve, probed live) are always flagged
+    #     unfulfillable. (behavioral, injected verifier - hermetic, no network.)
     try:
         from quoteforge.automation import gelato_uid_resolver as _rs80
         _uid80 = _rs80._apparel_uid("t-shirt", "crewneck", "unisex", "classic", "l", "white")
@@ -2128,13 +2128,15 @@ def check_infrastructure() -> dict:
         _rows80 = _rs80.deterministic_apparel_matches(quality="classic",
                                                       verifier=lambda u: u == _uid80)
         _only_verified = all(r["uid"] == _uid80 for r in _rows80 if r["status"] == "matched")
-        _hoodie = [r for r in _rows80 if r["garment_id"] in ("m_hoodie", "w_hoodie")]
-        _hoodie_flagged = bool(_hoodie) and all(r["status"] == "unfulfillable" for r in _hoodie)
-        ok = bool(_shape_ok and _only_verified and _hoodie_flagged)
+        _noclean = [r for r in _rows80
+                    if r["garment_id"] in ("m_raglan", "w_raglan", "m_polo", "w_longsleeve")]
+        _noclean_flagged = bool(_noclean) and all(r["status"] == "unfulfillable"
+                                                  for r in _noclean)
+        ok = bool(_shape_ok and _only_verified and _noclean_flagged)
         checks.append(_c("deterministic_apparel_map_grounded", ok,
-                         "apparel maps only constructed+verified UIDs; unconfirmed types flagged"
-                         if ok else f"apparel map ungrounded: shape={_shape_ok} "
-                         f"only_verified={_only_verified} hoodie_flagged={_hoodie_flagged}"))
+                         "apparel maps only constructed+verified UIDs; no-clean-variant "
+                         "combos flagged" if ok else f"apparel map ungrounded: shape={_shape_ok} "
+                         f"only_verified={_only_verified} noclean_flagged={_noclean_flagged}"))
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("deterministic_apparel_map_grounded", False, str(exc)))
 
