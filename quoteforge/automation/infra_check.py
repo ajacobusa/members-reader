@@ -2110,6 +2110,27 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("deterministic_mug_map_grounded", False, str(exc)))
 
+    # 80) Deterministic apparel mapping is grounded: it CONSTRUCTS the real UID grammar and
+    #     only maps a UID a verifier confirms EXISTS (never guesses); unconfirmed garment
+    #     types (hoodie/polo/longsleeve/raglan) are always flagged unfulfillable.
+    #     (behavioral, injected verifier - hermetic, no network.)
+    try:
+        from quoteforge.automation import gelato_uid_resolver as _rs80
+        _uid80 = _rs80._apparel_uid("t-shirt", "crewneck", "unisex", "classic", "l", "white")
+        _shape_ok = _uid80.endswith("_gsi_l_gco_white_gpr_0-4")
+        _rows80 = _rs80.deterministic_apparel_matches(quality="classic",
+                                                      verifier=lambda u: u == _uid80)
+        _only_verified = all(r["uid"] == _uid80 for r in _rows80 if r["status"] == "matched")
+        _hoodie = [r for r in _rows80 if r["garment_id"] in ("m_hoodie", "w_hoodie")]
+        _hoodie_flagged = bool(_hoodie) and all(r["status"] == "unfulfillable" for r in _hoodie)
+        ok = bool(_shape_ok and _only_verified and _hoodie_flagged)
+        checks.append(_c("deterministic_apparel_map_grounded", ok,
+                         "apparel maps only constructed+verified UIDs; unconfirmed types flagged"
+                         if ok else f"apparel map ungrounded: shape={_shape_ok} "
+                         f"only_verified={_only_verified} hoodie_flagged={_hoodie_flagged}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("deterministic_apparel_map_grounded", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
