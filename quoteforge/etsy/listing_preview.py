@@ -3876,6 +3876,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <button type="button" class="plbtn" data-p="sleeve-right" onclick="setPlacement('sleeve-right')">Right sleeve</button>
          </div>
          <div class="dbhint">Each extra area you design adds to the price: <b>back +${back_upcharge_js}</b>, <b>each sleeve +${sleeve_upcharge_js}</b>. Front is included.</div>
+        <!-- Per-area wording right where the area is picked (#sleevetext): the main
+             wording box lives up in Step 1, so on a Back/Sleeve tab the buyer had NO
+             visible way to type that area's text. This compact input edits the ACTIVE
+             area's wording (two-way synced with the Step-1 box + saved per side). -->
+        <div class="dbhint" id="mareawordwrap" style="margin-top:8px">
+          <label for="mareatext" style="display:block;font-weight:600;margin-bottom:4px">
+            &#9998; Wording for this area</label>
+          <input type="text" id="mareatext" maxlength="250"
+                 placeholder="Type this area's wording (optional)"
+                 oninput="onAreaText(this.value)"
+                 style="width:100%;box-sizing:border-box;padding:9px 10px;border:1.5px solid #cfcabb;border-radius:9px;font-size:14px">
+        </div>
          <div id="mbackhint" class="dbhint" style="display:none">&#128260; You&#39;re designing the <b>back</b> &mdash; add a different photo or wording; it&#39;s separate from the front.</div>
        </div>
        <details class="dragbar mcsec" id="mframebar" style="display:none" open>
@@ -6297,6 +6309,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var _lb=document.getElementById('mlayoutbar');
    if(_sleeveNow){{ CURLAYOUT='freeform'; if(_lb)_lb.style.display='none'; }}
    else if(_lb && (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)){{ _lb.style.display='block'; }}
+   // keep the per-area wording input showing THIS area's text (#sleevetext)
+   var _aw=document.getElementById('mareatext');
+   if(_aw) _aw.value=((document.getElementById('mtext')||{{}}).value||'');
    _syncTextDirBtn();
    drawArt();
  }}
@@ -6515,6 +6530,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  }}
  function pickFont(k){{ SELFONT=FONTS[k][1];
    document.querySelectorAll('#mfonts .fchip').forEach((e,m)=>e.classList.toggle('sel',m===k)); drawArt(); }}
+ function onAreaText(v){{
+   // Per-area wording input (#sleevetext): one source of truth - write into the
+   // main Step-1 box and run the SAME handler, so per-side save/restore, live
+   // preview and pricing all behave exactly as if typed up in Step 1.
+   var ta=document.getElementById('mtext'); if(ta) ta.value=v;
+   onText();
+ }}
  function onText(){{
    const v=(document.getElementById('mtext').value||'');
    document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;

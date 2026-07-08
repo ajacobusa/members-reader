@@ -2147,6 +2147,9 @@
    var _lb=document.getElementById('mlayoutbar');
    if(_sleeveNow){ CURLAYOUT='freeform'; if(_lb)_lb.style.display='none'; }
    else if(_lb && (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)){ _lb.style.display='block'; }
+   // keep the per-area wording input showing THIS area's text (#sleevetext)
+   var _aw=document.getElementById('mareatext');
+   if(_aw) _aw.value=((document.getElementById('mtext')||{}).value||'');
    _syncTextDirBtn();
    drawArt();
  }
@@ -2365,6 +2368,13 @@
  }
  function pickFont(k){ SELFONT=FONTS[k][1];
    document.querySelectorAll('#mfonts .fchip').forEach((e,m)=>e.classList.toggle('sel',m===k)); drawArt(); }
+ function onAreaText(v){
+   // Per-area wording input (#sleevetext): one source of truth - write into the
+   // main Step-1 box and run the SAME handler, so per-side save/restore, live
+   // preview and pricing all behave exactly as if typed up in Step 1.
+   var ta=document.getElementById('mtext'); if(ta) ta.value=v;
+   onText();
+ }
  function onText(){
    const v=(document.getElementById('mtext').value||'');
    document.getElementById('mcc').textContent = v.length + ' / ' + MAXCHARS;

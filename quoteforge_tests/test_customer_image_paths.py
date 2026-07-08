@@ -67,3 +67,21 @@ def test_infra_invariant_customer_image_paths():
     hit = [c for c in check_infrastructure()["checks"]
            if c["name"] == "customer_image_paths_wired"]
     assert hit and hit[0]["ok"] is True
+
+
+# ── per-area wording input (#sleevetext regression) ────────────────────────────
+
+def test_sleeve_area_wording_input_present():
+    # REGRESSION: on a Back/Sleeve tab the buyer had NO visible wording input (the
+    # Step-1 box is collapsed away), so sleeve text was un-typeable. The area panel
+    # must carry its own wording input wired to the canonical onText handler.
+    from pathlib import Path
+    import pytest
+    idx, app = Path("docs/index.html"), Path("docs/app.js")
+    if not (idx.exists() and app.exists()):
+        pytest.skip("docs not built")
+    h, a = idx.read_text(encoding="utf-8"), app.read_text(encoding="utf-8")
+    assert 'id="mareatext"' in h                       # the input, in the area panel
+    assert 'onAreaText' in h                           # wired to its handler
+    assert "function onAreaText" in a                  # handler exists...
+    assert "onText()" in a.split("function onAreaText", 1)[1][:400]  # ...delegates
