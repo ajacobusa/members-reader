@@ -3479,6 +3479,24 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
     return 0
 
 
+def _cmd_template_previews(args: list[str]) -> int:
+    """List the store's template mockup previewUrls (the EARLIEST documented real product
+    image - exists before any product/listing is published). `template-previews`.
+    Display-candidate only: a template preview is not yet SKU/UID-bound, so it never
+    publishes through Path A without the UID gate. No-op until live + GELATO_STORE_ID."""
+    from quoteforge.automation.ecommerce_images import template_previews, _gate
+    enabled, sid = _gate()
+    rows = template_previews()
+    print(f"Template previews: store={'set' if sid else 'NOT SET'} live={enabled} "
+          f"templates_with_preview={len(rows)}")
+    for r in rows[:30]:
+        print(f"  {r['template_id']:<24} {r['title'][:40]:<40} {r['preview_url'][:60]}")
+    if not rows:
+        print("  (none - needs TEST_MODE=false + GELATO_API_KEY + GELATO_STORE_ID + at "
+              "least one template created in the Gelato dashboard)")
+    return 0
+
+
 def _cmd_photo_overrides(args: list[str]) -> int:
     """Show / scaffold the REAL product-photo override manifest so the storefront shows
     the actual product picture WITHOUT going live (bypasses the imageless catalog API).
@@ -3729,6 +3747,7 @@ COMMANDS = {
     "ecommerce-images": _cmd_ecommerce_images,
     "image-override": _cmd_image_override,
     "photo-overrides": _cmd_photo_overrides,
+    "template-previews": _cmd_template_previews,
     "template-sync": _cmd_template_sync,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,
