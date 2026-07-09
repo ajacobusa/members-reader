@@ -83,8 +83,11 @@ def _uid_map() -> dict:
         try:
             with open(path, encoding="utf-8") as fh:
                 out.update(json.load(fh))
-        except Exception as exc:  # noqa: BLE001 - unreadable map file ignored
-            logger.debug("uid map file load failed: %s", exc)
+        except Exception as exc:  # noqa: BLE001 - explicit intent failed: be LOUD
+            # Setting GELATO_UID_MAP_FILE is an explicit owner intent; failing to load it
+            # means EVERY order would silently manual-queue - warn, don't debug-whisper.
+            logger.warning("GELATO_UID_MAP_FILE=%s failed to load (orders would manual-"
+                           "queue): %s", path, exc)
     return out
 
 

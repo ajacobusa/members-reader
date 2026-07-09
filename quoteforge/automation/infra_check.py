@@ -2167,6 +2167,39 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("customer_image_paths_wired", False, str(exc)))
 
+    # 82) The RUNTIME uid map covers the approved registry (end-to-end audit gap 4):
+    #     invariant #60 certifies registry-vs-FILE; this one certifies registry-vs-RUNTIME
+    #     (_uid_map(), i.e. what routing actually reads). In LIVE mode a non-empty
+    #     registry with an uncovered runtime map means GELATO_UID_MAP_FILE is unset/typo'd
+    #     and EVERY order silently manual-queues -> hard fail. Pre-live (TEST_MODE) an
+    #     empty runtime map is expected (env not set yet) -> ok with a loud note.
+    try:
+        from quoteforge.config import TEST_MODE as _tm82
+        from quoteforge.automation.gelato_readiness import registry_uid_map as _reg82
+        from quoteforge.automation.gelato_sync import _uid_map as _um82
+        _reg = _reg82() or {}
+        _run = _um82() or {}
+        _missing82 = sorted(k for k, v in _reg.items() if _run.get(k) != v)
+        if not _reg:
+            checks.append(_c("runtime_uid_map_covers_registry", True,
+                             "registry empty (nothing approved yet) - consistent"))
+        elif not _missing82:
+            checks.append(_c("runtime_uid_map_covers_registry", True,
+                             f"runtime map covers all {len(_reg)} approved registry UIDs"))
+        elif _tm82:
+            checks.append(_c("runtime_uid_map_covers_registry", True,
+                             f"pre-live: {len(_missing82)}/{len(_reg)} approved UIDs not in "
+                             "the runtime map - set GELATO_UID_MAP_FILE="
+                             "config/gelato_uid_map.json at go-live or orders will "
+                             "manual-queue"))
+        else:
+            checks.append(_c("runtime_uid_map_covers_registry", False,
+                             f"LIVE with {len(_missing82)}/{len(_reg)} approved UIDs missing "
+                             "from the runtime map (GELATO_UID_MAP_FILE unset/typo'd?) - "
+                             "every affected order silently manual-queues"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("runtime_uid_map_covers_registry", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

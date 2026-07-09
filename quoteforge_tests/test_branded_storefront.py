@@ -25,11 +25,16 @@ def test_branded_section_renders_products_and_facets(tmp_path):
     h = _page(tmp_path)
     assert 'id="deptBranded"' in h
     assert 'class="brandcard"' in h
-    assert h.count('data-bpid="') >= 8
+    # FULFILLABILITY (audit gap 1): only branded products with >=1 real approved
+    # print-partner UID render a tile - the tote today; unmapped bottles/tumblers/
+    # notebooks/etc are deliberately ABSENT until their mapping pass exists.
+    assert h.count('data-bpid="') >= 1
+    assert 'data-bpid="tote"' in h
+    assert 'data-bpid="bottle"' not in h and 'data-bpid="tumbler"' not in h
     # phonecase is intentionally NOT sellable (no phone-model capture -> can't be
     # produced correctly), so it must not render in the storefront grid.
     assert 'data-bpid="phonecase"' not in h
-    assert 'data-bpid="tote"' in h and 'data-bpid="bottle"' in h
+    assert 'data-bpid="tote"' in h          # bottle correctly absent (no real UID)
     assert 'class="brandfilter"' in h
     assert 'shopBranded(' in h
     assert 'BRANDED_FORMATS' in h and 'BRANDED_DIMS' in h

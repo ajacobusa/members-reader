@@ -6,6 +6,15 @@ sizes + colours, reuse the same personalization editor, and draw a print-safe
 boundary so a customer's own design can't be silently cropped. And - the hard
 brand rule - no supplier name may reach the page.
 """
+"""NOTE (fulfillability, audit gap 1): the storefront now renders a tile ONLY for
+garments with >=1 real approved print-partner UID - 8 of the 13 gender+type groups
+today (raglan m/w, polo, women's longsleeve + sweatshirt have no clean variant and
+are deliberately ABSENT). Counts below use _N_FULFILLABLE_TILES, derived live."""
+from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG as _AC
+from quoteforge.etsy.fulfillability import fulfillable_apparel_facets as _faf
+_N_FULFILLABLE_TILES = sum(
+    1 for g in _AC if g.tier == "Classic" and _faf(g) is not None)
+
 from pathlib import Path
 
 from PIL import Image
@@ -90,9 +99,9 @@ def test_apparel_cards_use_photos_with_svg_fallback(tmp_path):
     # Count within the APPAREL pane only - the Branded department reuses the same
     # tile CSS classes (appcard/apptile/appsvg), so page-wide counts would inflate.
     ap = h[h.find('id="deptApparel"'):h.find('id="deptBranded"')]
-    assert ap.count('class="apptile') == 13        # one tile per gender+type
-    assert ap.count('class="appimg"') == 13        # a photo for every tile
-    assert ap.count('class="apptile apptilephoto"') == 13
+    assert ap.count('class="apptile') == _N_FULFILLABLE_TILES        # one tile per gender+type
+    assert ap.count('class="appimg"') == _N_FULFILLABLE_TILES        # a photo for every tile
+    assert ap.count('class="apptile apptilephoto"') == _N_FULFILLABLE_TILES
     assert ap.count('class="appsvg"') == 0         # no apparel tile falls back to SVG
     assert "appemoji" not in h                     # old emoji tiles gone
 
@@ -103,7 +112,7 @@ def test_apparel_brand_tiers_present(tmp_path):
     # tiers reachable from the in-editor Quality picker (APPAREL_TIERS). Real
     # Gelato brands show in the facet; never Bella+Canvas/Gildan.
     h = _page(tmp_path)
-    assert h.count('class="apptier"') == 13                 # one tier cue per tile
+    assert h.count('class="apptier"') == _N_FULFILLABLE_TILES                 # one tier cue per tile
     for tier in ("Value", "Classic", "Premium"):
         assert tier in h                                    # all three still offered
     assert "const APPAREL_TIERS =" in h                     # tier-picker data embedded
@@ -148,7 +157,7 @@ def test_apparel_filter_bar(tmp_path):
     assert ap.count('class="appfilter"') == 5          # five facet dropdowns
     assert "function applyApparelFilters" in h and "function clearApparelFilters" in h
     # every tile carries the facets the filter reads
-    assert ap.count("data-type=") == 13 and ap.count("data-colors=") == 13
+    assert ap.count("data-type=") == _N_FULFILLABLE_TILES and ap.count("data-colors=") == _N_FULFILLABLE_TILES
     for attr in ("data-gender=", "data-brand=", "data-sizes="):
         assert attr in h, attr
     # the two apparel sub-sections (Men's/Women's) are wrapped so a group can hide
@@ -172,8 +181,8 @@ def test_apparel_color_swatches_and_carry_through(tmp_path):
     # formats), so apparel colour selection actually changes the garment.
     h = _page(tmp_path)
     ap = h[h.find('id="deptApparel"'):h.find('id="deptBranded"')]   # apparel pane only
-    assert ap.count('class="appsw"') == 13          # a swatch row per tile
-    assert ap.count("data-garment=") == 13          # garment name for swatch clicks
+    assert ap.count('class="appsw"') == _N_FULFILLABLE_TILES          # a swatch row per tile
+    assert ap.count("data-garment=") == _N_FULFILLABLE_TILES          # garment name for swatch clicks
     assert "function initApparelSwatches" in h     # paints the dots on load
     assert "APPARELCOLOR[cn]" in h                 # dot colour from the shared map
     assert "function selectApparelColor" in h      # preselect colour in editor
@@ -196,7 +205,7 @@ def test_apparel_percolor_tile_swap_wired(tmp_path):
     assert "card.dataset.defimg" in h                # default photo remembered for reset
     # the swap lookup key is the GARMENT_ID (matches APPAREL_COLOR_IMG keys), so
     # each tier/gender maps to its exact product - not the display type_name
-    assert h.count("data-gid=") == 13
+    assert h.count("data-gid=") == _N_FULFILLABLE_TILES
     assert 'data-gid="m_tshirt"' in h and 'data-gid="m_hoodie"' in h
     assert "_tileColorUrl(card.dataset.gid" in h
 
@@ -250,10 +259,14 @@ def test_apparel_tiers_collapse_to_one_gendered_tile(tmp_path):
     import re
     h = _page(tmp_path)
     sec = h[h.find('id="apparel"'):]
-    assert h.count('data-gid="') == 13                  # one tile per gender+type
+    assert h.count('data-gid="') == _N_FULFILLABLE_TILES                  # one tile per gender+type
     assert set(re.findall(r'data-tier="(\w+)"', sec)) == {"Classic"}   # Classic only
-    for gid in ("m_tshirt", "w_tshirt", "m_polo", "w_hoodie", "w_sweatshirt"):
+    # Fulfillable garments render; zero-coverage ones (polo, w_sweatshirt) do NOT
+    # (audit gap 1 - never offer what the print partner can't make).
+    for gid in ("m_tshirt", "w_tshirt", "w_hoodie"):
         assert f'data-gid="{gid}"' in h, gid
+    for gid in ("m_polo", "w_sweatshirt", "m_raglan"):
+        assert f'data-gid="{gid}"' not in h, gid
     assert 'data-gid="w_polo"' not in h                 # polo is men's-only
 
     def _img(gid):                                      # the photo a tile renders

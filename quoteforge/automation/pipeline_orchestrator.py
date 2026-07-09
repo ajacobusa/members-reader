@@ -602,7 +602,17 @@ def run_full_pipeline(
                 update_order(order_id, status="error")
                 _notify("gelato_order", f"Fulfillment error: {detail}")
             else:   # manual -> flag for the operator (legitimately not auto-sent)
-                _log(order_id, "gelato_order", "skipped", resp.get("detail", status))
+                # STATUS HONESTY (end-to-end audit gap 2b): a manual-held order was
+                # never submitted anywhere, so it must NOT ride _log/STATUS_MAP into
+                # in_production and then follow-up into "shipped" (a false status that
+                # would feed transactional customer notices). Park it at
+                # approved_ready_to_print (same as the proof-resume path) and skip
+                # follow-up; the operator submits it by hand and the normal flow
+                # resumes from there.
+                routing_failed = True     # not an error - just no auto follow-up
+                log_pipeline_stage(order_id, "gelato_order", "skipped",
+                                   resp.get("detail", status))
+                update_order(order_id, status="approved_ready_to_print")
                 _notify("gelato_order", resp.get("detail", "manual fulfillment"))
         except Exception as exc:
             routing_failed = True
