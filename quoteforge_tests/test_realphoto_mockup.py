@@ -39,11 +39,15 @@ def test_realphoto_engine_functions_present(tmp_path):
         assert fn in h, f"mockup-engine symbol missing: {fn}"
 
 
-def test_realphoto_manifest_empty_by_default(tmp_path):
+def test_realphoto_manifest_empty_by_default(tmp_path, monkeypatch):
     # No photos dropped in -> empty manifest -> the editor uses its generated
     # mockup. A half-configured shop must never ship a broken image URL.
+    # REGRESSION: hermetic against repo state — the loader reads the CWD-relative
+    # brand/mockups, and the real repo now ships 14 photos, so a FRESH shop is
+    # simulated by building from an empty working directory.
     import json
     import re
+    monkeypatch.chdir(tmp_path)
     h = _page(tmp_path)
     m = re.search(r"const MOCKUP_PHOTOS = (\{.*?\});", h)
     assert m, "MOCKUP_PHOTOS manifest not emitted"

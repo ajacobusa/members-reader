@@ -194,7 +194,9 @@ def check_orphan_assets(html: str) -> dict:
                      if f.endswith((".jpg", ".jpeg", ".png", ".webp")))
     return {"name": "orphan_assets",
             "status": "OK" if not orphans else "FAIL",
-            "detail": f"{len(orphans)} orphaned file(s)", "orphans": orphans}
+            "detail": (f"{len(orphans)} orphaned file(s)"
+                       + (f": {orphans[:8]}" if orphans else "")),
+            "orphans": orphans}
 
 
 def check_occasion_filter(html: str) -> dict:

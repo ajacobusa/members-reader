@@ -1,0 +1,1618 @@
+{
+  "products": {
+    "accent_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Accent Mug",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-ACCENT_MUG-11OZ-BLACK",
+      "status": "skipped"
+    },
+    "bottle": {
+      "category": "bottle",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Insulated Stainless Water Bottle",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-BOTTLE-20OZ-WHITE",
+      "status": "skipped"
+    },
+    "classic_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Classic Ceramic Mug (11oz)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-CLASSIC_MUG-11OZ-WHITE",
+      "status": "skipped"
+    },
+    "color_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Colour-Interior Mug (11oz)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-COLOR_MUG-11OZ-BLACK",
+      "status": "skipped"
+    },
+    "corporate_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Corporate Branded Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-CORPORATE_CAL",
+      "status": "skipped"
+    },
+    "desk_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Desk Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-DESK_CAL",
+      "status": "skipped"
+    },
+    "enamel_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Enamel Camp Mug (12oz)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-ENAMEL_MUG-12OZ-WHITE",
+      "status": "skipped"
+    },
+    "event_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Event & Countdown Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-EVENT_CAL",
+      "status": "skipped"
+    },
+    "family_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Family Organizer Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-FAMILY_CAL",
+      "status": "skipped"
+    },
+    "journal": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Hardcover Journal",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-JOURNAL-A5-BLACK",
+      "status": "skipped"
+    },
+    "keychain": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Metal Keychain",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-KEYCHAIN-RECTANGLE-SILVER",
+      "status": "skipped"
+    },
+    "large_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Large Ceramic Mug (15oz)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-LARGE_MUG-15OZ-WHITE",
+      "status": "skipped"
+    },
+    "m_hoodie": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Hoodie",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-HOODIE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_hoodie_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Hoodie (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-HOODIE-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_hoodie_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Hoodie (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-HOODIE-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_longsleeve": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Long Sleeve Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-LONGSLEEVE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_longsleeve_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Long Sleeve Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-LONGSLEEVE-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_longsleeve_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Long Sleeve Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-LONGSLEEVE-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_polo": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Polo Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-POLO-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_polo_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Polo Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-POLO-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_polo_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Polo Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-POLO-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_raglan": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's 3/4 Sleeve Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-RAGLAN-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_raglan_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's 3/4 Sleeve Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-RAGLAN-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_raglan_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's 3/4 Sleeve Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-RAGLAN-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_sweatshirt": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Sweatshirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-SWEATSHIRT-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_sweatshirt_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Sweatshirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-SWEATSHIRT-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_sweatshirt_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Sweatshirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-SWEATSHIRT-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_tank": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Tank Top",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-TANK-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_tank_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Tank Top (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-TANK-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_tank_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's Tank Top (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-TANK-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_tshirt": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's T-Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-TSHIRT-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_tshirt_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's T-Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-TSHIRT-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "m_tshirt_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Men's T-Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-M-TSHIRT-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "mousepad": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Rectangular Mouse Pad",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-MOUSEPAD-9X7-WHITE",
+      "status": "skipped"
+    },
+    "notebook": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Softcover Notebook",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-NOTEBOOK-A5-WHITE",
+      "status": "skipped"
+    },
+    "phonecase": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Tough Phone Case",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-PHONECASE-IPHONE-WHITE",
+      "status": "skipped"
+    },
+    "photo_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Photo Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-PHOTO_CAL",
+      "status": "skipped"
+    },
+    "promo_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Business Promotional Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-PROMO_CAL",
+      "status": "skipped"
+    },
+    "sticker": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Die-Cut Vinyl Sticker",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-STICKER-2X2-WHITE",
+      "status": "skipped"
+    },
+    "tote": {
+      "category": "branded",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Organic Cotton Tote Bag",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-TOTE-ONE-SIZE-NATURAL",
+      "status": "skipped"
+    },
+    "travel_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Stainless Travel Mug (15oz)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-TRAVEL_MUG-15OZ-WHITE",
+      "status": "skipped"
+    },
+    "tumbler": {
+      "category": "bottle",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Insulated Stainless Tumbler",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-TUMBLER-20OZ-WHITE",
+      "status": "skipped"
+    },
+    "w_hoodie": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Hoodie",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-HOODIE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_hoodie_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Hoodie (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-HOODIE-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_hoodie_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Hoodie (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-HOODIE-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_longsleeve": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Long Sleeve Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-LONGSLEEVE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_longsleeve_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Long Sleeve Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-LONGSLEEVE-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_longsleeve_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Long Sleeve Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-LONGSLEEVE-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_raglan": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's 3/4 Sleeve Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-RAGLAN-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_raglan_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's 3/4 Sleeve Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-RAGLAN-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_raglan_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's 3/4 Sleeve Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-RAGLAN-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_sweatshirt": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Sweatshirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-SWEATSHIRT-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_sweatshirt_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Sweatshirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-SWEATSHIRT-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_sweatshirt_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Sweatshirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-SWEATSHIRT-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_tank": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Tank Top",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-TANK-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_tank_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Tank Top (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-TANK-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_tank_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's Tank Top (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-TANK-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_tshirt": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's T-Shirt",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-TSHIRT-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_tshirt_premium": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's T-Shirt (Premium)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-TSHIRT-PRE-XS-WHITE",
+      "status": "skipped"
+    },
+    "w_tshirt_value": {
+      "category": "apparel",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Women's T-Shirt (Value)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-W-TSHIRT-VAL-XS-WHITE",
+      "status": "skipped"
+    },
+    "wall_cal": {
+      "category": "calendar",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Wall Calendar",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-WALL_CAL",
+      "status": "skipped"
+    },
+    "xl_mug": {
+      "category": "mug",
+      "checkpoints": {
+        "discovered": {
+          "at": "2026-07-09T05:40:02+00:00",
+          "ok": false,
+          "reason": "no real UID / placeholder"
+        }
+      },
+      "confirmed": false,
+      "gelato_uid": null,
+      "live": null,
+      "match": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "name": "Tall Mug (17oz)",
+      "review": {
+        "at": null,
+        "reasons": null,
+        "verdict": null
+      },
+      "sku": "GEL-XL_MUG-17OZ-WHITE",
+      "status": "skipped"
+    }
+  },
+  "updated_utc": "2026-07-09T05:46:02+00:00",
+  "version": 1
+}
