@@ -3479,6 +3479,70 @@ def _cmd_ecommerce_images(args: list[str]) -> int:
     return 0
 
 
+def _cmd_real_photos(args: list[str]) -> int:
+    """Owner-supplied real product photos - manifest / install / status. `real-photos`.
+
+      real-photos            the checklist: top UID-backed products per category + the
+                             exact filenames to export from the print partner dashboard
+      real-photos install    validate + install intake photos into brand/mockups/
+                             (then rebuild-site to see them composited in the editor)
+      real-photos status     machine-readable slot coverage
+    """
+    from quoteforge.automation import real_photo_intake as rpi
+    sub = args[0] if args else "manifest"
+    if sub == "install":
+        res = rpi.install()
+        print(f"installed={len(res['installed'])} rejected={len(res['rejected'])} "
+              f"unknown={len(res['unknown_files'])}")
+        for r in res["installed"]:
+            print(f"  OK  {r['file']:<24} -> {r['dest']} ({r['dims']})")
+        for r in res["rejected"]:
+            print(f"  XX  {r['file']:<24} :: {r['reason']}")
+        for f in res["unknown_files"]:
+            print(f"  ??  {f} (not a manifest product_id - not installed)")
+        if res["installed"]:
+            print("  -> run `admin rebuild-site` to composite them into the editor.")
+        return 0
+    if sub == "status":
+        st = rpi.status()
+        print(f"installed={len(st['installed'])}/{st['total']} "
+              f"waiting={len(st['waiting_install'])} missing={len(st['missing'])}")
+        return 0
+    if sub == "collect":
+        # NO-HUMAN source: pull official images from Gelato-published Etsy listings.
+        res = rpi.collect_from_etsy()
+        print(f"collected={len(res['collected'])} no_listing={len(res['no_listing'])} "
+              f"no_valid_image={len(res['no_image'])} (manifest {res['manifest']})")
+        for c in res["collected"]:
+            print(f"  OK  {c['file']:<22} from listing {c['listing_id']}")
+        if res["no_listing"]:
+            print(f"  waiting on Etsy listings for: {', '.join(res['no_listing'][:8])}"
+                  + (" ..." if len(res['no_listing']) > 8 else ""))
+        if res["collected"]:
+            r = rpi.install()
+            print(f"  -> installed {len(r['installed'])}; run `admin rebuild-site`.")
+        return 0
+    if sub == "selftest":
+        st = rpi.selftest()
+        print(f"real-photo selftest: {st['overall']}")
+        for c in st["checks"]:
+            print(f"  [{'OK ' if c['ok'] else 'FAIL'}] {c['name']:<20} {c['detail']}")
+        from quoteforge.db.database import record_sync_run
+        record_sync_run("real-photos-selftest", ok=(st["overall"] == "PASS"),
+                        detail="; ".join(c["detail"] for c in st["checks"])[:400])
+        if st["overall"] != "PASS":
+            from quoteforge.config import TEST_MODE
+            if not TEST_MODE:
+                _alert("Real-photo pipeline selftest FAILED",
+                       "<pre>" + chr(10).join(f"{c['name']}: {c['detail']}"
+                                              for c in st["checks"] if not c["ok"])
+                       + "</pre>", what="real-photos")
+            return 1
+        return 0
+    print(rpi.format_manifest_text())
+    return 0
+
+
 def _cmd_template_previews(args: list[str]) -> int:
     """List the store's template mockup previewUrls (the EARLIEST documented real product
     image - exists before any product/listing is published). `template-previews`.
@@ -3748,6 +3812,7 @@ COMMANDS = {
     "image-override": _cmd_image_override,
     "photo-overrides": _cmd_photo_overrides,
     "template-previews": _cmd_template_previews,
+    "real-photos": _cmd_real_photos,
     "template-sync": _cmd_template_sync,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,

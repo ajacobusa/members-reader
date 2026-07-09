@@ -316,6 +316,19 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "a silently-expired token or revoked scope surfaces before it fails an order. "
         "No-op (informational) in TEST_MODE. Runs before the 06:20 infra-check."),
     ScheduledJob(
+        "QuoteForge Real Photo Sync", "real-photos collect",
+        ["/SC", "DAILY", "/ST", "01:42"],
+        "Daily NO-HUMAN real-photo source: for each flagship UID-backed product, pull the "
+        "official images from its Gelato-published Etsy listing (documented API), validate "
+        "deterministically, install into brand/mockups - the editor then composites the "
+        "buyer's design on the real product. No-op until listings exist. Before rebuild."),
+    ScheduledJob(
+        "QuoteForge Real Photo Selftest", "real-photos selftest",
+        ["/SC", "DAILY", "/ST", "06:12"],
+        "Daily PASS/FAIL of the real-photo pipeline: manifest stays verified-UID-only, "
+        "slot coverage reported, display path wired. Alerts the owner ONLY when a "
+        "guarantee breaks (waiting-on-listings is not a failure). Before infra-check."),
+    ScheduledJob(
         "QuoteForge Gelato Mockup Confirm", "mockup-confirm",
         ["/SC", "DAILY", "/ST", "01:44"],
         "Daily: promote products whose two confirming agents both passed (PASS && MATCH) "
