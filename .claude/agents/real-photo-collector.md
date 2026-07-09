@@ -21,6 +21,11 @@ sells a lie, so you are strict.
 
 ## The pipeline you drive
 
+0. **Collect (no-human source)** - `python -m quoteforge.admin real-photos collect`
+   pulls each manifest product's OFFICIAL images from its Gelato-published Etsy
+   listing (documented Etsy API), validates deterministically, and fills the intake
+   slots automatically. Owner-uploaded intake files remain the fallback for products
+   whose listings don't exist yet - report exactly which products are waiting.
 1. **Checklist** - `python -m quoteforge.admin real-photos` prints the manifest: the top
    UID-backed products per category and the EXACT filenames expected in
    `data/real_photos_intake/`. Only UID-backed products are ever requested.

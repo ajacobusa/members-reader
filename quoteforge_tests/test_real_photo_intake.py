@@ -84,3 +84,76 @@ def test_installed_photo_reaches_build_loader(dirs, tmp_path, monkeypatch):
 def test_command_registered():
     from quoteforge.admin import COMMANDS
     assert "real-photos" in COMMANDS
+
+
+# ── no-human collector: Gelato-published Etsy listings as the photo source ─────
+
+def _png_bytes(size=(900, 1100)):
+    # a NON-BLANK image (half light / half dark = high variance) - the validator
+    # correctly rejects near-uniform "blank" images, so a plain fill won't do.
+    import io
+    from PIL import ImageDraw
+    im = Image.new("RGB", size, (245, 244, 240))
+    d = ImageDraw.Draw(im)
+    d.rectangle([0, 0, size[0] // 2, size[1]], fill=(25, 30, 35))
+    buf = io.BytesIO()
+    im.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_manifest_rows_fully_enriched():
+    for r in rpi.manifest():
+        assert r["gelato_uid"] and not r["gelato_uid"].upper().startswith("GEL-")
+        assert r["sku"] and r["makeable"] is True
+        assert r["expected_orientation"] and r["min_w"] >= 400 and r["min_h"] >= 400
+        assert "template_id" in r                      # '' until owner creates templates
+
+
+def test_collect_saves_validated_listing_image(dirs):
+    intake, _ = dirs
+    good = _png_bytes()
+    res = rpi.collect_from_etsy(
+        listing_lookup=lambda sku: "111" if "TSHIRT" in sku else "",
+        images_lookup=lambda lid: {"studio": "https://etsy/img1.png"},
+        downloader=lambda url: good)
+    got = {c["product_id"] for c in res["collected"]}
+    assert "m_tshirt" in got and "w_tshirt" in got
+    assert (intake / "m_tshirt.jpg").exists()          # exact manifest filename
+    assert "classic_mug" in res["no_listing"]          # honestly reported, not guessed
+
+
+def test_collect_rejects_invalid_or_blank_images(dirs):
+    intake, _ = dirs
+    res = rpi.collect_from_etsy(
+        listing_lookup=lambda sku: "222",
+        images_lookup=lambda lid: {"studio": "https://etsy/tiny.png"},
+        downloader=lambda url: _png_bytes(size=(80, 60)))     # below min res
+    assert res["collected"] == []
+    assert len(res["no_image"]) == res["manifest"]     # every slot rejected the image
+    assert not any(intake.iterdir())                   # nothing fabricated/saved
+
+
+def test_collect_skips_already_installed(dirs):
+    intake, mock = dirs
+    _img(mock / "m_tshirt.jpg")
+    called = []
+    rpi.collect_from_etsy(
+        listing_lookup=lambda sku: (called.append(sku), "333")[1],
+        images_lookup=lambda lid: {},
+        downloader=lambda url: b"")
+    assert not any("TSHIRT-" in c and c.startswith("GEL-M-TSHIRT") for c in called) or \
+        all(not c.startswith("GEL-M-TSHIRT-") for c in called)
+
+
+def test_selftest_pass_shape():
+    st = rpi.selftest()
+    assert st["overall"] in ("PASS", "FAIL")
+    names = {c["name"] for c in st["checks"]}
+    assert {"manifest_uid_backed", "slot_coverage", "display_path_wired"} <= names
+    assert st["overall"] == "PASS"                     # green on the current repo
+
+
+def test_collector_scheduled_daily():
+    from quoteforge.automation.scheduler import SCHEDULED_JOBS
+    args = {j.admin_args for j in SCHEDULED_JOBS}
+    assert "real-photos collect" in args and "real-photos selftest" in args

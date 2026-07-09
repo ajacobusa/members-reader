@@ -3508,6 +3508,37 @@ def _cmd_real_photos(args: list[str]) -> int:
         print(f"installed={len(st['installed'])}/{st['total']} "
               f"waiting={len(st['waiting_install'])} missing={len(st['missing'])}")
         return 0
+    if sub == "collect":
+        # NO-HUMAN source: pull official images from Gelato-published Etsy listings.
+        res = rpi.collect_from_etsy()
+        print(f"collected={len(res['collected'])} no_listing={len(res['no_listing'])} "
+              f"no_valid_image={len(res['no_image'])} (manifest {res['manifest']})")
+        for c in res["collected"]:
+            print(f"  OK  {c['file']:<22} from listing {c['listing_id']}")
+        if res["no_listing"]:
+            print(f"  waiting on Etsy listings for: {', '.join(res['no_listing'][:8])}"
+                  + (" ..." if len(res['no_listing']) > 8 else ""))
+        if res["collected"]:
+            r = rpi.install()
+            print(f"  -> installed {len(r['installed'])}; run `admin rebuild-site`.")
+        return 0
+    if sub == "selftest":
+        st = rpi.selftest()
+        print(f"real-photo selftest: {st['overall']}")
+        for c in st["checks"]:
+            print(f"  [{'OK ' if c['ok'] else 'FAIL'}] {c['name']:<20} {c['detail']}")
+        from quoteforge.db.database import record_sync_run
+        record_sync_run("real-photos-selftest", ok=(st["overall"] == "PASS"),
+                        detail="; ".join(c["detail"] for c in st["checks"])[:400])
+        if st["overall"] != "PASS":
+            from quoteforge.config import TEST_MODE
+            if not TEST_MODE:
+                _alert("Real-photo pipeline selftest FAILED",
+                       "<pre>" + chr(10).join(f"{c['name']}: {c['detail']}"
+                                              for c in st["checks"] if not c["ok"])
+                       + "</pre>", what="real-photos")
+            return 1
+        return 0
     print(rpi.format_manifest_text())
     return 0
 
