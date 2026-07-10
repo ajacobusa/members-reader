@@ -245,10 +245,14 @@ def test_branded_products_show_real_shape_in_editor(tmp_path):
 
 
 def test_apparel_colour_guard_on_real_photo(tmp_path):
-    # REGRESSION: the colour-agnostic side photo only stands in when per-colour
-    # photos exist - else a black shirt would render as a white studio shot.
+    # REGRESSION: the side photo only stands in when per-colour photos exist OR
+    # the buyer's selected colour IS the photographed colour (sm.color, emitted
+    # verified metadata) - so a black shirt still never renders as a white studio
+    # shot: Black never photo-matches, the recolouring silhouette keeps the spin
+    # honest exactly as before.
     h = _page(tmp_path)
-    assert "if(!hasColor) return null;" in h
+    assert "if(!hasColor&&!photoMatch) return null;" in h
+    assert "sm.color&&sm.color===" in h                  # match derives from metadata
 
 
 def test_open_spin_updates_live_on_edit(tmp_path):
