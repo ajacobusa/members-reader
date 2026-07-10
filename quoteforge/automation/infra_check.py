@@ -2200,6 +2200,95 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("runtime_uid_map_covers_registry", False, str(exc)))
 
+    # 83) The create-from-template chain can inject OUR artwork (#185): the create
+    #     seam accepts a variants block, _artwork_variants builds the documented
+    #     imagePlaceholders/fileUrl payload from a real template shape (behavioral
+    #     probe, never guesses placeholder names), the full chain persists mockups
+    #     via upsert_product_image, and the CLI exposes it. If any of this unwires,
+    #     "product created from our design" silently degrades to template-layer
+    #     products with no official mockups saved.
+    try:
+        import inspect as _insp83
+        from quoteforge.automation import gelato_live_ops as _glo83
+        _sig_ok = "variants" in _insp83.signature(
+            _glo83._gelato_create_from_template).parameters
+        _probe = _glo83._artwork_variants(
+            {"variants": [{"id": "V1", "imagePlaceholders": [{"name": "front"}]}]},
+            "https://art/x.png")
+        _build_ok = (_probe == [{"imagePlaceholders":
+                                 [{"name": "front", "fileUrl": "https://art/x.png"}],
+                                 "templateVariantId": "V1"}])
+        _empty_ok = _glo83._artwork_variants({}, "https://art/x.png") == []
+        # audit F8: AST-grounded legs (comment-immune), not raw substring matches
+        _persist_ok = _references(_glo83.create_product_with_artwork,
+                                  "upsert_product_image")
+        _retire_ok = _references(_glo83.create_product_with_artwork,
+                                 "deactivate_product_images")   # audit F3 re-create
+        from quoteforge.admin import COMMANDS as _cmds83
+        _cli_ok = _uses_string(_cmds83["gelato-live"], "create-with-artwork")
+        ok = bool(_sig_ok and _build_ok and _empty_ok and _persist_ok
+                  and _retire_ok and _cli_ok)
+        checks.append(_c("create_from_template_injects_artwork", ok,
+                         "create chain injects artwork into template placeholders + "
+                         "persists official mockups" if ok else
+                         f"create chain unwired: sig={_sig_ok} build={_build_ok} "
+                         f"empty={_empty_ok} persist={_persist_ok} "
+                         f"retire={_retire_ok} cli={_cli_ok}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("create_from_template_injects_artwork", False, str(exc)))
+
+    # 84) #185 durability (audit F1): the daily stale-sweep must never retire the
+    #     'store_product' rows create_product_with_artwork persists (the sweep only
+    #     re-stamps rows ITS OWN join can see, so an unscoped sweep silently expired
+    #     the official mockup within a day).
+    try:
+        from quoteforge.db import database as _db84
+        ok = _uses_string(_db84.deactivate_stale_product_images,
+                          "source != 'store_product'")
+        checks.append(_c("stale_sweep_spares_store_product_rows", ok,
+                         "stale-sweep scoped away from store_product rows" if ok else
+                         "sweep is unscoped: #185 persisted mockups retire at the "
+                         "next template-sync"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("stale_sweep_spares_store_product_rows", False, str(exc)))
+
+    # 85) Provenance-honest mockup sync (audit F2): the DEFAULT fetch must be the
+    #     provenance dict (url+uid+source), not the bare-URL wrapper - else every
+    #     override/persisted/ecommerce image is rebound to the real UID "by
+    #     construction" and confirm()'s wrong-product gate is vacuous in production.
+    try:
+        from quoteforge.automation import mockup_sync as _ms85
+        ok = _references(_ms85.run_sync, "gelato_blank_image_provenance")
+        checks.append(_c("mockup_sync_default_fetch_is_provenance", ok,
+                         "run_sync defaults to the provenance fetch" if ok else
+                         "run_sync defaults to the bare-URL fetch: origin UID is "
+                         "fabricated and the provenance gate never holds anything"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("mockup_sync_default_fetch_is_provenance", False, str(exc)))
+
+    # 86) #185 honesty (audit F5): a FAILED template fetch must abort the create
+    #     (never a live product without the customer's artwork). Behavioral probe,
+    #     all IO injected + no sku, so it is side-effect free.
+    try:
+        from quoteforge.automation import gelato_live_ops as _glo86
+        _called86: list = []
+
+        def _boom86(_tid):
+            """Injected template_getter that always fails (simulates a fetch blip)."""
+            raise RuntimeError("blip")
+        _r86 = _glo86.create_product_with_artwork(
+            "T", "t", "https://a/x.png", template_getter=_boom86,
+            creator=lambda v: _called86.append(v) or {"id": "X"},
+            product_getter=lambda p: {})
+        ok = (not _called86) and _r86.get("created") is False
+        checks.append(_c("create_with_artwork_aborts_on_fetch_failure", ok,
+                         "failed template fetch aborts before the vendor create"
+                         if ok else
+                         "fetch failure still creates an artwork-less product"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("create_with_artwork_aborts_on_fetch_failure", False,
+                         str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

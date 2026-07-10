@@ -1275,11 +1275,18 @@ def get_product_images(gelato_sku: str = "", active_only: bool = True) -> list[d
 
 def deactivate_stale_product_images(seen_stamp: str) -> int:
     """Flag is_active=0 for rows NOT refreshed this run (last_seen_at < seen_stamp) -
-    so an image retired from the store is retired here too. Returns the count."""
+    so an image retired from the store is retired here too. Returns the count.
+
+    Scoped AWAY from source='store_product' (#185 audit F1): those rows are written
+    by create_product_with_artwork, which the template-sync's join never re-stamps -
+    an unscoped sweep silently expired the official mockup within a day. They are
+    retired instead by a forced re-create (which deactivates the prior product's
+    rows) or the owner's deactivate_product_images escape hatch."""
     with _conn() as conn:
         cur = conn.execute(
             "UPDATE gelato_product_images SET is_active=0 "
-            "WHERE is_active=1 AND last_seen_at < ?", (seen_stamp,))
+            "WHERE is_active=1 AND last_seen_at < ? AND source != 'store_product'",
+            (seen_stamp,))
         return cur.rowcount
 
 

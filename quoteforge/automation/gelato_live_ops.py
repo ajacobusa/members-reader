@@ -40,19 +40,28 @@ def _live() -> bool:
 # ── Component 2: create the first live product from a template ───
 
 def _gelato_create_from_template(store_id: str, template_id: str, title: str,
-                                 description: str) -> dict:
+                                 description: str, variants: list | None = None) -> dict:
     """DEFENSIVE live seam: POST products:create-from-template to the Gelato ecommerce
     store. Never raises; returns {} on anything unexpected. The exact request/response
     shape is the one thing to confirm against a live Gelato account (it is captured raw
-    into the probe so the shape is visible on the first real call)."""
+    into the probe so the shape is visible on the first real call).
+
+    ``variants`` (#185, optional) is the documented artwork-injection block: a list of
+    ``{"templateVariantId", "imagePlaceholders": [{"name", "fileUrl"}]}`` entries that
+    replace the template's image placeholders with OUR artwork. Omitted -> the product
+    keeps the template's own layers (the pre-#185 behaviour, unchanged)."""
     try:
         import requests
         from quoteforge.automation.gelato_api import GELATO_API_KEY
         from quoteforge.config import GELATO_ECOMMERCE_URL
+        payload: dict = {"templateId": template_id, "title": title,
+                         "description": description}
+        if variants:
+            payload["variants"] = variants
         resp = requests.post(
             f"{GELATO_ECOMMERCE_URL}/v1/stores/{store_id}/products:create-from-template",
             headers={"X-API-KEY": GELATO_API_KEY, "Content-Type": "application/json"},
-            json={"templateId": template_id, "title": title, "description": description},
+            json=payload,
             timeout=30)
         if resp.status_code not in (200, 201):
             logger.warning("create-from-template -> %s", resp.status_code)
@@ -61,6 +70,174 @@ def _gelato_create_from_template(store_id: str, template_id: str, title: str,
     except Exception as exc:  # noqa: BLE001 - unverified provider shape: never crash
         logger.warning("create-from-template failed (defensive): %s", exc)
         return {}
+
+
+def _artwork_variants(template: dict, artwork_url: str) -> list:
+    """Build the create-from-template ``variants`` block that swaps EVERY image
+    placeholder in the template for our artwork URL. Pure + defensive: an empty or
+    odd-shaped template yields [] (the create then keeps the template's own layers,
+    it never guesses placeholder names)."""
+    out: list = []
+    if not artwork_url:
+        return out
+    for v in (template.get("variants") or []):
+        if not isinstance(v, dict):
+            continue
+        phs = [{"name": ph.get("name"), "fileUrl": artwork_url}
+               for ph in (v.get("imagePlaceholders") or [])
+               if isinstance(ph, dict) and ph.get("name")]
+        if not phs:
+            continue
+        ent: dict = {"imagePlaceholders": phs}
+        vid = v.get("id") or v.get("templateVariantId")
+        if vid:
+            ent["templateVariantId"] = vid
+        out.append(ent)
+    return out
+
+
+def create_product_with_artwork(template_id: str, title: str, artwork_url: str, *,
+                                sku: str = "", description: str = "",
+                                force: bool = False,
+                                template_getter=None, creator=None,
+                                product_getter=None) -> dict:
+    """#185 full chain (the spec QuoteForge->Gelato->official mockup->DB->storefront):
+
+      1. GET the template               -> enumerate variants + image placeholders
+      2. POST create-from-template      -> with variants[].imagePlaceholders[].fileUrl
+                                           = OUR artwork (the documented injection)
+      3. GET the created store product  -> extract the OFFICIAL preview/mockup URLs
+      4. persist each URL               -> gelato_product_images (source='store_product')
+
+    Step 4 is what makes the mockup reach the customer: gelato_blank_image_provenance
+    reads gelato_product_images first ('persisted'), mockup_sync fetches + re-hosts it,
+    and ONLY the two gatekeeper agents (reviewer + sku-image-match) can confirm it live.
+    No new display path, no gatekeeper bypass.
+
+    Defensive + gated like every live seam: returns {skipped} off-live / without a
+    store id; never raises. All IO is injectable for hermetic tests."""
+    sku = (sku or "").strip()          # audit F6: whitespace sku = no sku, said so
+    if creator is None and not _live():
+        return {"skipped": "not live (TEST_MODE / no key)"}
+    from quoteforge.config import GELATO_STORE_ID
+    if not GELATO_STORE_ID and creator is None:
+        return {"skipped": "GELATO_STORE_ID not set"}
+    if not template_id:
+        return {"skipped": "no templateId (create the template in the Gelato dashboard)"}
+
+    # Idempotency (audit F3): a re-run must NOT create a duplicate live product on
+    # the vendor side. Existing active store_product rows for this sku = already
+    # created; force=True re-creates and retires the prior product's rows below.
+    if sku and not force:
+        from quoteforge.db.database import get_product_images
+        prior = [r for r in get_product_images(sku)
+                 if r.get("source") == "store_product"]
+        if prior:
+            return {"skipped": "a store product already exists for this sku "
+                               "(pass force=True to re-create)", "sku": sku}
+
+    # 1) template -> placeholder map (never guess placeholder names)
+    tpl: dict = {}
+    tpl_failed = False
+    try:
+        if template_getter is not None:
+            tpl = template_getter(template_id) or {}
+        else:
+            from quoteforge.automation import ecommerce_images as ecom
+            tpl = ecom._ecom_get(f"/v1/templates/{template_id}") or {}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("template fetch failed (defensive): %s", exc)
+        tpl_failed = True
+    variants = _artwork_variants(tpl, artwork_url)
+    # Audit F5: a FAILED fetch is a retryable blip, not a no-placeholder template -
+    # abort rather than create a live product WITHOUT the customer's artwork.
+    if artwork_url and tpl_failed:
+        return {"created": False,
+                "reason": "template fetch failed - retry (refusing to create "
+                          "without artwork)"}
+
+    # 2) create with artwork injected (falls back to template layers when the
+    #    template exposed no placeholders - reported honestly, never guessed)
+    make = creator or (lambda v: _gelato_create_from_template(
+        GELATO_STORE_ID, template_id, title, description, variants=v))
+    raw = make(variants) or {}
+    gelato_product_id = ""
+    for k in ("id", "productId", "storeProductId", "productUid"):
+        if isinstance(raw.get(k), str) and raw[k]:
+            gelato_product_id = raw[k]
+            break
+    if not gelato_product_id:
+        return {"created": False, "reason": "create returned no product id",
+                "artwork_injected": bool(variants)}
+
+    # 3) pull the created product back -> official preview/mockup URLs
+    prod: dict = {}
+    try:
+        if product_getter is not None:
+            prod = product_getter(gelato_product_id) or {}
+        else:
+            from quoteforge.automation import ecommerce_images as ecom
+            prod = ecom._product_detail(GELATO_STORE_ID, gelato_product_id) or {}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("created-product fetch failed (defensive): %s", exc)
+    urls = _mockup_urls(prod)
+    # Audit F4: the uid column holds the CATALOG product UID (what the provenance
+    # gate compares against the SKU's resolved real UID), extracted from the created
+    # product's variants exactly as the daily template-sync trusts it - NEVER the
+    # store-product id (a different namespace). Unextractable -> '' = honest
+    # "provenance unverified", so Path A holds it rather than mislabels it.
+    origin_uid = ""
+    for _v in (prod.get("variants") or []):
+        if isinstance(_v, dict) and (_v.get("productUid") or _v.get("uid")):
+            origin_uid = _v.get("productUid") or _v.get("uid")
+            break
+
+    # 4) persist -> the 'persisted' display source the gatekeeper pipeline reads
+    saved = 0
+    if sku:
+        from quoteforge.db.database import (deactivate_product_images,
+                                            upsert_product_image)
+        if urls:
+            # audit F3: a (forced) re-create retires the PREVIOUS product's rows,
+            # else rank-0 tie-break kept showing the OLD mockup forever.
+            deactivate_product_images(sku)
+        for rank, u in enumerate(urls):
+            if upsert_product_image(sku, u, gelato_product_uid=origin_uid,
+                                    image_rank=rank, image_type="mockup",
+                                    source="store_product"):
+                saved += 1
+    out = {"created": True, "gelato_product_id": gelato_product_id,
+           "artwork_injected": bool(variants), "mockup_urls": urls,
+           "saved_images": saved, "sku": sku}
+    if not sku:
+        out["persist_skipped"] = "no sku"          # audit F6: say it, don't hide it
+    return out
+
+
+def _mockup_urls(product: dict) -> list:
+    """Every official image URL on a store product, deduped, order-preserved.
+    Checks the same url keys the supplier-mockup extractor trusts."""
+    urls: list = []
+    def _add(u):
+        """Append u when it is a real http(s) URL not already collected."""
+        if isinstance(u, str) and u.startswith("http") and u not in urls:
+            urls.append(u)
+    for k in ("previewUrl", "imageUrl", "url", "mockupUrl", "productImageUrl", "image"):
+        _add(product.get(k))
+    for coll in ("images", "media", "mockups"):
+        for it in (product.get(coll) or []):
+            if isinstance(it, dict):
+                for k in ("url", "previewUrl", "fileUrl", "imageUrl"):
+                    _add(it.get(k))
+            elif isinstance(it, str):
+                _add(it)
+    for v in (product.get("variants") or []):
+        if isinstance(v, dict):
+            _add(v.get("previewUrl"))
+            for ph in (v.get("imagePlaceholders") or []):
+                if isinstance(ph, dict):
+                    _add(ph.get("previewUrl"))
+    return urls
 
 
 def create_first_live_product(template_id: str, title: str, *, description: str = "",
