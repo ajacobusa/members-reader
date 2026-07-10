@@ -3034,12 +3034,16 @@ def _cmd_gelato_live(args: list[str]) -> int:
             return 2
         rest = args[3:]
         sku = ""
+        force = "--force" in rest
+        if force:
+            rest = [a for a in rest if a != "--force"]
         if "--sku" in rest:
             i = rest.index("--sku")
             sku = rest[i + 1] if i + 1 < len(rest) else ""
             rest = rest[:i] + rest[i + 2:]
         print("create-with-artwork:",
-              ops.create_product_with_artwork(args[1], " ".join(rest), args[2], sku=sku))
+              ops.create_product_with_artwork(args[1], " ".join(rest), args[2],
+                                              sku=sku, force=force))
         return 0
     print("usage: gelato-live [status|create-product|create-with-artwork|sync-shapes]")
     return 2

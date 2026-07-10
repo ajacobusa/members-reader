@@ -248,7 +248,14 @@ def run_sync(*, stamp: str | None = None,
                "skipped": 0, "errors": 0, "live_gated": not _live_gated()}
 
     if fetch_image is None:
-        from quoteforge.images.supplier_mockup import gelato_blank_image as fetch_image  # type: ignore
+        # #185 audit F2: the default MUST be the provenance dict (url+uid+source),
+        # not the bare-URL wrapper - the bare wrapper made the legacy branch rebind
+        # EVERY source (override/persisted/ecommerce) to the SKU's real UID "by
+        # construction", so confirm()'s wrong-product provenance gate never held
+        # anything on the production (admin) path.
+        def fetch_image(sku):  # type: ignore
+            from quoteforge.images import supplier_mockup as _sm
+            return _sm.gelato_blank_image_provenance(sku)
     if printarea is None:
         try:
             from quoteforge.images.supplier_mockup import gelato_template_printarea as printarea  # type: ignore

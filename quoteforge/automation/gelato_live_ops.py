@@ -98,6 +98,7 @@ def _artwork_variants(template: dict, artwork_url: str) -> list:
 
 def create_product_with_artwork(template_id: str, title: str, artwork_url: str, *,
                                 sku: str = "", description: str = "",
+                                force: bool = False,
                                 template_getter=None, creator=None,
                                 product_getter=None) -> dict:
     """#185 full chain (the spec QuoteForge->Gelato->official mockup->DB->storefront):
@@ -115,6 +116,7 @@ def create_product_with_artwork(template_id: str, title: str, artwork_url: str, 
 
     Defensive + gated like every live seam: returns {skipped} off-live / without a
     store id; never raises. All IO is injectable for hermetic tests."""
+    sku = (sku or "").strip()          # audit F6: whitespace sku = no sku, said so
     if creator is None and not _live():
         return {"skipped": "not live (TEST_MODE / no key)"}
     from quoteforge.config import GELATO_STORE_ID
@@ -123,8 +125,20 @@ def create_product_with_artwork(template_id: str, title: str, artwork_url: str, 
     if not template_id:
         return {"skipped": "no templateId (create the template in the Gelato dashboard)"}
 
+    # Idempotency (audit F3): a re-run must NOT create a duplicate live product on
+    # the vendor side. Existing active store_product rows for this sku = already
+    # created; force=True re-creates and retires the prior product's rows below.
+    if sku and not force:
+        from quoteforge.db.database import get_product_images
+        prior = [r for r in get_product_images(sku)
+                 if r.get("source") == "store_product"]
+        if prior:
+            return {"skipped": "a store product already exists for this sku "
+                               "(pass force=True to re-create)", "sku": sku}
+
     # 1) template -> placeholder map (never guess placeholder names)
     tpl: dict = {}
+    tpl_failed = False
     try:
         if template_getter is not None:
             tpl = template_getter(template_id) or {}
@@ -133,7 +147,14 @@ def create_product_with_artwork(template_id: str, title: str, artwork_url: str, 
             tpl = ecom._ecom_get(f"/v1/templates/{template_id}") or {}
     except Exception as exc:  # noqa: BLE001
         logger.warning("template fetch failed (defensive): %s", exc)
+        tpl_failed = True
     variants = _artwork_variants(tpl, artwork_url)
+    # Audit F5: a FAILED fetch is a retryable blip, not a no-placeholder template -
+    # abort rather than create a live product WITHOUT the customer's artwork.
+    if artwork_url and tpl_failed:
+        return {"created": False,
+                "reason": "template fetch failed - retry (refusing to create "
+                          "without artwork)"}
 
     # 2) create with artwork injected (falls back to template layers when the
     #    template exposed no placeholders - reported honestly, never guessed)
@@ -160,19 +181,37 @@ def create_product_with_artwork(template_id: str, title: str, artwork_url: str, 
     except Exception as exc:  # noqa: BLE001
         logger.warning("created-product fetch failed (defensive): %s", exc)
     urls = _mockup_urls(prod)
+    # Audit F4: the uid column holds the CATALOG product UID (what the provenance
+    # gate compares against the SKU's resolved real UID), extracted from the created
+    # product's variants exactly as the daily template-sync trusts it - NEVER the
+    # store-product id (a different namespace). Unextractable -> '' = honest
+    # "provenance unverified", so Path A holds it rather than mislabels it.
+    origin_uid = ""
+    for _v in (prod.get("variants") or []):
+        if isinstance(_v, dict) and (_v.get("productUid") or _v.get("uid")):
+            origin_uid = _v.get("productUid") or _v.get("uid")
+            break
 
     # 4) persist -> the 'persisted' display source the gatekeeper pipeline reads
     saved = 0
     if sku:
-        from quoteforge.db.database import upsert_product_image
+        from quoteforge.db.database import (deactivate_product_images,
+                                            upsert_product_image)
+        if urls:
+            # audit F3: a (forced) re-create retires the PREVIOUS product's rows,
+            # else rank-0 tie-break kept showing the OLD mockup forever.
+            deactivate_product_images(sku)
         for rank, u in enumerate(urls):
-            if upsert_product_image(sku, u, gelato_product_uid=gelato_product_id,
+            if upsert_product_image(sku, u, gelato_product_uid=origin_uid,
                                     image_rank=rank, image_type="mockup",
                                     source="store_product"):
                 saved += 1
-    return {"created": True, "gelato_product_id": gelato_product_id,
-            "artwork_injected": bool(variants), "mockup_urls": urls,
-            "saved_images": saved, "sku": sku}
+    out = {"created": True, "gelato_product_id": gelato_product_id,
+           "artwork_injected": bool(variants), "mockup_urls": urls,
+           "saved_images": saved, "sku": sku}
+    if not sku:
+        out["persist_skipped"] = "no sku"          # audit F6: say it, don't hide it
+    return out
 
 
 def _mockup_urls(product: dict) -> list:
@@ -182,7 +221,7 @@ def _mockup_urls(product: dict) -> list:
     def _add(u):
         if isinstance(u, str) and u.startswith("http") and u not in urls:
             urls.append(u)
-    for k in ("previewUrl", "imageUrl", "url"):
+    for k in ("previewUrl", "imageUrl", "url", "mockupUrl", "productImageUrl", "image"):
         _add(product.get(k))
     for coll in ("images", "media", "mockups"):
         for it in (product.get(coll) or []):
