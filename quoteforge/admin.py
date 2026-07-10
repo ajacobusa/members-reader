@@ -2988,6 +2988,10 @@ def _cmd_gelato_live(args: list[str]) -> int:
       status                        live? probe? store id?
       doctor                        diagnose + PROBE every first-live-product prerequisite
       create-product TEMPLATE TITLE create the first store product from a Gelato template
+      create-with-artwork TEMPLATE ARTWORK_URL TITLE [--sku SKU]
+                                    #185: create a product with OUR artwork injected into
+                                    the template's image placeholders, then persist its
+                                    official mockup URLs for the gatekeeper display path
       sync-shapes                   pull the live Gelato/Etsy image shape into the probe
     (The physical test order is deliberately NOT a casual CLI - it is money-out and gated.)
     """
@@ -3022,7 +3026,22 @@ def _cmd_gelato_live(args: list[str]) -> int:
     if sub == "sync-shapes":
         print("sync-shapes:", ops.sync_live_image_shapes())
         return 0
-    print("usage: gelato-live [status|create-product|sync-shapes]")
+    if sub == "create-with-artwork":
+        # #185 full chain: template -> create (artwork into imagePlaceholders) ->
+        # official mockup URLs -> gelato_product_images (the gatekeeper display path).
+        if len(args) < 4:
+            print("usage: gelato-live create-with-artwork TEMPLATE_ID ARTWORK_URL TITLE... [--sku SKU]")
+            return 2
+        rest = args[3:]
+        sku = ""
+        if "--sku" in rest:
+            i = rest.index("--sku")
+            sku = rest[i + 1] if i + 1 < len(rest) else ""
+            rest = rest[:i] + rest[i + 2:]
+        print("create-with-artwork:",
+              ops.create_product_with_artwork(args[1], " ".join(rest), args[2], sku=sku))
+        return 0
+    print("usage: gelato-live [status|create-product|create-with-artwork|sync-shapes]")
     return 2
 
 

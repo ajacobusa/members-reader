@@ -2200,6 +2200,38 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
         checks.append(_c("runtime_uid_map_covers_registry", False, str(exc)))
 
+    # 83) The create-from-template chain can inject OUR artwork (#185): the create
+    #     seam accepts a variants block, _artwork_variants builds the documented
+    #     imagePlaceholders/fileUrl payload from a real template shape (behavioral
+    #     probe, never guesses placeholder names), the full chain persists mockups
+    #     via upsert_product_image, and the CLI exposes it. If any of this unwires,
+    #     "product created from our design" silently degrades to template-layer
+    #     products with no official mockups saved.
+    try:
+        import inspect as _insp83
+        from quoteforge.automation import gelato_live_ops as _glo83
+        _sig_ok = "variants" in _insp83.signature(
+            _glo83._gelato_create_from_template).parameters
+        _probe = _glo83._artwork_variants(
+            {"variants": [{"id": "V1", "imagePlaceholders": [{"name": "front"}]}]},
+            "https://art/x.png")
+        _build_ok = (_probe == [{"imagePlaceholders":
+                                 [{"name": "front", "fileUrl": "https://art/x.png"}],
+                                 "templateVariantId": "V1"}])
+        _empty_ok = _glo83._artwork_variants({}, "https://art/x.png") == []
+        _persist_ok = "upsert_product_image" in _insp83.getsource(
+            _glo83.create_product_with_artwork)
+        from quoteforge.admin import COMMANDS as _cmds83
+        _cli_ok = "create-with-artwork" in _insp83.getsource(_cmds83["gelato-live"])
+        ok = bool(_sig_ok and _build_ok and _empty_ok and _persist_ok and _cli_ok)
+        checks.append(_c("create_from_template_injects_artwork", ok,
+                         "create chain injects artwork into template placeholders + "
+                         "persists official mockups" if ok else
+                         f"create chain unwired: sig={_sig_ok} build={_build_ok} "
+                         f"empty={_empty_ok} persist={_persist_ok} cli={_cli_ok}"))
+    except Exception as exc:  # noqa: BLE001 - missing symbol -> fail closed
+        checks.append(_c("create_from_template_injects_artwork", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
