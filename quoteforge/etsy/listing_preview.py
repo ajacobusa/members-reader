@@ -3134,9 +3134,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:12px;padding:12px}}
  .fpick .lbl{{font-size:13px;color:var(--green);margin-bottom:8px;font-weight:700}}
  .fchips{{display:flex;flex-wrap:wrap;gap:7px}}
- .fchip{{border:1px solid #cdbf98;background:#fff;border-radius:18px;padding:7px 13px;
-   font-size:12.5px;cursor:pointer;transition:.12s;white-space:nowrap}}
- .fchip:hover{{border-color:var(--gold);background:#fffaf0}}
+ .fchip{{border:1.5px solid #cfcabb;background:#fff;border-radius:10px;padding:8px 13px;
+   font-size:12.5px;font-weight:600;cursor:pointer;transition:.12s;white-space:nowrap}}
+ .fchip:hover{{border-color:var(--green);background:#fffdf7}}
  .fchip.sel{{background:var(--green);color:#fff;border-color:var(--green);
    box-shadow:0 2px 8px rgba(16,61,46,.25)}}
  /* Colour-cue dot on each frame/material pill (visual without the heavy tiles). */
@@ -3182,8 +3182,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border:1px solid #cfe3d6;border-radius:8px;padding:8px 10px}}
  .perso .note.tip b{{color:#0a6b3b}}
  .orderactions{{display:flex;gap:8px;margin:8px 0}}
- .addbasketbtn{{flex:1.4;background:var(--green);color:#fff;border:none;border-radius:18px;
-   padding:11px;font-size:14.5px;font-weight:700;cursor:pointer}}
+ .addbasketbtn{{flex:1.4;background:var(--green);color:#fff;border:none;border-radius:12px;
+   padding:14px;font-size:15.5px;font-weight:800;cursor:pointer;
+   box-shadow:0 2px 10px rgba(16,61,46,.22)}}
  .addbasketbtn:hover{{background:var(--green-d)}}
  .savebtn2{{width:100%;background:#fff;border:1px dashed var(--line);color:var(--green);
    border-radius:14px;padding:8px;font-size:13px;cursor:pointer;margin:6px 0}}
@@ -3528,10 +3529,37 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border:1.5px solid var(--green);border-radius:999px;background:#fff;
    color:var(--green);font-weight:700;font-size:14px}}
  .bpmore:hover{{background:var(--green);color:#fff}}
- .mbox h2{{font-size:24px;margin:2px 0 6px;color:var(--green);line-height:1.25}}
- .mprice{{font-weight:700;color:var(--green);font-size:24px;margin:6px 0}}
- .marrive{{font-size:13.5px;color:var(--muted);margin:0 0 8px;font-weight:600}}
+ .mbox h2{{font-size:25px;margin:2px 0 10px;color:#1b1b1f;line-height:1.22;
+   font-weight:800;letter-spacing:-0.01em}}
+ /* ── PDP chrome: price + delivery cards, size pills, hero badges ─────────
+    Print-partner-style product-page anatomy (two info cards under the title,
+    tappable size pills, badges over the hero) in OUR brand palette. */
+ .pdpcards{{display:flex;gap:10px;margin:0 0 12px}}
+ .pdpcard{{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
+   padding:11px 13px;display:flex;flex-direction:column;gap:2px;min-width:0;
+   text-align:left}}
+ .pdplbl{{font-size:11.5px;font-weight:700;color:#7a7466;text-transform:uppercase;
+   letter-spacing:0.04em}}
+ .pdpsub{{font-size:11px;color:#8a978d}}
+ .mprice{{font-weight:800;color:var(--green);font-size:23px;line-height:1.1}}
+ .marrive{{font-size:12.5px;color:var(--muted);font-weight:600;line-height:1.35}}
  .marrive b{{color:var(--green)}}
+ .szhead{{display:flex;align-items:center;justify-content:space-between;margin:2px 0 6px}}
+ .szlbl{{font-size:13px;font-weight:700;color:#3a352b}}
+ .szlbl b{{color:var(--green)}}
+ .szpills{{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px}}
+ .szpill{{min-width:44px;padding:9px 12px;border:1.5px solid #cfcabb;border-radius:10px;
+   background:#fff;font-size:13.5px;font-weight:700;color:#3a352b;cursor:pointer;
+   transition:border-color .12s,background .12s}}
+ .szpill:hover{{border-color:var(--green)}}
+ .szpill.sel{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .szselwrap{{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+   white-space:nowrap}}  /* select stays in the DOM as the value contract */
+ .pdpbadges{{position:absolute;top:8px;left:8px;z-index:5;display:flex;gap:6px;
+   pointer-events:none}}
+ .pdpbadge{{background:#0f7a3d;color:#fff;font-size:11px;font-weight:700;
+   padding:4px 10px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.18)}}
+ .pdpbadge2{{background:#2e3a55}}
  .mdescbox{{margin-top:12px;background:#fff;border:1px solid var(--line);
    border-radius:12px;padding:12px 14px;text-align:left}}
  .mdescbox .lbl{{font-size:13px;color:var(--green);font-weight:700;
@@ -3862,7 +3890,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <div class="mcanvaswrap"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
+       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
@@ -3970,8 +3998,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
      </div>
      <div class="mright">
-       <h2 id="mtitle"></h2><div class="mprice" id="mprice"></div>
-       <div class="marrive" id="marrive"></div>
+       <h2 id="mtitle"></h2>
+       <!-- PDP price + delivery cards (print-partner-style product page anatomy):
+            two side-by-side info cards under the title. #mprice / #marrive keep
+            their ids + classes, so every existing writer updates them unchanged. -->
+       <div class="pdpcards">
+         <div class="pdpcard"><span class="pdplbl">Your price</span>
+           <span class="mprice" id="mprice"></span>
+           <span class="pdpsub">per item · personalization included</span></div>
+         <div class="pdpcard"><span class="pdplbl">Delivery</span>
+           <span class="marrive" id="marrive"></span></div>
+       </div>
        <div id="mavail" style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
@@ -4118,8 +4155,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="orow" id="mtierrow" style="display:none">
            <label>Quality <select id="mtier" onchange="setApparelTier(this.value)"></select></label>
          </div>
+         <!-- PDP size pills: the visible picker. The hidden <select id="msize">
+              stays as the single value contract (addToOrder & friends read it);
+              pills set its value and fire the same onSizeChange path. -->
+         <div class="szhead"><span class="szlbl">Size: <b id="mszsel">–</b></span></div>
+         <div class="szpills" id="msizepills" role="group" aria-label="Choose size"></div>
          <div class="orow">
-           <label>Size <select id="msize" onchange="onSizeChange()"></select></label>
+           <label class="szselwrap">Size <select id="msize" onchange="onSizeChange()"></select></label>
            <label>Qty <select id="mqty"></select></label>
          </div>
          <div id="mapparelnote" class="note" style="display:none">📏 Garment sizing is final — please check the size before ordering. Because every item is made to order, we can't exchange for fit.</div>
@@ -5058,7 +5100,31 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
    sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'}} - $${{r.price}}</option>`).join('');
+   _paintSizePills(rows);
    if(typeof _upd3DBtn==='function') _upd3DBtn();}}    // show 3D for branded bottles/tumblers too
+ // ── PDP size pills: visible picker painted from the SAME SIZEMAP rows as the
+ //    hidden <select id="msize"> (the single value contract). Picking a pill sets
+ //    the select and fires the normal onSizeChange path, so nothing downstream
+ //    (addToOrder, review, photo-res recheck) changes.
+ function _paintSizePills(rows){{
+   const pw=document.getElementById('msizepills'); if(!pw) return;
+   const sel=document.getElementById('msize');
+   const un=(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':'&Prime;';
+   pw.innerHTML=rows.map((r,i)=>`<button type="button" class="szpill${{i===sel.selectedIndex?' sel':''}}"`+
+     ` aria-label="Size ${{r.size}}" onclick="pickSizePill(${{i}})">${{r.size}}${{un}}</button>`).join('');
+   const sl=document.getElementById('mszsel');
+   if(sl){{const c=rows[sel.selectedIndex]||rows[0];
+     sl.textContent=c?(c.size+(un?' in':'')):'–';}}
+ }}
+ function pickSizePill(i){{
+   const sel=document.getElementById('msize'); if(!sel) return;
+   sel.selectedIndex=i; onSizeChange();
+   const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];
+   _paintSizePills(rows);
+   // PDP price card shows the PICKED variant's exact price (from-price until then).
+   const r=rows[i], mp=document.getElementById('mprice');
+   if(r&&r.price&&mp) mp.textContent='$'+r.price;
+ }}
  function addToOrder(){{const sv=(document.getElementById('msize')||{{}}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -6544,6 +6610,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    drawArt();
  }}
  function onSizeChange(){{ drawArt(); updateReview(); recheckPhotoRes();
+   // Keep the PDP size pills in lockstep with the hidden select (value contract).
+   if(typeof _paintSizePills==='function')
+     _paintSizePills(SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[]);
    // Size picked: clear any "choose a size first" warning back to the default,
    // and move the guidance blink along to the next task (review).
    const p=document.getElementById('sizeprompt');
