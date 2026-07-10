@@ -2274,6 +2274,7 @@ def check_infrastructure() -> dict:
         _called86: list = []
 
         def _boom86(_tid):
+            """Injected template_getter that always fails (simulates a fetch blip)."""
             raise RuntimeError("blip")
         _r86 = _glo86.create_product_with_artwork(
             "T", "t", "https://a/x.png", template_getter=_boom86,

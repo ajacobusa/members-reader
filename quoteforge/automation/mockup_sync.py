@@ -254,6 +254,7 @@ def run_sync(*, stamp: str | None = None,
         # construction", so confirm()'s wrong-product provenance gate never held
         # anything on the production (admin) path.
         def fetch_image(sku):  # type: ignore
+            """Default fetch: the full provenance dict (url+uid+source) for sku."""
             from quoteforge.images import supplier_mockup as _sm
             return _sm.gelato_blank_image_provenance(sku)
     if printarea is None:

@@ -219,6 +219,7 @@ def _mockup_urls(product: dict) -> list:
     Checks the same url keys the supplier-mockup extractor trusts."""
     urls: list = []
     def _add(u):
+        """Append u when it is a real http(s) URL not already collected."""
         if isinstance(u, str) and u.startswith("http") and u not in urls:
             urls.append(u)
     for k in ("previewUrl", "imageUrl", "url", "mockupUrl", "productImageUrl", "image"):
