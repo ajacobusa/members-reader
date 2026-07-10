@@ -2950,7 +2950,9 @@
      var photoMatch=!!(sm&&sm.color&&sm.color===(fmt.split(' - ')[1]||''));
      if(!hasColor&&!photoMatch) return null;
      url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
-     if(!url && sm) url=sm.front||'';
+     // front stand-in is colour-EXACT (mirrors drawArt): an uncovered colour
+     // spins the drawn garment, never a photo of a different colour.
+     if(!url && sm && photoMatch) url=sm.front||'';
      back=(sm&&sm.back)||null; cyl=false;
    }
    if(!url) return null;
@@ -3347,7 +3349,13 @@
      const _selc=(CURFMT.split(' - ')[1]||'');
      const _photoColorMatch=!!(_sm&&_sm.color&&_sm.color===_selc);
      let _u=(_side==='front')?_tileColorUrl(_gid,_selc):'';
-     if(!_u && (_hasColorPhotos||_photoColorMatch)){ _u=(_sm&&_sm[_side])||''; }
+     // FRONT stand-in is colour-EXACT: the per-colour photo covers its own
+     // colour, the side photo only its photographed colour - with PARTIAL
+     // per-colour coverage (owner exports arrive one at a time) an uncovered
+     // colour must fall to the recolouring silhouette, never borrow a photo
+     // of a different colour. Only the BACK view may use the side back photo
+     // when per-colour fronts exist (backs have no per-colour set).
+     if(!_u && (_photoColorMatch || (_side==='back'&&_hasColorPhotos))){ _u=(_sm&&_sm[_side])||''; }
      if(_u){ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }
    } else if(IS_MUG||IS_BRANDED||IS_CAL){
      // Same go-live path as apparel, now for mug / branded / calendar: when the

@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "images": [
+    {
+      "garment_id": "m_tshirt",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-m_tshirt.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-m_tshirt-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Heather Grey",
+      "side": "front",
+      "file": "brand/tile-w_tshirt.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Heather Grey",
+      "side": "back",
+      "file": "brand/tile-w_tshirt-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_tank",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-m_tank.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_tank",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-m_tank-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_tank",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-w_tank.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_tank",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-w_tank-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-m_longsleeve.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-m_longsleeve-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_longsleeve",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-w_longsleeve.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_longsleeve",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-w_longsleeve-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_raglan",
+      "color": "",
+      "side": "front",
+      "file": "brand/tile-m_raglan.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_raglan",
+      "color": "",
+      "side": "back",
+      "file": "brand/tile-m_raglan-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_raglan",
+      "color": "",
+      "side": "front",
+      "file": "brand/tile-w_raglan.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_raglan",
+      "color": "",
+      "side": "back",
+      "file": "brand/tile-w_raglan-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_polo",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-m_polo.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_polo",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-m_polo-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-m_hoodie.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-m_hoodie-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-w_hoodie.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-w_hoodie-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-m_sweatshirt.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-m_sweatshirt-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_sweatshirt",
+      "color": "White",
+      "side": "front",
+      "file": "brand/tile-w_sweatshirt.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    },
+    {
+      "garment_id": "w_sweatshirt",
+      "color": "White",
+      "side": "back",
+      "file": "brand/tile-w_sweatshirt-back.jpg",
+      "source": "dashboard_export",
+      "added": "2026-07-10"
+    }
+  ]
+}

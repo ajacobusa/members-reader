@@ -69,7 +69,9 @@ def test_editor_photo_stands_in_when_colour_matches(tmp_path):
     # earlier "same white tee for EVERY colour" bug stays fixed.
     h = _page(tmp_path)
     assert "_photoColorMatch" in h
-    assert "if(!_u && (_hasColorPhotos||_photoColorMatch))" in h
+    # FRONT stand-in is colour-exact; only the BACK may lean on _hasColorPhotos
+    # (see test_base_images.test_front_standin_is_colour_exact for the rationale)
+    assert "if(!_u && (_photoColorMatch || (_side==='back'&&_hasColorPhotos)))" in h
     # the match is derived from the emitted metadata, never guessed client-side
     assert "_sm.color===_selc" in h.replace(" ", "").replace("_sm&&", "") or \
            "_sm.color===_selc" in h
