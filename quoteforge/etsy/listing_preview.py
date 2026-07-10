@@ -2166,6 +2166,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # Front + BACK garment photos for the editor's front/back FLIP, so a buyer can
     # see and design the BACK too. garment_id -> {front, back}; back is the matching
     # print-partner back-view tile (brand/tile-<gid>-back.jpg), or the front if none.
+    # `color` is the colour the garment was ACTUALLY photographed in, verified by eye
+    # against each brand/tile-<gid>.jpg: the editor/spin may show the real photo ONLY
+    # when the buyer's selected colour IS this colour (else the recolouring silhouette
+    # keeps the swatch honest). '' = no single colour name applies (the raglans are
+    # two-tone white/grey) or an unverified future photo - never photo-match those.
+    _PHOTO_COLOR = {
+        "m_tshirt": "White", "w_tshirt": "Heather Grey",
+        "m_tank": "White", "w_tank": "White",
+        "m_longsleeve": "White", "w_longsleeve": "White",
+        "m_raglan": "", "w_raglan": "",
+        "m_polo": "White",
+        "m_hoodie": "White", "w_hoodie": "White",
+        "m_sweatshirt": "White", "w_sweatshirt": "White",
+    }
     _apparel_side_img: dict = {}
     for _gid, _front in _garment_photos.items():
         if not _front:
@@ -2177,7 +2191,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         # details (collar/pocket/front design) behind the buyer's BACK design - misleading.
         _apparel_side_img[_gid] = {
             "front": _front,
-            "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else ""}
+            "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else "",
+            "color": _PHOTO_COLOR.get(_gid, "")}
     apparel_side_img_json = json.dumps(_apparel_side_img)
 
     # Per-product tile photos for the Custom Branded Products grid, keyed by
@@ -7146,14 +7161,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var fmt=(typeof CURFMT!=='undefined'?CURFMT:'')||'';
    if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){{
      var gid=(typeof APPGID!=='undefined'&&APPGID[k])||'';
-     // The single per-garment side photo is colour-AGNOSTIC (one white studio
-     // shot), so it may only stand in when real PER-COLOUR photos exist - else a
-     // black shirt would show as white. Mirrors the editor's drawArt guard.
+     // The single per-garment side photo may only stand in when real PER-COLOUR
+     // photos exist - else a black shirt would show as white - OR when the
+     // buyer's selected colour IS the photographed colour (sm.color, emitted
+     // eyeball-verified metadata). Mirrors the editor's drawArt guard.
      var hasColor=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]
        &&Object.keys(APPAREL_COLOR_IMG[gid]).length);
-     if(!hasColor) return null;
-     url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
      var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
+     var photoMatch=!!(sm&&sm.color&&sm.color===(fmt.split(' - ')[1]||''));
+     if(!hasColor&&!photoMatch) return null;
+     url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
      if(!url && sm) url=sm.front||'';
      back=(sm&&sm.back)||null; cyl=false;
    }}
@@ -7542,8 +7559,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // through to the recolouring silhouette (drawGarment) so the colour swatch
      // actually changes the shirt - and the buyer can still design the BACK.
      const _hasColorPhotos=!!(APPAREL_COLOR_IMG[_gid]&&Object.keys(APPAREL_COLOR_IMG[_gid]).length);
-     let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
-     if(!_u && _hasColorPhotos){{ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }}
+     // The photo may ALSO stand in (no per-colour photos yet) when the buyer's
+     // selected colour IS the colour the garment was photographed in (emitted,
+     // eyeball-verified metadata - never guessed): the default White pick shows
+     // the REAL product instead of the drawn silhouette, while every other
+     // colour still recolours the silhouette so the swatch stays honest.
+     const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid];
+     const _selc=(CURFMT.split(' - ')[1]||'');
+     const _photoColorMatch=!!(_sm&&_sm.color&&_sm.color===_selc);
+     let _u=(_side==='front')?_tileColorUrl(_gid,_selc):'';
+     if(!_u && (_hasColorPhotos||_photoColorMatch)){{ _u=(_sm&&_sm[_side])||''; }}
      if(_u){{ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }}
    }} else if(IS_MUG||IS_BRANDED||IS_CAL){{
      // Same go-live path as apparel, now for mug / branded / calendar: when the

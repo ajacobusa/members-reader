@@ -298,7 +298,7 @@
  const APPAREL_COLOR_IMG = {};
  // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
  // and the buyer can design the back too: {garment_id:{front,back}}.
- const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg"}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg"}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg"}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg"}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg"}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg"}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg"}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg"}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg"}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg"}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg"}};
+ const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg", "color": "White"}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg", "color": "Heather Grey"}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg", "color": "White"}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg", "color": "White"}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg", "color": "White"}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg", "color": "White"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg", "color": ""}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg", "color": ""}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg", "color": "White"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg", "color": "White"}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg", "color": "White"}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg", "color": "White"}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg", "color": "White"}};
  const APPGID = {"Men's T-Shirt": "m_tshirt", "Men's T-Shirt (Value)": "m_tshirt_value", "Men's T-Shirt (Premium)": "m_tshirt_premium", "Women's T-Shirt": "w_tshirt", "Women's T-Shirt (Value)": "w_tshirt_value", "Women's T-Shirt (Premium)": "w_tshirt_premium", "Men's Tank Top": "m_tank", "Men's Tank Top (Value)": "m_tank_value", "Men's Tank Top (Premium)": "m_tank_premium", "Women's Tank Top": "w_tank", "Women's Tank Top (Value)": "w_tank_value", "Women's Tank Top (Premium)": "w_tank_premium", "Men's Long Sleeve Shirt": "m_longsleeve", "Men's Long Sleeve Shirt (Value)": "m_longsleeve_value", "Men's Long Sleeve Shirt (Premium)": "m_longsleeve_premium", "Women's Long Sleeve Shirt": "w_longsleeve", "Women's Long Sleeve Shirt (Value)": "w_longsleeve_value", "Women's Long Sleeve Shirt (Premium)": "w_longsleeve_premium", "Men's 3/4 Sleeve Shirt": "m_raglan", "Men's 3/4 Sleeve Shirt (Value)": "m_raglan_value", "Men's 3/4 Sleeve Shirt (Premium)": "m_raglan_premium", "Women's 3/4 Sleeve Shirt": "w_raglan", "Women's 3/4 Sleeve Shirt (Value)": "w_raglan_value", "Women's 3/4 Sleeve Shirt (Premium)": "w_raglan_premium", "Men's Polo Shirt": "m_polo", "Men's Polo Shirt (Value)": "m_polo_value", "Men's Polo Shirt (Premium)": "m_polo_premium", "Men's Hoodie": "m_hoodie", "Men's Hoodie (Value)": "m_hoodie_value", "Men's Hoodie (Premium)": "m_hoodie_premium", "Women's Hoodie": "w_hoodie", "Women's Hoodie (Value)": "w_hoodie_value", "Women's Hoodie (Premium)": "w_hoodie_premium", "Men's Sweatshirt": "m_sweatshirt", "Men's Sweatshirt (Value)": "m_sweatshirt_value", "Men's Sweatshirt (Premium)": "m_sweatshirt_premium", "Women's Sweatshirt": "w_sweatshirt", "Women's Sweatshirt (Value)": "w_sweatshirt_value", "Women's Sweatshirt (Premium)": "w_sweatshirt_premium"};            // garment name -> garment_id (editor lookup)
  const APPHASSLEEVES = {"Men's T-Shirt": true, "Men's T-Shirt (Value)": true, "Men's T-Shirt (Premium)": true, "Women's T-Shirt": true, "Women's T-Shirt (Value)": true, "Women's T-Shirt (Premium)": true, "Men's Tank Top": false, "Men's Tank Top (Value)": false, "Men's Tank Top (Premium)": false, "Women's Tank Top": false, "Women's Tank Top (Value)": false, "Women's Tank Top (Premium)": false, "Men's Long Sleeve Shirt": true, "Men's Long Sleeve Shirt (Value)": true, "Men's Long Sleeve Shirt (Premium)": true, "Women's Long Sleeve Shirt": true, "Women's Long Sleeve Shirt (Value)": true, "Women's Long Sleeve Shirt (Premium)": true, "Men's 3/4 Sleeve Shirt": true, "Men's 3/4 Sleeve Shirt (Value)": true, "Men's 3/4 Sleeve Shirt (Premium)": true, "Women's 3/4 Sleeve Shirt": true, "Women's 3/4 Sleeve Shirt (Value)": true, "Women's 3/4 Sleeve Shirt (Premium)": true, "Men's Polo Shirt": true, "Men's Polo Shirt (Value)": true, "Men's Polo Shirt (Premium)": true, "Men's Hoodie": true, "Men's Hoodie (Value)": true, "Men's Hoodie (Premium)": true, "Women's Hoodie": true, "Women's Hoodie (Value)": true, "Women's Hoodie (Premium)": true, "Men's Sweatshirt": true, "Men's Sweatshirt (Value)": true, "Men's Sweatshirt (Premium)": true, "Women's Sweatshirt": true, "Women's Sweatshirt (Value)": true, "Women's Sweatshirt (Premium)": true};   // garment name -> has printable sleeves (#tank)
  // A garment has printable sleeves unless the catalog says otherwise (tank = sleeveless).
@@ -2940,14 +2940,16 @@
    var fmt=(typeof CURFMT!=='undefined'?CURFMT:'')||'';
    if(typeof IS_APPAREL!=='undefined' && IS_APPAREL){
      var gid=(typeof APPGID!=='undefined'&&APPGID[k])||'';
-     // The single per-garment side photo is colour-AGNOSTIC (one white studio
-     // shot), so it may only stand in when real PER-COLOUR photos exist - else a
-     // black shirt would show as white. Mirrors the editor's drawArt guard.
+     // The single per-garment side photo may only stand in when real PER-COLOUR
+     // photos exist - else a black shirt would show as white - OR when the
+     // buyer's selected colour IS the photographed colour (sm.color, emitted
+     // eyeball-verified metadata). Mirrors the editor's drawArt guard.
      var hasColor=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]
        &&Object.keys(APPAREL_COLOR_IMG[gid]).length);
-     if(!hasColor) return null;
-     url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
      var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
+     var photoMatch=!!(sm&&sm.color&&sm.color===(fmt.split(' - ')[1]||''));
+     if(!hasColor&&!photoMatch) return null;
+     url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
      if(!url && sm) url=sm.front||'';
      back=(sm&&sm.back)||null; cyl=false;
    }
@@ -3336,8 +3338,16 @@
      // through to the recolouring silhouette (drawGarment) so the colour swatch
      // actually changes the shirt - and the buyer can still design the BACK.
      const _hasColorPhotos=!!(APPAREL_COLOR_IMG[_gid]&&Object.keys(APPAREL_COLOR_IMG[_gid]).length);
-     let _u=(_side==='front')?_tileColorUrl(_gid,(CURFMT.split(' - ')[1]||'')):'';
-     if(!_u && _hasColorPhotos){ const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid]; _u=(_sm&&_sm[_side])||''; }
+     // The photo may ALSO stand in (no per-colour photos yet) when the buyer's
+     // selected colour IS the colour the garment was photographed in (emitted,
+     // eyeball-verified metadata - never guessed): the default White pick shows
+     // the REAL product instead of the drawn silhouette, while every other
+     // colour still recolours the silhouette so the swatch stays honest.
+     const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid];
+     const _selc=(CURFMT.split(' - ')[1]||'');
+     const _photoColorMatch=!!(_sm&&_sm.color&&_sm.color===_selc);
+     let _u=(_side==='front')?_tileColorUrl(_gid,_selc):'';
+     if(!_u && (_hasColorPhotos||_photoColorMatch)){ _u=(_sm&&_sm[_side])||''; }
      if(_u){ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }
    } else if(IS_MUG||IS_BRANDED||IS_CAL){
      // Same go-live path as apparel, now for mug / branded / calendar: when the

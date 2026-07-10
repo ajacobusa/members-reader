@@ -223,8 +223,12 @@ def test_apparel_editor_recolors_when_no_percolor_photos(tmp_path):
     assert "const APPAREL_COLOR_IMG = {}" in h            # pre-launch: no per-colour photos
     assert "_hasColorPhotos" in h                          # the new guard exists
     assert "Object.keys(APPAREL_COLOR_IMG[_gid]).length" in h   # guard derives from the map
-    # the colour-agnostic side photo may ONLY stand in when real per-colour photos exist
-    assert "if(!_u && _hasColorPhotos)" in h
+    # the side photo may ONLY stand in when real per-colour photos exist OR the
+    # buyer's selected colour IS the photographed colour (_photoColorMatch, from
+    # emitted verified metadata) - any NON-matching colour still recolours the
+    # silhouette, which is what keeps this regression fixed.
+    assert "if(!_u && (_hasColorPhotos||_photoColorMatch))" in h
+    assert "_sm.color&&_sm.color===_selc" in h            # match is metadata-driven, not guessed
     # and the colour-accurate silhouette path is still wired (reached when ungated)
     assert "function drawGarment" in h and "APPARELCOLOR[cn]||" in h
 
