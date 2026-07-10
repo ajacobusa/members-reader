@@ -45,6 +45,17 @@ def test_pdp_size_pills_wrap_the_hidden_select(tmp_path):
     assert "sel.selectedIndex=i; onSizeChange();" in h
 
 
+def test_pdp_subtitle_and_named_colour_label(tmp_path):
+    # REGRESSION (#184): one honest benefit line under the title per family, and
+    # the swatch row NAMES the picked colour (close shades are ambiguous as dots).
+    h = _page(tmp_path)
+    assert 'id="msub"' in h
+    assert "Premium garment, printed with your design, made to order" in h
+    assert "Personalized wall art, printed and shipped to you" in h
+    assert "function _updColorLabel" in h
+    assert "_updColorLabel(cn); }}".replace("}}", "}") in h or "_updColorLabel(cn);" in h
+
+
 def test_pdp_hero_badges_are_honest(tmp_path):
     # REGRESSION (#184): badges carry only true made-to-order claims; no
     # fabricated social proof ("Bestseller"/"Trending") pre-launch.

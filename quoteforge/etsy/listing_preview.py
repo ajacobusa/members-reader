@@ -3534,6 +3534,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  /* ── PDP chrome: price + delivery cards, size pills, hero badges ─────────
     Print-partner-style product-page anatomy (two info cards under the title,
     tappable size pills, badges over the hero) in OUR brand palette. */
+ .msub{{font-size:13.5px;color:#5a6b62;margin:-4px 0 10px;font-weight:500}}
  .pdpcards{{display:flex;gap:10px;margin:0 0 12px}}
  .pdpcard{{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;
    padding:11px 13px;display:flex;flex-direction:column;gap:2px;min-width:0;
@@ -3999,6 +4000,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      </div>
      <div class="mright">
        <h2 id="mtitle"></h2>
+       <div class="msub" id="msub">Personalized wall art, printed and shipped to you</div>
        <!-- PDP price + delivery cards (print-partner-style product page anatomy):
             two side-by-side info cards under the title. #mprice / #marrive keep
             their ids + classes, so every existing writer updates them unchanged. -->
@@ -4804,6 +4806,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const bl=document.getElementById('mbglbl');
    if(bl) bl.textContent = IS_CAL ? '📅 Paper' : (IS_MUG ? '🍵 Colour' : (IS_BRANDED ? '🎁 Colour'
      : (IS_APPAREL ? '👕 Shirt colour' : 'Background')));
+   if(IS_APPAREL||IS_BRANDED||IS_MUG) _updColorLabel('');   // PDP: name the picked colour
+   // PDP subtitle: one honest benefit line under the title, per product family.
+   const ms=document.getElementById('msub');
+   if(ms) ms.textContent = IS_CAL ? 'A 12-month photo calendar, made to order from your pictures'
+     : (IS_MUG ? 'A ceramic mug printed with your design, made to order'
+     : (IS_BRANDED ? 'Printed with your design and made to order, just for you'
+     : (IS_APPAREL ? 'Premium garment, printed with your design, made to order'
+     : 'Personalized wall art, printed and shipped to you')));
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
    // Heading: apparel/branded buyers must NEVER see the wall-art listing title.
@@ -6676,7 +6686,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Apparel: Step-1 colour row picks the SHIRT colour (recolors the garment live).
  function pickShirt(cn,el){{
    selectApparelColor(cn);
-   document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); }}
+   document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el));
+   _updColorLabel(cn); }}
+ // PDP colour label: "Colour: <selected name>" next to the swatch row, so the
+ // picked colour is named (a swatch alone is ambiguous for close shades).
+ function _updColorLabel(cn){{
+   const bl=document.getElementById('mbglbl'); if(!bl) return;
+   if(IS_APPAREL||IS_BRANDED||IS_MUG){{
+     const base=IS_MUG?'\\uD83C\\uDF75 Colour':(IS_BRANDED?'\\uD83C\\uDF81 Colour':'\\uD83D\\uDC55 Shirt colour');
+     const name=cn||((CURFMT||'').split(' - ')[1]||'');
+     bl.innerHTML=base+(name?': <b>'+name+'</b>':'');
+   }}
+ }}
  // Default the text colour to contrast the shirt, unless the buyer set one.
  function autoContrastText(cn){{
    if(TXT_USER_SET) return;
