@@ -600,6 +600,14 @@
    const bl=document.getElementById('mbglbl');
    if(bl) bl.textContent = IS_CAL ? '📅 Paper' : (IS_MUG ? '🍵 Colour' : (IS_BRANDED ? '🎁 Colour'
      : (IS_APPAREL ? '👕 Shirt colour' : 'Background')));
+   if(IS_APPAREL||IS_BRANDED||IS_MUG) _updColorLabel('');   // PDP: name the picked colour
+   // PDP subtitle: one honest benefit line under the title, per product family.
+   const ms=document.getElementById('msub');
+   if(ms) ms.textContent = IS_CAL ? 'A 12-month photo calendar, made to order from your pictures'
+     : (IS_MUG ? 'A ceramic mug printed with your design, made to order'
+     : (IS_BRANDED ? 'Printed with your design and made to order, just for you'
+     : (IS_APPAREL ? 'Premium garment, printed with your design, made to order'
+     : 'Personalized wall art, printed and shipped to you')));
    const mp=document.getElementById('mprice');
    if(mp && fmts && fmts[0]) mp.textContent = 'from $'+fmts[0].price;
    // Heading: apparel/branded buyers must NEVER see the wall-art listing title.
@@ -896,7 +904,31 @@
  function fillSizes(){const sel=document.getElementById('msize'); if(!sel)return;
    const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
    sel.innerHTML=rows.map(r=>`<option value="${r.size}|${r.price}">${r.size}${(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'} - $${r.price}</option>`).join('');
+   _paintSizePills(rows);
    if(typeof _upd3DBtn==='function') _upd3DBtn();}    // show 3D for branded bottles/tumblers too
+ // ── PDP size pills: visible picker painted from the SAME SIZEMAP rows as the
+ //    hidden <select id="msize"> (the single value contract). Picking a pill sets
+ //    the select and fires the normal onSizeChange path, so nothing downstream
+ //    (addToOrder, review, photo-res recheck) changes.
+ function _paintSizePills(rows){
+   const pw=document.getElementById('msizepills'); if(!pw) return;
+   const sel=document.getElementById('msize');
+   const un=(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':'&Prime;';
+   pw.innerHTML=rows.map((r,i)=>`<button type="button" class="szpill${i===sel.selectedIndex?' sel':''}"`+
+     ` aria-label="Size ${r.size}" onclick="pickSizePill(${i})">${r.size}${un}</button>`).join('');
+   const sl=document.getElementById('mszsel');
+   if(sl){const c=rows[sel.selectedIndex]||rows[0];
+     sl.textContent=c?(c.size+(un?' in':'')):'–';}
+ }
+ function pickSizePill(i){
+   const sel=document.getElementById('msize'); if(!sel) return;
+   sel.selectedIndex=i; onSizeChange();
+   const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];
+   _paintSizePills(rows);
+   // PDP price card shows the PICKED variant's exact price (from-price until then).
+   const r=rows[i], mp=document.getElementById('mprice');
+   if(r&&r.price&&mp) mp.textContent='$'+r.price;
+ }
  function addToOrder(){const sv=(document.getElementById('msize')||{}).value; if(!sv)return;
    // Guard: an uploaded photo flagged too low-res would print blurry - confirm first.
    const um=document.getElementById('muploadmsg');
@@ -2382,6 +2414,9 @@
    drawArt();
  }
  function onSizeChange(){ drawArt(); updateReview(); recheckPhotoRes();
+   // Keep the PDP size pills in lockstep with the hidden select (value contract).
+   if(typeof _paintSizePills==='function')
+     _paintSizePills(SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[]);
    // Size picked: clear any "choose a size first" warning back to the default,
    // and move the guidance blink along to the next task (review).
    const p=document.getElementById('sizeprompt');
@@ -2445,7 +2480,18 @@
  // Apparel: Step-1 colour row picks the SHIRT colour (recolors the garment live).
  function pickShirt(cn,el){
    selectApparelColor(cn);
-   document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el)); }
+   document.querySelectorAll('#mbg span').forEach(e=>e.classList.toggle('sel',e===el));
+   _updColorLabel(cn); }
+ // PDP colour label: "Colour: <selected name>" next to the swatch row, so the
+ // picked colour is named (a swatch alone is ambiguous for close shades).
+ function _updColorLabel(cn){
+   const bl=document.getElementById('mbglbl'); if(!bl) return;
+   if(IS_APPAREL||IS_BRANDED||IS_MUG){
+     const base=IS_MUG?'\uD83C\uDF75 Colour':(IS_BRANDED?'\uD83C\uDF81 Colour':'\uD83D\uDC55 Shirt colour');
+     const name=cn||((CURFMT||'').split(' - ')[1]||'');
+     bl.innerHTML=base+(name?': <b>'+name+'</b>':'');
+   }
+ }
  // Default the text colour to contrast the shirt, unless the buyer set one.
  function autoContrastText(cn){
    if(TXT_USER_SET) return;
