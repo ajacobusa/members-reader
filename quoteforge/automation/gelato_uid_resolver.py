@@ -245,26 +245,118 @@ def score_match(our_tokens: set[str], product: dict) -> float:
     return round(len(hits) / len(our_tokens), 4)
 
 
-def _dimensions_confirmed(our_tokens: set[str], product_hay: set[str]) -> bool:
+def _dimensions_confirmed(our_tokens: set[str], product_hay: set[str],
+                          required: set[str] | None = None) -> bool:
     """True when EVERY size/capacity dimension token in our SKU is present in the product.
     A size-specific SKU can only match a product that positively names that size - so a
-    size-agnostic (or wrong-size) product is DISQUALIFIED, never guessed."""
-    required = our_tokens & _DIMENSION_TOKENS
+    size-agnostic (or wrong-size) product is DISQUALIFIED, never guessed. Pass
+    ``required`` when the caller has parsed the dimensions structurally (apparel)."""
+    if required is None:
+        required = our_tokens & _DIMENSION_TOKENS
     return required <= product_hay          # empty required -> trivially True
 
 
+_APPAREL_SIZE_TOKENS = frozenset(
+    {"xs", "s", "m", "l", "xl", "2xl", "3xl", "4xl", "5xl"})
+
+
+def _required_dimension_tokens(family: str, sku: str, tokens: set) -> set:
+    """The size/capacity tokens this SKU positively requires of a product.
+
+    For APPAREL the gender code collapses with the size letters (GEL-M-HOODIE-L
+    tokenises to both 'm' and 'l'), so requiring every dimension TOKEN silently
+    demanded size M of every men's SKU - the first live dry-run could resolve
+    only 67 of 5,526 candidates because of it. The apparel size is therefore
+    parsed STRUCTURALLY: segments after the GEL-<gender> prefix that name a
+    known size. Other families keep the token-intersection rule (capacities
+    like 11oz can't collapse with anything)."""
+    if str(family or "") == "apparel":
+        parts = [p.lower() for p in str(sku or "").split("-")]
+        return {p for p in parts[2:] if p in _APPAREL_SIZE_TOKENS}
+    return tokens & _DIMENSION_TOKENS
+
+
+def _required_color_tokens(sku_tokens: set) -> set:
+    """The COLOUR tokens our SKU demands, alias-aware - a hard dimension like
+    size. Derived from the apparel palette: every catalogue colour (or its
+    Gelato alias) whose full token set appears in the SKU must appear in the
+    product too. First live dry-run lesson: 'blue' alone claimed carolina-blue
+    for a ROYAL-BLUE SKU at conf 0.8. Empty set = no palette colour named
+    (non-apparel SKUs are unaffected)."""
+    req: set = set()
+    try:
+        from quoteforge.etsy.apparel_catalog import (GELATO_COLOR_ALIASES,
+                                                     _STD_COLORS)
+        for name in _STD_COLORS:
+            toks = _norm_tokens(GELATO_COLOR_ALIASES.get(name, name))
+            if toks and toks <= sku_tokens:
+                req |= toks
+    except Exception as exc:  # noqa: BLE001 - palette absent -> no requirement
+        logger.debug("colour palette unavailable: %s", exc)
+    return req
+
+
+def _is_adult_apparel_sku(family: str, sku: str) -> bool:
+    """True for our men's/women's apparel SKUs (GEL-M-* / GEL-W-*) - the ones a
+    kids/baby product must never claim."""
+    s = str(sku or "").upper()
+    return str(family or "") == "apparel" and (
+        s.startswith("GEL-M-") or s.startswith("GEL-W-"))
+
+
+def _is_kids_or_baby(product: dict) -> bool:
+    """True when the product's CUT is kids/baby - read from the uid + the
+    GarmentCut attribute only (never free text, which may mention 'kids' in
+    cross-sell copy)."""
+    cut_src = f"{product.get('uid', '')} {product.get('attrs', {}).get('GarmentCut', '')}"
+    return bool(_norm_tokens(cut_src) & {"kids", "baby"})
+
+
+def _brand_tokens(family: str, sku: str) -> set:
+    """The blank-brand tokens of the garment this SKU belongs to (e.g. Classic
+    hoodie -> {lane, seven, ls14001}) - the tie-break that prefers OUR actual
+    blank over an equal-confidence stranger (the cropped-TriDri dry-run case)."""
+    if str(family or "") != "apparel":
+        return set()
+    try:
+        from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
+        s = str(sku or "").upper()
+        best = None
+        for g in APPAREL_CATALOG:               # longest matching prefix wins
+            if s.startswith(g.sku_prefix + "-"):
+                if best is None or len(g.sku_prefix) > len(best.sku_prefix):
+                    best = g
+        return _norm_tokens(best.brand) if best else set()
+    except Exception as exc:  # noqa: BLE001 - catalog absent -> no tie-break
+        logger.debug("brand tokens unavailable for %s: %s", sku, exc)
+        return set()
+
+
 def resolve_sku(item: dict, catalog: list[dict]) -> dict:
-    """Best Gelato product for one of our items + its confidence. A product that does not
-    positively confirm our SKU's size/capacity dimension is DISQUALIFIED before scoring
-    (never write a wrong-size UID). Returns {sku, family, uid, confidence}."""
-    best_uid, best_conf = None, 0.0
+    """Best Gelato product for one of our items + its confidence. HARD gates
+    before scoring (never write a wrong product): the SKU's size/capacity AND
+    colour dimensions must be positively confirmed, and an adult apparel SKU is
+    disqualified from kids/baby cuts. Among survivors the highest confidence
+    wins, with the garment's real blank brand as the tie-break.
+    Returns {sku, family, uid, confidence}."""
+    best_uid, best_conf, best_brand = None, 0.0, -1
+    req_col = _required_color_tokens(item["tokens"])
+    req_dim = _required_dimension_tokens(item.get("family"), item.get("sku"),
+                                         item["tokens"])
+    adult = _is_adult_apparel_sku(item.get("family"), item.get("sku"))
+    brand = _brand_tokens(item.get("family"), item.get("sku"))
     for product in catalog:
         hay = _product_hay(product)
-        if not _dimensions_confirmed(item["tokens"], hay):
+        if not _dimensions_confirmed(item["tokens"], hay, required=req_dim):
             continue                        # size/capacity unconfirmed -> not eligible
+        if req_col and not req_col <= hay:
+            continue                        # colour unconfirmed -> not eligible
+        if adult and _is_kids_or_baby(product):
+            continue                        # kids/baby can never fill an adult SKU
         c = round(len(item["tokens"] & hay) / len(item["tokens"]), 4) if item["tokens"] else 0.0
-        if c > best_conf:
-            best_uid, best_conf = product["uid"], c
+        bh = len(brand & hay)
+        if c > best_conf or (c == best_conf and bh > best_brand):
+            best_uid, best_conf, best_brand = product["uid"], c, bh
     return {"sku": item["sku"], "family": item["family"],
             "uid": best_uid, "confidence": best_conf}
 
