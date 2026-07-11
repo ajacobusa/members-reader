@@ -224,8 +224,8 @@ def _sku_tokens(family: str, sku: str) -> set[str]:
             a = _norm_tokens(ours)
             if a and a <= toks:
                 toks = (toks - a) | _norm_tokens(gelato)
-    except Exception:  # noqa: BLE001 - alias map absent -> plain tokens
-        pass
+    except Exception as exc:  # noqa: BLE001 - alias map absent -> plain tokens
+        logger.debug("colour aliases unavailable, using plain tokens: %s", exc)
     return toks
 
 
