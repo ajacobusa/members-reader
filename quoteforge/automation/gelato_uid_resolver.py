@@ -209,8 +209,24 @@ def _our_unmapped_items() -> list[dict]:
 
 def _sku_tokens(family: str, sku: str) -> set[str]:
     """The discriminating tokens for one of our SKUs: the family + the SKU's own decoded
-    parts (type/size/colour). E.g. GEL-M-TSHIRT-M-WHITE -> {tshirt, m, white, apparel,...}."""
-    return _norm_tokens(sku) | _norm_tokens(family)
+    parts (type/size/colour). E.g. GEL-M-TSHIRT-M-WHITE -> {tshirt, m, white, apparel,...}.
+
+    Colour aliases (GELATO_COLOR_ALIASES) are SUBSTITUTED: when Gelato spells a
+    colour differently (our 'Dusty Rose' is their 'dusty-pink'), requiring OUR
+    tokens ('rose') would make the variant permanently unmappable. The alias swaps
+    in the Gelato-side tokens so the resolver can find the real product; applied
+    longest-alias-first so multi-word colours can't be half-substituted."""
+    toks = _norm_tokens(sku) | _norm_tokens(family)
+    try:
+        from quoteforge.etsy.apparel_catalog import GELATO_COLOR_ALIASES
+        for ours, gelato in sorted(GELATO_COLOR_ALIASES.items(),
+                                   key=lambda kv: -len(_norm_tokens(kv[0]))):
+            a = _norm_tokens(ours)
+            if a and a <= toks:
+                toks = (toks - a) | _norm_tokens(gelato)
+    except Exception:  # noqa: BLE001 - alias map absent -> plain tokens
+        pass
+    return toks
 
 
 def _product_hay(product: dict) -> set[str]:

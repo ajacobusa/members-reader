@@ -2350,6 +2350,32 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("base_image_build_parity", False, str(exc)))
 
+    # 89) Gelato colour-alias integrity: every alias key is a REAL catalogue
+    #     colour (a typo'd key aliases nothing, silently), every value is a
+    #     Gelato-style slug, and the resolver's token substitution actually
+    #     fires (behavioral probe: 'rose' must be swapped for 'pink' on a
+    #     Dusty Rose SKU) - so aliased colours stay mappable and unaliased
+    #     colours stay untouched.
+    try:
+        from quoteforge.automation.gelato_uid_resolver import _sku_tokens as _tok89
+        from quoteforge.etsy.apparel_catalog import (GELATO_COLOR_ALIASES as _al89,
+                                                     _STD_COLORS as _std89)
+        _probs89 = [f"key {k!r} not a catalogue colour" for k in _al89
+                    if k not in _std89]
+        _probs89 += [f"value {v!r} not a slug" for v in _al89.values()
+                     if v != v.lower() or " " in v]
+        _t89 = _tok89("apparel", "GEL-M-HOODIE-M-DUSTY-ROSE")
+        if "pink" not in _t89 or "rose" in _t89:
+            _probs89.append("substitution probe failed (rose not swapped for pink)")
+        _t89n = _tok89("apparel", "GEL-M-HOODIE-M-NAVY")
+        if "navy" not in _t89n or "pink" in _t89n:
+            _probs89.append("unaliased colour was altered (navy sku)")
+        checks.append(_c("gelato_color_alias_integrity", not _probs89,
+                         f"{len(_al89)} aliases verified, substitution live"
+                         if not _probs89 else "; ".join(_probs89[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("gelato_color_alias_integrity", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

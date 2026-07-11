@@ -41,6 +41,15 @@ SIZE_UPCHARGE: dict[str, float] = {"2XL": 2.0, "3XL": 4.0, "4XL": 6.0, "5XL": 8.
 # then. The extended sizes (2XL+) carry the SIZE_UPCHARGE above.
 DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
 
+# Families Gelato prints in 4XL/5XL (live catalog survey 2026-07-10: t-shirts,
+# polos, hoodies, sweatshirts catalogs all list them; tank-tops do NOT). These
+# types get the extended run; variants stay invisible on the storefront until a
+# real approved UID backs them (fulfillability facets), so offering them here is
+# safe - never sellable before the print partner confirms.
+EXTENDED_SIZE_TYPES: frozenset[str] = frozenset(
+    {"tshirt", "longsleeve", "raglan", "polo", "hoodie", "sweatshirt"})
+EXTENDED_SIZES = ["4XL", "5XL"]
+
 
 @dataclass
 class ApparelGarment:
@@ -92,6 +101,17 @@ _STD_COLORS = ["White", "Sand", "Heather Grey", "Light Blue", "Black", "Charcoal
                "Navy", "Royal Blue", "Red", "Maroon", "Forest Green", "Sage",
                "Mustard", "Purple", "Dusty Rose", "Brown"]
 
+# OUR colour name -> the Gelato colour-uid slug when they spell it differently
+# (verified against the live Gelato Product API, 2026-07-10). The UID resolver
+# substitutes these tokens so the variant becomes mappable; the CUSTOMER-facing
+# name never changes. Only list colours whose slug (lowercase, hyphenated) does
+# NOT already equal our name - identical spellings need no alias.
+GELATO_COLOR_ALIASES: dict[str, str] = {
+    "Sage": "dusty-sage",
+    "Dusty Rose": "dusty-pink",
+    "Heather Grey": "grey-heather",
+}
+
 # (type_id, type_name, colours, genders, tiers[(tier, brand, cost)] Classic first)
 _APPAREL_TYPES = [
     ("tshirt", "T-Shirt", _STD_COLORS,
@@ -142,8 +162,10 @@ def _build_catalog() -> list[ApparelGarment]:
                     gid = f"{gender[0]}_{type_id}_{tier.lower()}"
                     name = f"{_GENDER_LABEL[gender]} {type_name} ({tier})"
                     prefix = f"GEL-{code}-{type_id.upper()}-{tier[:3].upper()}"
+                sizes = list(DEFAULT_SIZES) + (
+                    list(EXTENDED_SIZES) if type_id in EXTENDED_SIZE_TYPES else [])
                 out.append(ApparelGarment(
-                    garment_id=gid, name=name, sizes=list(DEFAULT_SIZES),
+                    garment_id=gid, name=name, sizes=sizes,
                     colors=list(colors), base_cost=cost, sku_prefix=prefix,
                     brand=brand, gender=gender, garment_type=type_id,
                     type_name=type_name, tier=tier,
