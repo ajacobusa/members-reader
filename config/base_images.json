@@ -7,7 +7,22 @@
       "side": "front",
       "file": "brand/tile-m_tshirt.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.49,
+          0.35,
+          0.55
+        ],
+        "sleeve_left": [
+          0.335,
+          0.28
+        ],
+        "sleeve_right": [
+          0.645,
+          0.28
+        ]
+      }
     },
     {
       "garment_id": "m_tshirt",
@@ -23,7 +38,22 @@
       "side": "front",
       "file": "brand/tile-w_tshirt.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.32,
+          0.5
+        ],
+        "sleeve_left": [
+          0.36,
+          0.27
+        ],
+        "sleeve_right": [
+          0.64,
+          0.27
+        ]
+      }
     },
     {
       "garment_id": "w_tshirt",
@@ -39,7 +69,14 @@
       "side": "front",
       "file": "brand/tile-m_tank.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.52,
+          0.75
+        ]
+      }
     },
     {
       "garment_id": "m_tank",
@@ -55,7 +92,14 @@
       "side": "front",
       "file": "brand/tile-w_tank.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.33,
+          0.5
+        ]
+      }
     },
     {
       "garment_id": "w_tank",
@@ -71,7 +115,22 @@
       "side": "front",
       "file": "brand/tile-m_longsleeve.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.33,
+          0.55
+        ],
+        "sleeve_left": [
+          0.345,
+          0.42
+        ],
+        "sleeve_right": [
+          0.655,
+          0.42
+        ]
+      }
     },
     {
       "garment_id": "m_longsleeve",
@@ -151,7 +210,22 @@
       "side": "front",
       "file": "brand/tile-m_hoodie.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.5,
+          0.85
+        ],
+        "sleeve_left": [
+          0.275,
+          0.59
+        ],
+        "sleeve_right": [
+          0.725,
+          0.59
+        ]
+      }
     },
     {
       "garment_id": "m_hoodie",
@@ -167,7 +241,22 @@
       "side": "front",
       "file": "brand/tile-w_hoodie.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.52,
+          0.85
+        ],
+        "sleeve_left": [
+          0.27,
+          0.6
+        ],
+        "sleeve_right": [
+          0.73,
+          0.6
+        ]
+      }
     },
     {
       "garment_id": "w_hoodie",
@@ -183,7 +272,22 @@
       "side": "front",
       "file": "brand/tile-m_sweatshirt.jpg",
       "source": "dashboard_export",
-      "added": "2026-07-10"
+      "added": "2026-07-10",
+      "zones": {
+        "front": [
+          0.5,
+          0.52,
+          0.8
+        ],
+        "sleeve_left": [
+          0.28,
+          0.58
+        ],
+        "sleeve_right": [
+          0.72,
+          0.58
+        ]
+      }
     },
     {
       "garment_id": "m_sweatshirt",
