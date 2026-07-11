@@ -3566,6 +3566,73 @@ def _cmd_real_photos(args: list[str]) -> int:
     return 0
 
 
+def _cmd_base_images(args: list[str]) -> int:
+    """Owner-updatable BASE IMAGES (real per-colour product photos). `base-images`.
+
+      base-images                     status grid: per garment x colour - which
+                                      colours the print partner can really make
+                                      (approved UID variant) and which already
+                                      have a base image (your export shopping list)
+      base-images add <file> --garment <gid> --colour <name> [--back] [--force]
+                                      validate + install a dashboard-exported photo
+                                      as base-<gid>-<colour>[-back].<ext> and
+                                      register it (then `admin rebuild-site`)
+    """
+    from quoteforge.images import base_images as bi
+    sub = args[0] if args else "status"
+    if sub == "add":
+        rest = args[1:]
+        if not rest or rest[0].startswith("--"):
+            print("usage: base-images add <file> --garment <gid> --colour <name> "
+                  "[--back] [--force]")
+            return 1
+        src, garment, colour = rest[0], "", ""
+        back = "--back" in rest
+        force = "--force" in rest
+        for i, a in enumerate(rest):
+            if a == "--garment" and i + 1 < len(rest):
+                garment = rest[i + 1]
+            if a in ("--colour", "--color") and i + 1 < len(rest):
+                colour = rest[i + 1]
+        if not garment or not colour:
+            print("usage: base-images add <file> --garment <gid> --colour <name> "
+                  "[--back] [--force]")
+            return 1
+        from pathlib import Path
+        res = bi.add_image(Path(src), garment, colour, back=back, force=force)
+        if res.get("ok"):
+            print(f"OK  installed {res['file']}")
+            print("  -> run `admin rebuild-site` so this colour shows its real photo.")
+            return 0
+        print(f"REJECTED: {res.get('reason')}")
+        return 1
+    # status grid (default)
+    from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
+    percolor = bi.percolor_front_files()
+    bad = bi.validate_registry()
+    print("Base images - per-colour REAL photo coverage")
+    print("-" * 64)
+    for g in APPAREL_CATALOG:
+        if g.tier != "Classic":
+            continue
+        real = bi.gelato_real_colors(g.garment_id)
+        have = set(percolor.get(g.garment_id, {}))
+        side_col = bi.photo_color(g.garment_id) or "-"
+        missing = [c for c in real if c not in have and c != bi.photo_color(g.garment_id)]
+        print(f"{g.garment_id:<15} side-photo colour: {side_col:<13} "
+              f"per-colour: {len(have)}/{len(real)} print-partner-real")
+        if missing:
+            print(f"{'':<15}   still to export: {', '.join(missing)}")
+    if bad:
+        print("-" * 64)
+        print(f"REGISTRY PROBLEMS ({len(bad)}):")
+        for e, reason in bad:
+            print(f"  XX {e.get('garment_id')}/{e.get('color') or '?'} "
+                  f"({e.get('side')}): {reason}")
+        return 1
+    return 0
+
+
 def _cmd_template_previews(args: list[str]) -> int:
     """List the store's template mockup previewUrls (the EARLIEST documented real product
     image - exists before any product/listing is published). `template-previews`.
@@ -3836,6 +3903,7 @@ COMMANDS = {
     "photo-overrides": _cmd_photo_overrides,
     "template-previews": _cmd_template_previews,
     "real-photos": _cmd_real_photos,
+    "base-images": _cmd_base_images,
     "template-sync": _cmd_template_sync,
     "mockup-confirm": _cmd_mockup_confirm,
     "mockup-review": _cmd_mockup_review,

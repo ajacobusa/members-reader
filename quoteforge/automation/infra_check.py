@@ -2289,6 +2289,67 @@ def check_infrastructure() -> dict:
         checks.append(_c("create_with_artwork_aborts_on_fetch_failure", False,
                          str(exc)))
 
+    # 87) BASE-IMAGE registry integrity: every entry in config/base_images.json
+    #     points at a real decodable photo, its colour is a catalogue colour of
+    #     its garment, and per-colour entries are print-partner-REAL (a real
+    #     approved UID variant backs the colour) - so we never show a photo for
+    #     a colour the print partner can't make, and a Gelato discontinuation
+    #     surfaces here the next morning instead of silently misleading buyers.
+    try:
+        from quoteforge.images import base_images as _bi87
+        _bad87 = _bi87.validate_registry()
+        _n87 = len(_bi87.load_registry()["images"])
+        ok = not _bad87 and _n87 > 0
+        checks.append(_c("base_image_registry_integrity", ok,
+                         f"{_n87} registry entries, all files present + colours "
+                         f"print-partner-verified" if ok else
+                         (f"registry empty" if _n87 == 0 else
+                          "; ".join(f"{e.get('garment_id')}/{e.get('color') or '?'}"
+                                    f" ({e.get('side')}): {r}"
+                                    for e, r in _bad87[:4]))))
+    except Exception as exc:  # noqa: BLE001 - missing module -> fail closed
+        checks.append(_c("base_image_registry_integrity", False, str(exc)))
+
+    # 88) BASE-IMAGE build parity: the PUBLISHED storefront reflects the registry
+    #     - the side-photo colour metadata in docs/app.js equals photo_color()
+    #     per garment, and every registered per-colour front for a garment that
+    #     renders appears in APPAREL_COLOR_IMG. Catches the "registry updated but
+    #     never rebuilt" and "build silently dropped a photo" drifts.
+    try:
+        import json as _json88
+        import re as _re88
+        import quoteforge as _qf88
+        from quoteforge.images import base_images as _bi88
+        _app88 = Path(_qf88.__file__).resolve().parent.parent / "docs" / "app.js"
+        _js88 = _app88.read_text(encoding="utf-8", errors="ignore") \
+            if _app88.exists() else ""
+        _mside = _re88.search(r"const APPAREL_SIDE_IMG = (\{.*?\});", _js88)
+        _mcol = _re88.search(r"const APPAREL_COLOR_IMG = (\{.*?\});", _js88)
+        if not (_mside and _mcol):
+            checks.append(_c("base_image_build_parity", False,
+                             "APPAREL_SIDE_IMG/COLOR_IMG missing from docs/app.js"))
+        else:
+            _side88 = _json88.loads(_mside.group(1))
+            _col88 = _json88.loads(_mcol.group(1))
+            _probs88 = []
+            for _gid88, _entry88 in _side88.items():
+                _want = _bi88.photo_color(_gid88)
+                if str(_entry88.get("color", "")) != _want:
+                    _probs88.append(f"{_gid88}: side colour "
+                                    f"{_entry88.get('color')!r} != registry {_want!r}")
+            for _gid88, _cols88 in _bi88.percolor_front_files().items():
+                if _gid88 not in _side88:
+                    continue           # garment not rendered (unfulfillable tile)
+                for _c88 in _cols88:
+                    if _c88 not in (_col88.get(_gid88) or {}):
+                        _probs88.append(f"{_gid88}: registered '{_c88}' photo "
+                                        f"missing from APPAREL_COLOR_IMG")
+            checks.append(_c("base_image_build_parity", not _probs88,
+                             "published page matches the base-image registry"
+                             if not _probs88 else "; ".join(_probs88[:4])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("base_image_build_parity", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

@@ -1971,11 +1971,23 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             apparel_tiers = {}
     apparel_formats_json = json.dumps(apparel_formats)
     apparel_tiers_json = json.dumps(apparel_tiers)
-    # Per-colour supplier product photos {garment_id:{colour:url}} - swaps the tile
-    # photo to the picked colour at go-live; empty (no swap) in TEST_MODE.
+    # Per-colour REAL product photos {garment_id:{colour:url}} - swaps the tile/
+    # editor/spin photo to the picked colour. Two sources, both grounded:
+    #   1. the owner's BASE-IMAGE registry (dashboard exports; works in TEST_MODE)
+    #   2. the live supplier fetch at go-live (overlays per colour - API wins).
+    apparel_color_img = {}
+    try:
+        from quoteforge.images.base_images import color_slug as _bi_slug
+        from quoteforge.images.base_images import percolor_front_files
+        for _gid_b, _colfiles in percolor_front_files().items():
+            for _cname_b, _path_b in _colfiles.items():
+                _rh = _emit(_path_b, f"base-{_gid_b}-{_bi_slug(_cname_b)}.jpg")
+                if _rh:
+                    apparel_color_img.setdefault(_gid_b, {})[_cname_b] = _rh
+    except Exception as exc:  # noqa: BLE001 - never break the build, but log
+        logger.debug("base-image per-colour photos skipped: %s", exc)
     try:
         from quoteforge.images.supplier_mockup import apparel_tile_color_images
-        apparel_color_img = {}
         for _gid_c, _colmap in apparel_tile_color_images().items():
             _safe_cols = {}
             for _cname, _curl in (_colmap or {}).items():
@@ -1984,9 +1996,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 if _rh:
                     _safe_cols[_cname] = _rh
             if _safe_cols:
-                apparel_color_img[_gid_c] = _safe_cols
-    except Exception:  # noqa: BLE001
-        apparel_color_img = {}
+                # overlay per colour so a live fetch REFINES the owner's base
+                # images (API wins for its colours) without dropping the rest
+                apparel_color_img.setdefault(_gid_c, {}).update(_safe_cols)
+    except Exception as exc:  # noqa: BLE001 - keep the registry photos on a live blip
+        logger.debug("supplier per-colour photos skipped: %s", exc)
     apparel_color_img_json = json.dumps(apparel_color_img)
     # garment NAME -> garment_id, so the editor (which knows CURGARMENT by name) can
     # look up the per-garment mockup.
@@ -2166,20 +2180,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # Front + BACK garment photos for the editor's front/back FLIP, so a buyer can
     # see and design the BACK too. garment_id -> {front, back}; back is the matching
     # print-partner back-view tile (brand/tile-<gid>-back.jpg), or the front if none.
-    # `color` is the colour the garment was ACTUALLY photographed in, verified by eye
-    # against each brand/tile-<gid>.jpg: the editor/spin may show the real photo ONLY
-    # when the buyer's selected colour IS this colour (else the recolouring silhouette
-    # keeps the swatch honest). '' = no single colour name applies (the raglans are
-    # two-tone white/grey) or an unverified future photo - never photo-match those.
-    _PHOTO_COLOR = {
-        "m_tshirt": "White", "w_tshirt": "Heather Grey",
-        "m_tank": "White", "w_tank": "White",
-        "m_longsleeve": "White", "w_longsleeve": "White",
-        "m_raglan": "", "w_raglan": "",
-        "m_polo": "White",
-        "m_hoodie": "White", "w_hoodie": "White",
-        "m_sweatshirt": "White", "w_sweatshirt": "White",
-    }
+    # `color` is the colour the garment was ACTUALLY photographed in, from the
+    # owner-updatable BASE-IMAGE registry (config/base_images.json - the verified
+    # census lives there now, not in code): the editor/spin may show the real photo
+    # ONLY when the buyer's selected colour IS this colour (else the recolouring
+    # silhouette keeps the swatch honest). '' = unregistered or no single colour
+    # name applies (the raglans are two-tone white/grey) - never photo-match those.
+    try:
+        from quoteforge.images.base_images import photo_color as _bi_photo_color
+    except Exception:  # noqa: BLE001
+        _bi_photo_color = lambda _g: ""  # noqa: E731 - registry absent -> never match
     _apparel_side_img: dict = {}
     for _gid, _front in _garment_photos.items():
         if not _front:
@@ -2192,7 +2202,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
         _apparel_side_img[_gid] = {
             "front": _front,
             "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else "",
-            "color": _PHOTO_COLOR.get(_gid, "")}
+            "color": _bi_photo_color(_gid)}
     apparel_side_img_json = json.dumps(_apparel_side_img)
 
     # Per-product tile photos for the Custom Branded Products grid, keyed by
@@ -7171,7 +7181,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var photoMatch=!!(sm&&sm.color&&sm.color===(fmt.split(' - ')[1]||''));
      if(!hasColor&&!photoMatch) return null;
      url=(typeof _tileColorUrl==='function')?_tileColorUrl(gid,(fmt.split(' - ')[1]||'')):'';
-     if(!url && sm) url=sm.front||'';
+     // front stand-in is colour-EXACT (mirrors drawArt): an uncovered colour
+     // spins the drawn garment, never a photo of a different colour.
+     if(!url && sm && photoMatch) url=sm.front||'';
      back=(sm&&sm.back)||null; cyl=false;
    }}
    if(!url) return null;
@@ -7568,7 +7580,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const _selc=(CURFMT.split(' - ')[1]||'');
      const _photoColorMatch=!!(_sm&&_sm.color&&_sm.color===_selc);
      let _u=(_side==='front')?_tileColorUrl(_gid,_selc):'';
-     if(!_u && (_hasColorPhotos||_photoColorMatch)){{ _u=(_sm&&_sm[_side])||''; }}
+     // FRONT stand-in is colour-EXACT: the per-colour photo covers its own
+     // colour, the side photo only its photographed colour - with PARTIAL
+     // per-colour coverage (owner exports arrive one at a time) an uncovered
+     // colour must fall to the recolouring silhouette, never borrow a photo
+     // of a different colour. Only the BACK view may use the side back photo
+     // when per-colour fronts exist (backs have no per-colour set).
+     if(!_u && (_photoColorMatch || (_side==='back'&&_hasColorPhotos))){{ _u=(_sm&&_sm[_side])||''; }}
      if(_u){{ const _i=_mockupImg(_u); if(_i&&_i.complete&&_i.naturalWidth) _mock=_u; }}
    }} else if(IS_MUG||IS_BRANDED||IS_CAL){{
      // Same go-live path as apparel, now for mug / branded / calendar: when the
