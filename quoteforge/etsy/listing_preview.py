@@ -2205,6 +2205,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             "front": _front,
             "back": _emit(_bk, f"tile-{_gid}-back.jpg") if _bk else "",
             "color": _bi_photo_color(_gid)}
+        try:
+            from quoteforge.images.base_images import photo_zones as _bi_zones
+            _z = _bi_zones(_gid)
+            if _z:                       # photo-measured print-frame anchors
+                _apparel_side_img[_gid]["zones"] = _z
+        except Exception as exc:  # noqa: BLE001 - zones optional, never break build
+            logger.debug("photo zones skipped for %s: %s", _gid, exc)
     apparel_side_img_json = json.dumps(_apparel_side_img)
 
     # Per-product tile photos for the Custom Branded Products grid, keyed by
@@ -4914,8 +4921,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    renderBg();                         // colour swatches (apparel/branded) / Background
    if(_PRINT){{
      autoContrastText((CURFMT.split(' - ')[1]||''));
-     BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}};      // reset the design frame position + size
-     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=1;
+     BOX=_frontDefaultBox();                  // reset the design frame position + size
+     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=BOX.s;
    }}
    if(IS_APPAREL){{
      APPLACEMENT='front';              // start on the front side (apparel only)
@@ -6306,8 +6313,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right'){{
      // Back to the on-arm long-narrow sleeve default (matches setPlacement).
      BOX=_sleeveDefaultBox(APPLACEMENT);
-   }} else {{ BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}}; }}
-   var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }}
+   }} else {{ BOX=_frontDefaultBox(); }}
+   var s=document.getElementById('mframesize'); if(s)s.value=BOX.s; drawArt(); }}
  const _PLACE_LBL={{front:'Front',back:'Back','sleeve-left':'Left sleeve','sleeve-right':'Right sleeve'}};
  // Front and back hold INDEPENDENT designs (different wording + photo + frame).
  // Snapshot the current side before flipping, then restore the other side's design.
@@ -6340,7 +6347,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }} else {{                                    // a fresh, empty side
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
-     TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; BOX={{x:0.50,y:0.35,s:1.0,sy:1.0}}; _showPhotoCtl(false);
+     TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; _showPhotoCtl(false);
+     // On the REAL photo the frame opens on the photographed chest, not the
+     // silhouette's torso spot (which sat on the model's face).
+     BOX=_frontDefaultBox();
      CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null]; LOFF={{}};
    }}
    const _sync=function(id,v){{ var e=document.getElementById(id); if(e) e.value=v; }};
@@ -6348,18 +6358,47 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
    renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }}
+ // The photo-measured default anchor for a print area - ONLY while the REAL
+ // product photo is the active base (same colour-exact rule as drawArt): the
+ // silhouette's tuned defaults don't fit the photograph (they parked the front
+ // frame on the model's FACE and the sleeve frame off the garment). Zones come
+ // from the base-image registry (owner-tunable per photo); null = keep the
+ // drawn-silhouette defaults.
+ function _photoZone(area){{
+   if(typeof IS_APPAREL==='undefined'||!IS_APPAREL) return null;
+   var gid=(typeof APPGID!=='undefined'&&APPGID[CURGARMENT])||'';
+   var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
+   if(!sm||!sm.zones) return null;
+   var sel=((typeof CURFMT!=='undefined'?CURFMT:'').split(' - ')[1]||'');
+   var perc=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]&&APPAREL_COLOR_IMG[gid][sel]);
+   var match=!!(sm.color&&sm.color===sel);
+   if(!perc&&!match) return null;        // silhouette showing -> old defaults
+   return sm.zones[area]||null;
+ }}
  // The sleeve print frame's on-open default. On a LONG sleeve (longsleeve/hoodie/
  // sweatshirt) the wording runs DOWN THE OUTER SIDE of the arm (shoulder->cuff; the
  // silhouette's outer sleeve edge is ~x0.07-0.13, cuff at y0.82), so it prints on the side
  // like a real sleeve print - NOT clustered on the inner/body edge by the shoulder. A SHORT
  // sleeve gets a small patch on the upper outer sleeve. Garment-aware so it lands on the
- // real sleeve whatever the garment.
+ // real sleeve whatever the garment - and PHOTO-aware: on the real photo the
+ // registry zone anchors the frame on the photographed arm.
  function _sleeveDefaultBox(p){{
    var _t=(typeof _garmentType==='function')?_garmentType():'';
    var _long=(_t==='longsleeve'||_t==='hoodie'||_t==='sweatshirt');
    var _l=(p==='sleeve-left');
+   var _z=_photoZone(p==='sleeve-left'?'sleeve_left':'sleeve_right');
+   if(_z) return _long ? {{x:_z[0], y:_z[1], s:(_z[2]||0.72), sy:2.4}}
+                       : {{x:_z[0], y:_z[1], s:(_z[2]||0.70), sy:1.3}};
    return _long ? {{x:(_l?0.13:0.87), y:0.52, s:0.72, sy:2.4}}    // down the outer arm
                : {{x:(_l?0.20:0.80), y:0.28, s:0.70, sy:1.3}};    // short-sleeve patch
+ }}
+ // The front/back frame's default: the photographed CHEST when the real photo
+ // is the base (registry zone), else the silhouette's tuned torso spot. One
+ // chokepoint - product open, resetFrame and a fresh side all use it.
+ function _frontDefaultBox(){{
+   var _fz=(typeof _photoZone==='function')?_photoZone('front'):null;
+   return _fz ? {{x:_fz[0], y:_fz[1], s:(_fz[2]||1.0), sy:1.0}}
+              : {{x:0.50, y:0.35, s:1.0, sy:1.0}};
  }}
  // == SLEEVE EDITING CONTRACT (keep true; pinned by test_sleeve_editing_contract) =========
  // A sleeve (sleeve-left/right) is an independent print area, enabled only with MULTI_AREA.

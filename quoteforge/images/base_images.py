@@ -83,6 +83,45 @@ def photo_color(garment_id: str, side: str = "front") -> str:
     return ""
 
 
+_ZONE_KEYS = frozenset({"front", "back", "sleeve_left", "sleeve_right"})
+
+
+def photo_zones(garment_id: str) -> dict:
+    """The photo-measured default print-frame anchors for a garment's photo:
+    {area: [x, y(, scale)]} in canvas fractions (the photo overlays the canvas
+    1:1). Measured against the ACTUAL photograph - the drawn-silhouette
+    defaults put the frame on the model's face / off the arm. {} = none
+    registered (the editor keeps the silhouette defaults)."""
+    try:
+        for e in load_registry()["images"]:
+            if (e.get("garment_id") == garment_id and e.get("side") == "front"
+                    and not e.get("percolor")):
+                z = e.get("zones")
+                return dict(z) if isinstance(z, dict) else {}
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("photo_zones(%s): %s", garment_id, exc)
+    return {}
+
+
+def _zone_problem(zones) -> str:
+    """'' when a zones dict is sane, else the first problem (bad key, off-canvas
+    anchor, wild scale) - a mistyped zone must fail the daily guard, not park a
+    frame off the garment."""
+    if not isinstance(zones, dict):
+        return "zones is not a dict"
+    for k, v in zones.items():
+        if k not in _ZONE_KEYS:
+            return f"unknown zone {k!r}"
+        if (not isinstance(v, (list, tuple)) or not 2 <= len(v) <= 3
+                or not all(isinstance(n, (int, float)) for n in v)):
+            return f"zone {k!r} must be [x, y(, scale)] numbers"
+        if not (0.0 < v[0] < 1.0 and 0.0 < v[1] < 1.0):
+            return f"zone {k!r} anchor {v[:2]} is off the canvas (0..1)"
+        if len(v) > 2 and not (0.2 <= v[2] <= 1.5):
+            return f"zone {k!r} scale {v[2]} outside 0.2..1.5"
+    return ""
+
+
 def percolor_front_files() -> dict:
     """{garment_id: {colour: Path}} for registered PER-COLOUR front photos that
     exist on disk - the local (dashboard-export) source of APPAREL_COLOR_IMG."""
@@ -221,4 +260,9 @@ def validate_registry() -> list:
             elif col not in gelato_real_colors(gid):
                 bad.append((e, f"print partner has no approved '{col}' variant "
                                f"for {gid}"))
+            continue
+        if "zones" in e:
+            zp = _zone_problem(e.get("zones"))
+            if zp:
+                bad.append((e, zp))
     return bad

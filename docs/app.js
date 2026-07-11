@@ -298,7 +298,7 @@
  const APPAREL_COLOR_IMG = {};
  // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
  // and the buyer can design the back too: {garment_id:{front,back}}.
- const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg", "color": "White"}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg", "color": "Heather Grey"}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg", "color": "White"}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg", "color": "White"}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg", "color": "White"}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg", "color": "White"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg", "color": ""}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg", "color": ""}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg", "color": "White"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg", "color": "White"}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg", "color": "White"}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg", "color": "White"}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg", "color": "White"}};
+ const APPAREL_SIDE_IMG = {"m_tshirt": {"front": "assets/tile-m_tshirt.jpg", "back": "assets/tile-m_tshirt-back.jpg", "color": "White", "zones": {"front": [0.49, 0.35, 0.55], "sleeve_left": [0.335, 0.28], "sleeve_right": [0.645, 0.28]}}, "w_tshirt": {"front": "assets/tile-w_tshirt.jpg", "back": "assets/tile-w_tshirt-back.jpg", "color": "Heather Grey", "zones": {"front": [0.5, 0.32, 0.5], "sleeve_left": [0.36, 0.27], "sleeve_right": [0.64, 0.27]}}, "m_tank": {"front": "assets/tile-m_tank.jpg", "back": "assets/tile-m_tank-back.jpg", "color": "White", "zones": {"front": [0.5, 0.52, 0.75]}}, "w_tank": {"front": "assets/tile-w_tank.jpg", "back": "assets/tile-w_tank-back.jpg", "color": "White", "zones": {"front": [0.5, 0.33, 0.5]}}, "m_longsleeve": {"front": "assets/tile-m_longsleeve.jpg", "back": "assets/tile-m_longsleeve-back.jpg", "color": "White", "zones": {"front": [0.5, 0.33, 0.55], "sleeve_left": [0.345, 0.42], "sleeve_right": [0.655, 0.42]}}, "w_longsleeve": {"front": "assets/tile-w_longsleeve.jpg", "back": "assets/tile-w_longsleeve-back.jpg", "color": "White"}, "m_raglan": {"front": "assets/tile-m_raglan.jpg", "back": "assets/tile-m_raglan-back.jpg", "color": ""}, "w_raglan": {"front": "assets/tile-w_raglan.jpg", "back": "assets/tile-w_raglan-back.jpg", "color": ""}, "m_polo": {"front": "assets/tile-m_polo.jpg", "back": "assets/tile-m_polo-back.jpg", "color": "White"}, "m_hoodie": {"front": "assets/tile-m_hoodie.jpg", "back": "assets/tile-m_hoodie-back.jpg", "color": "White", "zones": {"front": [0.5, 0.5, 0.85], "sleeve_left": [0.275, 0.59], "sleeve_right": [0.725, 0.59]}}, "w_hoodie": {"front": "assets/tile-w_hoodie.jpg", "back": "assets/tile-w_hoodie-back.jpg", "color": "White", "zones": {"front": [0.5, 0.52, 0.85], "sleeve_left": [0.27, 0.6], "sleeve_right": [0.73, 0.6]}}, "m_sweatshirt": {"front": "assets/tile-m_sweatshirt.jpg", "back": "assets/tile-m_sweatshirt-back.jpg", "color": "White", "zones": {"front": [0.5, 0.52, 0.8], "sleeve_left": [0.28, 0.58], "sleeve_right": [0.72, 0.58]}}, "w_sweatshirt": {"front": "assets/tile-w_sweatshirt.jpg", "back": "assets/tile-w_sweatshirt-back.jpg", "color": "White"}};
  const APPGID = {"Men's T-Shirt": "m_tshirt", "Men's T-Shirt (Value)": "m_tshirt_value", "Men's T-Shirt (Premium)": "m_tshirt_premium", "Women's T-Shirt": "w_tshirt", "Women's T-Shirt (Value)": "w_tshirt_value", "Women's T-Shirt (Premium)": "w_tshirt_premium", "Men's Tank Top": "m_tank", "Men's Tank Top (Value)": "m_tank_value", "Men's Tank Top (Premium)": "m_tank_premium", "Women's Tank Top": "w_tank", "Women's Tank Top (Value)": "w_tank_value", "Women's Tank Top (Premium)": "w_tank_premium", "Men's Long Sleeve Shirt": "m_longsleeve", "Men's Long Sleeve Shirt (Value)": "m_longsleeve_value", "Men's Long Sleeve Shirt (Premium)": "m_longsleeve_premium", "Women's Long Sleeve Shirt": "w_longsleeve", "Women's Long Sleeve Shirt (Value)": "w_longsleeve_value", "Women's Long Sleeve Shirt (Premium)": "w_longsleeve_premium", "Men's 3/4 Sleeve Shirt": "m_raglan", "Men's 3/4 Sleeve Shirt (Value)": "m_raglan_value", "Men's 3/4 Sleeve Shirt (Premium)": "m_raglan_premium", "Women's 3/4 Sleeve Shirt": "w_raglan", "Women's 3/4 Sleeve Shirt (Value)": "w_raglan_value", "Women's 3/4 Sleeve Shirt (Premium)": "w_raglan_premium", "Men's Polo Shirt": "m_polo", "Men's Polo Shirt (Value)": "m_polo_value", "Men's Polo Shirt (Premium)": "m_polo_premium", "Men's Hoodie": "m_hoodie", "Men's Hoodie (Value)": "m_hoodie_value", "Men's Hoodie (Premium)": "m_hoodie_premium", "Women's Hoodie": "w_hoodie", "Women's Hoodie (Value)": "w_hoodie_value", "Women's Hoodie (Premium)": "w_hoodie_premium", "Men's Sweatshirt": "m_sweatshirt", "Men's Sweatshirt (Value)": "m_sweatshirt_value", "Men's Sweatshirt (Premium)": "m_sweatshirt_premium", "Women's Sweatshirt": "w_sweatshirt", "Women's Sweatshirt (Value)": "w_sweatshirt_value", "Women's Sweatshirt (Premium)": "w_sweatshirt_premium"};            // garment name -> garment_id (editor lookup)
  const APPHASSLEEVES = {"Men's T-Shirt": true, "Men's T-Shirt (Value)": true, "Men's T-Shirt (Premium)": true, "Women's T-Shirt": true, "Women's T-Shirt (Value)": true, "Women's T-Shirt (Premium)": true, "Men's Tank Top": false, "Men's Tank Top (Value)": false, "Men's Tank Top (Premium)": false, "Women's Tank Top": false, "Women's Tank Top (Value)": false, "Women's Tank Top (Premium)": false, "Men's Long Sleeve Shirt": true, "Men's Long Sleeve Shirt (Value)": true, "Men's Long Sleeve Shirt (Premium)": true, "Women's Long Sleeve Shirt": true, "Women's Long Sleeve Shirt (Value)": true, "Women's Long Sleeve Shirt (Premium)": true, "Men's 3/4 Sleeve Shirt": true, "Men's 3/4 Sleeve Shirt (Value)": true, "Men's 3/4 Sleeve Shirt (Premium)": true, "Women's 3/4 Sleeve Shirt": true, "Women's 3/4 Sleeve Shirt (Value)": true, "Women's 3/4 Sleeve Shirt (Premium)": true, "Men's Polo Shirt": true, "Men's Polo Shirt (Value)": true, "Men's Polo Shirt (Premium)": true, "Men's Hoodie": true, "Men's Hoodie (Value)": true, "Men's Hoodie (Premium)": true, "Women's Hoodie": true, "Women's Hoodie (Value)": true, "Women's Hoodie (Premium)": true, "Men's Sweatshirt": true, "Men's Sweatshirt (Value)": true, "Men's Sweatshirt (Premium)": true, "Women's Sweatshirt": true, "Women's Sweatshirt (Value)": true, "Women's Sweatshirt (Premium)": true};   // garment name -> has printable sleeves (#tank)
  // A garment has printable sleeves unless the catalog says otherwise (tank = sleeveless).
@@ -681,8 +681,8 @@
    renderBg();                         // colour swatches (apparel/branded) / Background
    if(_PRINT){
      autoContrastText((CURFMT.split(' - ')[1]||''));
-     BOX={x:0.50,y:0.35,s:1.0,sy:1.0};      // reset the design frame position + size
-     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=1;
+     BOX=_frontDefaultBox();                  // reset the design frame position + size
+     var _fs=document.getElementById('mframesize'); if(_fs) _fs.value=BOX.s;
    }
    if(IS_APPAREL){
      APPLACEMENT='front';              // start on the front side (apparel only)
@@ -2073,8 +2073,8 @@
    if(APPLACEMENT==='sleeve-left'||APPLACEMENT==='sleeve-right'){
      // Back to the on-arm long-narrow sleeve default (matches setPlacement).
      BOX=_sleeveDefaultBox(APPLACEMENT);
-   } else { BOX={x:0.50,y:0.35,s:1.0,sy:1.0}; }
-   var s=document.getElementById('mframesize'); if(s)s.value=1; drawArt(); }
+   } else { BOX=_frontDefaultBox(); }
+   var s=document.getElementById('mframesize'); if(s)s.value=BOX.s; drawArt(); }
  const _PLACE_LBL={front:'Front',back:'Back','sleeve-left':'Left sleeve','sleeve-right':'Right sleeve'};
  // Front and back hold INDEPENDENT designs (different wording + photo + frame).
  // Snapshot the current side before flipping, then restore the other side's design.
@@ -2107,7 +2107,10 @@
    } else {                                    // a fresh, empty side
      if(ta) ta.value=''; CURQUOTE='';
      PHOTO=null; PHOTO_ZOOM=1; PHOTO_FX=0.5; PHOTO_FY=0.5;
-     TPOS={x:0.5,y:0.5}; TSIZE=0; TROT=0; BOX={x:0.50,y:0.35,s:1.0,sy:1.0}; _showPhotoCtl(false);
+     TPOS={x:0.5,y:0.5}; TSIZE=0; TROT=0; _showPhotoCtl(false);
+     // On the REAL photo the frame opens on the photographed chest, not the
+     // silhouette's torso spot (which sat on the model's face).
+     BOX=_frontDefaultBox();
      CURLAYOUT='freeform'; SLOTS=_emptySlots(); COLLAGE=[null,null,null,null]; LOFF={};
    }
    const _sync=function(id,v){ var e=document.getElementById(id); if(e) e.value=v; };
@@ -2115,18 +2118,47 @@
    var cc=document.getElementById('mcc'); if(cc&&ta) cc.textContent=ta.value.length+' / '+MAXCHARS;
    renderLayoutGallery(); renderSlotInputs();   // reflect the restored side's layout
  }
+ // The photo-measured default anchor for a print area - ONLY while the REAL
+ // product photo is the active base (same colour-exact rule as drawArt): the
+ // silhouette's tuned defaults don't fit the photograph (they parked the front
+ // frame on the model's FACE and the sleeve frame off the garment). Zones come
+ // from the base-image registry (owner-tunable per photo); null = keep the
+ // drawn-silhouette defaults.
+ function _photoZone(area){
+   if(typeof IS_APPAREL==='undefined'||!IS_APPAREL) return null;
+   var gid=(typeof APPGID!=='undefined'&&APPGID[CURGARMENT])||'';
+   var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
+   if(!sm||!sm.zones) return null;
+   var sel=((typeof CURFMT!=='undefined'?CURFMT:'').split(' - ')[1]||'');
+   var perc=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]&&APPAREL_COLOR_IMG[gid][sel]);
+   var match=!!(sm.color&&sm.color===sel);
+   if(!perc&&!match) return null;        // silhouette showing -> old defaults
+   return sm.zones[area]||null;
+ }
  // The sleeve print frame's on-open default. On a LONG sleeve (longsleeve/hoodie/
  // sweatshirt) the wording runs DOWN THE OUTER SIDE of the arm (shoulder->cuff; the
  // silhouette's outer sleeve edge is ~x0.07-0.13, cuff at y0.82), so it prints on the side
  // like a real sleeve print - NOT clustered on the inner/body edge by the shoulder. A SHORT
  // sleeve gets a small patch on the upper outer sleeve. Garment-aware so it lands on the
- // real sleeve whatever the garment.
+ // real sleeve whatever the garment - and PHOTO-aware: on the real photo the
+ // registry zone anchors the frame on the photographed arm.
  function _sleeveDefaultBox(p){
    var _t=(typeof _garmentType==='function')?_garmentType():'';
    var _long=(_t==='longsleeve'||_t==='hoodie'||_t==='sweatshirt');
    var _l=(p==='sleeve-left');
+   var _z=_photoZone(p==='sleeve-left'?'sleeve_left':'sleeve_right');
+   if(_z) return _long ? {x:_z[0], y:_z[1], s:(_z[2]||0.72), sy:2.4}
+                       : {x:_z[0], y:_z[1], s:(_z[2]||0.70), sy:1.3};
    return _long ? {x:(_l?0.13:0.87), y:0.52, s:0.72, sy:2.4}    // down the outer arm
                : {x:(_l?0.20:0.80), y:0.28, s:0.70, sy:1.3};    // short-sleeve patch
+ }
+ // The front/back frame's default: the photographed CHEST when the real photo
+ // is the base (registry zone), else the silhouette's tuned torso spot. One
+ // chokepoint - product open, resetFrame and a fresh side all use it.
+ function _frontDefaultBox(){
+   var _fz=(typeof _photoZone==='function')?_photoZone('front'):null;
+   return _fz ? {x:_fz[0], y:_fz[1], s:(_fz[2]||1.0), sy:1.0}
+              : {x:0.50, y:0.35, s:1.0, sy:1.0};
  }
  // == SLEEVE EDITING CONTRACT (keep true; pinned by test_sleeve_editing_contract) =========
  // A sleeve (sleeve-left/right) is an independent print area, enabled only with MULTI_AREA.
