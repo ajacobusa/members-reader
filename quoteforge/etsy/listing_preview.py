@@ -1918,7 +1918,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
                 build_apparel_variations, APPAREL_CATALOG)
             _ap_from: dict = {}
             _gid_from: dict = {}        # garment_id -> cheapest variant price
-            _size_order = ["S", "M", "L", "XL", "2XL", "3XL"]
+            # FULL size run (XS..5XL): a size missing here sorts LAST in the
+            # editor's size menu - XS used to render after 3XL on the tank.
+            _size_order = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]
             # Canonical colour order (light-forward, White first) so each garment's
             # pills/swatches/default open on White - not alphabetical "Black".
             _corder = {c: i for i, c in enumerate(

@@ -26,14 +26,18 @@ def test_no_opportunities_when_in_sync():
 
 
 def test_review_uses_injected_fetch_and_our_real_inventory():
-    # inject a fetch offering a 4XL the apparel catalog doesn't carry (we now sell
-    # XS-3XL, so 4XL is the opportunity size Gelato has that we don't).
+    # inject a fetch offering a 6XL the apparel catalog doesn't carry (the run is
+    # XS-5XL since the 4XL/5XL expansion, so 6XL is the opportunity size Gelato
+    # "has" that we don't).
     def fake_fetch(catalog, attr):
-        return {"S", "M", "L", "XL", "2XL", "3XL", "4XL"} if "shirt" in catalog else set()
+        return ({"S", "M", "L", "XL", "2XL", "3XL", "4XL", "6XL"}
+                if "shirt" in catalog else set())
 
     res = review_opportunities(fetch_sizes=fake_fetch,
                                dept_attr={"apparel": ("t-shirts", "GarmentSize")})
-    assert "4XL" in res.get("apparel", {}).get("could_add", [])
+    assert "6XL" in res.get("apparel", {}).get("could_add", [])
+    # 4XL is sold now - it must NOT be reported as an opportunity
+    assert "4XL" not in res.get("apparel", {}).get("could_add", [])
 
 
 def test_our_inventory_has_real_departments():
