@@ -35,8 +35,10 @@ def test_zero_coverage_garment_drops_tile():
     facets = F.fulfillable_apparel_facets(by["m_tshirt"])
     assert facets is not None
     colors, sizes = facets
-    assert "Heather Grey" not in colors and "XS" not in sizes
-    assert "White" in colors and "M" in sizes
+    # Royal Blue has no approved UID; Heather Grey gained one 2026-07-12
+    # (verifier-approved sports-grey), so it moved to the offered set.
+    assert "Royal Blue" not in colors and "XS" not in sizes
+    assert "White" in colors and "Heather Grey" in colors and "M" in sizes
 
 
 def test_mug_and_branded_facets():
@@ -64,8 +66,11 @@ def test_built_page_offers_no_unfulfillable_format():
     m = re.search(r"const SIZEMAP\s*=\s*(\{.*?\});", app.read_text(encoding="utf-8"), re.S)
     assert m, "SIZEMAP not found in built app.js"
     keys = list(json.loads(m.group(1)).keys())
+    # Heather Grey left this list 2026-07-12: the verifier approved the
+    # generic family's sports-grey (its heather grey) for men's tees/hoodies/
+    # sweatshirts, so it is now a REAL orderable colour.
     banned = ("Colour-Interior", "Accent Mug", "3/4 Sleeve", "Polo Shirt",
-              "Water Bottle", "Tumbler", "Heather Grey")
+              "Water Bottle", "Tumbler")
     offenders = [k for k in keys if any(b in k for b in banned)]
     assert not offenders, f"unfulfillable orderable formats on the page: {offenders[:5]}"
 

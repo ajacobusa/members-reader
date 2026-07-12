@@ -91,16 +91,21 @@ def test_extended_sizes_are_margin_priced():
     assert v4.margin_pct >= v3.margin_pct - 1    # margin held, not eroded
 
 
-def test_new_sizes_stay_hidden_until_uid_approved():
-    # REGRESSION: the storefront must NOT offer 4XL/5XL while no approved UID
-    # backs them - the fulfillability facets filter them out exactly like an
-    # unbacked colour (never sell what can't be made).
+def test_new_sizes_follow_uid_approval_exactly():
+    # REGRESSION: the storefront offers 4XL/5XL EXACTLY where an approved UID
+    # backs them (never sell what can't be made, never hide what can). As of
+    # 2026-07-12 the verifier-approved set covers m_hoodie 4XL/5XL; m_tshirt's
+    # 4XL/5XL are HELD (heavy-weight tier substitution awaiting the owner), so
+    # they must stay hidden.
     from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
     from quoteforge.etsy.fulfillability import fulfillable_apparel_facets
-    g = next(x for x in APPAREL_CATALOG if x.garment_id == "m_hoodie")
-    facets = fulfillable_apparel_facets(g)
-    assert facets is not None
-    assert "4XL" not in facets[1] and "5XL" not in facets[1]
+    by = {g.garment_id: g for g in APPAREL_CATALOG}
+    hoodie = fulfillable_apparel_facets(by["m_hoodie"])
+    assert hoodie is not None
+    assert "4XL" in hoodie[1] and "5XL" in hoodie[1]
+    tee = fulfillable_apparel_facets(by["m_tshirt"])
+    assert tee is not None
+    assert "4XL" not in tee[1] and "5XL" not in tee[1]
 
 
 def test_resolver_dimension_tokens_cover_new_sizes():
