@@ -4,7 +4,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -30,7 +30,7 @@
       "category": "bottle",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -56,13 +56,12 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "mug_product_msz_11-oz_mmat_ceramic-white_cl_4-0",
       "live": null,
       "match": {
         "at": null,
@@ -82,7 +81,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -108,7 +107,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -134,7 +133,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -160,13 +159,12 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "mug_product_msz_12-oz-enamel_mmat_metal-enamel-white_cl_4-0",
       "live": null,
       "match": {
         "at": null,
@@ -186,7 +184,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -212,7 +210,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -238,7 +236,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -264,7 +262,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -290,13 +288,12 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "mug_product_msz_15-oz_mmat_ceramic-white_cl_4-0",
       "live": null,
       "match": {
         "at": null,
@@ -316,13 +313,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_hoodie_gsc_pullover_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -335,20 +331,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-HOODIE-XS-WHITE",
+      "sku": "GEL-M-HOODIE-S-WHITE",
       "status": "skipped"
     },
     "m_hoodie_premium": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_hoodie_gsc_pullover_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -361,20 +356,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-HOODIE-PRE-XS-WHITE",
+      "sku": "GEL-M-HOODIE-PRE-S-WHITE",
       "status": "skipped"
     },
     "m_hoodie_value": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_hoodie_gsc_pullover_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -387,20 +381,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-HOODIE-VAL-XS-WHITE",
+      "sku": "GEL-M-HOODIE-VAL-S-WHITE",
       "status": "skipped"
     },
     "m_longsleeve": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_longsleeve-crew_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -413,20 +406,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-LONGSLEEVE-XS-WHITE",
+      "sku": "GEL-M-LONGSLEEVE-S-WHITE",
       "status": "skipped"
     },
     "m_longsleeve_premium": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_longsleeve-crew_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -439,20 +431,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-LONGSLEEVE-PRE-XS-WHITE",
+      "sku": "GEL-M-LONGSLEEVE-PRE-S-WHITE",
       "status": "skipped"
     },
     "m_longsleeve_value": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_longsleeve-crew_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -465,14 +456,14 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-LONGSLEEVE-VAL-XS-WHITE",
+      "sku": "GEL-M-LONGSLEEVE-VAL-S-WHITE",
       "status": "skipped"
     },
     "m_polo": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -498,7 +489,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -524,7 +515,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -550,7 +541,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -576,7 +567,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -602,7 +593,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -628,13 +619,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_sweatshirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -647,20 +637,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-SWEATSHIRT-XS-WHITE",
+      "sku": "GEL-M-SWEATSHIRT-S-WHITE",
       "status": "skipped"
     },
     "m_sweatshirt_premium": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_sweatshirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -673,20 +662,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-SWEATSHIRT-PRE-XS-WHITE",
+      "sku": "GEL-M-SWEATSHIRT-PRE-S-WHITE",
       "status": "skipped"
     },
     "m_sweatshirt_value": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_sweatshirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -699,20 +687,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-SWEATSHIRT-VAL-XS-WHITE",
+      "sku": "GEL-M-SWEATSHIRT-VAL-S-WHITE",
       "status": "skipped"
     },
     "m_tank": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_tank-top_gcu_unisex_gqa_prm_gsi_xs_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -732,13 +719,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_tank-top_gcu_unisex_gqa_prm_gsi_xs_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -758,13 +744,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_tank-top_gcu_unisex_gqa_prm_gsi_xs_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -784,13 +769,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -803,20 +787,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-TSHIRT-XS-WHITE",
+      "sku": "GEL-M-TSHIRT-S-WHITE",
       "status": "skipped"
     },
     "m_tshirt_premium": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -829,20 +812,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-TSHIRT-PRE-XS-WHITE",
+      "sku": "GEL-M-TSHIRT-PRE-S-WHITE",
       "status": "skipped"
     },
     "m_tshirt_value": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -855,14 +837,14 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-M-TSHIRT-VAL-XS-WHITE",
+      "sku": "GEL-M-TSHIRT-VAL-S-WHITE",
       "status": "skipped"
     },
     "mousepad": {
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -888,7 +870,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -914,7 +896,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -940,7 +922,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -966,7 +948,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -992,7 +974,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1018,13 +1000,12 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_natural_bpr_4-0",
       "live": null,
       "match": {
         "at": null,
@@ -1044,13 +1025,12 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "mug_product_msz_15-oz-travel_mmat_stainless-steel-white_cl_4-0",
       "live": null,
       "match": {
         "at": null,
@@ -1070,7 +1050,7 @@
       "category": "bottle",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1096,13 +1076,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_hoodie_gsc_pullover_gcu_womens_gqa_prm_gsi_xs_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1122,13 +1101,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_hoodie_gsc_pullover_gcu_womens_gqa_prm_gsi_xs_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1148,13 +1126,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_hoodie_gsc_pullover_gcu_womens_gqa_prm_gsi_xs_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1174,7 +1151,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1200,7 +1177,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1226,7 +1203,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1252,7 +1229,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1278,7 +1255,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1304,7 +1281,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1330,7 +1307,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1356,7 +1333,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1382,7 +1359,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1408,13 +1385,12 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_tank-top_gcu_womens_gqa_performance_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1427,20 +1403,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-W-TANK-XS-WHITE",
+      "sku": "GEL-W-TANK-S-WHITE",
       "status": "skipped"
     },
     "w_tank_premium": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_tank-top_gcu_womens_gqa_performance_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1453,20 +1428,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-W-TANK-PRE-XS-WHITE",
+      "sku": "GEL-W-TANK-PRE-S-WHITE",
       "status": "skipped"
     },
     "w_tank_value": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_tank-top_gcu_womens_gqa_performance_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1479,20 +1453,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-W-TANK-VAL-XS-WHITE",
+      "sku": "GEL-W-TANK-VAL-S-WHITE",
       "status": "skipped"
     },
     "w_tshirt": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_crewneck_gcu_womens_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1505,20 +1478,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-W-TSHIRT-XS-WHITE",
+      "sku": "GEL-W-TSHIRT-S-WHITE",
       "status": "skipped"
     },
     "w_tshirt_premium": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_crewneck_gcu_womens_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1531,20 +1503,19 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-W-TSHIRT-PRE-XS-WHITE",
+      "sku": "GEL-W-TSHIRT-PRE-S-WHITE",
       "status": "skipped"
     },
     "w_tshirt_value": {
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "apparel_product_gca_t-shirt_gsc_crewneck_gcu_womens_gqa_classic_gsi_s_gco_white_gpr_0-4",
       "live": null,
       "match": {
         "at": null,
@@ -1557,14 +1528,14 @@
         "reasons": null,
         "verdict": null
       },
-      "sku": "GEL-W-TSHIRT-VAL-XS-WHITE",
+      "sku": "GEL-W-TSHIRT-VAL-S-WHITE",
       "status": "skipped"
     },
     "wall_cal": {
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
+          "at": "2026-07-12T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1590,13 +1561,12 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-07-11T05:40:03+00:00",
-          "ok": false,
-          "reason": "no real UID / placeholder"
+          "at": "2026-07-12T05:40:02+00:00",
+          "ok": true
         }
       },
       "confirmed": false,
-      "gelato_uid": null,
+      "gelato_uid": "mug_product_msz_17-oz-tall_mmat_ceramic-white_cl_4-0",
       "live": null,
       "match": {
         "at": null,
@@ -1613,6 +1583,6 @@
       "status": "skipped"
     }
   },
-  "updated_utc": "2026-07-11T05:46:02+00:00",
+  "updated_utc": "2026-07-12T05:46:02+00:00",
   "version": 1
 }
