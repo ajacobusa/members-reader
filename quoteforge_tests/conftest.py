@@ -25,6 +25,17 @@ def _asset_images() -> set:
 
 
 @pytest.fixture(autouse=True)
+def _hermetic_runtime_uid_map(monkeypatch):
+    """REGRESSION: once the operator's .env sets GELATO_UID_MAP_FILE (the
+    documented go-live config, added 2026-07-11), the suite inherited 1,020
+    REAL UIDs ambiently and every test assuming an empty runtime map failed.
+    Tests must be hermetic against operator .env state: the runtime-map env is
+    cleared here; a test that wants a map sets it explicitly (monkeypatch)."""
+    monkeypatch.delenv("GELATO_UID_MAP", raising=False)
+    monkeypatch.delenv("GELATO_UID_MAP_FILE", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _no_writes_to_real_docs_assets(request):
     """REGRESSION: name the test that pollutes the real docs/assets dir."""
     before = _asset_images()
