@@ -250,10 +250,19 @@ def _dimensions_confirmed(our_tokens: set[str], product_hay: set[str],
     """True when EVERY size/capacity dimension token in our SKU is present in the product.
     A size-specific SKU can only match a product that positively names that size - so a
     size-agnostic (or wrong-size) product is DISQUALIFIED, never guessed. Pass
-    ``required`` when the caller has parsed the dimensions structurally (apparel)."""
+    ``required`` when the caller has parsed the dimensions structurally (apparel).
+    A capacity is satisfied by EITHER spelling: our '11oz' compound token or
+    Gelato's '11-oz' split pair ({'11','oz'})."""
     if required is None:
         required = our_tokens & _DIMENSION_TOKENS
-    return required <= product_hay          # empty required -> trivially True
+    for t in required:
+        m = re.fullmatch(r"(\d+)(oz)", t)
+        if m:
+            if t not in product_hay and not {m.group(1), m.group(2)} <= product_hay:
+                return False
+        elif t not in product_hay:
+            return False
+    return True
 
 
 _APPAREL_SIZE_TOKENS = frozenset(
@@ -332,27 +341,115 @@ def _brand_tokens(family: str, sku: str) -> set:
         return set()
 
 
+_SIZE_SYNONYMS = {"xxl": "2xl", "xxxl": "3xl"}    # Gelato uses both spellings
+
+
+def _norm_size_tokens(tokens: set) -> set:
+    """Size tokens with Gelato's alternate spellings normalised (xxl==2xl)."""
+    return {_SIZE_SYNONYMS.get(t, t) for t in tokens}
+
+
+def _expand_capacities(tokens: set) -> set:
+    """Tokens plus split capacity pairs: our '11oz' also yields {'11','oz'}, so
+    Gelato's '11-oz' spelling (which tokenises to the pair) can match. Round-2
+    top-30 lesson: every mug scored 0.0 without this."""
+    out = set(tokens)
+    for t in tokens:
+        m = re.fullmatch(r"(\d+)(oz)", t)
+        if m:
+            out |= {m.group(1), m.group(2)}
+    return out
+
+
+# Our garment_type -> the Gelato category value(s) (gca_/GarmentCategory) that
+# may fill it. Grounded against the live catalogs (gca_t-shirt, gca_hoodie...).
+# longsleeve/raglan are deliberately ABSENT (their Gelato category is not yet
+# confirmed - ungated rather than wrongly gated; the colour/size/gender gates
+# still apply).
+_TYPE_CATEGORIES = {"tshirt": {"t-shirt", "tshirt"}, "hoodie": {"hoodie"},
+                    "tank": {"tank-top", "tank"}, "sweatshirt": {"sweatshirt"},
+                    "polo": {"polo", "polo-shirt"}}
+
+
+def _product_category(product: dict) -> str:
+    """The product's garment category value ('hoodie', 't-shirt', ...) from the
+    uid's gca_ segment or the GarmentCategory attribute; '' when unstated."""
+    m = re.search(r"gca_([a-z0-9-]+?)(?:_g|$)", str(product.get("uid") or ""))
+    if m:
+        return m.group(1)
+    return str(product.get("attrs", {}).get("GarmentCategory") or "").lower()
+
+
+def _product_cut(product: dict) -> str:
+    """The product's cut value ('mens'/'womens'/'unisex'/'kids'/'baby') from
+    the uid's gcu_ segment or the GarmentCut attribute; '' when unstated."""
+    m = re.search(r"gcu_([a-z0-9-]+?)(?:_g|$)", str(product.get("uid") or ""))
+    if m:
+        return m.group(1)
+    return str(product.get("attrs", {}).get("GarmentCut") or "").lower()
+
+
+def _product_size_value_tokens(product: dict) -> set:
+    """The tokens of the product's SIZE/CAPACITY VALUE (GarmentSize/MugSize
+    attr, else the gsi_/msz_ uid segment) - e.g. 'l-xl' -> {l, xl},
+    '15-oz-travel' -> {15, oz, travel}. Empty when the product states none."""
+    for key in ("GarmentSize", "MugSize"):
+        v = product.get("attrs", {}).get(key)
+        if v:
+            return _norm_size_tokens(_norm_tokens(v))
+    m = re.search(r"(?:gsi|msz)_([a-z0-9-]+?)(?:_(?:gco|gpr|gqa|mmat|cl)_|$)",
+                  str(product.get("uid") or ""))
+    return _norm_size_tokens(_norm_tokens(m.group(1))) if m else set()
+
+
+_GENDER_ALLOWED_CUTS = {"m": {"mens", "men", "unisex", ""},
+                        "w": {"womens", "women", "ladies", "unisex", ""}}
+
+
 def resolve_sku(item: dict, catalog: list[dict]) -> dict:
     """Best Gelato product for one of our items + its confidence. HARD gates
-    before scoring (never write a wrong product): the SKU's size/capacity AND
-    colour dimensions must be positively confirmed, and an adult apparel SKU is
-    disqualified from kids/baby cuts. Among survivors the highest confidence
-    wins, with the garment's real blank brand as the tie-break.
-    Returns {sku, family, uid, confidence}."""
+    before scoring (never write a wrong product), each one a lesson from a
+    live dry-run review: size/capacity AND colour positively confirmed, the
+    product's size VALUE fully named by our SKU (a combo l-xl never fills an
+    exact L), garment TYPE and GENDER in agreement, kids/baby never filling an
+    adult SKU. Among survivors the highest confidence wins, with the garment's
+    real blank brand as the tie-break. Returns {sku, family, uid, confidence}."""
     best_uid, best_conf, best_brand = None, 0.0, -1
+    toks = _expand_capacities(item["tokens"]) | item["tokens"]
+    toks = toks | _norm_size_tokens(toks)
     req_col = _required_color_tokens(item["tokens"])
-    req_dim = _required_dimension_tokens(item.get("family"), item.get("sku"),
-                                         item["tokens"])
-    adult = _is_adult_apparel_sku(item.get("family"), item.get("sku"))
-    brand = _brand_tokens(item.get("family"), item.get("sku"))
+    req_dim = _norm_size_tokens(_required_dimension_tokens(
+        item.get("family"), item.get("sku"), item["tokens"]))
+    fam, sku = item.get("family"), str(item.get("sku") or "")
+    adult = _is_adult_apparel_sku(fam, sku)
+    parts = [p.lower() for p in sku.split("-")]
+    our_type = parts[2] if fam == "apparel" and len(parts) > 2 else ""
+    want_cats = _TYPE_CATEGORIES.get(our_type)
+    gender_allowed = _GENDER_ALLOWED_CUTS.get(parts[1] if len(parts) > 1 else "")
+    brand = _brand_tokens(fam, sku)
     for product in catalog:
-        hay = _product_hay(product)
-        if not _dimensions_confirmed(item["tokens"], hay, required=req_dim):
+        hay = product.get("_hay")
+        if hay is None:
+            hay = _product_hay(product) | _norm_size_tokens(
+                _product_size_value_tokens(product))
+        if not _dimensions_confirmed(toks, hay, required=req_dim):
             continue                        # size/capacity unconfirmed -> not eligible
+        if req_dim:
+            psv = _product_size_value_tokens(product)
+            if psv and not psv <= toks:
+                continue                    # combo/other size value -> not eligible
         if req_col and not req_col <= hay:
             continue                        # colour unconfirmed -> not eligible
-        if adult and _is_kids_or_baby(product):
-            continue                        # kids/baby can never fill an adult SKU
+        if adult:
+            if _is_kids_or_baby(product):
+                continue                    # kids/baby can never fill an adult SKU
+            cut = _product_cut(product)
+            if gender_allowed is not None and cut not in gender_allowed:
+                continue                    # mens<->womens never mix
+        if want_cats:
+            cat = _product_category(product)
+            if cat and cat not in want_cats:
+                continue                    # a tee never fills a hoodie SKU
         c = round(len(item["tokens"] & hay) / len(item["tokens"]), 4) if item["tokens"] else 0.0
         bh = len(brand & hay)
         if c > best_conf or (c == best_conf and bh > best_brand):

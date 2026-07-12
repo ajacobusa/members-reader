@@ -82,6 +82,74 @@ def test_mens_gender_code_is_not_a_size_requirement():
     assert r["uid"] is None, r
 
 
+def test_garment_type_is_hard():
+    # REGRESSION (top-30 review round 2): GEL-M-TSHIRT-* resolved to gca_hoodie
+    # products (the merged catalog pool let a tee claim a hoodie). The product
+    # CATEGORY value (gca_/GarmentCategory) must agree with our SKU's type.
+    hoodie = {"uid": "apparel_product_gca_hoodie_gcu_mens_gsi_m_gco_white",
+              "text": "hoodie white m", "attrs": {"GarmentColor": "white",
+              "GarmentSize": "m", "GarmentCategory": "hoodie"}}
+    r = resolve_sku(_item("GEL-M-TSHIRT-M-WHITE"), [hoodie])
+    assert r["uid"] is None, r
+    tee = {"uid": "apparel_product_gca_t-shirt_gcu_mens_gsi_m_gco_white",
+           "text": "t-shirt white m", "attrs": {"GarmentColor": "white",
+           "GarmentSize": "m", "GarmentCategory": "t-shirt"}}
+    r = resolve_sku(_item("GEL-M-TSHIRT-M-WHITE"), [hoodie, tee])
+    assert r["uid"] == tee["uid"], r
+
+
+def test_cross_gender_is_disqualified():
+    # REGRESSION (top-30 review round 2): men's SKUs claimed WOMENS cropped
+    # hoodies and women's SKUs claimed MENS pullovers. mens<->womens never mix;
+    # unisex serves both.
+    womens = _p("apparel_gca_hoodie_gcu_womens_gco_white_gsi_m", "white", "m",
+                cut="womens")
+    r = resolve_sku(_item("GEL-M-HOODIE-M-WHITE"), [womens])
+    assert r["uid"] is None, r
+    mens = _p("apparel_gca_hoodie_gcu_mens_gco_white_gsi_m", "white", "m",
+              cut="mens")
+    r = resolve_sku(_item("GEL-W-HOODIE-M-WHITE"), [mens])
+    assert r["uid"] is None, r
+
+
+def test_combo_size_product_never_fills_exact_size_sku():
+    # REGRESSION (top-30 review round 2): a size-L SKU matched a gsi_l-xl
+    # combo-size product ('l' token subset). The product's size VALUE tokens
+    # must all be named by our SKU - l-xl demands both l and xl.
+    combo = {"uid": "apparel_gca_hoodie_gcu_mens_gsi_l-xl_gco_white",
+             "text": "hoodie white", "attrs": {"GarmentColor": "white",
+             "GarmentSize": "l-xl", "GarmentCategory": "hoodie",
+             "GarmentCut": "mens"}}
+    r = resolve_sku(_item("GEL-M-HOODIE-L-WHITE"), [combo])
+    assert r["uid"] is None, r
+
+
+def test_mug_capacity_matches_gelato_spelling():
+    # REGRESSION (top-30 review round 2): every mug scored 0.0 - our '11oz'
+    # token never matched Gelato's '11-oz' ({11, oz}). Capacities normalise,
+    # and the size-value reverse gate separates 15-oz from 15-oz-travel.
+    def mug(size, material):
+        return {"uid": f"mug_product_msz_{size}_mmat_{material}_cl_4-0",
+                "text": f"mug {size} {material}",
+                "attrs": {"MugSize": size, "MugMaterial": material}}
+    plain11 = mug("11-oz", "ceramic-white")
+    r = resolve_sku({"family": "mug", "sku": "GEL-CLASSIC_MUG-11OZ-WHITE",
+                     "tokens": _sku_tokens("mug", "GEL-CLASSIC_MUG-11OZ-WHITE")},
+                    [plain11])
+    assert r["uid"] == plain11["uid"], r
+    # 15-oz-travel must NOT fill the plain LARGE 15oz mug (and vice versa)
+    travel15 = mug("15-oz-travel", "stainless-steel-white")
+    plain15 = mug("15-oz", "ceramic-white")
+    r = resolve_sku({"family": "mug", "sku": "GEL-LARGE_MUG-15OZ-WHITE",
+                     "tokens": _sku_tokens("mug", "GEL-LARGE_MUG-15OZ-WHITE")},
+                    [travel15, plain15])
+    assert r["uid"] == plain15["uid"], r
+    r = resolve_sku({"family": "mug", "sku": "GEL-TRAVEL_MUG-15OZ-WHITE",
+                     "tokens": _sku_tokens("mug", "GEL-TRAVEL_MUG-15OZ-WHITE")},
+                    [travel15, plain15])
+    assert r["uid"] == travel15["uid"], r
+
+
 def test_aliased_colour_is_hard_too():
     # The alias substitution and the colour dimension compose: DUSTY-ROSE
     # requires dusty AND pink - a plain 'pink' product is not enough.
