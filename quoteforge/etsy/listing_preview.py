@@ -2227,6 +2227,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             BRANDED_CATALOG as _BC, build_branded_variations as _bbv,
             branded_sellable as _bsell)
         _BC = [p for p in _BC if _bsell(p.product_id)]   # hide not-sellable (phonecase)
+        # STRICT fulfillability (first approvals flip the family out of grace
+        # mode): only emit tiles/formats for products with >=1 approved-UID
+        # variant, or the build strands orphaned assets for dropped products
+        # (site-doctor orphan_assets caught this twice).
+        from quoteforge.etsy.fulfillability import fulfillable_branded_facets as _fbf
+        _BC = [p for p in _BC if _fbf(p) is not None]
         for _p in _BC:
             _bp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
                         if (brand / f"tile-{_p.product_id}.{e}").exists()), None)
@@ -2264,6 +2270,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     try:
         from quoteforge.etsy.mug_catalog import (
             MUG_CATALOG as _MC, build_mug_variations as _bmv)
+        # Same strict-fulfillability gate as branded: no tiles for mugs the
+        # print partner can't make (accent/color lines) once the family is live.
+        from quoteforge.etsy.fulfillability import fulfillable_mug_facets as _fmf
+        _MC = [p for p in _MC if _fmf(p) is not None]
         for _p in _MC:
             _mp = next((brand / f"tile-{_p.product_id}.{e}" for e in ("jpg", "png")
                         if (brand / f"tile-{_p.product_id}.{e}").exists()), None)
