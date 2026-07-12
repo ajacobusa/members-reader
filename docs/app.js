@@ -265,20 +265,20 @@
  // ── Custom Branded Products: a parallel product family sharing this editor ──
  // BRANDED_FORMATS: one entry per product x colour ("{name} - {colour}" + from-price).
  // BRANDED_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
- const BRANDED_FORMATS = [{"name": "Organic Cotton Tote Bag - Natural", "price": 28.99}, {"name": "Organic Cotton Tote Bag - White", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Sand", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Sage", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Navy", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Black", "price": 28.99}, {"name": "Insulated Stainless Water Bottle - White", "price": 47.99}, {"name": "Insulated Stainless Water Bottle - Silver", "price": 47.99}, {"name": "Insulated Stainless Water Bottle - Black", "price": 47.99}, {"name": "Insulated Stainless Water Bottle - Navy", "price": 47.99}, {"name": "Insulated Stainless Water Bottle - Red", "price": 47.99}, {"name": "Insulated Stainless Tumbler - White", "price": 55.99}, {"name": "Insulated Stainless Tumbler - Silver", "price": 55.99}, {"name": "Insulated Stainless Tumbler - Black", "price": 55.99}, {"name": "Insulated Stainless Tumbler - Navy", "price": 55.99}, {"name": "Insulated Stainless Tumbler - Forest Green", "price": 55.99}, {"name": "Rectangular Mouse Pad - White", "price": 24.99}, {"name": "Softcover Notebook - White", "price": 20.99}, {"name": "Softcover Notebook - Cream", "price": 20.99}, {"name": "Softcover Notebook - Black", "price": 20.99}, {"name": "Softcover Notebook - Navy", "price": 20.99}, {"name": "Hardcover Journal - Black", "price": 36.99}, {"name": "Hardcover Journal - Navy", "price": 36.99}, {"name": "Hardcover Journal - Maroon", "price": 36.99}, {"name": "Hardcover Journal - Forest Green", "price": 36.99}, {"name": "Hardcover Journal - Sand", "price": 36.99}, {"name": "Die-Cut Vinyl Sticker - White", "price": 8.99}, {"name": "Metal Keychain - Silver", "price": 16.99}];
- const BRANDED_DIMS = {"tote": [3000, 3600], "bottle": [3600, 2400], "tumbler": [3600, 2200], "mousepad": [2700, 2100], "notebook": [1740, 2490], "journal": [1740, 2490], "sticker": [1200, 1200], "keychain": [600, 600]};
+ const BRANDED_FORMATS = [{"name": "Organic Cotton Tote Bag - Natural", "price": 28.99}, {"name": "Organic Cotton Tote Bag - White", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Sand", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Sage", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Navy", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Black", "price": 28.99}];
+ const BRANDED_DIMS = {"tote": [3000, 3600]};
  // Branded product NAME -> product_id, so the editor can resolve BRANDED_DIMS
  // (keyed by product_id) from the name shopBranded carries.
- const BRANDED_PID = {"Organic Cotton Tote Bag": "tote", "Insulated Stainless Water Bottle": "bottle", "Insulated Stainless Tumbler": "tumbler", "Rectangular Mouse Pad": "mousepad", "Softcover Notebook": "notebook", "Hardcover Journal": "journal", "Die-Cut Vinyl Sticker": "sticker", "Metal Keychain": "keychain"};
+ const BRANDED_PID = {"Organic Cotton Tote Bag": "tote"};
  // ── Custom Mugs: a parallel product family sharing this editor ──
  // MUG_FORMATS: one entry per product x accent-colour ("{name} - {colour}" + from-price).
  // MUG_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
- const MUG_FORMATS = [{"name": "Classic Ceramic Mug (11oz) - White", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Black", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Navy", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Red", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Forest Green", "price": 28.99}, {"name": "Large Ceramic Mug (15oz) - White", "price": 32.99}, {"name": "Large Ceramic Mug (15oz) - Black", "price": 32.99}, {"name": "Large Ceramic Mug (15oz) - Navy", "price": 32.99}, {"name": "Colour-Interior Mug (11oz) - Black", "price": 36.99}, {"name": "Colour-Interior Mug (11oz) - Navy", "price": 36.99}, {"name": "Colour-Interior Mug (11oz) - Red", "price": 36.99}, {"name": "Colour-Interior Mug (11oz) - Forest Green", "price": 36.99}, {"name": "Colour-Interior Mug (11oz) - Royal Blue", "price": 36.99}, {"name": "Colour-Interior Mug (11oz) - Maroon", "price": 36.99}, {"name": "Accent Mug - Black", "price": 36.99}, {"name": "Accent Mug - Red", "price": 36.99}, {"name": "Accent Mug - Navy", "price": 36.99}, {"name": "Accent Mug - Dusty Rose", "price": 36.99}, {"name": "Accent Mug - Forest Green", "price": 36.99}, {"name": "Enamel Camp Mug (12oz) - White", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Black", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Navy", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Red", "price": 43.99}, {"name": "Stainless Travel Mug (15oz) - White", "price": 51.99}, {"name": "Stainless Travel Mug (15oz) - Silver", "price": 51.99}, {"name": "Stainless Travel Mug (15oz) - Black", "price": 51.99}, {"name": "Tall Mug (17oz) - White", "price": 39.99}];
- const MUG_DIMS = {"classic_mug": [2475, 1155], "large_mug": [2790, 1320], "color_mug": [2200, 1155], "accent_mug": [2200, 1155], "enamel_mug": [2400, 1050], "travel_mug": [2600, 1700], "xl_mug": [2900, 1380]};
+ const MUG_FORMATS = [{"name": "Classic Ceramic Mug (11oz) - White", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Black", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Navy", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Red", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Forest Green", "price": 28.99}, {"name": "Large Ceramic Mug (15oz) - White", "price": 32.99}, {"name": "Large Ceramic Mug (15oz) - Black", "price": 32.99}, {"name": "Large Ceramic Mug (15oz) - Navy", "price": 32.99}, {"name": "Enamel Camp Mug (12oz) - White", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Black", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Navy", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Red", "price": 43.99}, {"name": "Stainless Travel Mug (15oz) - White", "price": 51.99}, {"name": "Stainless Travel Mug (15oz) - Silver", "price": 51.99}, {"name": "Stainless Travel Mug (15oz) - Black", "price": 51.99}, {"name": "Tall Mug (17oz) - White", "price": 39.99}];
+ const MUG_DIMS = {"classic_mug": [2475, 1155], "large_mug": [2790, 1320], "enamel_mug": [2400, 1050], "travel_mug": [2600, 1700], "xl_mug": [2900, 1380]};
  // Mug product NAME -> product_id, so the editor can resolve MUG_DIMS (keyed by
  // product_id) from the name shopMug carries.
- const MUG_PID = {"Classic Ceramic Mug (11oz)": "classic_mug", "Large Ceramic Mug (15oz)": "large_mug", "Colour-Interior Mug (11oz)": "color_mug", "Accent Mug": "accent_mug", "Enamel Camp Mug (12oz)": "enamel_mug", "Stainless Travel Mug (15oz)": "travel_mug", "Tall Mug (17oz)": "xl_mug"};
- const MUG_WRAPS = {"classic_mug": true, "large_mug": true, "color_mug": false, "accent_mug": false, "enamel_mug": true, "travel_mug": false, "xl_mug": true};      // product_id -> prints a full wrap (#mugwrap)
+ const MUG_PID = {"Classic Ceramic Mug (11oz)": "classic_mug", "Large Ceramic Mug (15oz)": "large_mug", "Enamel Camp Mug (12oz)": "enamel_mug", "Stainless Travel Mug (15oz)": "travel_mug", "Tall Mug (17oz)": "xl_mug"};
+ const MUG_WRAPS = {"classic_mug": true, "large_mug": true, "enamel_mug": true, "travel_mug": false, "xl_mug": true};      // product_id -> prints a full wrap (#mugwrap)
  // A mug prints a full 360 wrap UNLESS the catalog says otherwise (single-panel mugs
  // whose handle breaks the wrap). Single-panel mugs must not offer the Wraparound
  // layout or spin a full-wrap proof. Default (unknown) is wrap, so real wrap mugs
@@ -2016,13 +2016,39 @@
      var _QD={'front':{t:'qfrontthumb',n:'Front'},'back':{t:'qbackthumb',n:'Back'},
        'sleeve-left':{t:'qsleeveLthumb',n:'Left sleeve'},'sleeve-right':{t:'qsleeveRthumb',n:'Right sleeve'}}[side]||{t:'',n:side};
      var th=_QD.t?document.getElementById(_QD.t):null;
-     if(th){ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }
+     if(th){ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled');
+       var bx=th.closest('.qdbox'); if(bx) bx.classList.add('hasphoto'); }
      if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
      if(typeof guide==='function') guide();
      toast(_QD.n+' design added ✓');
    };
    img.onerror=function(){ toast('Could not read that image - try another file.'); };
    img.src=URL.createObjectURL(f);
+ }
+ // Buyer-feedback toast for the MAIN page. Found live 2026-07-12: 22 call
+ // sites but only the STUDIO template defined toast(), so every feedback
+ // message ('design added', 'file too large'...) threw ReferenceError
+ // silently. Self-sufficient: creates its own element on first use.
+ function toast(t){
+   var n=document.getElementById('toast');
+   if(!n){ n=document.createElement('div'); n.id='toast'; document.body.appendChild(n); }
+   n.textContent=t; n.classList.add('on');
+   clearTimeout(toast._t); toast._t=setTimeout(function(){ n.classList.remove('on'); },2600);
+ }
+ // Undo for an accidental quick upload: clears THAT side's photo (canvas +
+ // persisted side state), restores the tile's ＋, and empties the file input so
+ // re-choosing the same file fires onchange again. Wording on the side is kept.
+ function quickSideRemove(side){
+   setPlacement(side);                                // side becomes active (saves the rest)
+   removePhoto();                                     // PHOTO=null + controls reset
+   SIDES[side]=_captureSide();
+   var _QD={'front':{t:'qfrontthumb',n:'Front'},'back':{t:'qbackthumb',n:'Back'},
+     'sleeve-left':{t:'qsleeveLthumb',n:'Left sleeve'},'sleeve-right':{t:'qsleeveRthumb',n:'Right sleeve'}}[side]||{t:'',n:side};
+   var th=_QD.t?document.getElementById(_QD.t):null;
+   if(th){ th.style.backgroundImage=''; th.classList.remove('filled');
+     var bx=th.closest('.qdbox'); if(bx){ bx.classList.remove('hasphoto');
+       var inp=bx.querySelector('input[type=file]'); if(inp) inp.value=''; } }
+   drawArt(); toast(_QD.n+' picture removed');
  }
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
