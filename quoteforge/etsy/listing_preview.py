@@ -3205,6 +3205,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .qdthumb{{width:100%;max-width:120px;aspect-ratio:1/1;border-radius:10px;
    background:#f4f2ec center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#b9b3a7;font-size:26px}}
  .qdthumb.filled .qdplus{{display:none}}
+ .qdbox .qdrm{{display:none;position:absolute;top:6px;right:8px;z-index:3;width:22px;height:22px;
+   border-radius:50%;background:#fff;border:1px solid var(--line);color:#8a2f2f;font-size:13px;
+   line-height:20px;text-align:center;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.14)}}
+ .qdbox.hasphoto .qdrm{{display:block;cursor:pointer}}
+ .qdbox .qdrm:hover{{border-color:#8a2f2f}}
+ #toast{{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--green);
+   color:#fff;padding:11px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;
+   transition:opacity .25s;z-index:60}}
+ #toast.on{{opacity:1}}
  .qdcap{{font-weight:600;font-size:13px;color:#2a2a2a}}
  .qdhint{{font-size:11px;color:#8a8577;text-align:center;line-height:1.3}}
  .tdirbtn{{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-weight:600;cursor:pointer;font-size:13px}}
@@ -4126,13 +4135,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <div class="lbl">📷 Add your pictures - front, back &amp; sleeves</div>
            <div class="qdrow">
              <label class="qdbox" id="qdfront">
-               <span class="qdthumb" id="qfrontthumb"><span class="qdplus">＋</span></span>
+               <span class="qdrm" role="button" tabindex="0" aria-label="Remove the front picture" title="Remove the front picture" onclick="event.preventDefault();event.stopPropagation();quickSideRemove('front')">✕</span><span class="qdthumb" id="qfrontthumb"><span class="qdplus">＋</span></span>
                <span class="qdcap">Front picture</span>
                <span class="qdhint">Click ＋ to upload from your computer</span>
                <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('front',this)" aria-label="Upload the front picture from your computer">
              </label>
              <label class="qdbox" id="qdback">
-               <span class="qdthumb" id="qbackthumb"><span class="qdplus">＋</span></span>
+               <span class="qdrm" role="button" tabindex="0" aria-label="Remove the back picture" title="Remove the back picture" onclick="event.preventDefault();event.stopPropagation();quickSideRemove('back')">✕</span><span class="qdthumb" id="qbackthumb"><span class="qdplus">＋</span></span>
                <span class="qdcap">Back picture</span>
                <span class="qdhint">Click ＋ to upload from your computer</span>
                <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('back',this)" aria-label="Upload the back picture from your computer">
@@ -4140,13 +4149,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            </div>
            <div class="qdrow">
              <label class="qdbox" id="qdsleeveL">
-               <span class="qdthumb" id="qsleeveLthumb"><span class="qdplus">＋</span></span>
+               <span class="qdrm" role="button" tabindex="0" aria-label="Remove the left sleeve picture" title="Remove the left sleeve picture" onclick="event.preventDefault();event.stopPropagation();quickSideRemove('sleeve-left')">✕</span><span class="qdthumb" id="qsleeveLthumb"><span class="qdplus">＋</span></span>
                <span class="qdcap">Left sleeve picture</span>
                <span class="qdhint">Optional &middot; click ＋ to upload</span>
                <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('sleeve-left',this)" aria-label="Upload the left sleeve picture from your computer">
              </label>
              <label class="qdbox" id="qdsleeveR">
-               <span class="qdthumb" id="qsleeveRthumb"><span class="qdplus">＋</span></span>
+               <span class="qdrm" role="button" tabindex="0" aria-label="Remove the right sleeve picture" title="Remove the right sleeve picture" onclick="event.preventDefault();event.stopPropagation();quickSideRemove('sleeve-right')">✕</span><span class="qdthumb" id="qsleeveRthumb"><span class="qdplus">＋</span></span>
                <span class="qdcap">Right sleeve picture</span>
                <span class="qdhint">Optional &middot; click ＋ to upload</span>
                <input type="file" accept="image/jpeg,image/png" onchange="quickSideUpload('sleeve-right',this)" aria-label="Upload the right sleeve picture from your computer">
@@ -6256,13 +6265,39 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var _QD={{'front':{{t:'qfrontthumb',n:'Front'}},'back':{{t:'qbackthumb',n:'Back'}},
        'sleeve-left':{{t:'qsleeveLthumb',n:'Left sleeve'}},'sleeve-right':{{t:'qsleeveRthumb',n:'Right sleeve'}}}}[side]||{{t:'',n:side}};
      var th=_QD.t?document.getElementById(_QD.t):null;
-     if(th){{ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }}
+     if(th){{ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled');
+       var bx=th.closest('.qdbox'); if(bx) bx.classList.add('hasphoto'); }}
      if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
      if(typeof guide==='function') guide();
      toast(_QD.n+' design added ✓');
    }};
    img.onerror=function(){{ toast('Could not read that image - try another file.'); }};
    img.src=URL.createObjectURL(f);
+ }}
+ // Buyer-feedback toast for the MAIN page. Found live 2026-07-12: 22 call
+ // sites but only the STUDIO template defined toast(), so every feedback
+ // message ('design added', 'file too large'...) threw ReferenceError
+ // silently. Self-sufficient: creates its own element on first use.
+ function toast(t){{
+   var n=document.getElementById('toast');
+   if(!n){{ n=document.createElement('div'); n.id='toast'; document.body.appendChild(n); }}
+   n.textContent=t; n.classList.add('on');
+   clearTimeout(toast._t); toast._t=setTimeout(function(){{ n.classList.remove('on'); }},2600);
+ }}
+ // Undo for an accidental quick upload: clears THAT side's photo (canvas +
+ // persisted side state), restores the tile's ＋, and empties the file input so
+ // re-choosing the same file fires onchange again. Wording on the side is kept.
+ function quickSideRemove(side){{
+   setPlacement(side);                                // side becomes active (saves the rest)
+   removePhoto();                                     // PHOTO=null + controls reset
+   SIDES[side]=_captureSide();
+   var _QD={{'front':{{t:'qfrontthumb',n:'Front'}},'back':{{t:'qbackthumb',n:'Back'}},
+     'sleeve-left':{{t:'qsleeveLthumb',n:'Left sleeve'}},'sleeve-right':{{t:'qsleeveRthumb',n:'Right sleeve'}}}}[side]||{{t:'',n:side}};
+   var th=_QD.t?document.getElementById(_QD.t):null;
+   if(th){{ th.style.backgroundImage=''; th.classList.remove('filled');
+     var bx=th.closest('.qdbox'); if(bx){{ bx.classList.remove('hasphoto');
+       var inp=bx.querySelector('input[type=file]'); if(inp) inp.value=''; }} }}
+   drawArt(); toast(_QD.n+' picture removed');
  }}
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)

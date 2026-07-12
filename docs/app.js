@@ -2016,13 +2016,39 @@
      var _QD={'front':{t:'qfrontthumb',n:'Front'},'back':{t:'qbackthumb',n:'Back'},
        'sleeve-left':{t:'qsleeveLthumb',n:'Left sleeve'},'sleeve-right':{t:'qsleeveRthumb',n:'Right sleeve'}}[side]||{t:'',n:side};
      var th=_QD.t?document.getElementById(_QD.t):null;
-     if(th){ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled'); }
+     if(th){ th.style.backgroundImage='url('+img.src+')'; th.classList.add('filled');
+       var bx=th.closest('.qdbox'); if(bx) bx.classList.add('hasphoto'); }
      if(typeof aiCheckPhoto==='function') aiCheckPhoto(f);   // keep the print-quality gate
      if(typeof guide==='function') guide();
      toast(_QD.n+' design added ✓');
    };
    img.onerror=function(){ toast('Could not read that image - try another file.'); };
    img.src=URL.createObjectURL(f);
+ }
+ // Buyer-feedback toast for the MAIN page. Found live 2026-07-12: 22 call
+ // sites but only the STUDIO template defined toast(), so every feedback
+ // message ('design added', 'file too large'...) threw ReferenceError
+ // silently. Self-sufficient: creates its own element on first use.
+ function toast(t){
+   var n=document.getElementById('toast');
+   if(!n){ n=document.createElement('div'); n.id='toast'; document.body.appendChild(n); }
+   n.textContent=t; n.classList.add('on');
+   clearTimeout(toast._t); toast._t=setTimeout(function(){ n.classList.remove('on'); },2600);
+ }
+ // Undo for an accidental quick upload: clears THAT side's photo (canvas +
+ // persisted side state), restores the tile's ＋, and empties the file input so
+ // re-choosing the same file fires onchange again. Wording on the side is kept.
+ function quickSideRemove(side){
+   setPlacement(side);                                // side becomes active (saves the rest)
+   removePhoto();                                     // PHOTO=null + controls reset
+   SIDES[side]=_captureSide();
+   var _QD={'front':{t:'qfrontthumb',n:'Front'},'back':{t:'qbackthumb',n:'Back'},
+     'sleeve-left':{t:'qsleeveLthumb',n:'Left sleeve'},'sleeve-right':{t:'qsleeveRthumb',n:'Right sleeve'}}[side]||{t:'',n:side};
+   var th=_QD.t?document.getElementById(_QD.t):null;
+   if(th){ th.style.backgroundImage=''; th.classList.remove('filled');
+     var bx=th.closest('.qdbox'); if(bx){ bx.classList.remove('hasphoto');
+       var inp=bx.querySelector('input[type=file]'); if(inp) inp.value=''; } }
+   drawArt(); toast(_QD.n+' picture removed');
  }
  let SELBG=BGCOLORS[0], SELTXT=TXTCOLORS[0], SELFONT=FONTS[0][1], CURQUOTE="";
  let TXT_USER_SET=false;   // true once the buyer picks a text colour (stops auto-contrast)
