@@ -2004,6 +2004,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception as exc:  # noqa: BLE001 - keep the registry photos on a live blip
         logger.debug("supplier per-colour photos skipped: %s", exc)
     apparel_color_img_json = json.dumps(apparel_color_img)
+    # Per-colour BACK photos (simulated or exported): the back view of a Navy
+    # pick must show a NAVY back - with per-colour fronts populated, the old
+    # colour-agnostic white back stand-in became an inconsistency.
+    apparel_color_img_back: dict = {}
+    try:
+        from quoteforge.images.base_images import color_slug as _bi_slug_b
+        from quoteforge.images.base_images import percolor_files as _bi_pcf
+        for _gid_b2, _colfiles_b in _bi_pcf("back").items():
+            for _cname_b2, _path_b2 in _colfiles_b.items():
+                _rh = _emit(_path_b2,
+                            f"base-{_gid_b2}-{_bi_slug_b(_cname_b2)}-back.jpg")
+                if _rh:
+                    apparel_color_img_back.setdefault(_gid_b2, {})[_cname_b2] = _rh
+    except Exception as exc:  # noqa: BLE001 - never break the build, but log
+        logger.debug("back per-colour photos skipped: %s", exc)
+    apparel_color_img_back_json = json.dumps(apparel_color_img_back)
     # Which per-colour photos are TINTED SIMULATIONS (source='simulated_tint') -
     # the editor labels those honestly as a digital preview.
     apparel_sim: dict = {}
@@ -4569,6 +4585,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
  // and the buyer can design the back too: {{garment_id:{{front,back}}}}.
  const APPAREL_SIDE_IMG = {apparel_side_img_json};
+ // Per-colour BACK photos - the back view of a Navy pick shows a NAVY back
+ const APPAREL_COLOR_IMG_BACK = {apparel_color_img_back_json};
  // Colours whose photo is a TINTED SIMULATION of the real blank (honesty label)
  const APPAREL_SIM = {apparel_sim_json};
  const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
@@ -6430,6 +6448,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // frame on the model's FACE and the sleeve frame off the garment). Zones come
  // from the base-image registry (owner-tunable per photo); null = keep the
  // drawn-silhouette defaults.
+ // The PER-COLOUR back photo for a garment+colour ('' when none) - a Navy
+ // back shows a navy back, never the colour-agnostic white stand-in.
+ function _backColorUrl(gid, colour){{
+   if(typeof APPAREL_COLOR_IMG_BACK==='undefined'||!gid||!colour) return '';
+   var m=APPAREL_COLOR_IMG_BACK[gid]||APPAREL_COLOR_IMG_BACK[gid.replace(/_(value|premium)$/,'')];
+   return (m&&m[colour])||'';
+ }}
  // True while the CURRENT garment+colour shows a tinted simulation (the
  // honesty label in the preview caption keys off this).
  function _simColorActive(){{
@@ -7300,7 +7325,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      // front stand-in is colour-EXACT (mirrors drawArt): an uncovered colour
      // spins the drawn garment, never a photo of a different colour.
      if(!url && sm && photoMatch) url=sm.front||'';
-     back=(sm&&sm.back)||null; cyl=false;
+     // spin's back face: the PER-COLOUR back when it exists (navy spin shows
+     // a navy back), else the side back photo
+     back=_backColorUrl(gid,(fmt.split(' - ')[1]||''))||(sm&&sm.back)||null; cyl=false;
    }}
    if(!url) return null;
    var area=cyl?[0.33,0.34,0.34,0.34]:[0.28,0.26,0.44,0.50];
@@ -7695,7 +7722,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      const _sm=APPAREL_SIDE_IMG[_gid]||APPAREL_SIDE_IMG[_bgid];
      const _selc=(CURFMT.split(' - ')[1]||'');
      const _photoColorMatch=!!(_sm&&_sm.color&&_sm.color===_selc);
-     let _u=(_side==='front')?_tileColorUrl(_gid,_selc):'';
+     let _u=(_side==='front')?_tileColorUrl(_gid,_selc):_backColorUrl(_gid,_selc);
      // FRONT stand-in is colour-EXACT: the per-colour photo covers its own
      // colour, the side photo only its photographed colour - with PARTIAL
      // per-colour coverage (owner exports arrive one at a time) an uncovered

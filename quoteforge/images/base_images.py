@@ -122,21 +122,27 @@ def _zone_problem(zones) -> str:
     return ""
 
 
-def percolor_front_files() -> dict:
-    """{garment_id: {colour: Path}} for registered PER-COLOUR front photos that
-    exist on disk - the local (dashboard-export) source of APPAREL_COLOR_IMG."""
+def percolor_files(side: str = "front") -> dict:
+    """{garment_id: {colour: Path}} for registered PER-COLOUR photos of one
+    side that exist on disk - the local (dashboard-export or simulated) source
+    of the page's per-colour maps."""
     out: dict = {}
     try:
         for e in load_registry()["images"]:
-            if not e.get("percolor") or e.get("side") != "front":
+            if not e.get("percolor") or e.get("side") != side:
                 continue
             gid, col = str(e.get("garment_id") or ""), str(e.get("color") or "")
             p = resolve_file(e)
             if gid and col and p.exists():
                 out.setdefault(gid, {})[col] = p
     except Exception as exc:  # noqa: BLE001
-        logger.debug("percolor_front_files: %s", exc)
+        logger.debug("percolor_files(%s): %s", side, exc)
     return out
+
+
+def percolor_front_files() -> dict:
+    """Back-compat alias: the FRONT per-colour photo map."""
+    return percolor_files("front")
 
 
 def _garment(garment_id: str):
