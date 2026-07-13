@@ -43,7 +43,10 @@ def test_registry_seed_census_and_files_exist():
     from quoteforge.images import base_images as bi
     reg = bi.load_registry()
     assert reg.get("version") == 1 and isinstance(reg.get("images"), list)
-    entries = {(e["garment_id"], e["side"]): e for e in reg["images"]}
+    # census = the SIDE photos only; percolor entries (real exports or
+    # simulated tints) share the (gid, side) key and must not shadow them
+    entries = {(e["garment_id"], e["side"]): e for e in reg["images"]
+               if not e.get("percolor")}
     assert entries[("m_hoodie", "front")]["color"] == "White"
     assert entries[("w_tshirt", "front")]["color"] == "Heather Grey"
     assert entries[("w_tshirt", "back")]["color"] == "Heather Grey"

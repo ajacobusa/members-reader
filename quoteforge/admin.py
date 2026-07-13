@@ -3580,6 +3580,22 @@ def _cmd_base_images(args: list[str]) -> int:
     """
     from quoteforge.images import base_images as bi
     sub = args[0] if args else "status"
+    if sub == "simulate":
+        # Owner-approved Option A: tinted previews of the real photo for every
+        # print-partner-real colour that lacks a real per-colour photo yet.
+        from quoteforge.etsy.apparel_catalog import APPAREL_CATALOG
+        from quoteforge.images.photo_tint import simulate_garment
+        gids = [a for a in args[1:] if not a.startswith("--")] or \
+               [g.garment_id for g in APPAREL_CATALOG if g.tier == "Classic"]
+        for gid in gids:
+            r = simulate_garment(gid)
+            print(f"{gid:<15} generated={len(r['generated'])} "
+                  f"skipped={len(r['skipped'])} failed={len(r['failed'])}"
+                  + (f"  ({r['reason']})" if r.get("reason") else ""))
+            for col, why in r["failed"]:
+                print(f"   XX {col}: {why}")
+        print("  -> run `admin rebuild-site` so the colours show their previews.")
+        return 0
     if sub == "add":
         rest = args[1:]
         if not rest or rest[0].startswith("--"):
