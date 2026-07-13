@@ -312,6 +312,456 @@
       "file": "brand/tile-w_sweatshirt-back.jpg",
       "source": "dashboard_export",
       "added": "2026-07-10"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Sand",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-sand.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Heather Grey",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-heather-grey.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Light Blue",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-light-blue.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Charcoal",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-charcoal.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Maroon",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-maroon.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tshirt",
+      "color": "Purple",
+      "side": "front",
+      "file": "brand/sim-m_tshirt-purple.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Light Blue",
+      "side": "front",
+      "file": "brand/sim-w_tshirt-light-blue.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-w_tshirt-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Charcoal",
+      "side": "front",
+      "file": "brand/sim-w_tshirt-charcoal.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-w_tshirt-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-w_tshirt-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_tshirt",
+      "color": "Purple",
+      "side": "front",
+      "file": "brand/sim-w_tshirt-purple.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tank",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-m_tank-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tank",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-m_tank-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_tank",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-m_tank-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Sand",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-sand.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Light Blue",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-light-blue.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Maroon",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-maroon.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Forest Green",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-forest-green.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_longsleeve",
+      "color": "Purple",
+      "side": "front",
+      "file": "brand/sim-m_longsleeve-purple.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Sand",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-sand.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Heather Grey",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-heather-grey.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Light Blue",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-light-blue.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Maroon",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-maroon.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Forest Green",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-forest-green.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_hoodie",
+      "color": "Purple",
+      "side": "front",
+      "file": "brand/sim-m_hoodie-purple.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "Light Blue",
+      "side": "front",
+      "file": "brand/sim-w_hoodie-light-blue.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-w_hoodie-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "Charcoal",
+      "side": "front",
+      "file": "brand/sim-w_hoodie-charcoal.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-w_hoodie-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-w_hoodie-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "w_hoodie",
+      "color": "Purple",
+      "side": "front",
+      "file": "brand/sim-w_hoodie-purple.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Sand",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-sand.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Heather Grey",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-heather-grey.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Light Blue",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-light-blue.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Black",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-black.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Navy",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-navy.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Red",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-red.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Maroon",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-maroon.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Forest Green",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-forest-green.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
+    },
+    {
+      "garment_id": "m_sweatshirt",
+      "color": "Purple",
+      "side": "front",
+      "file": "brand/sim-m_sweatshirt-purple.jpg",
+      "source": "simulated_tint",
+      "percolor": true,
+      "added": "2026-07-12"
     }
   ]
 }

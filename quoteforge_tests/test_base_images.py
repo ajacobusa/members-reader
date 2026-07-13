@@ -35,7 +35,16 @@ def _color_img(h: str) -> dict:
 
 # ── the registry (config/base_images.json) ─────────────────────────────────
 
-def test_registry_seed_census_and_files_exist():
+def _real_registry(monkeypatch):
+    """Point at the OPERATOR registry (config/base_images.json) - the conftest
+    default is a frozen fixture so page builds stay fast and hermetic."""
+    from pathlib import Path
+    repo = Path(__file__).resolve().parent.parent / "config" / "base_images.json"
+    monkeypatch.setenv("BASE_IMAGES_FILE", str(repo))
+
+
+def test_registry_seed_census_and_files_exist(monkeypatch):
+    _real_registry(monkeypatch)
     # REGRESSION: the eyeball-verified photo-colour census must live in the
     # owner-editable registry (not hardcoded in listing_preview), every entry's
     # file must exist, and the known census facts must hold: w_tshirt was shot
@@ -43,7 +52,10 @@ def test_registry_seed_census_and_files_exist():
     from quoteforge.images import base_images as bi
     reg = bi.load_registry()
     assert reg.get("version") == 1 and isinstance(reg.get("images"), list)
-    entries = {(e["garment_id"], e["side"]): e for e in reg["images"]}
+    # census = the SIDE photos only; percolor entries (real exports or
+    # simulated tints) share the (gid, side) key and must not shadow them
+    entries = {(e["garment_id"], e["side"]): e for e in reg["images"]
+               if not e.get("percolor")}
     assert entries[("m_hoodie", "front")]["color"] == "White"
     assert entries[("w_tshirt", "front")]["color"] == "Heather Grey"
     assert entries[("w_tshirt", "back")]["color"] == "Heather Grey"
@@ -153,9 +165,10 @@ def test_add_rejects_bad_files_and_duplicates(tmp_path, monkeypatch):
 
 # ── the daily guards + CLI are wired ────────────────────────────────────────
 
-def test_infra_check_invariants_registered_and_green():
+def test_infra_check_invariants_registered_and_green(monkeypatch):
     # REGRESSION: the registry integrity + build parity guards run in the daily
     # sweep and are green on the real repo state.
+    _real_registry(monkeypatch)
     from quoteforge.automation.infra_check import check_infrastructure
     checks = {c["name"]: c for c in check_infrastructure()["checks"]}
     assert "base_image_registry_integrity" in checks

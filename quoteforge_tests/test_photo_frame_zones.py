@@ -25,7 +25,10 @@ def _page(tmp_path) -> str:
     return out.read_text(encoding="utf-8")
 
 
-def test_registry_zones_present_and_sane():
+def test_registry_zones_present_and_sane(monkeypatch):
+    from pathlib import Path
+    repo = Path(__file__).resolve().parent.parent / "config" / "base_images.json"
+    monkeypatch.setenv("BASE_IMAGES_FILE", str(repo))   # audit the REAL registry
     # REGRESSION: every photographed FULFILLABLE garment carries zones measured
     # against its actual photo; values are canvas fractions. The hoodie (the
     # reported screenshot) must anchor the chest at mid-garment, NOT the drawn

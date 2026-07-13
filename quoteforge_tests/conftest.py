@@ -35,6 +35,21 @@ def _hermetic_runtime_uid_map(monkeypatch):
     monkeypatch.delenv("GELATO_UID_MAP_FILE", raising=False)
 
 
+_BASE_IMAGES_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "base_images_fixture.json"
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_base_images(monkeypatch):
+    """REGRESSION (MemoryError, 2026-07-13): once the operator registry grew
+    51 per-colour simulated photos, EVERY page-building test re-emitted ~50
+    extra images per build - +25 min suite time and an OOM that killed the
+    photo-pipeline tests. Page tests run against a FROZEN fixture registry
+    (the 26 side photos + zones, no percolor); tests that audit the REAL
+    operator registry (census/invariants/simulations) point BASE_IMAGES_FILE
+    at config/base_images.json or their own tmp registry explicitly."""
+    monkeypatch.setenv("BASE_IMAGES_FILE", str(_BASE_IMAGES_FIXTURE))
+
+
 @pytest.fixture(autouse=True)
 def _no_writes_to_real_docs_assets(request):
     """REGRESSION: name the test that pollutes the real docs/assets dir."""

@@ -2004,6 +2004,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception as exc:  # noqa: BLE001 - keep the registry photos on a live blip
         logger.debug("supplier per-colour photos skipped: %s", exc)
     apparel_color_img_json = json.dumps(apparel_color_img)
+    # Which per-colour photos are TINTED SIMULATIONS (source='simulated_tint') -
+    # the editor labels those honestly as a digital preview.
+    apparel_sim: dict = {}
+    try:
+        from quoteforge.images.base_images import load_registry as _bi_reg
+        for _e in _bi_reg()["images"]:
+            if _e.get("percolor") and _e.get("source") == "simulated_tint":
+                apparel_sim.setdefault(_e["garment_id"], []).append(_e["color"])
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("sim-colour map skipped: %s", exc)
+    apparel_sim_json = json.dumps(apparel_sim)
     # garment NAME -> garment_id, so the editor (which knows CURGARMENT by name) can
     # look up the per-garment mockup.
     try:
@@ -4558,6 +4569,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Front + BACK garment photo per garment_id, so the editor can FLIP the garment
  // and the buyer can design the back too: {{garment_id:{{front,back}}}}.
  const APPAREL_SIDE_IMG = {apparel_side_img_json};
+ // Colours whose photo is a TINTED SIMULATION of the real blank (honesty label)
+ const APPAREL_SIM = {apparel_sim_json};
  const APPGID = {appgid_json};            // garment name -> garment_id (editor lookup)
  const APPHASSLEEVES = {apphassleeves_json};   // garment name -> has printable sleeves (#tank)
  // A garment has printable sleeves unless the catalog says otherwise (tank = sleeveless).
@@ -6417,6 +6430,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // frame on the model's FACE and the sleeve frame off the garment). Zones come
  // from the base-image registry (owner-tunable per photo); null = keep the
  // drawn-silhouette defaults.
+ // True while the CURRENT garment+colour shows a tinted simulation (the
+ // honesty label in the preview caption keys off this).
+ function _simColorActive(){{
+   if(typeof IS_APPAREL==='undefined'||!IS_APPAREL||typeof APPAREL_SIM==='undefined') return false;
+   var gid=(typeof APPGID!=='undefined'&&APPGID[CURGARMENT])||'';
+   var sel=((typeof CURFMT!=='undefined'?CURFMT:'').split(' - ')[1]||'');
+   var sims=APPAREL_SIM[gid]||APPAREL_SIM[gid.replace(/_(value|premium)$/,'')]||[];
+   return sims.indexOf(sel)>=0;
+ }}
  function _photoZone(area){{
    if(typeof IS_APPAREL==='undefined'||!IS_APPAREL) return null;
    var gid=(typeof APPGID!=='undefined'&&APPGID[CURGARMENT])||'';
@@ -7898,7 +7920,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        : (IS_BRANDED
        ? (sv?`🎁 Product preview - size ${{sv}} (your design stays inside the dashed area)`:"🎁 Product preview")
        : (IS_APPAREL
-       ? (sv?`👕 Garment preview - size ${{sv}} (your design stays inside the dashed area)`:"👕 Garment preview")
+       ? ((sv?`👕 Garment preview - size ${{sv}} (your design stays inside the dashed area)`:"👕 Garment preview")
+          +(_simColorActive()?' · colour shown is a digital preview':''))
        : (sv?`📐 Final print preview - actual ${{sv}}\" crop`+(PHOTO?" (photo auto-fit to frame)":"")
            : "📐 Final print preview")))); }}
    saveDraft(); updateReview();
