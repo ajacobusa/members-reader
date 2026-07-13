@@ -579,12 +579,21 @@
    +'submit - then we print and ship with tracking.<br>'
    +'<b>What you get:</b> a one-of-a-kind personalized calendar cover, a free proof '
    +'before printing, and your chosen size. Please check the details before ordering.';
+ // What the size step is CALLED for the current product: a shirt has no frame
+ // ("Next: frame & size" on a T-shirt was the reported bug) - apparel names the
+ // garment, mug/branded/calendar are just size, wall art keeps frame & size.
+ function _sizeStepName(){
+   return IS_APPAREL ? 'garment &amp; size'
+        : (IS_MUG||IS_BRANDED||IS_CAL) ? 'size' : 'frame &amp; size';
+ }
  function applyProductChrome(fmts){
    // The shared print editor (movable frame + Layout Studio) is on for apparel,
    // branded AND mug; only wall art keeps the legacy framed-print chrome.
    const PRINT=IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL;
    ['mwallrow','mwalltip'].forEach(id=>{const e=document.getElementById(id);
      if(e) e.style.display = PRINT ? 'none' : '';});
+   const n2=document.getElementById('esec2next');
+   if(n2) n2.innerHTML='Next: '+_sizeStepName()+' →';
    const av=document.getElementById('mavail');
    if(av){ if(!WALLART_AVAIL && !PRINT) WALLART_AVAIL=av.innerHTML;
      av.innerHTML = IS_CAL ? CAL_AVAIL_HTML : (IS_MUG ? MUG_AVAIL_HTML : (IS_BRANDED ? BRANDED_AVAIL_HTML
@@ -1993,8 +2002,7 @@
      // Photo landed: make Next explicit (the guidance engine keeps it
      // blinking until the customer actually moves on).
      const nx=document.getElementById('esec2next');
-     if(nx) nx.innerHTML='Photo added ✓ - Next: '
-       +(IS_APPAREL?'garment':'frame')+' &amp; size →';
+     if(nx) nx.innerHTML='Photo added ✓ - Next: '+_sizeStepName()+' →';
      guide(); };
    img.onerror=function(){PHOTO=null;msg.className='note upbad';msg.textContent='Could not read image - try another file.';};
    img.src=URL.createObjectURL(f);}

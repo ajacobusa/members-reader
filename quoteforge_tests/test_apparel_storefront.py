@@ -234,6 +234,23 @@ def test_apparel_editor_recolors_when_no_percolor_photos(tmp_path):
     assert "function drawGarment" in h and "APPARELCOLOR[cn]||" in h
 
 
+def test_size_step_label_is_product_aware(tmp_path):
+    # REGRESSION: the photo step's Next button said "Next: frame & size" for a
+    # T-SHIRT (shirts have no frame; the step is the garment size) and the
+    # post-upload label called a MUG's next step "frame & size" too. One
+    # product-aware helper names the step: apparel = garment & size, mug/
+    # branded/calendar = size, wall art keeps frame & size.
+    h = _page(tmp_path)
+    assert "function _sizeStepName" in h
+    assert "'garment &amp; size'" in h                  # apparel wording
+    assert "'frame &amp; size'" in h                    # wall-art default preserved
+    # applyProductChrome relabels the wizard button per product family
+    assert "n2.innerHTML='Next: '+_sizeStepName()+' →'" in h
+    # the post-upload confirmation uses the same helper (no apparel-only ternary)
+    assert "'Photo added ✓ - Next: '+_sizeStepName()+' →'" in h
+    assert "(IS_APPAREL?'garment':'frame')" not in h
+
+
 def test_apparel_final_proof_rotates_front_back(tmp_path):
     # REGRESSION: the final-preview modal must let the buyer spin the garment
     # front<->back (button + drag) so they review BOTH sides before approving -
@@ -468,7 +485,9 @@ def test_apparel_mode_uses_apparel_title_not_wall_art(tmp_path):
     # the apparel title itself never says "wall art"
     assert "wall art" not in "Personalized Custom Apparel".lower()
     # the post-photo Next button is garment-aware, not "frame & size" in apparel
-    assert "IS_APPAREL?'garment':'frame'" in h.replace(" ", "")
+    # (the apparel-only ternary became the product-aware _sizeStepName helper,
+    # which also fixed mugs/branded/calendar getting "frame & size")
+    assert "'Photo added ✓ - Next: '+_sizeStepName()+' →'" in h
 
 
 def test_apparel_mode_swaps_wall_art_editor_chrome(tmp_path):
