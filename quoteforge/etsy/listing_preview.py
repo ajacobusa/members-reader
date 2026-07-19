@@ -7555,13 +7555,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    c.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx){{ rot+=(e.touches[0].clientX-lx)*0.01; dirty=true; }} lx=e.touches[0].clientX; }} }},{{passive:true}});
    c.addEventListener('touchend',function(){{ lx=0; }});
    _3d={{on:true}}; _SPIN_PLAY=true; _updSpinLabel();   // opens spinning; button -> Stop
+   var _my3=_3d;   // identity guard (#stale-flip): a reopen replaces _3d, this loop must die
    // Slowly SPIN the mug a full 360 so the buyer sees the whole wrap - front AND
    // back. (The old code only rocked around the front because the design used to
    // cover a small panel and a full turn showed a bare back; now the design wraps
    // ~300 degrees, so the whole turn shows artwork.) A registered REAL photo can't
    // turn, so it keeps the gentle rock; drag always gives full manual control. The
    // auto-advance is gated on _SPIN_PLAY so the Stop toggle freezes any angle to review.
-   (function loop(){{ if(!_3d.on) return; var hp=!!_mockImg();
+   (function loop(){{ if(_3d!==_my3||!_my3.on) return; var hp=!!_mockImg();
      if(hp!==hadPhoto){{ hadPhoto=hp; dirty=true; }}
      if(_SPIN_DIRTY){{ var ns=_designSnap(); if(ns) snap=ns; _SPIN_DIRTY=false; dirty=true; }}  // live edit
      if(!drag && _SPIN_PLAY){{ tick++;
@@ -7618,7 +7619,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    im.addEventListener('touchstart',function(e){{ moved=false; lx=(e.touches[0]||{{}}).clientX||0; }},{{passive:true}});
    im.addEventListener('touchmove',function(e){{ var x=(e.touches[0]||{{}}).clientX||0; if(lx&&Math.abs(x-lx)>50){{ moved=true; _flip(); lx=0; }} }},{{passive:true}});
    _SPIN_DIRTY=false; _3d={{on:true}};   // live-update when the buyer edits while reviewing
-   (function _w(){{ if(!_3d.on) return; if(_SPIN_DIRTY){{ _SPIN_DIRTY=false; _render(); }} requestAnimationFrame(_w); }})();
+   // Identity-guarded INTERVAL watcher (#stale-flip). The old rAF watcher pattern
+   // leaked: a reopen REPLACES _3d synchronously (false -> true in one call), so a
+   // prior overlay's watcher never observed the off state and stayed alive - and
+   // being registered EARLIER it consumed _SPIN_DIRTY first, STARVING this
+   // overlay's watcher. Result: colour/side changes stopped re-rendering (Navy
+   // picked, the old Red photo still shown). The identity check kills any stale
+   // watcher on its next tick; setInterval keeps updating even where rAF is
+   // throttled (background/obscured views).
+   var _my=_3d;
+   var _ti=setInterval(function(){{
+     if(_3d!==_my||!_my.on){{ clearInterval(_ti); return; }}
+     if(_SPIN_DIRTY){{ _SPIN_DIRTY=false; _render(); }} }},150);
  }}
  function _showFlatPhoto(url){{
    _setMockTitle(true);
@@ -7627,7 +7639,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var im=document.createElement('img'); im.src=url; im.alt='Realistic product preview';
    im.style.cssText='width:100%;height:100%;object-fit:contain;display:block;border-radius:8px';
    mount.appendChild(im); _SPIN_DIRTY=false; _3d={{on:true}};
-   (function _w(){{ if(!_3d.on) return; if(_SPIN_DIRTY){{ _SPIN_DIRTY=false; var u=_photoMockupURL(); if(u) im.src=u; }} requestAnimationFrame(_w); }})();
+   var _my=_3d;   // identity-guarded interval watcher (#stale-flip, see _openFlipReview)
+   var _ti=setInterval(function(){{
+     if(_3d!==_my||!_my.on){{ clearInterval(_ti); return; }}
+     if(_SPIN_DIRTY){{ _SPIN_DIRTY=false; var u=_photoMockupURL(); if(u) im.src=u; }} }},150);
  }}
  // Flat real-photo mockup (poster / tee / tote): design composited into the
  // photo's print area. '' when no usable photo is registered/loaded.
@@ -8445,7 +8460,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      el.addEventListener('touchmove',function(e){{ if(e.touches[0]){{ if(lx) grp.rotation.y+=(e.touches[0].clientX-lx)*0.012; lx=e.touches[0].clientX; }} }},{{passive:true}});
      el.addEventListener('touchend',function(){{ lx=0; }});
      _3d={{on:true}}; _SPIN_PLAY=true; _updSpinLabel();
-     (function loop(){{ if(!_3d.on) return; if(!drag && _SPIN_PLAY) grp.rotation.y+=0.005; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
+     var _myg=_3d;   // identity guard (#stale-flip): a reopen replaces _3d, this loop must die
+     (function loop(){{ if(_3d!==_myg||!_myg.on) return; if(!drag && _SPIN_PLAY) grp.rotation.y+=0.005; rnd.render(scene,cam); requestAnimationFrame(loop); }})();
    }};
    im.src=imgURL;
  }}
