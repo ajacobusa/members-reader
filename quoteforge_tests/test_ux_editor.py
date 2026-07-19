@@ -834,6 +834,29 @@ def test_inspect_mode_pan_zoom_on_live_preview(tmp_path):
     assert "(VZ-1)*50" in h
 
 
+def test_flip_review_watchers_cannot_leak_or_starve(tmp_path):
+    # REGRESSION (#stale-flip, owner report 2026-07-19): with the flip review open,
+    # changing the colour or the front/back area stopped re-rendering the overlay
+    # (Navy picked, the old Red photo still shown). Root cause: every overlay opener
+    # REPLACES _3d synchronously (false -> true in one call), so a prior watcher
+    # never observed the off state and leaked; being registered earlier it consumed
+    # _SPIN_DIRTY first and STARVED the live overlay's watcher. Every watcher must
+    # therefore hold an IDENTITY reference to its own _3d and die when replaced -
+    # and the static-image watchers poll via setInterval (rAF is throttled when the
+    # view is backgrounded/obscured, freezing updates entirely).
+    h = _page(tmp_path)
+    # no watcher may guard on the SHARED _3d.on alone (the leak pattern)
+    assert "if(!_3d.on) return;" not in h, "bare _3d.on watcher guard leaks on reopen"
+    # every loop/watcher checks identity: its own captured object vs the current _3d
+    assert h.count("_3d!==_my") >= 2       # flip review + flat photo interval watchers
+    assert "_3d!==_my3" in h               # mug canvas spin loop
+    assert "_3d!==_myg" in h               # WebGL spin loop
+    # the overlay watchers are interval-based (rAF-throttle immune) and self-clear
+    assert h.count("clearInterval(_ti)") >= 2
+    # the dirty flag remains the signal drawArt raises for live re-render
+    assert "_SPIN_DIRTY=true" in h and "_SPIN_DIRTY){" in h
+
+
 def test_background_removal_available_on_every_product(tmp_path):
     # Client-side, free, private background removal on the shared photo controls -
     # so every product that takes a photo/logo gets it. 3D stays cylindrical-only.
