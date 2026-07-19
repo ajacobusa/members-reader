@@ -3378,6 +3378,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    color:var(--green);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08);
    padding:0}}
  .vzbtn:hover{{border-color:var(--gold)}}
+ /* Vertical pan slider: shown only while zoomed in - slide to move up/down the
+    picture; kept in sync with drag-panning. */
+ .vpan{{position:absolute;right:6px;top:12%;height:76%;width:22px;z-index:3;
+   display:none;writing-mode:vertical-lr;appearance:slider-vertical;
+   -webkit-appearance:slider-vertical;accent-color:var(--green);cursor:pointer;
+   background:transparent}}
  .inspecthint{{display:none;font-size:11px;color:#8a8577;text-align:center;margin:2px 0 6px}}
  .mcrop{{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}}
  .dragbar{{margin:0 0 10px;background:#fff7e0;border:1.5px solid var(--gold);
@@ -3993,7 +3999,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><div id="mzoomlayer"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div><div class="inspectbar"><button type="button" class="vzbtn" id="vzout" aria-label="Zoom out" onclick="vzStep(-1)">&#8722;</button><button type="button" id="inspectbtn" class="inspectbtn" aria-label="Zoom in to inspect your design" onclick="toggleInspect()">&#128269; Zoom</button><button type="button" class="vzbtn" id="vzin" aria-label="Zoom in" onclick="vzStep(1)">&#65291;</button></div><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
+       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><div id="mzoomlayer"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div><div class="inspectbar"><button type="button" class="vzbtn" id="vzout" aria-label="Zoom out" onclick="vzStep(-1)">&#8722;</button><button type="button" id="inspectbtn" class="inspectbtn" aria-label="Zoom in to inspect your design" onclick="toggleInspect()">&#128269; Zoom</button><button type="button" class="vzbtn" id="vzin" aria-label="Zoom in" onclick="vzStep(1)">&#65291;</button></div><input type="range" id="vpanslider" class="vpan" min="-100" max="100" step="1" value="0" aria-label="Slide to move up and down the picture" orient="vertical" oninput="vzPan(this.value)"><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
        <div id="inspecthint" class="inspecthint">&#128269; Use &#65291;/&#8722;, scroll or pinch to zoom &middot; drag to look around
          <button type="button" class="pzreset" onclick="vzReset()">Reset</button></div>
        <div id="mcrop" class="mcrop"></div>
@@ -6729,7 +6735,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    ly.style.transform = VZ>1 ? 'scale('+VZ.toFixed(3)+') translate('+VPX.toFixed(2)+'%,'+VPY.toFixed(2)+'%)' : '';
    var cv=document.getElementById('mcanvas');
    if(cv) cv.style.cursor = INSPECT ? (VZ>1?'grab':'zoom-in') : 'move';
+   // vertical pan slider: visible only while zoomed; kept in sync with drag-panning
+   // (slider top = see the TOP of the picture, so its value mirrors -VPY)
+   var sl=document.getElementById('vpanslider');
+   if(sl){{ sl.style.display=(INSPECT&&VZ>1)?'block':'none';
+     sl.value = lim>0 ? Math.round(-(VPY/lim)*100) : 0; }}
  }}
+ function vzPan(v){{ var lim=Math.max(0,(VZ-1)*50);
+   VPY = -(parseFloat(v)/100)*lim; _vApply(); }}
  function _vSetZoom(z){{ VZ=Math.max(1,Math.min(4,z)); if(VZ===1){{ VPX=0; VPY=0; }} _vApply(); }}
  function toggleInspect(){{
    INSPECT=!INSPECT;

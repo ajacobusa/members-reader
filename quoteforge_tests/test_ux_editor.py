@@ -816,6 +816,12 @@ def test_inspect_mode_pan_zoom_on_live_preview(tmp_path):
     # + auto-enters Inspect; - auto-exits at 100% (editing never left paused)
     assert "if(d>0 && !INSPECT) toggleInspect();" in h
     assert "if(d<0 && INSPECT && VZ<=1) toggleInspect();" in h
+    # vertical pan slider (owner request 2026-07-19): slide to move up/down the
+    # picture while zoomed; hidden at 100%; two-way synced with drag-panning
+    assert 'id="vpanslider"' in h and 'oninput="vzPan(this.value)"' in h
+    assert "function vzPan" in h
+    assert "(INSPECT&&VZ>1)?'block':'none'" in h   # only visible while zoomed
+    assert "Math.round(-(VPY/lim)*100)" in h       # drag-pan keeps the slider in sync
     # editing gestures are paused while inspecting (the anti-nudge guards)
     assert "if(INSPECT){ _vDown(ev); return; }" in h
     assert "if(INSPECT){ _vMove(ev); return; }" in h
