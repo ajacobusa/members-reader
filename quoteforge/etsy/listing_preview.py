@@ -3355,10 +3355,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:999px;font-size:14px}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:4px;background:#103d2e}}
- .mcanvaswrap{{position:relative;display:block;line-height:0;margin-bottom:4px}}
+ .mcanvaswrap{{position:relative;display:block;line-height:0;margin-bottom:4px;
+   overflow:hidden;border-radius:8px}}
  .mcanvaswrap #mgarment{{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
    pointer-events:none;z-index:0;border-radius:8px}}
  .mcanvaswrap #mcanvas{{margin-bottom:0;background:transparent;position:relative;z-index:1}}
+ /* Inspect mode: the view layer the pan/zoom transform rides on (same pattern as the
+    proof viewer). Only the VIEW scales - the canvas bitmap and drag math are untouched. */
+ #mzoomlayer{{position:relative;line-height:0;transform-origin:center center;
+   will-change:transform;transition:transform .08s ease-out}}
+ .inspectbtn{{position:absolute;top:7px;right:8px;z-index:3;display:inline-flex;
+   align-items:center;gap:5px;background:#fff;border:1px solid var(--line);
+   border-radius:14px;padding:4px 11px;font-size:11.5px;font-weight:700;
+   color:var(--green);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
+ .inspectbtn:hover{{border-color:var(--gold)}}
+ .inspectbtn.on{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .inspecthint{{display:none;font-size:11px;color:#8a8577;text-align:center;margin:2px 0 6px}}
  .mcrop{{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}}
  .dragbar{{margin:0 0 10px;background:#fff7e0;border:1.5px solid var(--gold);
    border-radius:12px;padding:12px 14px}}
@@ -3973,7 +3985,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
+       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><div id="mzoomlayer"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div><button type="button" id="inspectbtn" class="inspectbtn" aria-label="Zoom in to inspect your design" onclick="toggleInspect()">&#128269; Zoom</button><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
+       <div id="inspecthint" class="inspecthint">&#128269; Scroll or pinch to zoom &middot; drag to look around
+         <button type="button" class="pzreset" onclick="_vSetZoom(1)">Reset</button></div>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
@@ -6694,8 +6708,52 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    return 'frame';
  }}
+ // ── Inspect mode: pan & zoom the LIVE preview (owner request 2026-07-19).
+ // Same gesture language as the final-proof viewer (scroll/pinch to zoom, drag to
+ // look around, reset). While ON, canvas gestures NAVIGATE the view and design
+ // editing is PAUSED (guards at the top of _startDrag/_moveDrag), so zooming can
+ // never nudge the design; toggling off restores editing and resets the view.
+ let INSPECT=false, VZ=1, VPX=0, VPY=0, _VPINCH=0, _VDRAG=null;
+ function _vApply(){{
+   var ly=document.getElementById('mzoomlayer'); if(!ly) return;
+   var lim=Math.max(0,(VZ-1)*50);                 // clamp pan so the view can't leave the frame
+   VPX=Math.max(-lim,Math.min(lim,VPX)); VPY=Math.max(-lim,Math.min(lim,VPY));
+   ly.style.transform = VZ>1 ? 'scale('+VZ.toFixed(3)+') translate('+VPX.toFixed(2)+'%,'+VPY.toFixed(2)+'%)' : '';
+   var cv=document.getElementById('mcanvas');
+   if(cv) cv.style.cursor = INSPECT ? (VZ>1?'grab':'zoom-in') : 'move';
+ }}
+ function _vSetZoom(z){{ VZ=Math.max(1,Math.min(4,z)); if(VZ===1){{ VPX=0; VPY=0; }} _vApply(); }}
+ function toggleInspect(){{
+   INSPECT=!INSPECT;
+   var b=document.getElementById('inspectbtn');
+   if(b){{ b.classList.toggle('on',INSPECT);
+     b.innerHTML = INSPECT ? '&#10003; Done' : '&#128269; Zoom';
+     b.setAttribute('aria-label', INSPECT ? 'Done inspecting - back to editing'
+                                          : 'Zoom in to inspect your design'); }}
+   var h=document.getElementById('inspecthint'); if(h) h.style.display=INSPECT?'block':'none';
+   if(!INSPECT) _vSetZoom(1); else _vApply();
+ }}
+ function _vWheel(ev){{ if(!INSPECT) return; if(ev.preventDefault)ev.preventDefault();
+   _vSetZoom(VZ*((ev.deltaY||0)<0?1.18:1/1.18)); }}
+ function _vDbl(){{ if(!INSPECT) return; _vSetZoom(VZ>1?1:2.5); }}
+ function _vDown(ev){{
+   if(ev.touches && ev.touches.length===2){{ _VPINCH=_pinchDist(ev); return; }}
+   var t=(ev.touches&&ev.touches[0])||ev; _VDRAG={{x:t.clientX,y:t.clientY}};
+   ev.preventDefault&&ev.preventDefault(); }}
+ function _vMove(ev){{
+   if(ev.touches && ev.touches.length===2){{ ev.preventDefault&&ev.preventDefault();
+     var d=_pinchDist(ev); if(_VPINCH) _vSetZoom(VZ*(d/_VPINCH)); _VPINCH=d; return; }}
+   if(!_VDRAG || VZ<=1) return;
+   ev.preventDefault&&ev.preventDefault();
+   var t=(ev.touches&&ev.touches[0])||ev;
+   var cv=document.getElementById('mcanvas');
+   var rw=(cv&&cv.clientWidth)||300, rh=(cv&&cv.clientHeight)||300;
+   VPX+=((t.clientX-_VDRAG.x)/rw)*100/VZ; VPY+=((t.clientY-_VDRAG.y)/rh)*100/VZ;
+   _VDRAG={{x:t.clientX,y:t.clientY}}; _vApply(); }}
+ function _vUp(){{ _VDRAG=null; _VPINCH=0; }}
  let RESIZE_ANCHOR=null;   // opposite corner held fixed while resizing a sleeve frame
- function _startDrag(ev){{ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
+ function _startDrag(ev){{ if(INSPECT){{ _vDown(ev); return; }}
+   DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
    RESIZE_ANCHOR=null;
    if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){{ DRAGTARGET=_hitTarget(DRAGPX);
      // Branded has no front/back to spin - grabbing outside just moves the frame.
@@ -6712,7 +6770,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        TPOS.y=_clamp(DRAGLAST.y,0.04,0.96); drawArt(); }}
    }}
    ev.preventDefault&&ev.preventDefault(); }}
- function _moveDrag(ev){{ if(!DRAGGING) return;
+ function _moveDrag(ev){{ if(INSPECT){{ _vMove(ev); return; }}
+   if(!DRAGGING) return;
    const px=_canvasPt(ev), f=_frac(ev);
    const cv=document.getElementById('mcanvas'), W=cv.width, H=cv.height;
    if(DRAGTARGET==='rotate'){{                                  // spin the garment front<->back
@@ -6758,7 +6817,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
    DRAGLAST=f; DRAGPX=px; drawArt(); ev.preventDefault&&ev.preventDefault();
  }}
- function _endDrag(){{ DRAGGING=false; DRAGLAST=null; DRAGPX=null; ROT_ACC=0; }}
+ function _endDrag(){{ DRAGGING=false; DRAGLAST=null; DRAGPX=null; ROT_ACC=0; _vUp(); }}
  function initTextDrag(){{
    const cv=document.getElementById('mcanvas'); if(!cv||cv.dataset.drag) return;
    cv.dataset.drag='1'; cv.style.cursor='move';
@@ -6767,6 +6826,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    cv.addEventListener('touchstart',_startDrag,{{passive:false}});
    cv.addEventListener('touchmove',_moveDrag,{{passive:false}});
    window.addEventListener('touchend',_endDrag);
+   cv.addEventListener('wheel',_vWheel,{{passive:false}});   // Inspect mode only (no-op otherwise)
+   cv.addEventListener('dblclick',_vDbl);
  }}
  function renderFonts(){{
    document.getElementById('mfonts').innerHTML = FONTS.map((f,k)=>

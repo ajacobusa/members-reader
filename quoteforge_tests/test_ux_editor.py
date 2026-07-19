@@ -791,6 +791,34 @@ def test_next_button_sits_right_under_the_wording(tmp_path):
         assert handler in h, handler
 
 
+def test_inspect_mode_pan_zoom_on_live_preview(tmp_path):
+    # REGRESSION (owner request 2026-07-19): the LIVE editor preview has an Inspect
+    # (pan & zoom) mode so a customer can examine their design in detail - the same
+    # gesture language as the final-proof viewer (scroll/pinch to zoom, drag to look
+    # around, Reset). While Inspect is ON, the design-editing gestures are PAUSED via
+    # guards at the top of _startDrag/_moveDrag, so zooming can never nudge the
+    # design; toggling it off resets the view and restores editing exactly.
+    h = _page(tmp_path)
+    # the transformed view layer wraps BOTH the garment photo and the canvas
+    i_layer = h.find('id="mzoomlayer"')
+    i_garment = h.find('id="mgarment"')
+    i_canvas = h.find('id="mcanvas"')
+    assert -1 < i_layer < i_garment < i_canvas, "mzoomlayer must wrap garment + canvas"
+    # the toggle + hint + reset are wired
+    assert 'id="inspectbtn"' in h and 'toggleInspect()' in h
+    assert 'id="inspecthint"' in h and '_vSetZoom(1)' in h
+    # editing gestures are paused while inspecting (the anti-nudge guards)
+    assert "if(INSPECT){ _vDown(ev); return; }" in h
+    assert "if(INSPECT){ _vMove(ev); return; }" in h
+    # zoom inputs: wheel + double-click + pinch (reuses the proof viewer's _pinchDist)
+    assert "addEventListener('wheel',_vWheel" in h
+    assert "addEventListener('dblclick',_vDbl" in h
+    assert "_VPINCH=_pinchDist(ev)" in h
+    # zoom is clamped and pan can't leave the frame (proof-viewer pattern)
+    assert "Math.max(1,Math.min(4,z))" in h
+    assert "(VZ-1)*50" in h
+
+
 def test_background_removal_available_on_every_product(tmp_path):
     # Client-side, free, private background removal on the shared photo controls -
     # so every product that takes a photo/logo gets it. 3D stays cylindrical-only.
