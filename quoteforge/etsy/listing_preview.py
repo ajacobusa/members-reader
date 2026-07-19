@@ -3355,8 +3355,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    border-radius:999px;font-size:14px}}
  #mcanvas{{width:100%;border-radius:8px;border:1px solid var(--line);display:block;
    margin-bottom:4px;background:#103d2e}}
+ /* Studio-toned backing: a REAL product photo squarer than the 520:650 box (the
+    tote) letterboxes under object-fit:contain - on white the top band read as a
+    BLANK/broken preview. The studio tone matches drawArt's drawn-field fill, so
+    the bands read as intentional set, not empty page. */
  .mcanvaswrap{{position:relative;display:block;line-height:0;margin-bottom:4px;
-   overflow:hidden;border-radius:8px}}
+   overflow:hidden;border-radius:8px;background:#e9e6df}}
  .mcanvaswrap #mgarment{{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
    pointer-events:none;z-index:0;border-radius:8px}}
  .mcanvaswrap #mcanvas{{margin-bottom:0;background:transparent;position:relative;z-index:1}}

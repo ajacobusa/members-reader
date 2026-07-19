@@ -857,6 +857,17 @@ def test_flip_review_watchers_cannot_leak_or_starve(tmp_path):
     assert "_SPIN_DIRTY=true" in h and "_SPIN_DIRTY){" in h
 
 
+def test_preview_wrap_has_studio_backing_for_letterboxed_photos(tmp_path):
+    # REGRESSION (owner report 2026-07-19, tote): a real product photo squarer than
+    # the 520:650 preview box letterboxes under object-fit:contain, and on a WHITE
+    # wrap the top band read as a BLANK/broken preview ("not clear"). The wrap must
+    # carry the studio tone (drawArt's drawn-field fill) so letterbox bands read as
+    # intentional set, never empty page.
+    h = _page(tmp_path)
+    seg = h.split(".mcanvaswrap{", 1)[1].split("}", 1)[0]
+    assert "background:#e9e6df" in seg, "preview wrap lost its studio backing"
+
+
 def test_background_removal_available_on_every_product(tmp_path):
     # Client-side, free, private background removal on the shared photo controls -
     # so every product that takes a photo/logo gets it. 3D stays cylindrical-only.
