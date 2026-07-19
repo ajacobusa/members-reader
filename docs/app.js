@@ -2431,6 +2431,13 @@
    var h=document.getElementById('inspecthint'); if(h) h.style.display=INSPECT?'block':'none';
    if(!INSPECT) _vSetZoom(1); else _vApply();
  }
+ function vzReset(){ if(INSPECT) toggleInspect(); else _vSetZoom(1); }
+ function vzStep(d){
+   // Bottom-bar +/- buttons: + auto-enters Inspect and zooms a step; - zooms out
+   // and auto-EXITS Inspect at 100% so editing is never left paused at no zoom.
+   if(d>0 && !INSPECT) toggleInspect();
+   _vSetZoom(VZ*(d>0?1.35:1/1.35));
+   if(d<0 && INSPECT && VZ<=1) toggleInspect(); }
  function _vWheel(ev){ if(!INSPECT) return; if(ev.preventDefault)ev.preventDefault();
    _vSetZoom(VZ*((ev.deltaY||0)<0?1.18:1/1.18)); }
  function _vDbl(){ if(!INSPECT) return; _vSetZoom(VZ>1?1:2.5); }

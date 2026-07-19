@@ -804,9 +804,18 @@ def test_inspect_mode_pan_zoom_on_live_preview(tmp_path):
     i_garment = h.find('id="mgarment"')
     i_canvas = h.find('id="mcanvas"')
     assert -1 < i_layer < i_garment < i_canvas, "mzoomlayer must wrap garment + canvas"
-    # the toggle + hint + reset are wired
-    assert 'id="inspectbtn"' in h and 'toggleInspect()' in h
-    assert 'id="inspecthint"' in h and '_vSetZoom(1)' in h
+    # the bottom control bar: [-] [Zoom toggle] [+], overlaid at the FOOT of the
+    # picture (owner request 2026-07-19), plus the hint's Reset
+    assert 'class="inspectbar"' in h and "bottom:8px" in h
+    i_out, i_btn, i_in = (h.find('id="vzout"'), h.find('id="inspectbtn"'),
+                          h.find('id="vzin"'))
+    assert -1 < i_out < i_btn < i_in, "bar order must be - / Zoom / +"
+    assert 'onclick="vzStep(-1)"' in h and 'onclick="vzStep(1)"' in h
+    assert 'toggleInspect()' in h
+    assert 'id="inspecthint"' in h and 'vzReset()' in h
+    # + auto-enters Inspect; - auto-exits at 100% (editing never left paused)
+    assert "if(d>0 && !INSPECT) toggleInspect();" in h
+    assert "if(d<0 && INSPECT && VZ<=1) toggleInspect();" in h
     # editing gestures are paused while inspecting (the anti-nudge guards)
     assert "if(INSPECT){ _vDown(ev); return; }" in h
     assert "if(INSPECT){ _vMove(ev); return; }" in h
