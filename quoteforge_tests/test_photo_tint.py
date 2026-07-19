@@ -13,6 +13,19 @@ import numpy as np
 from PIL import Image
 
 
+def _page(tmp_path) -> str:
+    """Render the shop home with the customizer on, same harness as test_ux_editor."""
+    from quoteforge.etsy.launch_pack import LAUNCH_PACK_20
+    l = LAUNCH_PACK_20[0]
+    g = tmp_path / f"{l.n:02d}_x" / "gallery"
+    g.mkdir(parents=True)
+    Image.new("RGB", (300, 300), (15, 61, 46)).save(g / "1_hero.png")
+    from quoteforge.etsy.listing_preview import build_shop_home
+    out = build_shop_home(numbers=[l.n], kit_dir=tmp_path,
+                          out_path=tmp_path / "h.html", frame_picker=True)
+    return out.read_text(encoding="utf-8")
+
+
 def _fake_photo(tmp_path):
     """Synthetic 'model photo': white bg, neutral-white garment blob with
     shading, a saturated skin patch and blue jeans."""
@@ -87,6 +100,42 @@ def test_simulate_registers_only_real_colours_with_sim_source(tmp_path, monkeypa
     # generated files exist and flow into the per-colour map
     pc = bi.percolor_front_files()
     assert set(pc.get("m_hoodie", {})) == {e["color"] for e in sims}
+
+
+def test_simulate_covers_back_views(tmp_path, monkeypatch):
+    # REGRESSION: with per-colour FRONTS populated, the editor's BACK view fell
+    # back to the colour-agnostic WHITE back photo for a Navy pick - front navy,
+    # back white. simulate generates side='back' entries from the back base +
+    # back mask, and percolor_files('back') exposes them to the build.
+    from quoteforge.images import base_images as bi
+    from quoteforge.images.photo_tint import simulate_garment
+    monkeypatch.setenv("BASE_IMAGES_FILE", str(tmp_path / "reg.json"))
+    src = _fake_photo(tmp_path)
+    (tmp_path / "reg.json").write_text(json.dumps({"version": 1, "images": [
+        {"garment_id": "m_hoodie", "color": "White", "side": "front",
+         "file": str(src), "source": "dashboard_export", "added": "2026-07-13"},
+        {"garment_id": "m_hoodie", "color": "White", "side": "back",
+         "file": str(src), "source": "dashboard_export", "added": "2026-07-13"}]}),
+        encoding="utf-8")
+    Image.new("L", (160, 200), 255).save(tmp_path / "mask.png")
+    r = simulate_garment("m_hoodie", dest_dir=tmp_path / "sim",
+                         mask_path=tmp_path / "mask.png", side="back")
+    assert r["generated"], r
+    backs = bi.percolor_files("back").get("m_hoodie", {})
+    assert set(backs) == set(r["generated"])
+    # fronts unaffected by a back-only run
+    assert not bi.percolor_files("front").get("m_hoodie")
+
+
+def test_back_colour_map_reaches_the_page_and_editor(tmp_path):
+    # REGRESSION: the page emits APPAREL_COLOR_IMG_BACK and the editor's back
+    # view resolves the PER-COLOUR back photo before falling back to the
+    # colour-matched side photo - a Navy back never shows the white back again
+    # once its sim exists.
+    h = _page(tmp_path)
+    assert "const APPAREL_COLOR_IMG_BACK = " in h
+    assert "_backColorUrl" in h
+    assert "if(!_u && (_photoColorMatch || (_side==='back'&&_hasColorPhotos)))" in h
 
 
 def test_editor_labels_simulated_colours(tmp_path):

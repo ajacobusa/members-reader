@@ -228,23 +228,25 @@ COLOR_HEX = {
 
 def simulate_garment(garment_id: str, *, colors: list | None = None,
                      dest_dir: Path | None = None,
-                     mask_path: Path | None = None) -> dict:
-    """Generate + register simulated per-colour base images for one garment:
-    every print-partner-REAL colour (except the photographed one) gets a tinted
-    copy of the garment's real photo, registered percolor with
-    source='simulated_tint'. A colour that already has a per-colour entry from
-    a real export is left alone. Returns {generated, skipped, failed}."""
+                     mask_path: Path | None = None,
+                     side: str = "front") -> dict:
+    """Generate + register simulated per-colour base images for one garment
+    SIDE (front or back): every print-partner-REAL colour (except the
+    photographed one) gets a tinted copy of that side's real photo, registered
+    percolor with source='simulated_tint'. A colour that already has a
+    per-colour entry from a real export is left alone.
+    Returns {generated, skipped, failed}."""
     from quoteforge.images import base_images as bi
     reg = bi.load_registry()
     base = next((e for e in reg["images"]
-                 if e.get("garment_id") == garment_id and e.get("side") == "front"
+                 if e.get("garment_id") == garment_id and e.get("side") == side
                  and not e.get("percolor")), None)
     if base is None:
         return {"generated": [], "skipped": [], "failed": [],
-                "reason": f"no base photo registered for {garment_id}"}
+                "reason": f"no {side} base photo registered for {garment_id}"}
     src = bi.resolve_file(base)
     photo_col = str(base.get("color") or "")
-    have = bi.percolor_front_files().get(garment_id, {})
+    have = bi.percolor_files(side).get(garment_id, {})
     real = bi.gelato_real_colors(garment_id)
     todo = [c for c in (colors or real)
             if c in real and c != photo_col and c not in have and c in COLOR_HEX
@@ -255,17 +257,19 @@ def simulate_garment(garment_id: str, *, colors: list | None = None,
            "failed": []}
     droot = Path(dest_dir) if dest_dir else bi._repo_root() / "brand"
     # subject-cutout alpha, produced once per photo (assisted background
-    # removal) and cached as brand/mask-<gid>.png. REQUIRED: the pixel
+    # removal) and cached as brand/mask-<gid>[-back].png. REQUIRED: the pixel
     # heuristic alone cannot separate blown-white fabric from the backdrop,
     # so simulating without a real mask ships broken previews.
-    mp = Path(mask_path) if mask_path else bi._repo_root() / "brand" / f"mask-{garment_id}.png"
+    _suffix = "-back" if side == "back" else ""
+    mp = Path(mask_path) if mask_path else (
+        bi._repo_root() / "brand" / f"mask-{garment_id}{_suffix}.png")
     if todo and not mp.exists():
         return {"generated": [], "skipped": [], "failed": [],
                 "reason": f"no subject mask ({mp.name}) - run the assisted "
                           f"background-removal step first"}
     from datetime import date
     for col in todo:
-        dest = droot / f"sim-{garment_id}-{bi.color_slug(col)}.jpg"
+        dest = droot / f"sim-{garment_id}-{bi.color_slug(col)}{_suffix}.jpg"
         r = tint_photo(src, COLOR_HEX[col], dest, mask_path=mp)
         if not r.get("ok"):
             out["failed"].append((col, r.get("reason")))
@@ -274,14 +278,14 @@ def simulate_garment(garment_id: str, *, colors: list | None = None,
             rel = str(dest.relative_to(bi._repo_root()))
         except ValueError:
             rel = str(dest)
-        entry = {"garment_id": garment_id, "color": col, "side": "front",
+        entry = {"garment_id": garment_id, "color": col, "side": side,
                  "file": rel.replace("\\", "/"), "source": "simulated_tint",
                  "percolor": True, "added": date.today().isoformat()}
         reg = bi.load_registry()
         reg["images"] = [e for e in reg["images"]
                          if not (e.get("garment_id") == garment_id
                                  and e.get("color") == col
-                                 and e.get("side") == "front"
+                                 and e.get("side") == side
                                  and e.get("source") == "simulated_tint")] + [entry]
         bi._save_registry(reg)
         out["generated"].append(col)
