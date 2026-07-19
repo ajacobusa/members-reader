@@ -2419,7 +2419,14 @@
    ly.style.transform = VZ>1 ? 'scale('+VZ.toFixed(3)+') translate('+VPX.toFixed(2)+'%,'+VPY.toFixed(2)+'%)' : '';
    var cv=document.getElementById('mcanvas');
    if(cv) cv.style.cursor = INSPECT ? (VZ>1?'grab':'zoom-in') : 'move';
+   // vertical pan slider: visible only while zoomed; kept in sync with drag-panning
+   // (slider top = see the TOP of the picture, so its value mirrors -VPY)
+   var sl=document.getElementById('vpanslider');
+   if(sl){ sl.style.display=(INSPECT&&VZ>1)?'block':'none';
+     sl.value = lim>0 ? Math.round(-(VPY/lim)*100) : 0; }
  }
+ function vzPan(v){ var lim=Math.max(0,(VZ-1)*50);
+   VPY = -(parseFloat(v)/100)*lim; _vApply(); }
  function _vSetZoom(z){ VZ=Math.max(1,Math.min(4,z)); if(VZ===1){ VPX=0; VPY=0; } _vApply(); }
  function toggleInspect(){
    INSPECT=!INSPECT;
