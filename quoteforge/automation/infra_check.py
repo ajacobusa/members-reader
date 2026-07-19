@@ -2376,6 +2376,51 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("gelato_color_alias_integrity", False, str(exc)))
 
+    # 90) Flip-review watchers are IDENTITY-GUARDED (#stale-flip, owner report
+    #     2026-07-19). Every overlay opener REPLACES the shared _3d state object
+    #     synchronously (false -> true within one call), so a watcher that only
+    #     guards on `_3d.on` never observes the off state, leaks, and - being
+    #     registered earlier - consumes _SPIN_DIRTY first, STARVING the live
+    #     overlay's watcher: colour/side changes stop re-rendering (Navy picked,
+    #     Red still shown). Invariant, in BOTH the source and the published
+    #     docs/app.js (catches "fixed in source but never rebuilt" too):
+    #     (a) the bare-`_3d.on` watcher guard is GONE, (b) every watcher/loop
+    #     holds an identity reference (`_3d!==_my*`), (c) the static-image
+    #     watchers poll via a self-clearing interval (rAF is throttled to zero
+    #     in obscured views - the second freeze path).
+    try:
+        import quoteforge as _qf90
+        from quoteforge.etsy import listing_preview as _lp90
+        _src90 = Path(_lp90.__file__).read_text(encoding="utf-8", errors="ignore")
+        # The build SPLITS the page JS: three watchers land in docs/app.js, the
+        # WebGL spin loop stays inline in docs/index.html - so the published
+        # surface is both files combined.
+        _docs90 = Path(_qf90.__file__).resolve().parent.parent / "docs"
+        _js90 = "".join(
+            (_docs90 / _f).read_text(encoding="utf-8", errors="ignore")
+            for _f in ("app.js", "index.html") if (_docs90 / _f).exists())
+        _probs90 = []
+        for _where90, _txt90 in (("listing_preview.py", _src90),
+                                 ("docs page (app.js+index.html)", _js90)):
+            if not _txt90:
+                _probs90.append(f"{_where90}: missing/empty")
+                continue
+            if "if(!_3d.on) return;" in _txt90:
+                _probs90.append(f"{_where90}: bare _3d.on watcher guard is back "
+                                "(leaks on reopen)")
+            if _txt90.count("_3d!==_my") < 4:
+                _probs90.append(f"{_where90}: identity guards missing "
+                                f"({_txt90.count('_3d!==_my')}/4 watchers)")
+            if _txt90.count("clearInterval(_ti)") < 2:
+                _probs90.append(f"{_where90}: interval watchers missing "
+                                "(rAF-throttle freeze path open)")
+        checks.append(_c("flip_review_watcher_identity_guarded", not _probs90,
+                         "flip-review watchers identity-guarded in source + "
+                         "published page" if not _probs90
+                         else "; ".join(_probs90[:4])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("flip_review_watcher_identity_guarded", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

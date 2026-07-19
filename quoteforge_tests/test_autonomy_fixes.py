@@ -123,7 +123,24 @@ def test_infra_check_all_pass():
     names = {c["name"] for c in r["checks"]}
     assert {"scheduled_jobs_wired", "etsy_oauth_refresh_wired",
             "poller_surfaces_failures", "dispute_scan_guarded",
-            "approved_ready_surfaced", "safety_guardrails", "runtime_health"} <= names
+            "approved_ready_surfaced", "safety_guardrails", "runtime_health",
+            "flip_review_watcher_identity_guarded"} <= names
+
+
+# REGRESSION (#stale-flip, owner report 2026-07-19): the flip-review overlay froze
+# because a leaked watcher starved the live one. The fix (identity-guarded interval
+# watchers) is pinned as a DAILY infra invariant covering BOTH the source and the
+# published docs/app.js - test_infra_check_all_pass above asserts it PASSES; this
+# pins that the check itself cannot be quietly deleted or renamed.
+def test_infra_check_guards_flip_review_watchers():
+    import inspect
+    from quoteforge.automation import infra_check
+    src = inspect.getsource(infra_check)
+    assert '"flip_review_watcher_identity_guarded"' in src
+    # the invariant's teeth: it greps for the leak pattern and the guard tokens
+    assert 'if(!_3d.on) return;' in src        # the leak pattern it must reject
+    assert '_3d!==_my' in src                  # the identity-guard token it requires
+    assert 'clearInterval(_ti)' in src         # the rAF-throttle-immune watcher
 
 
 # REGRESSION: the 6 critical order-lifecycle risks that previously had only a
