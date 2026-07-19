@@ -3384,11 +3384,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  .mcsec>summary::after{{content:'\\25be';margin-left:auto;color:var(--muted);font-size:12px}}
  .mcsec:not([open])>summary::after{{content:'\\25b8'}}
  .mcsec[open]>summary{{margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #efe1b6}}
- /* Bare collapsible (not inside a gold dragbar), e.g. Step-1 text-styling: a light
-    chip look so the summary clearly reads as a tappable expander (#174). */
+ /* Step-1 text styling: ALWAYS visible (owner request 2026-07-18) - a plain card,
+    not a collapsible. The Next button still sits above it (#174 order kept). */
  .mtextfx{{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
-   margin:10px 0;background:#f7faf8}}
- .mtextfx[open]{{background:#fff}}
+   margin:10px 0;background:#fff}}
+ .mtextfxhdr{{font-size:14px;font-weight:700;color:var(--green);display:flex;
+   align-items:center;gap:8px;text-align:left;margin-bottom:9px;padding-bottom:8px;
+   border-bottom:1px solid #efe1b6}}
  .layoutgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px;margin:6px 0}}
  .layoutthumb{{border:1px solid var(--line);border-radius:8px;padding:3px;background:#fff;cursor:pointer}}
  .layoutthumb.sel{{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}}
@@ -4129,8 +4131,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
          <div class="esecnav">
            <button type="button" class="esecnext" id="esec1next" onclick="editStep(2)">Next: add your photo →</button>
          </div>
-         <details class="mcsec mtextfx">
-         <summary>&#10024; Style your text &mdash; font, size &amp; rotation <span style="font-weight:400;color:var(--muted)">(optional)</span></summary>
+         <div class="mcsec mtextfx">
+         <div class="mtextfxhdr">&#10024; Style your text &mdash; font, size &amp; rotation</div>
          <div class="swrow">Font</div>
          <div class="fonts" id="mfonts"></div>
          <div class="swrow">Text size <span id="mtsizelbl" style="color:#9aa49c;font-weight:400">Auto</span></div>
@@ -4160,7 +4162,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
            <button type="button" onclick="setRot(90)">Sideways ⟳</button>
            <button type="button" onclick="setRot(180)">Flip</button>
          </div>
-         </details>
+         </div>
          <div class="freebar" role="note">
            <span class="fchk">✓ Personalization is 100% FREE</span>
            <span class="fchk">✓ Preview updates instantly</span>

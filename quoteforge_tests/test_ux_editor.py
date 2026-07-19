@@ -768,25 +768,24 @@ def test_photo_and_design_panels_are_mutually_exclusive(tmp_path):
 
 
 def test_next_button_sits_right_under_the_wording(tmp_path):
-    # REGRESSION (#174): the "Next: add your photo" button sits RIGHT under the wording
-    # box, not ~675px below it past all the styling. The Step-1 text fine-tuning (font,
-    # size, move, rotate) is demoted into a collapsed <details class="mtextfx"> BELOW
-    # the Next button, so a customer who just typed their message sees the way forward
-    # immediately instead of scrolling past styling they may not want.
+    # REGRESSION (#174 + owner request 2026-07-18): the "Next: add your photo" button
+    # sits RIGHT under the wording box; the Step-1 text styling (font, size, move,
+    # rotate) lives BELOW the Next button and is ALWAYS visible - a plain card, not a
+    # collapsed <details>, and its header carries no "(optional)" hedge.
     h = _page(tmp_path)
-    assert 'class="mcsec mtextfx"' in h                 # the collapsible styling wrapper
-    assert "Style your text" in h                       # its summary label
-    # collapsed by default (no `open` on the mtextfx <details>)
-    seg = h.split('class="mcsec mtextfx"', 1)[1].split(">", 1)[0]
-    assert "open" not in seg, "text-styling section must be collapsed by default"
-    # ORDER: wording box -> Next button -> styling collapse (font/rotate inside it)
+    assert '<div class="mcsec mtextfx">' in h           # always-visible styling card
+    assert '<details class="mcsec mtextfx"' not in h    # never a collapsible again
+    assert "Style your text" in h                       # its header label
+    hdr = h.split("Style your text", 1)[1].split("</div>", 1)[0]
+    assert "optional" not in hdr.lower(), "styling header must not say (optional)"
+    # ORDER: wording box -> Next button -> styling card (font/rotate inside it)
     i_word = h.find('id="mwordbox"')
     i_next = h.find('id="esec1next"')
     i_fx = h.find('class="mcsec mtextfx"')
     i_fonts = h.find('id="mfonts"')
     i_rot = h.find('class="rotrow"')
     assert i_word < i_next < i_fx, "Next must sit right under the wording, above styling"
-    assert i_fx < i_fonts and i_fx < i_rot, "styling controls live inside the collapse"
+    assert i_fx < i_fonts and i_fx < i_rot, "styling controls live inside the card"
     # nothing lost - the styling handlers are still wired
     for handler in ("setTextSize(", "setTextRot(", "nudgeText(", "setRot("):
         assert handler in h, handler
