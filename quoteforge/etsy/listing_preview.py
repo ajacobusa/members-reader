@@ -3364,12 +3364,20 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     proof viewer). Only the VIEW scales - the canvas bitmap and drag math are untouched. */
  #mzoomlayer{{position:relative;line-height:0;transform-origin:center center;
    will-change:transform;transition:transform .08s ease-out}}
- .inspectbtn{{position:absolute;top:7px;right:8px;z-index:3;display:inline-flex;
-   align-items:center;gap:5px;background:#fff;border:1px solid var(--line);
-   border-radius:14px;padding:4px 11px;font-size:11.5px;font-weight:700;
-   color:var(--green);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
+ .inspectbar{{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+   z-index:3;display:inline-flex;align-items:center;gap:6px}}
+ .inspectbtn{{display:inline-flex;align-items:center;gap:5px;background:#fff;
+   border:1px solid var(--line);border-radius:14px;padding:4px 11px;
+   font-size:11.5px;font-weight:700;color:var(--green);cursor:pointer;
+   box-shadow:0 1px 4px rgba(0,0,0,.08)}}
  .inspectbtn:hover{{border-color:var(--gold)}}
  .inspectbtn.on{{background:var(--green);color:#fff;border-color:var(--green)}}
+ .vzbtn{{width:26px;height:26px;display:inline-flex;align-items:center;
+   justify-content:center;background:#fff;border:1px solid var(--line);
+   border-radius:50%;font-size:15px;font-weight:800;line-height:1;
+   color:var(--green);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08);
+   padding:0}}
+ .vzbtn:hover{{border-color:var(--gold)}}
  .inspecthint{{display:none;font-size:11px;color:#8a8577;text-align:center;margin:2px 0 6px}}
  .mcrop{{text-align:center;font-size:12px;color:#6b7a72;margin:0 0 6px}}
  .dragbar{{margin:0 0 10px;background:#fff7e0;border:1.5px solid var(--gold);
@@ -3985,9 +3993,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    <div id="bundlebanner" style="display:none"></div>
    <div class="mbody">
      <div class="mleft" id="mleftcol">
-       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><div id="mzoomlayer"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div><button type="button" id="inspectbtn" class="inspectbtn" aria-label="Zoom in to inspect your design" onclick="toggleInspect()">&#128269; Zoom</button><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
-       <div id="inspecthint" class="inspecthint">&#128269; Scroll or pinch to zoom &middot; drag to look around
-         <button type="button" class="pzreset" onclick="_vSetZoom(1)">Reset</button></div>
+       <div class="mcanvaswrap"><div class="pdpbadges" aria-hidden="true"><span class="pdpbadge">Made to order</span><span class="pdpbadge pdpbadge2">You approve before print</span></div><div id="mzoomlayer"><img id="mgarment" alt="Garment preview" style="display:none"><canvas id="mcanvas" width="520" height="650"></canvas></div><div class="inspectbar"><button type="button" class="vzbtn" id="vzout" aria-label="Zoom out" onclick="vzStep(-1)">&#8722;</button><button type="button" id="inspectbtn" class="inspectbtn" aria-label="Zoom in to inspect your design" onclick="toggleInspect()">&#128269; Zoom</button><button type="button" class="vzbtn" id="vzin" aria-label="Zoom in" onclick="vzStep(1)">&#65291;</button></div><div id="mug3dwrap" style="display:none;position:absolute;inset:0;z-index:4;background:#f3efe6;border-radius:10px"><span id="mock3dttl" style="position:absolute;top:7px;left:11px;font-size:12.5px;font-weight:700;color:#103d2e;line-height:1.2">&#128260; Drag to spin your product</span><span role="button" tabindex="0" aria-label="Back to editing" onclick="close3D()" onkeydown="if(event.key==='Enter')close3D()" style="position:absolute;top:3px;right:10px;cursor:pointer;font-size:21px;line-height:1;color:#5a5448">&times;</span><div id="mug3d" style="position:absolute;left:6px;right:6px;top:27px;bottom:20px;border-radius:8px;overflow:hidden"></div><span id="mock3dsub" style="position:absolute;left:11px;right:11px;bottom:4px;font-size:10px;color:#7a7466;line-height:1.3">Your approved flat proof is exactly what prints.</span></div></div>
+       <div id="inspecthint" class="inspecthint">&#128269; Use &#65291;/&#8722;, scroll or pinch to zoom &middot; drag to look around
+         <button type="button" class="pzreset" onclick="vzReset()">Reset</button></div>
        <div id="mcrop" class="mcrop"></div>
        <button type="button" class="seefinal" id="seefinalbtn" aria-label="See final preview" onclick="showFinalProof('item')">
          &#128065;&#65039; See final preview</button>
@@ -6733,6 +6741,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var h=document.getElementById('inspecthint'); if(h) h.style.display=INSPECT?'block':'none';
    if(!INSPECT) _vSetZoom(1); else _vApply();
  }}
+ function vzReset(){{ if(INSPECT) toggleInspect(); else _vSetZoom(1); }}
+ function vzStep(d){{
+   // Bottom-bar +/- buttons: + auto-enters Inspect and zooms a step; - zooms out
+   // and auto-EXITS Inspect at 100% so editing is never left paused at no zoom.
+   if(d>0 && !INSPECT) toggleInspect();
+   _vSetZoom(VZ*(d>0?1.35:1/1.35));
+   if(d<0 && INSPECT && VZ<=1) toggleInspect(); }}
  function _vWheel(ev){{ if(!INSPECT) return; if(ev.preventDefault)ev.preventDefault();
    _vSetZoom(VZ*((ev.deltaY||0)<0?1.18:1/1.18)); }}
  function _vDbl(){{ if(!INSPECT) return; _vSetZoom(VZ>1?1:2.5); }}
