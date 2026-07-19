@@ -2406,8 +2406,52 @@
    }
    return 'frame';
  }
+ // ── Inspect mode: pan & zoom the LIVE preview (owner request 2026-07-19).
+ // Same gesture language as the final-proof viewer (scroll/pinch to zoom, drag to
+ // look around, reset). While ON, canvas gestures NAVIGATE the view and design
+ // editing is PAUSED (guards at the top of _startDrag/_moveDrag), so zooming can
+ // never nudge the design; toggling off restores editing and resets the view.
+ let INSPECT=false, VZ=1, VPX=0, VPY=0, _VPINCH=0, _VDRAG=null;
+ function _vApply(){
+   var ly=document.getElementById('mzoomlayer'); if(!ly) return;
+   var lim=Math.max(0,(VZ-1)*50);                 // clamp pan so the view can't leave the frame
+   VPX=Math.max(-lim,Math.min(lim,VPX)); VPY=Math.max(-lim,Math.min(lim,VPY));
+   ly.style.transform = VZ>1 ? 'scale('+VZ.toFixed(3)+') translate('+VPX.toFixed(2)+'%,'+VPY.toFixed(2)+'%)' : '';
+   var cv=document.getElementById('mcanvas');
+   if(cv) cv.style.cursor = INSPECT ? (VZ>1?'grab':'zoom-in') : 'move';
+ }
+ function _vSetZoom(z){ VZ=Math.max(1,Math.min(4,z)); if(VZ===1){ VPX=0; VPY=0; } _vApply(); }
+ function toggleInspect(){
+   INSPECT=!INSPECT;
+   var b=document.getElementById('inspectbtn');
+   if(b){ b.classList.toggle('on',INSPECT);
+     b.innerHTML = INSPECT ? '&#10003; Done' : '&#128269; Zoom';
+     b.setAttribute('aria-label', INSPECT ? 'Done inspecting - back to editing'
+                                          : 'Zoom in to inspect your design'); }
+   var h=document.getElementById('inspecthint'); if(h) h.style.display=INSPECT?'block':'none';
+   if(!INSPECT) _vSetZoom(1); else _vApply();
+ }
+ function _vWheel(ev){ if(!INSPECT) return; if(ev.preventDefault)ev.preventDefault();
+   _vSetZoom(VZ*((ev.deltaY||0)<0?1.18:1/1.18)); }
+ function _vDbl(){ if(!INSPECT) return; _vSetZoom(VZ>1?1:2.5); }
+ function _vDown(ev){
+   if(ev.touches && ev.touches.length===2){ _VPINCH=_pinchDist(ev); return; }
+   var t=(ev.touches&&ev.touches[0])||ev; _VDRAG={x:t.clientX,y:t.clientY};
+   ev.preventDefault&&ev.preventDefault(); }
+ function _vMove(ev){
+   if(ev.touches && ev.touches.length===2){ ev.preventDefault&&ev.preventDefault();
+     var d=_pinchDist(ev); if(_VPINCH) _vSetZoom(VZ*(d/_VPINCH)); _VPINCH=d; return; }
+   if(!_VDRAG || VZ<=1) return;
+   ev.preventDefault&&ev.preventDefault();
+   var t=(ev.touches&&ev.touches[0])||ev;
+   var cv=document.getElementById('mcanvas');
+   var rw=(cv&&cv.clientWidth)||300, rh=(cv&&cv.clientHeight)||300;
+   VPX+=((t.clientX-_VDRAG.x)/rw)*100/VZ; VPY+=((t.clientY-_VDRAG.y)/rh)*100/VZ;
+   _VDRAG={x:t.clientX,y:t.clientY}; _vApply(); }
+ function _vUp(){ _VDRAG=null; _VPINCH=0; }
  let RESIZE_ANCHOR=null;   // opposite corner held fixed while resizing a sleeve frame
- function _startDrag(ev){ DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
+ function _startDrag(ev){ if(INSPECT){ _vDown(ev); return; }
+   DRAGGING=true; DRAGPX=_canvasPt(ev); DRAGLAST=_frac(ev);
    RESIZE_ANCHOR=null;
    if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL){ DRAGTARGET=_hitTarget(DRAGPX);
      // Branded has no front/back to spin - grabbing outside just moves the frame.
@@ -2424,7 +2468,8 @@
        TPOS.y=_clamp(DRAGLAST.y,0.04,0.96); drawArt(); }
    }
    ev.preventDefault&&ev.preventDefault(); }
- function _moveDrag(ev){ if(!DRAGGING) return;
+ function _moveDrag(ev){ if(INSPECT){ _vMove(ev); return; }
+   if(!DRAGGING) return;
    const px=_canvasPt(ev), f=_frac(ev);
    const cv=document.getElementById('mcanvas'), W=cv.width, H=cv.height;
    if(DRAGTARGET==='rotate'){                                  // spin the garment front<->back
@@ -2470,7 +2515,7 @@
    }
    DRAGLAST=f; DRAGPX=px; drawArt(); ev.preventDefault&&ev.preventDefault();
  }
- function _endDrag(){ DRAGGING=false; DRAGLAST=null; DRAGPX=null; ROT_ACC=0; }
+ function _endDrag(){ DRAGGING=false; DRAGLAST=null; DRAGPX=null; ROT_ACC=0; _vUp(); }
  function initTextDrag(){
    const cv=document.getElementById('mcanvas'); if(!cv||cv.dataset.drag) return;
    cv.dataset.drag='1'; cv.style.cursor='move';
@@ -2479,6 +2524,8 @@
    cv.addEventListener('touchstart',_startDrag,{passive:false});
    cv.addEventListener('touchmove',_moveDrag,{passive:false});
    window.addEventListener('touchend',_endDrag);
+   cv.addEventListener('wheel',_vWheel,{passive:false});   // Inspect mode only (no-op otherwise)
+   cv.addEventListener('dblclick',_vDbl);
  }
  function renderFonts(){
    document.getElementById('mfonts').innerHTML = FONTS.map((f,k)=>
