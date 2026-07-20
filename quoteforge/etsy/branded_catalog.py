@@ -37,7 +37,7 @@ class BrandedProduct:
 
 _BRANDED_TYPES = [
     ("tote", "Organic Cotton Tote Bag", "Tote Bag", "Bags",
-     ["One Size"], ["Natural", "White", "Sand", "Sage", "Navy", "Black"],
+     ["One Size"], ["Natural", "White", "Sand", "Sage", "Navy", "Black", "Red"],
      7.0, "Gelato Organic Tote", "Value", 3000, 3600),
     ("bottle", "Insulated Stainless Water Bottle", "Water Bottle", "Drinkware",
      ["20oz"], ["White", "Silver", "Black", "Navy", "Red"],
