@@ -2421,6 +2421,54 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("flip_review_watcher_identity_guarded", False, str(exc)))
 
+    # 91) The PUBLISHED editor pickers offer ONLY fulfillable colours (owner report
+    #     2026-07-19, travel mug: Silver/Black swatches offered while Gelato's live
+    #     catalog has stainless-steel-white ONLY - a customer could design and PAY
+    #     for an unmakeable colour). Parses MUG_FORMATS/BRANDED_FORMATS out of the
+    #     published docs/app.js and requires every offer to resolve to a fulfillable
+    #     variant under the CURRENT approved-UID export. Catches both an emission
+    #     regression and "map changed but the page was never rebuilt" drift.
+    #     Family-aware: an inactive (unmapped) family is skipped, mirroring the
+    #     fulfillability filter's grace mode.
+    try:
+        import json as _json91
+        import re as _re91
+        import quoteforge as _qf91
+        from quoteforge.etsy.fulfillability import (
+            fulfillable_mug_variations as _fmv91,
+            fulfillable_branded_variations as _fbv91,
+            approved_export_map as _aem91)
+        from quoteforge.etsy.mug_catalog import (MUG_CATALOG as _MC91,
+                                                 build_mug_variations as _bmv91)
+        from quoteforge.etsy.branded_catalog import (BRANDED_CATALOG as _BC91,
+                                                     build_branded_variations as _bbv91)
+        _app91 = Path(_qf91.__file__).resolve().parent.parent / "docs" / "app.js"
+        _js91 = _app91.read_text(encoding="utf-8", errors="ignore") \
+            if _app91.exists() else ""
+        _m91 = _aem91()
+        _probs91 = []
+        for _label91, _const91, _cat91, _fulf91, _raw91 in (
+                ("mug", "MUG_FORMATS", _MC91, _fmv91, _bmv91),
+                ("branded", "BRANDED_FORMATS", _BC91, _fbv91, _bbv91)):
+            if not any(v.gelato_sku in _m91 for v in _raw91()):
+                continue                    # family not mapped yet - grace mode
+            _mt91 = _re91.search(r"const " + _const91 + r" = (\[.*?\]);", _js91)
+            if not _mt91:
+                _probs91.append(f"{_const91} missing from docs/app.js")
+                continue
+            _names91 = {p.product_id: p.name for p in _cat91}
+            _allowed91 = {f"{_names91[v.product_id]} - {v.color}"
+                          for v in _fulf91() if v.product_id in _names91}
+            _offered91 = {f.get("name") for f in _json91.loads(_mt91.group(1))}
+            _bad91 = sorted(_offered91 - _allowed91)
+            if _bad91:
+                _probs91.append(f"{_label91} picker offers unfulfillable: {_bad91[:4]}")
+        checks.append(_c("published_pickers_fulfillable_only", not _probs91,
+                         "published mug/branded pickers offer only approved-UID "
+                         "colours" if not _probs91 else "; ".join(_probs91[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("published_pickers_fulfillable_only", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

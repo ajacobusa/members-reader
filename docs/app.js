@@ -265,7 +265,7 @@
  // ── Custom Branded Products: a parallel product family sharing this editor ──
  // BRANDED_FORMATS: one entry per product x colour ("{name} - {colour}" + from-price).
  // BRANDED_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
- const BRANDED_FORMATS = [{"name": "Organic Cotton Tote Bag - Natural", "price": 28.99}, {"name": "Organic Cotton Tote Bag - White", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Sand", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Sage", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Navy", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Black", "price": 28.99}];
+ const BRANDED_FORMATS = [{"name": "Organic Cotton Tote Bag - Natural", "price": 28.99}, {"name": "Organic Cotton Tote Bag - White", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Navy", "price": 28.99}, {"name": "Organic Cotton Tote Bag - Black", "price": 28.99}];
  const BRANDED_DIMS = {"tote": [3000, 3600]};
  // Branded product NAME -> product_id, so the editor can resolve BRANDED_DIMS
  // (keyed by product_id) from the name shopBranded carries.
@@ -273,7 +273,7 @@
  // ── Custom Mugs: a parallel product family sharing this editor ──
  // MUG_FORMATS: one entry per product x accent-colour ("{name} - {colour}" + from-price).
  // MUG_DIMS: per-product print bound [w_px,h_px]. Customer-safe (no supplier data).
- const MUG_FORMATS = [{"name": "Classic Ceramic Mug (11oz) - White", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Black", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Navy", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Red", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Forest Green", "price": 28.99}, {"name": "Large Ceramic Mug (15oz) - White", "price": 32.99}, {"name": "Large Ceramic Mug (15oz) - Black", "price": 32.99}, {"name": "Large Ceramic Mug (15oz) - Navy", "price": 32.99}, {"name": "Enamel Camp Mug (12oz) - White", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Black", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Navy", "price": 43.99}, {"name": "Enamel Camp Mug (12oz) - Red", "price": 43.99}, {"name": "Stainless Travel Mug (15oz) - White", "price": 51.99}, {"name": "Stainless Travel Mug (15oz) - Silver", "price": 51.99}, {"name": "Stainless Travel Mug (15oz) - Black", "price": 51.99}, {"name": "Tall Mug (17oz) - White", "price": 39.99}];
+ const MUG_FORMATS = [{"name": "Classic Ceramic Mug (11oz) - White", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Black", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Red", "price": 28.99}, {"name": "Classic Ceramic Mug (11oz) - Forest Green", "price": 28.99}, {"name": "Large Ceramic Mug (15oz) - White", "price": 32.99}, {"name": "Enamel Camp Mug (12oz) - White", "price": 43.99}, {"name": "Stainless Travel Mug (15oz) - White", "price": 51.99}, {"name": "Tall Mug (17oz) - White", "price": 39.99}];
  const MUG_DIMS = {"classic_mug": [2475, 1155], "large_mug": [2790, 1320], "enamel_mug": [2400, 1050], "travel_mug": [2600, 1700], "xl_mug": [2900, 1380]};
  // Mug product NAME -> product_id, so the editor can resolve MUG_DIMS (keyed by
  // product_id) from the name shopMug carries.
