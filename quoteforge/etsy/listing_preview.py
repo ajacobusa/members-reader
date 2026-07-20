@@ -5959,10 +5959,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Occasion -> a sensible default product + a starter line. Opens that editor
  // pre-filled so the buyer starts from gift intent (the highest-converting entry).
  const OCCASIONS=[
-   {{label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Happy Birthday [Name]!'}},
+   {{label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Black', quote:'Happy Birthday [Name]!'}},
    {{label:'Anniversary', kind:'cal', name:"Wall Calendar", color:'White', quote:'Our Year Together'}},
    {{label:'For Mom', kind:'mug', name:"Accent Mug", color:'Dusty Rose', quote:'Best Mom Ever'}},
-   {{label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Best Dad Ever'}},
+   {{label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Black', quote:'Best Dad Ever'}},
    {{label:'Wedding', kind:'cal', name:"Wall Calendar", color:'White', quote:'Mr & Mrs [Name]'}},
    {{label:'New Baby', kind:'branded', name:"Organic Cotton Tote Bag", color:'Natural', quote:'Welcome Baby [Name]'}},
    {{label:'Graduation', kind:'apparel', name:"Men's T-Shirt", color:'White', quote:'Class of 2025'}},
@@ -5972,7 +5972,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  ];
  // Curated cross-department sets. Combined from-price = sum of each item's from-price.
  const GIFTSETS=[
-   {{key:'family', name:'Family Memory Set', items:[{{kind:'cal',name:"Wall Calendar",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Navy'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}}]}},
+   {{key:'family', name:'Family Memory Set', items:[{{kind:'cal',name:"Wall Calendar",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Black'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}}]}},
    {{key:'corporate', name:'Corporate Welcome Kit', items:[{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Black'}},{{kind:'branded',name:"Insulated Stainless Water Bottle",color:'White'}},{{kind:'branded',name:"Hardcover Journal",color:'Black'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'White'}}]}},
    {{key:'newhome', name:'New Home Set', items:[{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Forest Green'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Sage'}},{{kind:'cal',name:"Wall Calendar",color:'White'}}]}},
    {{key:'celebration', name:'Celebration Set', items:[{{kind:'apparel',name:"Men's T-Shirt",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Red'}}]}}
@@ -6995,7 +6995,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    "Light Blue":"#a7c7e7","Black":"#1c1c1e","Charcoal":"#3a3f43","Navy":"#26324a",
    "Royal Blue":"#2f4ba0","Red":"#b3322c","Maroon":"#5e2a32","Forest Green":"#2e4a39",
    "Sage":"#7f9b78","Mustard":"#cda434","Purple":"#5b4b8a","Dusty Rose":"#c98a9a",
-   "Brown":"#5a4334","Natural":"#e7ddc7","Cream":"#f3ecd9","Silver":"#c9ccce"}};
+   "Brown":"#5a4334","Natural":"#e7ddc7","Cream":"#f3ecd9","Silver":"#c9ccce",
+   "Blue":"#3f68b3","Pink":"#e5a8bb","Yellow":"#e5c54a"}};
  // Data-driven apparel layouts. Each slot: kind 'arc'|'line', position as a
  // FRACTION of the print bound b={{x,y,w,h}}, weight = font size as a fraction of
  // min(w,h), font + caps. logo.frame names a decoration; r/midAngle/sweep drive

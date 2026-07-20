@@ -44,8 +44,13 @@ class MugProduct:
 
 
 _MUG_TYPES = [
+    # Colours grounded against the print partner's LIVE 11oz ceramic range
+    # (2026-07-20): white/black/blue/green/pink/red/yellow. "Navy" was a seed
+    # colour the partner never made (their blue is a true ceramic-blue), so it
+    # is named Blue; Pink/Yellow enter HIDDEN until their drafted UIDs are
+    # owner-approved (fulfillability gates the swatches).
     ("classic_mug", "Classic Ceramic Mug (11oz)", "Coffee Mug", "Coffee Mugs",
-     ["11oz"], ["White", "Black", "Navy", "Red", "Forest Green"],
+     ["11oz"], ["White", "Black", "Blue", "Red", "Forest Green", "Pink", "Yellow"],
      7.0, "Gelato Ceramic 11oz", "Value", 2475, 1155, 11, True),
     ("large_mug", "Large Ceramic Mug (15oz)", "Large Coffee Mug", "Coffee Mugs",
      ["15oz"], ["White", "Black", "Navy"],
