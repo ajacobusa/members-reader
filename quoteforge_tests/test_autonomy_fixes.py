@@ -124,7 +124,9 @@ def test_infra_check_all_pass():
     assert {"scheduled_jobs_wired", "etsy_oauth_refresh_wired",
             "poller_surfaces_failures", "dispute_scan_guarded",
             "approved_ready_surfaced", "safety_guardrails", "runtime_health",
-            "flip_review_watcher_identity_guarded"} <= names
+            "flip_review_watcher_identity_guarded",
+            "published_pickers_fulfillable_only",
+            "auto_approved_mappings_guardrailed"} <= names
 
 
 # REGRESSION (#stale-flip, owner report 2026-07-19): the flip-review overlay froze

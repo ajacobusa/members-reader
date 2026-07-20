@@ -193,6 +193,100 @@ def reject_uid(sku: str) -> dict:
     return set_uid_status(sku, "blocked", approved=False)
 
 
+# ─────────── Auto-approval: exact colour-sibling extension (guardrailed) ───────────
+# Owner policy 2026-07-20: a drafted mapping may go live WITHOUT a manual approval
+# ONLY when it is a pure COLOUR extension of a pattern the owner already vouched
+# for. Guardrails (each fails CLOSED - the draft simply stays in the queue):
+#   1. its productUid differs from an OWNER-approved (non-auto) sibling's UID in
+#      exactly ONE segment, and that segment is a colour (gco/bco pure-colour keys,
+#      or mmat with the material prefix preserved: ceramic-blue may extend
+#      ceramic-white, never heat-transfer-black). Size / tier / quality / print-mode
+#      changes are NEVER auto-approved.
+#   2. its draft reason carries no translation/substitution/visual-judgement marker.
+#   3. the UID is 1:1 (no other SKU claims it).
+#   4. the UID EXISTS in the live product API right now (injectable checker;
+#      no key / TEST_MODE -> check returns False -> stays owner-gated).
+# Every auto-approval is stamped source='auto-exact-colour' and re-audited daily by
+# infra_check invariant 92 (auto_approved_mappings_guardrailed).
+
+AUTO_APPROVE_SOURCE = "auto-exact-colour"
+_PURE_COLOUR_KEYS = {"gco", "bco"}
+_MATERIAL_COLOUR_KEYS = {"mmat"}
+_AUTO_REASON_BLOCKLIST = ("translat", "substitut", "needs visual", "nearest")
+
+
+def _colour_sibling_of(uid: str, approved_uid: str) -> bool:
+    """True when `uid` differs from `approved_uid` in exactly ONE '_' segment whose
+    key is a colour key (material prefix preserved for material+colour keys)."""
+    a, b = (uid or "").split("_"), (approved_uid or "").split("_")
+    if len(a) != len(b) or len(a) < 4:
+        return False
+    diffs = [i for i, (x, y) in enumerate(zip(a, b)) if x != y]
+    if len(diffs) != 1 or diffs[0] == 0:
+        return False
+    i = diffs[0]
+    key = a[i - 1]
+    if key in _PURE_COLOUR_KEYS:
+        return True
+    if key in _MATERIAL_COLOUR_KEYS:
+        return a[i].rsplit("-", 1)[0] == b[i].rsplit("-", 1)[0]
+    return False
+
+
+def auto_approve_exact_colour_siblings(*, checker=None) -> list[dict]:
+    """Apply the guardrailed auto-approval policy to the pending queue. Returns one
+    action dict per queue row: {sku, action: 'approved'|'skipped', reason}. Only
+    'approved' rows change state; everything else stays for the owner."""
+    actions: list[dict] = []
+    all_rows = registry_rows()
+    owner_approved = [r for r in all_rows
+                     if r.get("approved_for_go_live")
+                     and (r.get("source") or "") != AUTO_APPROVE_SOURCE]
+    uid_owner = {}                              # uid -> sku (1:1 audit over ALL rows)
+    for r in all_rows:
+        uid_owner.setdefault(r.get("product_uid"), r["sku"])
+    chk = checker or _gelato_uid_exists
+    for row in pending_review():
+        sku, uid = row["sku"], row.get("product_uid") or ""
+        reason = (row.get("match_reason") or "").lower()
+        if any(t in reason for t in _AUTO_REASON_BLOCKLIST):
+            actions.append({"sku": sku, "action": "skipped",
+                            "reason": "draft reason needs owner judgement"})
+            continue
+        sib = next((s for s in owner_approved
+                    if s["product_family"] == row["product_family"]
+                    and _colour_sibling_of(uid, s.get("product_uid") or "")), None)
+        if sib is None:
+            actions.append({"sku": sku, "action": "skipped",
+                            "reason": "no owner-approved exact colour sibling"})
+            continue
+        if uid_owner.get(uid, sku) != sku:
+            actions.append({"sku": sku, "action": "skipped",
+                            "reason": f"uid already claimed by {uid_owner[uid]}"})
+            continue
+        try:
+            exists = bool(chk(uid))
+        except Exception as exc:  # noqa: BLE001 - a check error never approves
+            logger.warning("auto-approve existence check failed for %s: %s", sku, exc)
+            exists = False
+        if not exists:
+            actions.append({"sku": sku, "action": "skipped",
+                            "reason": "live existence check unavailable/negative"})
+            continue
+        note = (f"{row.get('match_reason') or ''}; AUTO-APPROVED: exact colour "
+                f"sibling of {sib['sku']} (colour-only diff, live-verified, 1:1)")
+        with _conn() as conn:
+            conn.execute(
+                "UPDATE gelato_uid_registry SET status='approved', "
+                "approved_for_go_live=1, source=?, match_reason=?, "
+                "verified_at=datetime('now'), updated_at=datetime('now') WHERE sku=?",
+                (AUTO_APPROVE_SOURCE, note, sku))
+        actions.append({"sku": sku, "action": "approved",
+                        "reason": f"exact colour sibling of {sib['sku']}"})
+        logger.info("auto-approved %s (colour sibling of %s)", sku, sib["sku"])
+    return actions
+
+
 def registry_rows(product_family: str | None = None) -> list[dict]:
     """All registry rows, optionally filtered to one family (newest first)."""
     with _conn() as conn:
