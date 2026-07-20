@@ -782,7 +782,12 @@
    drawArt(); fillSizes();
  }
  // Real per-colour photo for a tile (go-live), else '' to keep the default shot.
- function _tileColorUrl(type,color){ var m=APPAREL_COLOR_IMG[type]; return (m&&m[color])||''; }
+ // Tier variants (#178) reuse the BASE garment's photos: strip _value/_premium so a
+ // Premium pick keeps the photographic preview instead of falling to the silhouette
+ // (owner report 2026-07-20 - the model picture disappeared on tier garments).
+ function _tileColorUrl(type,color){
+   var m=APPAREL_COLOR_IMG[type]||APPAREL_COLOR_IMG[(type||'').replace(/_(value|premium)$/,'')];
+   return (m&&m[color])||''; }
  function swapTileColor(card,color){
    var img=card.querySelector('.appimg'); if(!img) return;
    img.src = _tileColorUrl(card.dataset.gid,color) || card.dataset.defimg || img.src; }
@@ -2184,7 +2189,7 @@
    var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
    if(!sm||!sm.zones) return null;
    var sel=((typeof CURFMT!=='undefined'?CURFMT:'').split(' - ')[1]||'');
-   var perc=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]&&APPAREL_COLOR_IMG[gid][sel]);
+   var perc=!!(typeof _tileColorUrl==='function'&&_tileColorUrl(gid,sel));   // tier-aware (#178)
    var match=!!(sm.color&&sm.color===sel);
    if(!perc&&!match) return null;        // silhouette showing -> old defaults
    return sm.zones[area]||null;
@@ -3092,8 +3097,9 @@
      // photos exist - else a black shirt would show as white - OR when the
      // buyer's selected colour IS the photographed colour (sm.color, emitted
      // eyeball-verified metadata). Mirrors the editor's drawArt guard.
-     var hasColor=!!(typeof APPAREL_COLOR_IMG!=='undefined'&&APPAREL_COLOR_IMG[gid]
-       &&Object.keys(APPAREL_COLOR_IMG[gid]).length);
+     var _bg78=(gid||'').replace(/_(value|premium)$/,'');   // tier-aware (#178)
+     var _cm78=(typeof APPAREL_COLOR_IMG!=='undefined')?(APPAREL_COLOR_IMG[gid]||APPAREL_COLOR_IMG[_bg78]):null;
+     var hasColor=!!(_cm78&&Object.keys(_cm78).length);
      var sm=(typeof APPAREL_SIDE_IMG!=='undefined')?(APPAREL_SIDE_IMG[gid]||APPAREL_SIDE_IMG[gid.replace(/_(value|premium)$/,'')]):null;
      var photoMatch=!!(sm&&sm.color&&sm.color===(fmt.split(' - ')[1]||''));
      if(!hasColor&&!photoMatch) return null;
@@ -3504,7 +3510,8 @@
      // the same white tee for every colour. Without per-colour photos we fall
      // through to the recolouring silhouette (drawGarment) so the colour swatch
      // actually changes the shirt - and the buyer can still design the BACK.
-     const _hasColorPhotos=!!(APPAREL_COLOR_IMG[_gid]&&Object.keys(APPAREL_COLOR_IMG[_gid]).length);
+     const _colorMap=APPAREL_COLOR_IMG[_gid]||APPAREL_COLOR_IMG[_bgid];   // tier-aware (#178)
+    const _hasColorPhotos=!!(_colorMap&&Object.keys(_colorMap).length);
      // The photo may ALSO stand in (no per-colour photos yet) when the buyer's
      // selected colour IS the colour the garment was photographed in (emitted,
      // eyeball-verified metadata - never guessed): the default White pick shows

@@ -891,6 +891,23 @@ def test_editor_pickers_offer_only_fulfillable_colours(tmp_path):
         assert boffered <= ballowed, f"unfulfillable branded offers: {sorted(boffered - ballowed)}"
 
 
+def test_tier_variants_keep_the_percolour_photo_preview(tmp_path):
+    # REGRESSION (owner report 2026-07-20): on a (Value)/(Premium) tier garment the
+    # model photo DISAPPEARED on colour change - the front per-colour lookup used the
+    # raw tier gid (m_longsleeve_premium) while only the back/side lookups stripped
+    # the tier suffix to the base garment's photos (#178: tiers share ONE photo set).
+    # Every colour-photo lookup must be tier-aware.
+    h = _page(tmp_path)
+    seg = h.split("function _tileColorUrl", 1)[1].split("function ", 1)[0]
+    assert "replace(/_(value|premium)$/,'')" in seg, \
+        "front per-colour lookup lost its tier-suffix strip"
+    # the photo-presence checks are tier-aware too (drawArt + spin base + zones)
+    assert h.count("tier-aware (#178)") >= 3
+    # and the back lookup keeps its own strip (regression-proof both directions)
+    bseg = h.split("function _backColorUrl", 1)[1].split("function ", 1)[0]
+    assert "replace(/_(value|premium)$/,'')" in bseg
+
+
 def test_trust_badges_sit_above_the_preview_not_on_it(tmp_path):
     # REGRESSION (owner report 2026-07-19): the "Made to order" / "You approve
     # before print" pills were absolutely overlaid on the preview's top-left - on
