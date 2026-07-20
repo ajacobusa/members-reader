@@ -2469,6 +2469,47 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("published_pickers_fulfillable_only", False, str(exc)))
 
+    # 92) Every AUTO-approved UID mapping still satisfies the owner's auto-approval
+    #     policy (2026-07-20): rows stamped source='auto-exact-colour' must each
+    #     (a) be an exact colour-sibling of an OWNER-approved (non-auto) mapping in
+    #     the same family - colour-only UID diff, material preserved - so the auto
+    #     path can only EXTEND owner-vouched patterns, never bootstrap off itself,
+    #     (b) carry no translation/substitution/visual-judgement marker, and
+    #     (c) hold a 1:1 UID (no other SKU claims it). A violation means the
+    #     guardrails were bypassed or drifted -> fail loudly, owner re-reviews.
+    try:
+        from quoteforge.automation.gelato_readiness import (
+            AUTO_APPROVE_SOURCE as _AAS92, _colour_sibling_of as _sib92,
+            _AUTO_REASON_BLOCKLIST as _BL92, registry_rows as _rr92)
+        _rows92 = _rr92()
+        _auto92 = [r for r in _rows92
+                   if (r.get("source") or "") == _AAS92 and r.get("approved_for_go_live")]
+        _owner92 = [r for r in _rows92
+                    if r.get("approved_for_go_live")
+                    and (r.get("source") or "") != _AAS92]
+        _probs92 = []
+        for _r92 in _auto92:
+            _uid92 = _r92.get("product_uid") or ""
+            if not any(s["product_family"] == _r92["product_family"]
+                       and _sib92(_uid92, s.get("product_uid") or "")
+                       for s in _owner92):
+                _probs92.append(f"{_r92['sku']}: no owner-approved colour sibling")
+            _rea92 = (_r92.get("match_reason") or "").lower()
+            # the blocklist markers may only appear AFTER the auto-approval stamp
+            _pre92 = _rea92.split("auto-approved", 1)[0]
+            if any(t in _pre92 for t in _BL92):
+                _probs92.append(f"{_r92['sku']}: draft reason needed owner judgement")
+            _dup92 = [x["sku"] for x in _rows92
+                      if x.get("product_uid") == _uid92 and x["sku"] != _r92["sku"]]
+            if _dup92:
+                _probs92.append(f"{_r92['sku']}: uid also claimed by {_dup92[:2]}")
+        checks.append(_c("auto_approved_mappings_guardrailed", not _probs92,
+                         f"{len(_auto92)} auto-approved mapping(s) all within the "
+                         "exact-colour-sibling policy" if not _probs92
+                         else "; ".join(_probs92[:4])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("auto_approved_mappings_guardrailed", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

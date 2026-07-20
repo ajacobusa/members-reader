@@ -2790,6 +2790,9 @@ def _cmd_gelato_uid(args: list[str]) -> int:
       verify SKU            check the drafted UID against the Gelato API (-> verified)
       approve SKU           approve a verified UID for go-live (-> reaches the runtime map)
       reject SKU            block a mapping (never exported)
+      auto-approve          guardrailed owner policy: approve + export ONLY exact
+                            colour-siblings of owner-approved patterns (live-verified,
+                            1:1, no translation/substitution; audited by infra 92)
     """
     from quoteforge.db.database import init_db
     from quoteforge.automation import gelato_readiness as gr
@@ -2824,7 +2827,20 @@ def _cmd_gelato_uid(args: list[str]) -> int:
         r = gr.reject_uid(sku)
         print(f"rejected/blocked {sku}." if r else f"{sku} not in registry")
         return 0 if r else 1
-    print("usage: gelato-uid [list|verify SKU|approve SKU|reject SKU]")
+    if sub == "auto-approve":
+        acts = gr.auto_approve_exact_colour_siblings()
+        approved = [a for a in acts if a["action"] == "approved"]
+        for a in acts:
+            print(f"  [{a['action']:<8}] {a['sku']:<30} {a['reason']}")
+        if approved:
+            exp = gr.export_registry_to_uid_map()
+            print(f"auto-approved {len(approved)} colour sibling(s); "
+                  f"exported {exp.get('written', '?')} UID(s) to the runtime map.")
+            print("  -> rebuild-site to expose the new swatches.")
+        else:
+            print("nothing auto-approvable; queue unchanged (owner review still needed).")
+        return 0
+    print("usage: gelato-uid [list|verify SKU|approve SKU|reject SKU|auto-approve]")
     return 2
 
 

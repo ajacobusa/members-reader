@@ -187,6 +187,24 @@ def sync_catalog() -> dict:
                 "discontinued": 0, "message": "TEST_MODE/no key - no live sync",
                 **ph}
 
+    # Owner policy 2026-07-20: exact colour-siblings of owner-approved patterns
+    # auto-approve on the daily sync (guardrailed + live-verified inside; audited
+    # by infra invariant 92). Everything else stays in the owner queue. Defensive:
+    # an error here must never break the catalog sync itself.
+    auto_approved = 0
+    try:
+        from quoteforge.automation.gelato_readiness import (
+            auto_approve_exact_colour_siblings, export_registry_to_uid_map)
+        _acts = auto_approve_exact_colour_siblings()
+        auto_approved = sum(1 for a in _acts if a["action"] == "approved")
+        if auto_approved:
+            export_registry_to_uid_map()
+            logger.info("sync auto-approved %d exact colour sibling(s): %s",
+                        auto_approved,
+                        [a["sku"] for a in _acts if a["action"] == "approved"])
+    except Exception as exc:  # noqa: BLE001 - policy pass is best-effort
+        logger.warning("auto-approve pass failed (sync continues): %s", exc)
+
     uid_map = _uid_map()
     state = load_state().get("skus", {})
     updated = discontinued = unmapped = 0
@@ -207,6 +225,7 @@ def sync_catalog() -> dict:
     save_state(state)
     return {"mock": False, "checked": len(skus), "updated": updated,
             "discontinued": discontinued, "unmapped": unmapped,
+            "auto_approved": auto_approved,
             "message": f"{updated} changed, {discontinued} discontinued, "
                        f"{unmapped} unmapped (add to GELATO_UID_MAP)", **ph}
 
