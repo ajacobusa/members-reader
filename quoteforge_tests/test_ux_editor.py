@@ -857,6 +857,23 @@ def test_flip_review_watchers_cannot_leak_or_starve(tmp_path):
     assert "_SPIN_DIRTY=true" in h and "_SPIN_DIRTY){" in h
 
 
+def test_trust_badges_sit_above_the_preview_not_on_it(tmp_path):
+    # REGRESSION (owner report 2026-07-19): the "Made to order" / "You approve
+    # before print" pills were absolutely overlaid on the preview's top-left - on
+    # wall art the customer's own photo fills the whole frame, making the pills
+    # unreadable AND covering the picture. They must render as a normal row ABOVE
+    # the preview wrap, never positioned over the artwork.
+    h = _page(tmp_path)
+    i_badges = h.find('class="pdpbadges"')
+    i_wrap = h.find('class="mcanvaswrap"')
+    assert -1 < i_badges < i_wrap, "badge row must come BEFORE the preview wrap"
+    seg = h.split('class="pdpbadges"', 1)[1]
+    assert seg.split('class="mcanvaswrap"', 1)[0].count("pdpbadge") >= 2
+    css = h.split(".pdpbadges{", 1)[1].split("}", 1)[0]
+    assert "position:absolute" not in css, "badges may not overlay the artwork"
+    assert "Made to order" in h and "You approve before print" in h
+
+
 def test_preview_wrap_has_studio_backing_for_letterboxed_photos(tmp_path):
     # REGRESSION (owner report 2026-07-19, tote): a real product photo squarer than
     # the 520:650 preview box letterboxes under object-fit:contain, and on a WHITE
