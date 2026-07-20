@@ -18,6 +18,9 @@ _CATALOG = [{"uid": u} for u in (
     "mug_product_msz_11-oz_mmat_ceramic-black_cl_4-0",
     "mug_product_msz_11-oz_mmat_ceramic-red_cl_4-0",
     "mug_product_msz_11-oz_mmat_ceramic-green_cl_4-0",
+    "mug_product_msz_11-oz_mmat_ceramic-blue_cl_4-0",
+    "mug_product_msz_11-oz_mmat_ceramic-pink_cl_4-0",
+    "mug_product_msz_11-oz_mmat_ceramic-yellow_cl_4-0",
     "mug_product_msz_11-oz_mmat_heat-transfer-black_cl_4-0",   # collision decoy
     "mug_product_msz_15-oz_mmat_ceramic-white_cl_4-0",
     "mug_product_msz_17-oz-tall_mmat_ceramic-white_cl_4-0",
@@ -50,11 +53,33 @@ def test_classic_matches_available_colours():
     assert m["GEL-CLASSIC_MUG-11OZ-RED"]["status"] == "matched"
 
 
-def test_navy_is_unfulfillable_not_guessed_as_blue():
-    # REGRESSION: Gelato has no navy; it must be flagged, never coerced to 'blue'.
-    r = _by_sku().get("GEL-CLASSIC_MUG-11OZ-NAVY")
+def test_navy_is_unfulfillable_not_guessed_as_blue(monkeypatch):
+    # REGRESSION: Gelato has no NAVY ceramic; a catalog colour named Navy must be
+    # flagged, never coerced to 'blue'. The live classic mug stopped SELLING Navy in
+    # the 2026-07-20 grounded sweep (the partner's blue is a true blue, now named
+    # Blue), so a synthetic Navy product pins the RESOLVER rule itself.
+    from quoteforge.etsy import mug_catalog as mc
+    navy = mc.MugProduct(product_id="classic_mug", name="Classic Ceramic Mug (11oz)",
+                         type_name="Coffee Mug", category="Coffee Mugs",
+                         sizes=["11oz"], colors=["Navy"], base_cost=7.0,
+                         sku_prefix="GEL-CLASSIC_MUG")
+    monkeypatch.setattr(mc, "MUG_CATALOG", [navy])
+    r = {x["sku"]: x
+         for x in rs.deterministic_mug_matches(catalog=_CATALOG)}.get(
+        "GEL-CLASSIC_MUG-11OZ-NAVY")
     assert r and r["status"] == "unfulfillable" and r["uid"] is None
     assert "navy" in r["reason"].lower()
+
+
+def test_classic_blue_pink_yellow_match_real_ceramics():
+    # The 2026-07-20 grounded sweep: the partner REALLY makes ceramic-blue/pink/
+    # yellow at 11-oz (drafted for owner approval). The deterministic matcher must
+    # resolve each to its exact ceramic UID - material-anchored, no collisions.
+    m = _by_sku()
+    for colour, slug in (("BLUE", "blue"), ("PINK", "pink"), ("YELLOW", "yellow")):
+        r = m.get(f"GEL-CLASSIC_MUG-11OZ-{colour}")
+        assert r and r["status"] == "matched", (colour, r)
+        assert r["uid"] == f"mug_product_msz_11-oz_mmat_ceramic-{slug}_cl_4-0"
 
 
 def test_colour_interior_has_no_gelato_equivalent():

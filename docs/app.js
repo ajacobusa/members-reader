@@ -1621,10 +1621,10 @@
  // Occasion -> a sensible default product + a starter line. Opens that editor
  // pre-filled so the buyer starts from gift intent (the highest-converting entry).
  const OCCASIONS=[
-   {label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Happy Birthday [Name]!'},
+   {label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Black', quote:'Happy Birthday [Name]!'},
    {label:'Anniversary', kind:'cal', name:"Wall Calendar", color:'White', quote:'Our Year Together'},
    {label:'For Mom', kind:'mug', name:"Accent Mug", color:'Dusty Rose', quote:'Best Mom Ever'},
-   {label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Navy', quote:'Best Dad Ever'},
+   {label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Black', quote:'Best Dad Ever'},
    {label:'Wedding', kind:'cal', name:"Wall Calendar", color:'White', quote:'Mr & Mrs [Name]'},
    {label:'New Baby', kind:'branded', name:"Organic Cotton Tote Bag", color:'Natural', quote:'Welcome Baby [Name]'},
    {label:'Graduation', kind:'apparel', name:"Men's T-Shirt", color:'White', quote:'Class of 2025'},
@@ -1634,7 +1634,7 @@
  ];
  // Curated cross-department sets. Combined from-price = sum of each item's from-price.
  const GIFTSETS=[
-   {key:'family', name:'Family Memory Set', items:[{kind:'cal',name:"Wall Calendar",color:'White'},{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Navy'},{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}]},
+   {key:'family', name:'Family Memory Set', items:[{kind:'cal',name:"Wall Calendar",color:'White'},{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Black'},{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}]},
    {key:'corporate', name:'Corporate Welcome Kit', items:[{kind:'branded',name:"Organic Cotton Tote Bag",color:'Black'},{kind:'branded',name:"Insulated Stainless Water Bottle",color:'White'},{kind:'branded',name:"Hardcover Journal",color:'Black'},{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'White'}]},
    {key:'newhome', name:'New Home Set', items:[{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Forest Green'},{kind:'branded',name:"Organic Cotton Tote Bag",color:'Sage'},{kind:'cal',name:"Wall Calendar",color:'White'}]},
    {key:'celebration', name:'Celebration Set', items:[{kind:'apparel',name:"Men's T-Shirt",color:'White'},{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Red'}]}
