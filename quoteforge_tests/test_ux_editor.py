@@ -857,6 +857,40 @@ def test_flip_review_watchers_cannot_leak_or_starve(tmp_path):
     assert "_SPIN_DIRTY=true" in h and "_SPIN_DIRTY){" in h
 
 
+def test_editor_pickers_offer_only_fulfillable_colours(tmp_path):
+    # REGRESSION (owner report 2026-07-19, travel mug): the editor's mug picker
+    # offered Silver/Black swatches while Gelato's LIVE catalog has the 15oz travel
+    # mug in stainless-steel-white ONLY (verified against GET /catalogs/mugs/
+    # products) - a customer could design and PAY for an unmakeable colour. The
+    # picker formats must be a subset of the fulfillable variants (approved-UID
+    # export map), exactly like the sizemap block that already filtered.
+    import json as _json
+    import re as _re
+    h = _page(tmp_path)
+    from quoteforge.etsy.fulfillability import (fulfillable_mug_variations,
+                                               fulfillable_branded_variations)
+    from quoteforge.etsy.mug_catalog import MUG_CATALOG
+    from quoteforge.etsy.branded_catalog import BRANDED_CATALOG
+    m = _re.search(r"const MUG_FORMATS = (\[.*?\]);", h)
+    assert m, "MUG_FORMATS missing from the built page"
+    offered = {f["name"] for f in _json.loads(m.group(1))}
+    names = {p.product_id: p.name for p in MUG_CATALOG}
+    allowed = {f"{names[v.product_id]} - {v.color}"
+               for v in fulfillable_mug_variations() if v.product_id in names}
+    assert offered <= allowed, f"unfulfillable mug offers: {sorted(offered - allowed)}"
+    # the reported case, pinned explicitly
+    assert "Stainless Travel Mug (15oz) - White" in offered
+    assert "Stainless Travel Mug (15oz) - Silver" not in offered
+    assert "Stainless Travel Mug (15oz) - Black" not in offered
+    b = _re.search(r"const BRANDED_FORMATS = (\[.*?\]);", h)
+    if b:                                      # same guarantee for the branded picker
+        boffered = {f["name"] for f in _json.loads(b.group(1))}
+        bnames = {p.product_id: p.name for p in BRANDED_CATALOG}
+        ballowed = {f"{bnames[v.product_id]} - {v.color}"
+                    for v in fulfillable_branded_variations() if v.product_id in bnames}
+        assert boffered <= ballowed, f"unfulfillable branded offers: {sorted(boffered - ballowed)}"
+
+
 def test_trust_badges_sit_above_the_preview_not_on_it(tmp_path):
     # REGRESSION (owner report 2026-07-19): the "Made to order" / "You approve
     # before print" pills were absolutely overlaid on the preview's top-left - on

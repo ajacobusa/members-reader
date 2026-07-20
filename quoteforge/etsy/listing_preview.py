@@ -927,7 +927,10 @@ def _apparel_section(photos: dict | None = None) -> str:
     except Exception:  # noqa: BLE001
         return ""
     frm: dict = {}
-    for v in build_apparel_variations():
+    # FULFILLABILITY: from-prices come from variants we can actually make, so an
+    # unmapped variant can never set a tile's advertised price.
+    from quoteforge.etsy.fulfillability import fulfillable_apparel_variations
+    for v in fulfillable_apparel_variations():
         frm[v.garment_id] = min(frm.get(v.garment_id, 1e9), v.price)
     if not frm:
         return ""
@@ -1094,7 +1097,9 @@ def _branded_section(photos: dict | None = None, external_assets: bool = False,
     except Exception:  # noqa: BLE001
         return ""
     frm: dict = {}
-    for v in build_branded_variations():
+    # FULFILLABILITY: from-prices only from makeable variants (mirrors apparel).
+    from quoteforge.etsy.fulfillability import fulfillable_branded_variations
+    for v in fulfillable_branded_variations():
         frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
     if not frm:
         return ""
@@ -1261,7 +1266,9 @@ def _mug_section(photos: dict | None = None, external_assets: bool = False,
     except Exception:  # noqa: BLE001
         return ""
     frm: dict = {}
-    for v in build_mug_variations():
+    # FULFILLABILITY: from-prices only from makeable variants (mirrors apparel).
+    from quoteforge.etsy.fulfillability import fulfillable_mug_variations
+    for v in fulfillable_mug_variations():
         frm[v.product_id] = min(frm.get(v.product_id, 1e9), v.price)
     if not frm:
         return ""
@@ -2266,8 +2273,11 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             if _bp:
                 _branded_photos[_p.product_id] = _emit(_bp, f"tile-{_p.product_id}.jpg")
         # Cheapest price per (product, colour) for the editor's branded picker.
+        # FULFILLABLE variants only (same leak as the mug picker: raw catalog
+        # colours reached the swatch row without an approved UID behind them).
+        from quoteforge.etsy.fulfillability import fulfillable_branded_variations as _fbv
         _bc_from: dict = {}
-        for _v in _bbv():
+        for _v in _fbv():
             _key = (_v.product_id, _v.color)
             _bc_from[_key] = min(_bc_from.get(_key, 1e9), _v.price)
         _bname = {_p.product_id: _p.name for _p in _BC}
@@ -2307,8 +2317,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
             if _mp:
                 _mug_photos[_p.product_id] = _emit(_mp, f"tile-{_p.product_id}.jpg")
         # Cheapest price per (product, accent-colour) for the editor's mug picker.
+        # FULFILLABLE variants only (owner report 2026-07-19: the travel mug offered
+        # Silver/Black swatches while the print partner's live catalog has the
+        # stainless-steel body in white ONLY - a customer could design and pay for
+        # an unmakeable colour). The sizemap block below already filters; the
+        # picker must match it.
+        from quoteforge.etsy.fulfillability import fulfillable_mug_variations as _fmv
         _mc_from: dict = {}
-        for _v in _bmv():
+        for _v in _fmv():
             _key = (_v.product_id, _v.color)
             _mc_from[_key] = min(_mc_from.get(_key, 1e9), _v.price)
         _mname = {_p.product_id: _p.name for _p in _MC}
