@@ -222,7 +222,10 @@ def test_apparel_editor_recolors_when_no_percolor_photos(tmp_path):
     h = _page(tmp_path)
     assert "const APPAREL_COLOR_IMG = {}" in h            # pre-launch: no per-colour photos
     assert "_hasColorPhotos" in h                          # the new guard exists
-    assert "Object.keys(APPAREL_COLOR_IMG[_gid]).length" in h   # guard derives from the map
+    # guard derives from the map, tier-aware since 2026-07-20 (#178: a Premium/Value
+    # gid falls back to the BASE garment's photo set instead of losing the photos)
+    assert "const _colorMap=APPAREL_COLOR_IMG[_gid]||APPAREL_COLOR_IMG[_bgid]" in h
+    assert "Object.keys(_colorMap).length" in h
     # the FRONT side photo may ONLY stand in when the buyer's selected colour IS
     # the photographed colour (_photoColorMatch, from emitted verified metadata);
     # per-colour photos cover their own colour via _tileColorUrl, and only the
