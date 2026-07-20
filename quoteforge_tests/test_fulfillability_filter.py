@@ -51,7 +51,9 @@ def test_mug_and_branded_facets():
     assert classic and "Navy" not in classic and "White" in classic
     assert F.fulfillable_branded_facets(br["bottle"]) is None      # 17oz-only at Gelato
     tote = F.fulfillable_branded_facets(br["tote"])
-    assert tote and set(tote) == {"Natural", "White", "Navy", "Black"}
+    # Red joined 2026-07-20 (owner-approved exact colour sibling from the live
+    # catalog sweep); Sand/Sage remain unmade in any print mode.
+    assert tote and set(tote) == {"Natural", "White", "Navy", "Black", "Red"}
 
 
 def test_built_page_offers_no_unfulfillable_format():
