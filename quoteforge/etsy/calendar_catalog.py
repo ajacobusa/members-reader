@@ -47,16 +47,23 @@ class CalendarProduct:
 _CAL_TYPES = [
     ("wall_cal", "Wall Calendar", "Wall Calendar", "Wall Calendars",
      ["A3", "A4"], ["White"], 9.0, "Gelato Wall Calendar", "Premium", 2480, 3508, 13, "coil"),
+    # Respec 2026-07-21 (grounded): the print partner makes desk calendars ONLY
+    # in DL format (99x210 mm, wire-o top, horizontal) - the old A5 spec did not
+    # exist and could never be fulfilled. Dims = 210x99 mm at 300 dpi.
     ("desk_cal", "Desk Calendar", "Desk Calendar", "Desk Calendars",
-     ["A5"], ["White"], 7.0, "Gelato Desk Calendar", "Classic", 2480, 1748, 13, "wire-o"),
+     ["DL"], ["White"], 7.0, "Gelato Desk Calendar", "Classic", 2480, 1169, 13, "wire-o"),
     ("family_cal", "Family Organizer Calendar", "Family Calendar", "Family Calendars",
      ["A3"], ["White"], 10.0, "Gelato Family Calendar", "Premium", 2480, 3508, 13, "coil"),
     ("corporate_cal", "Corporate Branded Calendar", "Corporate Calendar", "Corporate Calendars",
      ["A3", "A4"], ["White"], 10.0, "Gelato Corporate Calendar", "Premium", 2480, 3508, 13, "coil"),
     ("photo_cal", "Photo Calendar", "Photo Calendar", "Photo Calendars",
      ["A4"], ["White"], 8.0, "Gelato Photo Calendar", "Classic", 2480, 3508, 13, "coil"),
+    # Respec 2026-07-21 (grounded): no A6 calendar exists at the print partner in
+    # any product line. The SLIM vertical wall calendar (148x400 mm) is the real
+    # countdown form factor and exists live - respec'd onto that blank.
+    # Dims = 148x400 mm at 300 dpi.
     ("event_cal", "Event & Countdown Calendar", "Event Calendar", "Event Calendars",
-     ["A6"], ["White"], 6.0, "Gelato Event Calendar", "Classic", 1748, 2480, 13, "wire-o"),
+     ["Slim"], ["White"], 6.0, "Gelato Event Calendar", "Classic", 1748, 4724, 13, "coil"),
     ("promo_cal", "Business Promotional Calendar", "Promotional Calendar", "Business-Promotional Calendars",
      ["A4"], ["White"], 8.0, "Gelato Promo Calendar", "Classic", 2480, 3508, 13, "coil"),
 ]
