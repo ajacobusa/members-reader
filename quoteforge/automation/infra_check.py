@@ -2718,6 +2718,36 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("storefront_copy_matches_fulfillable", False, str(exc)))
 
+    # N) Editor cross-product hygiene: openM (the single door every product
+    # opens through) must reset the shared-editor state that leaked between
+    # products - Layout Studio wording slots (order-wording poisoning), collage
+    # photos (wrong photo into production), queued calendar uploads, the
+    # post-add bar, inspect zoom, the tier-picker key, and any lingering spin
+    # overlay - and order wording must stay family-gated (_orderWording).
+    try:
+        import re as _re99b
+        from quoteforge.etsy import listing_preview as _lp99b
+        _src99b = inspect.getsource(_lp99b)
+        _m99b = _re99b.search(
+            r"function openM\(i\)\{\{(.*?)getElementById\('modal'\)"
+            r"\.style\.display='flex'", _src99b, _re99b.S)
+        _body99b = _m99b.group(1) if _m99b else ""
+        _need99b = ("CURLAYOUT='freeform'", "SLOTS=_emptySlots()",
+                    "COLLAGE=[null,null,null,null]", "CAL_QUEUE=[]",
+                    'CURBASE=""', "postadd", "vzReset()", "close3D()")
+        _miss99b = [t for t in _need99b if t not in _body99b]
+        if _src99b.count("wording:_orderWording(),") != 2:
+            _miss99b.append("wording:_orderWording() at both consumers")
+        checks.append(_c("editor_state_resets_on_open",
+                         bool(_body99b) and not _miss99b,
+                         "openM resets cross-product editor state (slots/collage/"
+                         "cal-queue/post-add/zoom/tier key/spin overlay)"
+                         if _body99b and not _miss99b else
+                         "REGRESSION: a product can open showing/ordering the "
+                         f"PREVIOUS product's state - missing {_miss99b[:3]}"))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("editor_state_resets_on_open", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
