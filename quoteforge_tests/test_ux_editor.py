@@ -522,18 +522,23 @@ def test_modal_trust_line_removed(tmp_path):
     assert 'class="mtrust"' not in h
 
 
-def test_section_progress_is_a_nonclickable_tracker(tmp_path):
-    """REGRESSION (#173): the top step row is a NON-clickable progress tracker
-    (numbered dots 1-2-3 with labels), not a second set of clickable tabs. The
-    big Next/Back buttons are the only navigation - the dual nav felt redundant."""
+def test_section_progress_is_a_backward_only_tracker(tmp_path):
+    """REGRESSION (#173, refined by the owner's back-to-design request): the
+    top step row is a progress tracker, NOT a second forward navigation - the
+    big Next buttons remain the only way forward. But COMPLETED steps are
+    tap-back links (tabBack guards on t<ESEC), so a customer can always jump
+    straight back to Design without hunting for the Back chain."""
     h = _page(tmp_path)
     assert 'id="esectabs"' in h and 'role="list"' in h
     assert h.count('class="estep') >= 3           # three progress steps (divs)
     assert h.count('class="edot"') >= 3           # numbered dots
     assert h.count('class="elbl"') >= 3           # step labels
-    # the tracker itself carries no click handler (Next/Back navigate instead)
+    # every tab routes through tabBack, whose guard makes current/future taps
+    # a no-op - forward navigation via the tracker stays impossible
+    assert "function tabBack(t){ if(t<ESEC) editStep(t); }" in h
     tracker = h.split('id="esectabs"', 1)[1].split('id="esec1"', 1)[0]
-    assert "onclick" not in tracker, "progress steps must not be clickable"
+    assert "tabBack(" in tracker                  # tabs only ever call the guard
+    assert "editStep(" not in tracker             # never a direct forward jump
     assert "function editStep" in h               # Next/Back still call editStep
 
 
@@ -1228,3 +1233,31 @@ def test_spin_review_shows_sleeves_and_hides_duplicate_button(tmp_path):
     # label is built as 'Front'+(_garmentSleeves()?' (with sleeves)':'').
     assert "(with sleeves)" in js and "_garmentSleeves()?' (with sleeves)'" in js
     assert "_spinBtn.style.display='none'" in js                 # hide the duplicate spin button while open
+
+
+def test_completed_steps_tap_back_to_design(tmp_path):
+    # REGRESSION: a customer deep in the flow can always get BACK to Design in
+    # one tap, on EVERY product (the editor is shared). The completed
+    # Design/Photo/Frame&size tabs and the "1. Customize" stepper item are real
+    # controls (click + Enter), not dead chrome.
+    h = _page(tmp_path)
+    # Inner customize wizard: every tab carries the back handler; the guard
+    # (t<ESEC) keeps current/future tabs inert so the guided flow can't be
+    # skipped forward.
+    for t in (1, 2, 3):
+        assert f'onclick="tabBack({t})"' in h
+        assert f'onkeydown="if(event.key===\'Enter\')tabBack({t})"' in h
+    assert "function tabBack(t){ if(t<ESEC) editStep(t); }" in h
+    # Completed tabs become focusable buttons with a spoken destination.
+    assert "b.setAttribute('tabindex','0'); b.setAttribute('role','button');" in h
+    assert "'Go back to '" in h
+    # Outer order stepper: "1. Customize" reopens the editor from
+    # Review/Approve...
+    assert 'onclick="stepBack(1)"' in h
+    assert 'onkeydown="if(event.key===\'Enter\')stepBack(1)"' in h
+    # ...but NEVER after final acceptance - the consent record can't be undone
+    # by a stray tap (restartCheckout stays the only explicit way back).
+    assert "if(s!==1 || ACCEPTED) return;" in h
+    # Visible affordance: completed steps read as clickable.
+    assert "#esectabs .estep.done{cursor:pointer}" in h
+    assert "#mstepper li.done[tabindex]{cursor:pointer}" in h

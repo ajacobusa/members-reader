@@ -1150,6 +1150,12 @@
      b.classList.toggle('done', e<n);     // finished sections read as progress
      if(cur) b.setAttribute('aria-current','step');
      else b.removeAttribute('aria-current');
+     // Completed tabs are real controls: tap (or Enter) jumps straight back.
+     if(e<n){ b.setAttribute('tabindex','0'); b.setAttribute('role','button');
+       b.setAttribute('aria-label','Go back to '+
+         ((b.querySelector('.elbl')||{}).textContent||'this step'));
+     } else { b.removeAttribute('tabindex'); b.setAttribute('role','listitem');
+       b.removeAttribute('aria-label'); }
    });
    ESEC=n;
    if(n>=2) WORD_DONE=true;     // moving on = keeping the shown quote
@@ -1353,7 +1359,28 @@
    const s=parseInt(li.dataset.s);
    li.classList.toggle('cur',s===n); li.classList.toggle('done',s<n);
    if(s===n) li.setAttribute('aria-current','step');
-   else li.removeAttribute('aria-current'); }); }
+   else li.removeAttribute('aria-current');
+   // "1. Customize" is tappable from Review/Approve (until final acceptance).
+   if(s===1 && s<n && !ACCEPTED){ li.setAttribute('tabindex','0');
+     li.setAttribute('role','button');
+     li.setAttribute('aria-label','Go back and edit your design');
+   } else if(s===1){ li.removeAttribute('tabindex'); li.removeAttribute('role');
+     li.removeAttribute('aria-label'); } }); }
+ // One tap back to any FINISHED customize section (e.g. Frame & size ->
+ // Design) - editStep re-lights that step's guidance beacon and nothing the
+ // customer entered is lost. Current/future tabs stay inert so the guided
+ // Next flow is never skipped forward.
+ function tabBack(t){ if(t<ESEC) editStep(t); }
+ // Outer stepper: tapping "1. Customize" from Review/Approve reopens the
+ // editor (same as "Go back & edit"). After final acceptance it goes inert -
+ // the consent record is never undone by a stray tap; restartCheckout stays
+ // the only explicit way back.
+ function stepBack(s){
+   if(s!==1 || ACCEPTED) return;
+   const p=document.getElementById('proofPop');
+   if(p && p.style.display!=='none') closeProof();
+   setStep(1);
+ }
  // Client-side upload cap (the server enforces the same limit).
  const MAX_UPLOAD_MB=25;
  // Photos already used in basket items (name|bytes) - powers the gentle

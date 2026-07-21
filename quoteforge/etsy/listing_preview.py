@@ -3557,6 +3557,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  #mstepper li:last-child::after{{content:""}}
  #mstepper li.cur{{color:var(--green);font-weight:700}}
  #mstepper li.done{{color:#0f7a3d}}
+ #mstepper li.done[tabindex]{{cursor:pointer}}
+ #mstepper li.done[tabindex]:hover,#mstepper li.done[tabindex]:focus-visible{{
+   text-decoration:underline}}
  .spin{{display:inline-block;width:12px;height:12px;border:2px solid #c9d6cd;
    border-top-color:var(--green);border-radius:50%;vertical-align:-2px;
    animation:spinrot .8s linear infinite}}
@@ -3629,6 +3632,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  #esectabs .estep.done .edot{{font-size:0}}
  #esectabs .estep.done .elbl{{color:#0f7a3d}}
  #esectabs .estep.done::before{{background:#0f7a3d}}
+ #esectabs .estep.done{{cursor:pointer}}
+ #esectabs .estep.done:hover .elbl,#esectabs .estep.done:focus-visible .elbl{{
+   text-decoration:underline}}
  .sizeprompt{{background:#fffdf4;border:2px solid var(--gold);border-radius:10px;
    padding:8px 12px;margin-bottom:8px;font-size:13.5px;color:var(--green)}}
  @keyframes ctapulse{{0%{{box-shadow:0 0 0 0 rgba(16,61,46,.45)}}
@@ -4034,7 +4040,8 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  <div class="mbox">
    <span class="closex" role="button" tabindex="0" aria-label="Close" onclick="closeM()" onkeydown="if(event.key=='Enter')closeM()">&times;</span>
    <ol id="mstepper" aria-label="Order progress">
-     <li data-s="1" class="cur" aria-current="step">1. Customize</li>
+     <li data-s="1" class="cur" aria-current="step" onclick="stepBack(1)"
+       onkeydown="if(event.key==='Enter')stepBack(1)">1. Customize</li>
      <li data-s="2">2. Review</li>
      <li data-s="3">3. Approve</li>
      <li data-s="4">4. Checkout</li>
@@ -4171,11 +4178,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
        <!-- One section at a time: finish it, tap Next - no scrolling hunt. -->
        <div id="esectabs" role="list" aria-label="Your progress">
-         <div class="estep sel" data-e="1" role="listitem" aria-current="step">
+         <div class="estep sel" data-e="1" role="listitem" aria-current="step"
+           onclick="tabBack(1)" onkeydown="if(event.key==='Enter')tabBack(1)">
            <span class="edot">1</span><span class="elbl">Design</span></div>
-         <div class="estep" data-e="2" role="listitem">
+         <div class="estep" data-e="2" role="listitem"
+           onclick="tabBack(2)" onkeydown="if(event.key==='Enter')tabBack(2)">
            <span class="edot">2</span><span class="elbl">Photo</span></div>
-         <div class="estep" data-e="3" role="listitem">
+         <div class="estep" data-e="3" role="listitem"
+           onclick="tabBack(3)" onkeydown="if(event.key==='Enter')tabBack(3)">
            <span class="edot">3</span><span class="elbl" id="e3lbl">Frame &amp; size</span></div>
        </div>
        <div class="esec" id="esec1">
@@ -5509,6 +5519,12 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      b.classList.toggle('done', e<n);     // finished sections read as progress
      if(cur) b.setAttribute('aria-current','step');
      else b.removeAttribute('aria-current');
+     // Completed tabs are real controls: tap (or Enter) jumps straight back.
+     if(e<n){{ b.setAttribute('tabindex','0'); b.setAttribute('role','button');
+       b.setAttribute('aria-label','Go back to '+
+         ((b.querySelector('.elbl')||{{}}).textContent||'this step'));
+     }} else {{ b.removeAttribute('tabindex'); b.setAttribute('role','listitem');
+       b.removeAttribute('aria-label'); }}
    }});
    ESEC=n;
    if(n>=2) WORD_DONE=true;     // moving on = keeping the shown quote
@@ -5712,7 +5728,28 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const s=parseInt(li.dataset.s);
    li.classList.toggle('cur',s===n); li.classList.toggle('done',s<n);
    if(s===n) li.setAttribute('aria-current','step');
-   else li.removeAttribute('aria-current'); }}); }}
+   else li.removeAttribute('aria-current');
+   // "1. Customize" is tappable from Review/Approve (until final acceptance).
+   if(s===1 && s<n && !ACCEPTED){{ li.setAttribute('tabindex','0');
+     li.setAttribute('role','button');
+     li.setAttribute('aria-label','Go back and edit your design');
+   }} else if(s===1){{ li.removeAttribute('tabindex'); li.removeAttribute('role');
+     li.removeAttribute('aria-label'); }} }}); }}
+ // One tap back to any FINISHED customize section (e.g. Frame & size ->
+ // Design) - editStep re-lights that step's guidance beacon and nothing the
+ // customer entered is lost. Current/future tabs stay inert so the guided
+ // Next flow is never skipped forward.
+ function tabBack(t){{ if(t<ESEC) editStep(t); }}
+ // Outer stepper: tapping "1. Customize" from Review/Approve reopens the
+ // editor (same as "Go back & edit"). After final acceptance it goes inert -
+ // the consent record is never undone by a stray tap; restartCheckout stays
+ // the only explicit way back.
+ function stepBack(s){{
+   if(s!==1 || ACCEPTED) return;
+   const p=document.getElementById('proofPop');
+   if(p && p.style.display!=='none') closeProof();
+   setStep(1);
+ }}
  // Client-side upload cap (the server enforces the same limit).
  const MAX_UPLOAD_MB=25;
  // Photos already used in basket items (name|bytes) - powers the gentle
