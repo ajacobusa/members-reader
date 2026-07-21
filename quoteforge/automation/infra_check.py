@@ -2722,8 +2722,11 @@ def check_infrastructure() -> dict:
     # opens through) must reset the shared-editor state that leaked between
     # products - Layout Studio wording slots (order-wording poisoning), collage
     # photos (wrong photo into production), queued calendar uploads, the
-    # post-add bar, inspect zoom, the tier-picker key, and any lingering spin
-    # overlay - and order wording must stay family-gated (_orderWording).
+    # post-add bar, inspect zoom, the tier-picker key, the stale size warning,
+    # and any lingering spin overlay; closeM must dismiss the spin overlay too;
+    # order wording must stay family-gated (_orderWording); and _calUpload must
+    # drop an older queued photo for a re-uploaded month so the checkout flush
+    # can't overwrite the newer upload.
     try:
         import re as _re99b
         from quoteforge.etsy import listing_preview as _lp99b
@@ -2732,21 +2735,58 @@ def check_infrastructure() -> dict:
             r"function openM\(i\)\{\{(.*?)getElementById\('modal'\)"
             r"\.style\.display='flex'", _src99b, _re99b.S)
         _body99b = _m99b.group(1) if _m99b else ""
-        _need99b = ("CURLAYOUT='freeform'", "SLOTS=_emptySlots()",
-                    "COLLAGE=[null,null,null,null]", "CAL_QUEUE=[]",
-                    'CURBASE=""', "postadd", "vzReset()", "close3D()")
-        _miss99b = [t for t in _need99b if t not in _body99b]
+        _need99b = ("CURLAYOUT='freeform'", "SLOTS=_emptySlots()", "LOFF={{",
+                    "COLLAGE=[null,null,null,null]", "renderSlotInputs()",
+                    "CAL_QUEUE=[]", 'CURBASE=""', "postadd", "sizeprompt",
+                    "vzReset()", "close3D()")
+        _miss99b = [f"openM:{t}" for t in _need99b if t not in _body99b]
+        _closem99b = _src99b.split("function closeM(", 1)[-1].split("BFLOW=null", 1)[0]
+        if "close3D()" not in _closem99b:
+            _miss99b.append("closeM:close3D()")
         if _src99b.count("wording:_orderWording(),") != 2:
             _miss99b.append("wording:_orderWording() at both consumers")
+        _calup99b = _src99b.split("function _calUpload(", 1)[-1].split(
+            "function _flushCalQueue", 1)[0]
+        if _calup99b.count(
+                "CAL_QUEUE=CAL_QUEUE.filter(function(x){{return x.i!==i;}})") != 2:
+            _miss99b.append("_calUpload same-month de-queue")
         checks.append(_c("editor_state_resets_on_open",
                          bool(_body99b) and not _miss99b,
-                         "openM resets cross-product editor state (slots/collage/"
-                         "cal-queue/post-add/zoom/tier key/spin overlay)"
+                         "openM/closeM reset cross-product editor state (slots/"
+                         "collage/cal-queue/post-add/zoom/tier key/size warning/"
+                         "spin overlay); order wording family-gated; stale month "
+                         "photos de-queued"
                          if _body99b and not _miss99b else
                          "REGRESSION: a product can open showing/ordering the "
-                         f"PREVIOUS product's state - missing {_miss99b[:3]}"))
+                         f"PREVIOUS product's state - missing {_miss99b[:4]}"))
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("editor_state_resets_on_open", False, str(exc)))
+
+    # O) Editor back-navigation guards: completed steps are tap-back links, but
+    # (a) the tracker must never navigate FORWARD (tabBack guards on t<ESEC -
+    # the guided Next flow can't be skipped), and (b) after the buyer's final
+    # "I approve this print" acceptance the outer stepper must go inert
+    # (stepBack returns on ACCEPTED) so the consent record the made-to-order
+    # policy rests on can never be undone by a stray tap.
+    try:
+        from quoteforge.etsy import listing_preview as _lp99c
+        _src99c = inspect.getsource(_lp99c)
+        _miss99c = []
+        if "function tabBack(t){{ if(t<ESEC) editStep(t); }}" not in _src99c:
+            _miss99c.append("tabBack backward-only guard")
+        if "if(s!==1 || ACCEPTED) return;" not in _src99c:
+            _miss99c.append("stepBack acceptance lock")
+        for _tok99c in ('onclick="tabBack(1)"', 'onclick="tabBack(2)"',
+                        'onclick="tabBack(3)"', 'onclick="stepBack(1)"'):
+            if _tok99c not in _src99c:
+                _miss99c.append(_tok99c)
+        checks.append(_c("editor_back_nav_guarded", not _miss99c,
+                         "step tap-back is wired, backward-only, and inert "
+                         "after final acceptance"
+                         if not _miss99c else
+                         f"REGRESSION: back-navigation guard missing {_miss99c[:3]}"))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("editor_back_nav_guarded", False, str(exc)))
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
