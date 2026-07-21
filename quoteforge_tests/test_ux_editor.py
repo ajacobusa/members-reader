@@ -908,6 +908,37 @@ def test_tier_variants_keep_the_percolour_photo_preview(tmp_path):
     assert "replace(/_(value|premium)$/,'')" in bseg
 
 
+def test_entry_points_open_only_sellable_products(tmp_path):
+    # REGRESSION (audit C1): the "For Mom" chip opened the dropped Accent Mug;
+    # empty mugFormatsFor() made fillSizes fall back to the POSTER sizemap - the
+    # customer designed a mug, paid poster prices, and the order couldn't route.
+    # Every OCCASIONS/GIFTSETS entry must name a product the published pickers
+    # sell, and the runtime guard + family-safe sizemap fallback must stay wired.
+    import json as _json
+    import re as _re
+    h = _page(tmp_path)
+    offered = set()
+    for const in ("MUG_FORMATS", "BRANDED_FORMATS", "CAL_FORMATS",
+                  "APPAREL_FORMATS"):
+        m = _re.search(rf"const {const} = (\[.*?\]);", h)
+        if m:
+            for f in _json.loads(m.group(1)):
+                offered.add(f["name"])
+                offered.add(f["name"].rpartition(" - ")[0])
+    entries = _re.findall(r"kind:'(?:mug|branded|cal|apparel)',\s*name:\"([^\"]+)\"", h)
+    assert entries, "no occasion/gift-set entries parsed - regex drift"
+    dead = sorted(set(n for n in entries if n not in offered))
+    assert not dead, f"entry points open unsellable products: {dead}"
+    # the runtime guard + family-safe fallback (defense in depth)
+    assert "function _sellable" in h and "_openProduct" in h
+    assert "function _sizemapRows" in h
+    assert "if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) return [];" in h
+    # the claim form carries the shipping-label evidence field (audit M12)
+    assert 'id="sr_ph_label"' in h and "shipping_label_photo" in h
+    # the availability line is garment-aware (audit L, #tank)
+    assert "function _apparelAvailHTML" in h
+
+
 def test_trust_badges_sit_above_the_preview_not_on_it(tmp_path):
     # REGRESSION (owner report 2026-07-19): the "Made to order" / "You approve
     # before print" pills were absolutely overlaid on the preview's top-left - on

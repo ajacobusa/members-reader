@@ -126,7 +126,11 @@ def test_infra_check_all_pass():
             "approved_ready_surfaced", "safety_guardrails", "runtime_health",
             "flip_review_watcher_identity_guarded",
             "published_pickers_fulfillable_only",
-            "auto_approved_mappings_guardrailed"} <= names
+            "auto_approved_mappings_guardrailed",
+            # the 2026-07-20 E2E audit guards (batch: C1/C2/H4/H5/H6/M...)
+            "entry_points_fulfillable", "wallart_offered_fulfillable",
+            "mug_copy_matches_assortment", "order_evidence_integrity",
+            "routing_status_handling", "claim_queue_integrity"} <= names
 
 
 # REGRESSION (#stale-flip, owner report 2026-07-19): the flip-review overlay froze
