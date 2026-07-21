@@ -56,6 +56,47 @@ def test_mug_and_branded_facets():
     assert tote and set(tote) == {"Natural", "White", "Navy", "Black", "Red"}
 
 
+def test_no_customer_copy_advertises_unsold_frame_finishes():
+    # REGRESSION (re-audit 2026-07-21, F1/F2/F3): the picker sold only Classic
+    # Black Wood, but the listing description (options_block + the frame phrase),
+    # Ask Ange ("pick your frame style (6 options)...") and the Gift Finder (4 of
+    # 5 styles) still promised Gallery Gold / Oak / Walnut / White / Slim.
+    from quoteforge.etsy.frames import available_frames
+    from quoteforge.etsy.variations import options_block
+    from quoteforge.etsy.listing_seo import _frame_style_phrase
+    from quoteforge.ai.ange import KB
+    from quoteforge.etsy.gift_finder import STYLES
+    sold = {f.name for f in available_frames()}
+    unsold = {"Gallery Gold", "Premium Solid Oak", "Premium Walnut",
+              "Classic White Wood", "Slim Black"} - sold
+    copy = options_block() + _frame_style_phrase() + " ".join(a for _, _, a in KB)
+    hits = [f for f in unsold if f in copy]
+    assert not hits, f"customer copy advertises unsold finishes: {hits}"
+    assert "6 options" not in copy
+    assert all(s[2] in sold or s[2] == "" for s in STYLES), \
+        "gift finder recommends an unsold frame finish"
+
+
+def test_available_frames_honours_approved_uids():
+    # REGRESSION (re-audit 2026-07-21, F1 root): available_frames() claimed "only
+    # frames the partner can fulfill" while hand-set flags said all six existed.
+    # It must intersect with the approved GEL-FRAMED UIDs (grace mode: full
+    # ladder only when NO framed UID is exported yet).
+    from quoteforge.etsy.frames import available_frames
+    from quoteforge.etsy.fulfillability import approved_export_map
+    framed_uids = [v for k, v in approved_export_map().items()
+                   if k.startswith("GEL-FRAMED-")]
+    names = {f.name for f in available_frames()}
+    if framed_uids:
+        for n in names:
+            toks = n.lower().split()[-2:]
+            assert any(all(t in u for t in toks) for u in framed_uids), \
+                f"frame '{n}' offered without an approved framed UID"
+        assert names == {"Classic Black Wood"}   # today's grounded truth
+    else:
+        assert names, "grace mode must keep the ladder, not empty it"
+
+
 def test_framed_finishes_all_approved():
     # REGRESSION (audit C2): 6 frame finishes were sold while only the black-wood
     # framed UIDs were approved - a Gallery Gold / Oak / Walnut / White / Slim

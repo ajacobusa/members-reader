@@ -2676,6 +2676,48 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("claim_queue_integrity", False, str(exc)))
 
+    # 99) Frame/assortment COPY matches what is fulfillable (re-audit 2026-07-21):
+    #     the picker sells only approved framed finishes, so no customer-facing
+    #     copy source (listing options block + description phrase, Ask Ange KB,
+    #     gift-finder styles, dept-card subtitles) may advertise a finish or
+    #     product line that can't be made - and BOTH wall-art emission sites must
+    #     keep consuming the fulfillability filter (a revert re-sells 6 finishes
+    #     while invariant 94 stays green). Grace-mode safe: with the family
+    #     unmapped, available_frames keeps the full ladder and the probes relax.
+    try:
+        import inspect as _i99
+        from quoteforge.etsy import listing_preview as _lp99
+        from quoteforge.etsy.frames import available_frames as _af99
+        from quoteforge.etsy.variations import options_block as _ob99
+        from quoteforge.ai.ange import KB as _kb99
+        from quoteforge.etsy.gift_finder import STYLES as _sty99
+        from quoteforge.etsy.mug_catalog import MUG_CATALOG as _mc99
+        _sold99 = {f.name for f in _af99()}
+        _unsold99 = {"Gallery Gold", "Premium Solid Oak", "Premium Walnut",
+                     "Classic White Wood", "Slim Black"} - _sold99
+        _lpsrc99 = _i99.getsource(_lp99)
+        _probs99 = []
+        if _lpsrc99.count("fulfillable_wallart_variations") < 2:
+            _probs99.append("a wall-art emission site stopped consuming the "
+                            "fulfillability filter")
+        _copy99 = _ob99() + " " + " ".join(e[2] for e in _kb99)
+        _hit99 = sorted(f for f in _unsold99 if f in _copy99)
+        if _hit99 or (_unsold99 and "6 options" in _copy99):
+            _probs99.append("listing/Ange copy advertises unsold finishes: "
+                            f"{_hit99[:3] or '6 options claim'}")
+        if any(s[2] in _unsold99 for s in _sty99):
+            _probs99.append("gift-finder recommends an unsold frame finish")
+        if ("colour-changing" in _lpsrc99
+                and not any("changing" in p.name.lower() for p in _mc99)):
+            _probs99.append("dept card advertises colour-changing mugs "
+                            "with no such product")
+        checks.append(_c("storefront_copy_matches_fulfillable", not _probs99,
+                         "frame/assortment copy matches the fulfillable set; "
+                         "both emission sites consume the filter"
+                         if not _probs99 else "; ".join(_probs99[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("storefront_copy_matches_fulfillable", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

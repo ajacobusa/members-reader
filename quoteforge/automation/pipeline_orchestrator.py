@@ -496,10 +496,17 @@ def run_full_pipeline(
         else:
             # Already approved on screen, or an explicit auto-approve/skip bypass.
             _notify("proof", "Proof approved — proceeding to fulfillment")
-            # AUDIT M9: every proof_approved write carries its timestamp - the
-            # consent record the made-to-order policy cites in disputes.
-            update_order(order_id, proof_sent=1, proof_approved=1,
-                         proof_approved_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            # AUDIT M9 + re-audit F1: every proof_approved write carries its
+            # timestamp, and an EXISTING customer timestamp is never clobbered -
+            # a fix-photo re-run of an approved order must not replace the
+            # original consent time (the dispute evidence) with the re-run time.
+            _cur_ts = (get_order(order_id) or {}).get("proof_approved_at")
+            if _already_approved and _cur_ts:
+                update_order(order_id, proof_sent=1)
+            else:
+                update_order(order_id, proof_sent=1, proof_approved=1,
+                             proof_approved_at=datetime.now().strftime(
+                                 "%Y-%m-%d %H:%M:%S"))
             log_pipeline_stage(order_id, "proof", "approved",
                                "Proof approved (on-screen sign-off or configured bypass)")
 

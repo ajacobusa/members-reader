@@ -57,8 +57,25 @@ def all_frames() -> list[Frame]:
 
 
 def available_frames() -> list[Frame]:
-    """Only frames Gelato can currently fulfill, high → low."""
+    """Only frames the print partner can currently fulfill, high → low.
+
+    Two gates (re-audit 2026-07-21, finding F1): the live sync's availability
+    flag AND the approved-UID export - the docstring's promise was false while
+    the hand-set flags said all six finishes existed but only black wood had an
+    approved framed product. Every consumer (build_variations, options_block,
+    frame previews, listing copy) inherits the truth from here. Grace mode
+    (no framed UID exported yet) keeps the full ladder."""
     fr = [f for f in all_frames() if f.available]
+    try:
+        from quoteforge.etsy.fulfillability import approved_framed_finishes
+        fin = approved_framed_finishes([f.name for f in fr])
+        if fin is not None:
+            fr = [f for f in fr if f.name in fin]
+    except Exception as exc:  # noqa: BLE001 - fail open to the sync flags only
+        import logging
+        logging.getLogger(__name__).warning(
+            "approved-finish filter unavailable (frames fall back to sync "
+            "flags only): %s", exc)
     return sorted(fr, key=lambda f: (TIER_ORDER.get(f.tier, 9), -f.upcharge))
 
 

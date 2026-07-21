@@ -125,7 +125,12 @@ def decide_claim(order_id: str, decision: str, note: str = "",
     # "supplier_review" so a filed claim can still be decided here - otherwise
     # advance_claim rejects the unknown state and the claim is unresolvable.
     current = {"staged": "supplier_review", "ready": "supplier_review",
-               "filed": "supplier_review"}.get(current, current)
+               "filed": "supplier_review",
+               # Autopilot's customer-fault auto-decline (re-audit 2026-07-21,
+               # F2): terminal in spirit, but an APPEAL must be decidable here -
+               # normalize to denied so advance_claim knows the state instead of
+               # failing with "unknown state 'denied_customer_fault'".
+               "denied_customer_fault": "denied"}.get(current, current)
     move = advance_claim(current, decision)
     if not move["ok"]:
         return {"ok": False, "reason": move["reason"], "replacement": None,

@@ -20,11 +20,31 @@ RELATIONSHIPS = ["Daughter", "Son", "Mom", "Dad", "Wife", "Husband", "Grandma",
 BUDGETS = [("under50", "Under $50", "poster"),
            ("50to100", "$50-$100", "framed"),
            ("100plus", "$100+", "acrylic")]
-STYLES = [("classic", "Classic", "Premium Solid Oak", ["#0f3d2e", "#f4efe6"]),
-          ("modern", "Modern", "Classic Black Wood", ["#1b1b1f", "#ffffff"]),
-          ("elegant", "Elegant", "Gallery Gold", ["#2e3a55", "#c9a84c"]),
-          ("minimal", "Minimal", "Classic White Wood", ["#f4efe6", "#1b1b1f"]),
-          ("warm", "Warm", "Premium Walnut", ["#3a2e24", "#e8d8a8"])]
+# Each style's PREFERRED frame is aspirational; _sellable_frame() maps it to a
+# frame the shop can actually fulfil (re-audit 2026-07-21, finding F3: 4 of 5
+# styles recommended finishes a buyer couldn't find at checkout - a dead-end).
+_STYLE_SEEDS = [("classic", "Classic", "Premium Solid Oak", ["#0f3d2e", "#f4efe6"]),
+                ("modern", "Modern", "Classic Black Wood", ["#1b1b1f", "#ffffff"]),
+                ("elegant", "Elegant", "Gallery Gold", ["#2e3a55", "#c9a84c"]),
+                ("minimal", "Minimal", "Classic White Wood", ["#f4efe6", "#1b1b1f"]),
+                ("warm", "Warm", "Premium Walnut", ["#3a2e24", "#e8d8a8"])]
+
+
+def _sellable_frame(preferred: str) -> str:
+    """The preferred finish when it is fulfillable, else the closest frame the
+    shop actually sells (never a finish the picker can't offer)."""
+    try:
+        from quoteforge.etsy.frames import available_frames
+        names = [f.name for f in available_frames()]
+    except Exception:  # noqa: BLE001 - fall back to the preference
+        return preferred
+    if not names:
+        return ""
+    return preferred if preferred in names else names[0]
+
+
+STYLES = [(sid, label, _sellable_frame(frame), palette)
+          for sid, label, frame, palette in _STYLE_SEEDS]
 
 
 def _material_for_budget(budget: str) -> str:

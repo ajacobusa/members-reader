@@ -3821,10 +3821,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        </div>
      </a>
      <a class="deptcard deptbranded" href="#branded" onclick="selectDept('branded');return false;">
-       {f'<img class="deptimg" loading="lazy" src="{dept_branded_src}" alt="Custom branded products - totes, bottles &amp; more">' if dept_branded_src else '<span class="depticon">🎁</span>'}
+       {f'<img class="deptimg" loading="lazy" src="{dept_branded_src}" alt="Custom printed tote bags">' if dept_branded_src else '<span class="depticon">🎁</span>'}
        <div class="deptbody">
          <span class="depttitle">Custom Branded Products</span>
-         <span class="deptsub">Totes, bottles, tumblers, notebooks &amp; more</span>
+         <span class="deptsub">Custom printed tote bags &mdash; more lines coming</span>
          <span class="deptgo">Browse Branded →</span>
        </div>
      </a>
@@ -3832,7 +3832,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        {f'<img class="deptimg" loading="lazy" src="{dept_mug_src}" alt="Custom mugs - ceramic, enamel &amp; travel">' if dept_mug_src else '<span class="depticon">🍵</span>'}
        <div class="deptbody">
          <span class="depttitle">Custom Mugs</span>
-         <span class="deptsub">Ceramic, enamel, travel &amp; colour-changing mugs</span>
+         <span class="deptsub">Ceramic, enamel, travel &amp; tall mugs</span>
          <span class="deptgo">Browse Mugs →</span>
        </div>
      </a>

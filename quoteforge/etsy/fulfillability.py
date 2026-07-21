@@ -100,6 +100,27 @@ def fulfillable_apparel_facets(garment) -> tuple[list, list] | None:
     return (colors, sizes)
 
 
+def approved_framed_finishes(frame_names) -> "set | None":
+    """The frame finish NAMES the approved export can actually fulfil, or None
+    for grace mode (no prepared GEL-FRAMED UID exported yet - callers keep their
+    full ladder, mirroring the per-family activation semantics).
+
+    Reads the export map DIRECTLY (never via build_variations - frames.py calls
+    this, and build_variations calls frames.py; routing through variations would
+    recurse). A finish qualifies when its trailing name tokens appear in at
+    least one approved GEL-FRAMED-* UID (today: only black wood)."""
+    m = approved_export_map()
+    framed_uids = [v for k, v in m.items() if k.startswith("GEL-FRAMED-")]
+    if not framed_uids:
+        return None
+    out = set()
+    for name in frame_names or []:
+        toks = str(name).lower().split()[-2:]
+        if toks and any(all(t in uid for t in toks) for uid in framed_uids):
+            out.add(name)
+    return out
+
+
 def fulfillable_wallart_variations() -> list:
     """build_variations() filtered to wall-art variants the approved export can
     fulfil. Non-framed materials match their exact ``gelato_sku``. FRAMED is

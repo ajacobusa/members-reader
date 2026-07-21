@@ -791,10 +791,21 @@ def create_order(data: dict) -> str:
         try:
             _insert_order_row(conn, order_id, cust_id, data)
         except sqlite3.IntegrityError:
-            # Concurrent same-id insert won the race (webhook redelivery): the
-            # existing row wins, untouched.
-            logger.info("create_order: %s concurrently created - preserved", order_id)
-            return order_id
+            # A UNIQUE collision won the race. It may be the order_id PK
+            # (webhook redelivery) OR the etsy_order_id UNIQUE constraint
+            # (re-audit 2026-07-21, F3: two auto-generated ids sharing one etsy
+            # id) - return the id of the row that ACTUALLY exists, never a
+            # ghost id no row carries.
+            row = conn.execute("SELECT order_id FROM orders WHERE order_id=?",
+                               (order_id,)).fetchone()
+            if not row and data.get("etsy_order_id"):
+                row = conn.execute(
+                    "SELECT order_id FROM orders WHERE etsy_order_id=?",
+                    (data.get("etsy_order_id"),)).fetchone()
+            won = row["order_id"] if row else order_id
+            logger.info("create_order: %s lost an insert race - returning the "
+                        "stored row %s", order_id, won)
+            return won
     _post_create_order(order_id, data)
     return order_id
 

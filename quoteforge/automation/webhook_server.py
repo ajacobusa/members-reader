@@ -398,6 +398,28 @@ def process_gelato_callback(payload: dict) -> dict:
         its last status."""
         if not r:
             return None, ""
+        # Re-audit 2026-07-21, F4: a REPLACEMENT reprint routes as "<id>-R" with
+        # no row of its own; letting the generic suffix-strip resolve it onto the
+        # ORIGINAL order would regress a delivered original to the reprint's
+        # in_production/shipped and overwrite its tracking - corrupting the
+        # claim/dispute record. Log it against the original instead (no status
+        # or tracking mutation); the claim row already stores
+        # replacement_order_id for reconciliation.
+        if r.endswith("-R"):
+            base = get_order(r[:-2]) or get_order_by_etsy_id(r[:-2])
+            if base:
+                try:
+                    from quoteforge.db.database import log_pipeline_stage
+                    log_pipeline_stage(
+                        base.get("order_id") or r[:-2], "replacement_update",
+                        "info",
+                        f"vendor callback for replacement {r}: "
+                        f"status={payload.get('status') or payload.get('fulfillmentStatus') or ''} "
+                        f"tracking={payload.get('trackingCode') or payload.get('tracking_code') or ''}")
+                except Exception as exc:  # noqa: BLE001 - log-only path
+                    logger.warning("replacement callback log failed for %s: %s",
+                                   r, exc)
+            return "REPLACEMENT_LOGGED", r
         o = get_order(r)
         if o:
             return o, r
@@ -412,6 +434,10 @@ def process_gelato_callback(payload: dict) -> dict:
         return None, r
 
     _order, ref = _resolve(raw_ref)
+    if _order == "REPLACEMENT_LOGGED":
+        return {"status": "logged", "reason": "replacement callback recorded "
+                "against the original order (no status/tracking mutation)",
+                "reference": raw_ref}
     if not _order:
         return {"status": "ignored", "reason": "unknown orderReferenceId",
                 "reference": raw_ref}
