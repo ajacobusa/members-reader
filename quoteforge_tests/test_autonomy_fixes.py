@@ -130,7 +130,8 @@ def test_infra_check_all_pass():
             # the 2026-07-20 E2E audit guards (batch: C1/C2/H4/H5/H6/M...)
             "entry_points_fulfillable", "wallart_offered_fulfillable",
             "mug_copy_matches_assortment", "order_evidence_integrity",
-            "routing_status_handling", "claim_queue_integrity"} <= names
+            "routing_status_handling", "claim_queue_integrity",
+            "storefront_copy_matches_fulfillable"} <= names
 
 
 # REGRESSION (#stale-flip, owner report 2026-07-19): the flip-review overlay froze

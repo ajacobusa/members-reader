@@ -9,8 +9,17 @@ from quoteforge.automation import gelato_sync, etsy_publisher
 # ── Frame catalog ────────────────────────────────────────────────
 
 def test_frame_ladder_counts():
+    # Since the 2026-07-21 re-audit, available_frames intersects the DEFINED
+    # ladder (3 high / 2 mid / 1 low) with the approved-UID export: only
+    # finishes the print partner actually prepared may be offered. Today that
+    # is Classic Black Wood alone; the defined ladder keeps its full shape.
+    defined = {"high": 0, "mid": 0, "low": 0}
+    for f in F.FRAMES:
+        defined[f.tier] += 1
+    assert defined == {"high": 3, "mid": 2, "low": 1}
     by = F.frames_by_tier()
-    assert len(by["high"]) == 3 and len(by["mid"]) == 2 and len(by["low"]) == 1
+    offered = [f.name for tier in ("high", "mid", "low") for f in by[tier]]
+    assert offered == ["Classic Black Wood"]
 
 
 def test_discontinued_frame_auto_disabled(tmp_path, monkeypatch):
@@ -83,9 +92,14 @@ def test_format_previews_cover_all_options(tmp_path):
     poster = tmp_path / "p.png"
     Image.new("RGB", (1000, 1250), (245, 245, 240)).save(poster)
     previews = frame_preview.build_format_previews(poster, out_dir=tmp_path / "fp")
-    # poster + 6 frames + canvas + acrylic + metal = 10 format images
-    assert len(previews) == 10
-    assert any("Framed - Premium Solid Oak" == k for k in previews)
+    # poster + one preview per FULFILLABLE frame + canvas + acrylic + metal
+    # (re-audit 2026-07-21: the frame set derives from approved UIDs - today
+    # Classic Black Wood only, so 5 format images)
+    from quoteforge.etsy.frames import available_frames
+    expected = 4 + len(available_frames())
+    assert len(previews) == expected
+    assert any("Framed - Classic Black Wood" == k for k in previews)
+    assert not any("Premium Solid Oak" in k for k in previews)
     assert all(p.exists() for p in previews.values())
 
 
@@ -95,4 +109,5 @@ def test_preview_page_is_interactive(tmp_path):
     Image.new("RGB", (1000, 1250), (245, 245, 240)).save(poster)
     out = frame_preview.build_preview_page(poster, out_path=tmp_path / "try.html")
     h = out.read_text(encoding="utf-8")
-    assert "function pick" in h and "Framed - Premium Solid Oak" in h
+    assert "function pick" in h and "Framed - Classic Black Wood" in h
+    assert "Premium Solid Oak" not in h        # unsold finishes never previewed

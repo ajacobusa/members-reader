@@ -117,6 +117,22 @@ def _product_options_block() -> str:
     return options_block() + "\n"
 
 
+def _frame_style_phrase() -> str:
+    """Frame-style phrase DERIVED from the fulfillable ladder (re-audit
+    2026-07-21, finding F1: the description promised 'an Essential slim frame to
+    Premium Oak, Walnut, or Gold' while the picker sold one finish)."""
+    try:
+        from quoteforge.etsy.frames import available_frames
+        names = [f.name for f in available_frames()]
+    except Exception:  # noqa: BLE001 - never break the listing build
+        names = []
+    if len(names) > 1:
+        return f" and your frame style ({len(names)} styles: {', '.join(names)})"
+    if names:
+        return f" (our {names[0]} frame)"
+    return ""
+
+
 def _build_description(listing, niche: str) -> str:
     """Compose the full listing description: hook, how-it-works, options, policies."""
     from quoteforge.config import SHOP_NAME
@@ -139,8 +155,7 @@ def _build_description(listing, niche: str) -> str:
         f"FRAME NOT INCLUDED (unless you choose a Framed option)\n"
         f"Poster prints ship unframed and Canvas/Acrylic/Metal are frameless - "
         f"the frame shown in the photos is for display only. Want it framed? "
-        f"Choose the \"Framed print\" material and your frame style at checkout "
-        f"(from an Essential slim frame to Premium Oak, Walnut, or Gold).\n\n"
+        f"Choose the \"Framed print\" material at checkout{_frame_style_phrase()}.\n\n"
         f"POLICIES\n"
         f"Personalized items are made to order and final sale. If your order "
         f"arrives damaged or with a printing error, message us within 7 days "

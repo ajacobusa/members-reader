@@ -12,13 +12,31 @@ returns, etc.) and always defers order-specific or refund issues to a human.
 """
 from __future__ import annotations
 
+def _frame_answer() -> str:
+    """The frame answer is DERIVED from the fulfillable frame ladder (re-audit
+    2026-07-21, finding F2: the KB promised '6 options... oak, walnut or gold'
+    while the picker sold one finish - Ange contradicted checkout at the exact
+    moment a buyer asked about frames)."""
+    try:
+        from quoteforge.etsy.frames import available_frames
+        names = [f.name for f in available_frames()]
+    except Exception:  # noqa: BLE001 - never break the widget over the ladder
+        names = []
+    base = ("Poster, canvas, acrylic and metal ship WITHOUT a frame. If you'd "
+            "like it framed, choose the \"Framed\" material at checkout")
+    if len(names) > 1:
+        return (f"{base} and pick your frame style ({len(names)} options: "
+                f"{', '.join(names)}).")
+    if names:
+        return f"{base} - it comes in our {names[0]} frame."
+    return base + "."
+
+
 # (keywords, question, answer). Grounded in the actual shop policies.
 KB = [
     (["frame", "framed", "included", "frame included"],
      "Is a frame included?",
-     "Poster, canvas, acrylic and metal ship WITHOUT a frame. If you'd like it "
-     "framed, choose the \"Framed\" material at checkout and pick your frame "
-     "style (6 options, from a slim black to premium oak, walnut or gold)."),
+     _frame_answer()),
     (["size", "sizes", "dimensions", "how big"],
      "What sizes do you offer?",
      "Sizes range from 8x10 up to 24x36 inches depending on the material. You "

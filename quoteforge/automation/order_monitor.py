@@ -33,6 +33,19 @@ def order_stage(order: dict) -> str:
     return (order.get("status") or "received").lower()
 
 
+def _days_since(ts: str | None) -> "float | None":
+    """Days elapsed since an ISO-ish timestamp string, or None when unparsable."""
+    if not ts:
+        return None
+    from datetime import datetime
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            return (datetime.now() - datetime.strptime(str(ts)[:19], fmt)).total_seconds() / 86400
+        except ValueError:
+            continue
+    return None
+
+
 def _has_vendor(order: dict) -> bool:
     """Whether the order was actually submitted to a print vendor. An order
     fulfilled by the vendor's NATIVE store integration (vendor='gelato-native',
@@ -87,6 +100,20 @@ def audit_order(order: dict) -> dict:
             and order.get("sale_price") is not None and not _has_vendor(order)):
         review.append("customer-approved but not submitted to the print partner "
                        "(stalled at 'received') - route it or investigate")
+
+    # NATIVE-mode age watchdog (re-audit 2026-07-21, F5): a vendor='gelato-native'
+    # order has no QuoteForge-side vendor id, so the tracker's polling, stuck
+    # detection and delivered progression all skip it - in a poll-only deployment
+    # (no vendor webhook) it would freeze at in_production FOREVER with zero
+    # alerts. Surface any native order past the production SLA with no tracking.
+    if ((order.get("vendor") or "").lower() == "gelato-native"
+            and status == "in_production"
+            and not order.get("tracking_number")):
+        _age_days = _days_since(order.get("updated_at") or order.get("created_at"))
+        if _age_days is not None and _age_days > 7:
+            review.append(f"native-mode order in production {_age_days:.0f} days "
+                          "with no tracking - the tracker cannot poll it (no "
+                          "vendor id); check the vendor dashboard / webhook feed")
 
     # Margin floor: a real order priced/costed below the floor (custom or
     # discounted price, live cost spike, heavy upcharge) leaks margin silently.

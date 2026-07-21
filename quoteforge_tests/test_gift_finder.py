@@ -2,9 +2,14 @@
 
 
 def test_recommend_returns_valid():
+    # Re-audit 2026-07-21 (F3): a recommended frame must be one the shop can
+    # actually SELL - the classic style's aspirational Premium Solid Oak maps to
+    # the fulfillable ladder (today: Classic Black Wood).
     from quoteforge.etsy.gift_finder import recommend, quiz_config
+    from quoteforge.etsy.frames import available_frames
+    sellable = {f.name for f in available_frames()}
     r = recommend("Graduation", "Daughter", "50to100", "classic")
-    assert r["material"] == "Framed" and r["frame"] == "Premium Solid Oak"
+    assert r["material"] == "Framed" and r["frame"] in sellable
     assert 1 <= r["listing_n"] <= 20 and r["palette"]
     cfg = quiz_config()
     assert cfg["occasions"] and cfg["relationships"] and cfg["budgets"] and cfg["styles"]
