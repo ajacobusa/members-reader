@@ -37,6 +37,7 @@ def test_new_infra_checks_are_wired():
     assert "listing_image_pipeline_wired" in names          # the Etsy gallery-image pipeline can't silently drop an image/rank/cap
     assert "ecommerce_image_sync_wired" in names             # official-image auto-pull is scheduled + self-activating
     assert "editor_state_resets_on_open" in names            # no cross-product editor state leak (openM hygiene)
+    assert "editor_back_nav_guarded" in names                # tap-back is backward-only + inert after acceptance
     assert "template_image_sync_wired" in names              # template-image persistence is scheduled + idempotent
     assert "etsy_listing_create_dedupe" in names             # re-run can't create duplicate Etsy listings
     assert "sync_jobs_alert_on_failure" in names             # a silently-failing image sync alerts the owner
