@@ -2510,6 +2510,172 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("auto_approved_mappings_guardrailed", False, str(exc)))
 
+    # 93) Homepage entry points (OCCASIONS chips + GIFTSETS) only open products the
+    #     published pickers can sell (audit C1): an entry naming a dropped product
+    #     (the Accent Mug chip) opened an editor with CURFMT='' whose Size list fell
+    #     back to the POSTER sizemap - designed + paid, unfulfillable, mischarged.
+    #     Grounded on the published docs/app.js.
+    try:
+        import json as _j93
+        import re as _r93
+        import quoteforge as _qf93
+        _app93 = Path(_qf93.__file__).resolve().parent.parent / "docs" / "app.js"
+        _js93 = _app93.read_text(encoding="utf-8", errors="ignore") \
+            if _app93.exists() else ""
+        _fmt93: set = set()
+        for _cn93 in ("MUG_FORMATS", "BRANDED_FORMATS", "CAL_FORMATS",
+                      "APPAREL_FORMATS"):
+            _mt93 = _r93.search(r"const " + _cn93 + r" = (\[.*?\]);", _js93)
+            if _mt93:
+                _fmt93 |= {f.get("name", "").rpartition(" - ")[0]
+                           for f in _j93.loads(_mt93.group(1))}
+                _fmt93 |= {f.get("name", "") for f in _j93.loads(_mt93.group(1))}
+        _entries93 = set(_r93.findall(
+            r"kind:'(?:mug|branded|cal|apparel)',\s*name:\"([^\"]+)\"", _js93))
+        _dead93 = sorted(n for n in _entries93 if n not in _fmt93)
+        ok = bool(_entries93) and not _dead93
+        checks.append(_c("entry_points_fulfillable", ok,
+                         "every occasion/gift-set entry opens a sellable product"
+                         if ok else "entry points open unsellable products "
+                         f"(poster-sizemap fallback risk): {_dead93[:5] or 'no entries parsed'}"))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("entry_points_fulfillable", False, str(exc)))
+
+    # 94) Wall-art formats offered at checkout are APPROVED-fulfillable (audit C2):
+    #     poster/canvas/acrylic/metal by exact SKU; FRAMED additionally needs the
+    #     size's prepared GEL-FRAMED UID AND an approved finish (today only black
+    #     wood exists - selling Gold/Oak/Walnut/White/Slim = paid-then-refunded).
+    #     Grace mode while the wall-art family is unmapped.
+    try:
+        from quoteforge.etsy.fulfillability import (
+            fulfillable_wallart_variations as _fwv94,
+            approved_export_map as _aem94)
+        from quoteforge.etsy.variations import build_variations as _bv94
+        _m94 = _aem94()
+        _all94 = list(_bv94())
+        if not any(v.gelato_sku in _m94 for v in _all94 if v.material != "framed"):
+            checks.append(_c("wallart_offered_fulfillable", True,
+                             "wall-art family not mapped yet - grace mode"))
+        else:
+            _offered94 = {(v.material, getattr(v, "frame_color", None), v.size)
+                          for v in _fwv94()}
+            _bad94 = []
+            for _v94 in _all94:
+                _key94 = (_v94.material, getattr(_v94, "frame_color", None),
+                          _v94.size)
+                if _key94 not in _offered94:
+                    continue                       # already filtered out - safe
+                if _v94.material == "framed":
+                    _fsku94 = f"GEL-FRAMED-{_v94.size.split()[0].upper()}-PRM"
+                    _uid94 = _m94.get(_fsku94, "")
+                    _tok94 = (_v94.frame_color or "").lower().split()[-2:]
+                    if not _uid94 or not all(t in _uid94 for t in _tok94):
+                        _bad94.append(f"framed/{_v94.frame_color}/{_v94.size}")
+                elif _v94.gelato_sku not in _m94:
+                    _bad94.append(f"{_v94.material}/{_v94.size}")
+            checks.append(_c("wallart_offered_fulfillable", not _bad94,
+                             "every wall-art format/size offered has an approved "
+                             "UID" if not _bad94 else
+                             f"wall-art sold without approved UID: {sorted(set(_bad94))[:6]}"))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("wallart_offered_fulfillable", False, str(exc)))
+
+    # 95) Mug hero copy never advertises a mug line with no sellable tile (audit
+    #     H8): 'colour-accent' may appear only when an accent/colour-interior mug
+    #     is actually offered.
+    try:
+        from quoteforge.etsy.listing_preview import _mug_section as _ms95
+        from quoteforge.etsy.mug_catalog import MUG_CATALOG as _MC95
+        from quoteforge.etsy.fulfillability import fulfillable_mug_facets as _fmf95
+        _html95 = _ms95() or ""
+        _accent95 = any(_fmf95(p) for p in _MC95
+                        if p.product_id in ("accent_mug", "color_mug"))
+        ok = _accent95 or ("colour-accent" not in _html95)
+        checks.append(_c("mug_copy_matches_assortment", ok,
+                         "mug hero copy matches the sellable lines" if ok else
+                         "hero advertises colour-accent mugs but no accent line "
+                         "is sellable"))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("mug_copy_matches_assortment", False, str(exc)))
+
+    # 96) Order EVIDENCE integrity (audit C3/M9/M10): create_order must never
+    #     REPLACE an existing row (that wiped the consent record + vendor id), and
+    #     every proof_approved write must carry its timestamp. Source-grounded.
+    try:
+        import quoteforge.db.database as _db96
+        import quoteforge.automation.pipeline_orchestrator as _po96
+        import quoteforge.automation.customer_proof as _cp96
+        _dbsrc = Path(_db96.__file__).read_text(encoding="utf-8", errors="ignore")
+        _posrc = Path(_po96.__file__).read_text(encoding="utf-8", errors="ignore")
+        _cpsrc = Path(_cp96.__file__).read_text(encoding="utf-8", errors="ignore")
+        _probs96 = []
+        if "INSERT OR REPLACE INTO orders" in _dbsrc:
+            _probs96.append("create_order REPLACEs (consent/vendor-id wipe is back)")
+        if "preserved as-is" not in _dbsrc:
+            _probs96.append("create_order existing-row preservation guard missing")
+        import re as _re96
+        if _re96.search(r"proof_approved=1\)", _posrc):
+            _probs96.append("bare proof_approved write without timestamp")
+        if "Owner released to print" not in _cpsrc:
+            _probs96.append("owner release mislabelled as customer approval")
+        checks.append(_c("order_evidence_integrity", not _probs96,
+                         "consent record + vendor id survive re-runs; approvals "
+                         "always timestamped" if not _probs96
+                         else "; ".join(_probs96[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("order_evidence_integrity", False, str(exc)))
+
+    # 97) Routing status handling (audit H4/H6): 'native' and 'duplicate' router
+    #     statuses are handled on BOTH orchestrator paths (never downgraded to a
+    #     hand-submit instruction), the mode fallback matches config, and the
+    #     monitor recognizes native-vendor orders. Source-grounded.
+    try:
+        import quoteforge.automation.pipeline_orchestrator as _po97
+        import quoteforge.fulfillment.router as _rt97
+        import quoteforge.automation.order_monitor as _om97
+        _posrc97 = Path(_po97.__file__).read_text(encoding="utf-8", errors="ignore")
+        _rtsrc97 = Path(_rt97.__file__).read_text(encoding="utf-8", errors="ignore")
+        _omsrc97 = Path(_om97.__file__).read_text(encoding="utf-8", errors="ignore")
+        _probs97 = []
+        if _posrc97.count("no manual re-submit") < 2:
+            _probs97.append("native/duplicate downgrade guard missing on a path")
+        if 'or "quoteforge") == "native"' not in _rtsrc97:
+            _probs97.append("router mode fallback no longer matches config default")
+        if "gelato-native" not in _omsrc97:
+            _probs97.append("monitor does not recognize native-vendor orders")
+        checks.append(_c("routing_status_handling", not _probs97,
+                         "native/duplicate handled on both paths; fallback + "
+                         "monitor aligned" if not _probs97
+                         else "; ".join(_probs97[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("routing_status_handling", False, str(exc)))
+
+    # 98) Claim queue integrity (audit H5/M11/M12/A10): autopilot adjudicates in
+    #     claim_status (never the lifecycle status column, never the stub filer's
+    #     false promise), the claim form collects the shipping-label photo vendor
+    #     claims require, and the /test order-writing endpoint is TEST_MODE-only.
+    try:
+        import quoteforge.automation.autopilot as _ap98
+        import quoteforge.automation.webhook_server as _ws98
+        _apsrc98 = Path(_ap98.__file__).read_text(encoding="utf-8", errors="ignore")
+        _wssrc98 = Path(_ws98.__file__).read_text(encoding="utf-8", errors="ignore")
+        _probs98 = []
+        if 'status="replacement_filed"' in _apsrc98 or \
+                'status="issue_declined"' in _apsrc98:
+            _probs98.append("autopilot writes claim outcomes into lifecycle status")
+        if 'claim_status="supplier_review"' not in _apsrc98:
+            _probs98.append("auto_replacement no longer stages into the claim queue")
+        if "shipping_label_photo" not in _wssrc98:
+            _probs98.append("claim form lost the shipping-label evidence field")
+        if "test endpoint is TEST_MODE-only" not in _wssrc98:
+            _probs98.append("/test endpoint writable in production again")
+        checks.append(_c("claim_queue_integrity", not _probs98,
+                         "claims adjudicate in claim_status; evidence complete; "
+                         "test endpoint gated" if not _probs98
+                         else "; ".join(_probs98[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("claim_queue_integrity", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

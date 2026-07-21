@@ -273,16 +273,29 @@ def _execute(d: AutoDecision, order_id: str | None) -> None:
     save_customer_message(order_id, f"resolution:{d.category}",
                           d.customer_message, sent=False)
     if d.action == "auto_replacement":
-        # File/stage a Gelato replacement claim and flag the order.
-        from quoteforge.automation.gelato_api import file_replacement_claim
+        # AUDIT H5/M11: the old path called the stub file_replacement_claim (which
+        # files NOTHING) and wrote "replacement_filed" into the LIFECYCLE status
+        # column - promising the customer a replacement that no one would ever see
+        # (the claim queue reads claim_status, not status). Stage it where the
+        # humans actually work: claim_status='supplier_review' (the claim queue +
+        # digest key on claim_status), leave the fulfillment status machine alone,
+        # and alert the owner so the real vendor claim gets filed same-day.
+        update_order(order_id, claim_status="supplier_review")
         try:
-            file_replacement_claim(order_id, reason=d.category)
-        except Exception as exc:  # noqa: BLE001 - never block, but never silent
-            logger.warning("auto replacement claim filing failed for %s: %s",
+            from quoteforge.admin import _alert
+            _alert(f"Replacement approved - {order_id}",
+                   f"Autopilot approved a free replacement for {order_id} "
+                   f"({d.category}). File the vendor claim and place the "
+                   f"replacement order - the claim queue row is "
+                   f"claim_status=supplier_review.",
+                   f"replacement alert for {order_id}")
+        except Exception as exc:  # noqa: BLE001 - alert is best-effort
+            logger.warning("autopilot replacement alert failed for %s: %s",
                            order_id, exc)
-        update_order(order_id, status="replacement_filed")
     elif d.action == "auto_decline":
-        update_order(order_id, status="issue_declined")
+        # Claim adjudication lives in claim_status; the lifecycle status column
+        # keeps tracking the physical order (delivered etc.) untouched.
+        update_order(order_id, claim_status="denied_customer_fault")
 
 
 def execute_approved(approval_id: int) -> dict:
@@ -303,9 +316,17 @@ def execute_approved(approval_id: int) -> dict:
     res = resolve_issue(d.category)
     if res.get("recognized"):
         d.customer_message = res["message"]
-    _execute(d, a["ref"] or None)
+    # AUDIT A12: only replacement/decline actions have a real effect in _execute.
+    # An "escalate" (or unknown) action performs nothing - report that honestly
+    # instead of claiming "executed" (the owner would believe something happened).
+    if d.action in ("auto_replacement", "auto_decline"):
+        _execute(d, a["ref"] or None)
+        resolve_approval(approval_id, "approved")
+        return {"status": "executed", "approval": approval_id}
     resolve_approval(approval_id, "approved")
-    return {"status": "executed", "approval": approval_id}
+    return {"status": "approved_no_action", "approval": approval_id,
+            "detail": f"action '{d.action}' has no automated effect - "
+                      "handle it manually"}
 
 
 def autopilot_status() -> dict:

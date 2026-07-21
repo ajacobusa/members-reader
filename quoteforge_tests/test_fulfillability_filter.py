@@ -56,6 +56,26 @@ def test_mug_and_branded_facets():
     assert tote and set(tote) == {"Natural", "White", "Navy", "Black", "Red"}
 
 
+def test_framed_finishes_all_approved():
+    # REGRESSION (audit C2): 6 frame finishes were sold while only the black-wood
+    # framed UIDs were approved - a Gallery Gold / Oak / Walnut / White / Slim
+    # order was paid-then-refunded. Every framed variant offered must have its
+    # finish named in the size's approved GEL-FRAMED UID.
+    from quoteforge.etsy.fulfillability import (fulfillable_wallart_variations,
+                                                approved_export_map)
+    m = approved_export_map()
+    framed = [v for v in fulfillable_wallart_variations() if v.material == "framed"]
+    assert framed, "no framed variant sellable at all - assortment collapsed"
+    for v in framed:
+        fsku = f"GEL-FRAMED-{v.size.split()[0].upper()}-PRM"
+        uid = m.get(fsku, "")
+        toks = v.frame_color.lower().split()[-2:]
+        assert uid and all(t in uid for t in toks), \
+            f"framed finish sold without approved UID: {v.frame_color}/{v.size}"
+    # today's grounded truth: black wood is the only approved finish
+    assert {v.frame_color for v in framed} == {"Classic Black Wood"}
+
+
 def test_built_page_offers_no_unfulfillable_format():
     # REGRESSION (the customer-facing guarantee): every orderable format key in the
     # BUILT page's SIZEMAP round-trips to a real approved UID for active families.

@@ -111,7 +111,10 @@ def _route_order_impl(order: dict, recipient: dict = None, artwork_url: str = ""
         # order. Record it as natively fulfilled (so the monitor doesn't flag a
         # missing vendor id) and stop here. QuoteForge stays the design / analytics /
         # financials / tracking layer.
-        if (GELATO_FULFILLMENT_MODE or "native") == "native":
+        # AUDIT H6: the fallback must MATCH config's default ("quoteforge") - the
+        # old `or "native"` meant a set-but-EMPTY env var silently flipped the
+        # whole shop into native mode (no submission, no vendor id, no tracking).
+        if (GELATO_FULFILLMENT_MODE or "quoteforge") == "native":
             try:
                 from quoteforge.db.database import update_order, get_order
                 if order_id and get_order(order_id):

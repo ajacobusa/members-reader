@@ -95,10 +95,15 @@ def record_customer_approval(order_id: str,
         hashable_print_file(order) else ""
     update_order(order_id, proof_approved=1, proof_approved_at=approved_at,
                  proof_file_hash=proof_hash)
+    # AUDIT M10: this path is the OWNER'S release command (admin customer-approved)
+    # - the customer's approval was relayed off-channel, not captured on screen.
+    # The log must say so: citing an owner-asserted release as on-screen customer
+    # consent would be indefensible in a dispute. (The genuine on-screen consent
+    # record is design_confirm: checklist + timestamp + stored proof PDF.)
     log_pipeline_stage(
         order_id, "proof", "customer_approved",
-        f"Customer approved the proof at {approved_at}; "
-        f"approved quote+artwork on record"
+        f"Owner released to print at {approved_at} (customer approval relayed "
+        f"off-channel via admin customer-approved; no on-screen record)"
         + (f"; file sha256={proof_hash[:12]}..." if proof_hash else ""))
     return resume_after_proof_approval(
         order_id,

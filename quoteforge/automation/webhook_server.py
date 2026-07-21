@@ -385,13 +385,36 @@ def process_gelato_callback(payload: dict) -> dict:
     created the order) plus a fulfillment `status` and, on shipment, a tracking
     code/url. We match on the reference and update status + tracking.
     """
-    from quoteforge.db.database import init_db, get_order, update_order
+    from quoteforge.db.database import (init_db, get_order,
+                                        get_order_by_etsy_id, update_order)
     init_db()
-    ref = str(payload.get("orderReferenceId")
-              or payload.get("order_reference_id") or "")
-    if not ref or not get_order(ref):
+    raw_ref = str(payload.get("orderReferenceId")
+                  or payload.get("order_reference_id") or "")
+
+    def _resolve(r: str):
+        """AUDIT M7: a callback reference may be our order_id, the ETSY receipt id
+        (native-mode orders), or a multi-item line id ({etsy_id}-N). Try each
+        before dropping the callback - an ignored callback strands the order at
+        its last status."""
+        if not r:
+            return None, ""
+        o = get_order(r)
+        if o:
+            return o, r
+        o = get_order_by_etsy_id(r)
+        if o:
+            return o, o.get("order_id") or r
+        if "-" in r:                       # {id}-N line suffix from multi-item
+            base = r.rsplit("-", 1)[0]
+            o = get_order(base) or get_order_by_etsy_id(base)
+            if o:
+                return o, o.get("order_id") or base
+        return None, r
+
+    _order, ref = _resolve(raw_ref)
+    if not _order:
         return {"status": "ignored", "reason": "unknown orderReferenceId",
-                "reference": ref}
+                "reference": raw_ref}
 
     raw_status = str(payload.get("status") or payload.get("fulfillmentStatus")
                      or "").lower()
@@ -718,6 +741,11 @@ if FLASK_AVAILABLE and app:
 
         _save("product_photo", "product")
         _save("packaging_photo", "packaging")
+        # AUDIT M12: damaged-package / incomplete / wrong-product vendor claims
+        # require the SHIPPING LABEL photo (gelato_returns evidence rules) - the
+        # form previously couldn't collect it, so no such claim could ever become
+        # file-ready from customer-supplied evidence.
+        _save("shipping_label_photo", "shipping_label")
         req = {"order_number": (form.get("order_number") or "").strip(),
                "name": (form.get("name") or "").strip(), "email": email,
                "phone": (form.get("phone") or "").strip(),
@@ -1005,7 +1033,15 @@ if FLASK_AVAILABLE and app:
 
     @app.route("/test", methods=["GET"])
     def test_endpoint():
-        """Test endpoint — sends a dummy order through the pipeline."""
+        """Test endpoint — sends a dummy order through the pipeline.
+
+        AUDIT A10: TEST_MODE-only. In production this was an anonymous GET that
+        wrote a real order row into the live DB (and its residue polluted the
+        order book/reports)."""
+        from quoteforge.config import TEST_MODE
+        if not TEST_MODE:
+            return jsonify({"status": "disabled",
+                            "reason": "test endpoint is TEST_MODE-only"}), 403
         dummy = {
             "customer_name": "Test Customer",
             "recipient_name": "Emma",

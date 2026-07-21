@@ -194,6 +194,9 @@ def _service_request_form() -> str:
         'accept="image/*" multiple></label>'
         '<label class="srfile">Packaging photo(s) <span>- required for '
         'damage</span><input id="sr_ph_pkg" type="file" accept="image/*" multiple></label>'
+        '<label class="srfile">Shipping label photo <span>- required for '
+        'damaged/incomplete/wrong-item claims</span><input id="sr_ph_label" '
+        'type="file" accept="image/*" multiple></label>'
         '<label class="srconsent"><input id="sr_consent" type="checkbox"> '
         'I confirm the information above is accurate.</label>'
         '<div id="sr_status" class="srstatus" role="alert"></div>'
@@ -238,6 +241,8 @@ def _service_request_form() -> str:
         "if(pp&&pp.files){for(var i=0;i<pp.files.length;i++)fd.append('product_photo',pp.files[i]);}"
         "var pk=document.getElementById('sr_ph_pkg');"
         "if(pk&&pk.files){for(var j=0;j<pk.files.length;j++)fd.append('packaging_photo',pk.files[j]);}"
+        "var pl=document.getElementById('sr_ph_label');"
+        "if(pl&&pl.files){for(var n=0;n<pl.files.length;n++)fd.append('shipping_label_photo',pl.files[n]);}"
         "_srMsg('Submitting...');"
         "fetch(SERVICE_API,{method:'POST',body:fd}).then(function(r){return r.json();})"
         ".then(function(){done();}).catch(function(){mailto();done();});return;}"
@@ -1404,8 +1409,8 @@ def _mug_hero(external_assets: bool = False, assets=None) -> str:
         '<div class="apherobody">'
         '<span class="apheroeyebrow">Personalized &middot; made to order</span>'
         '<h2 class="apheroh">Custom Mugs</h2>'
-        '<p class="apherosub">Put your name, words or photo on classic, enamel, '
-        'travel &amp; colour-accent mugs - the same easy editor, and a free proof '
+        '<p class="apherosub">Put your name, words or photo on classic, large, '
+        'enamel, travel &amp; tall mugs - the same easy editor, and a free proof '
         'you approve on screen before anything prints.</p>'
         '<button type="button" class="apherocta" onclick="'
         "(document.querySelector('.mugfilter')||document.getElementById('mugs'))"
@@ -1667,11 +1672,13 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # so the displayed price updates when a buyer picks a frame / material.
     fmt_price = {}
     try:
-        from quoteforge.etsy.variations import build_variations
+        # FULFILLABILITY: only formats/finishes with an approved partner UID are
+        # priced - a framed finish without one is paid-then-refunded (audit C2).
+        from quoteforge.etsy.fulfillability import fulfillable_wallart_variations
         _mat_name = {"poster": "Poster (unframed)",
                      "canvas": "Canvas (gallery-wrapped)",
                      "acrylic": "Acrylic", "metal": "Metal"}
-        for v in build_variations():
+        for v in fulfillable_wallart_variations():
             k = (f"Framed - {v.frame_color}" if v.material == "framed"
                  else _mat_name.get(v.material))
             if k:
@@ -1896,7 +1903,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     # Size -> price map per format (sizes/prices are the same across designs).
     sizemap: dict = {}
     try:
-        from quoteforge.etsy.variations import build_variations as _bv
+        # FULFILLABILITY: same approved-UID gate as the format list (audit C2).
+        from quoteforge.etsy.fulfillability import (
+            fulfillable_wallart_variations as _bv)
         _mn = {"poster": "Poster (unframed)", "canvas": "Canvas (gallery-wrapped)",
                "acrylic": "Acrylic", "metal": "Metal"}
         for v in _bv():
@@ -2139,6 +2148,18 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
     except Exception:  # noqa: BLE001
         materials_line = ""
     price_hi = f"{_hi:.0f}"
+    # Framed copy follows the FULFILLABLE assortment (audit C2): the style count
+    # and ladder wording derive from the formats actually sold, never a static
+    # claim of finishes the print partner can't make.
+    _framed_names = sorted({k[len("Framed - "):] for k in fmt_price
+                            if k.startswith("Framed - ")})
+    if len(_framed_names) > 1:
+        framed_line = (f"({len(_framed_names)} frame styles: "
+                       f"{' · '.join(_framed_names)})")
+    elif _framed_names:
+        framed_line = f"({_framed_names[0]} frame)"
+    else:
+        framed_line = ""
     try:
         from quoteforge.etsy.variations import build_variations as _bvc
         opt_count = len(_bvc())
@@ -4146,7 +4167,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        <div id="mavail" style="font-size:12px;color:#5a6b62;margin:-2px 0 8px">
          Available as: {materials_line}<br>
          <b>Frame not included</b> unless you choose a Framed option
-         (6 frame styles: Essential → Classic → Premium). Canvas is gallery-wrapped (open).
+         {framed_line}. Canvas is gallery-wrapped (open).
        </div>
        <!-- One section at a time: finish it, tap Next - no scrolling hunt. -->
        <div id="esectabs" role="list" aria-label="Your progress">
@@ -4851,9 +4872,16 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      ? ('Personalized '+CURGARMENT+' - Custom Printed Apparel, You Personalize It')
      : 'Personalized Custom Apparel - Tees, Hoodies & Sweatshirts You Personalize';
  }}
- const APPAREL_AVAIL_HTML='Available as a <b>T-Shirt, Tank, Long Sleeve, Hoodie, '
-   +'Sweatshirt &amp; more</b> - pick your garment, colour &amp; size next. Made to order, '
-   +'printed on '+(MULTI_AREA?'the front, back &amp; sleeves you design':'the front')+'.';
+ // Garment-aware availability line (#tank): a sleeveless garment must never be
+ // described as printed on "sleeves you design".
+ function _apparelAvailHTML(){{
+   var areas=!MULTI_AREA?'the front'
+     :(typeof _garmentSleeves==='function'&&!_garmentSleeves())?'the front &amp; back you design'
+     :'the front, back &amp; sleeves you design';
+   return 'Available as a <b>T-Shirt, Tank, Long Sleeve, Hoodie, '
+     +'Sweatshirt &amp; more</b> - pick your garment, colour &amp; size next. '
+     +'Made to order, printed on '+areas+'.';
+ }}
  const APPAREL_DESC_HTML='<b>A personalized garment, made to order just for you.</b><br>'
    +'1. Personalize it live - add the recipient name, occasion and your own words or '
    +'photo, and preview it on screen.<br>'
@@ -4939,7 +4967,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    const av=document.getElementById('mavail');
    if(av){{ if(!WALLART_AVAIL && !PRINT) WALLART_AVAIL=av.innerHTML;
      av.innerHTML = IS_CAL ? CAL_AVAIL_HTML : (IS_MUG ? MUG_AVAIL_HTML : (IS_BRANDED ? BRANDED_AVAIL_HTML
-       : (IS_APPAREL ? APPAREL_AVAIL_HTML : (WALLART_AVAIL || av.innerHTML)))); }}
+       : (IS_APPAREL ? _apparelAvailHTML() : (WALLART_AVAIL || av.innerHTML)))); }}
    const md=document.getElementById('mdesc');
    if(md){{ if(!WALLART_DESC && !PRINT) WALLART_DESC=md.innerHTML;
      md.innerHTML = IS_CAL ? CAL_DESC_HTML : (IS_MUG ? MUG_DESC_HTML : (IS_BRANDED ? BRANDED_DESC_HTML
@@ -5257,8 +5285,17 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function qdisc(q){{let best=0; for(const t of QD){{if(q>=t[0]&&t[1]>best)best=t[1];}} return best;}}
  function fillQty(){{const s=document.getElementById('mqty'); if(s&&!s.options.length){{
    for(let i=1;i<=10;i++){{const o=document.createElement('option');o.value=i;o.text=i;s.add(o);}}}}}}
+ // The rows for the CURRENT format. Wall art may default to the first (poster)
+ // key before a format is picked; a PRODUCT-mode editor (mug/branded/cal/apparel)
+ // with an empty/unknown format gets NO rows - never cross-family poster prices
+ // (#entry-fulfillable: the Accent Mug chip once sold a mug at poster sizes).
+ function _sizemapRows(){{
+   if(SIZEMAP[CURFMT]) return SIZEMAP[CURFMT];
+   if(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL) return [];
+   return SIZEMAP[Object.keys(SIZEMAP)[0]]||[];
+ }}
  function fillSizes(){{const sel=document.getElementById('msize'); if(!sel)return;
-   const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];  // never empty
+   const rows=_sizemapRows();
    sel.innerHTML=rows.map(r=>`<option value="${{r.size}}|${{r.price}}">${{r.size}}${{(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?'':' in'}} - $${{r.price}}</option>`).join('');
    _paintSizePills(rows);
    if(typeof _upd3DBtn==='function') _upd3DBtn();}}    // show 3D for branded bottles/tumblers too
@@ -5279,7 +5316,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function pickSizePill(i){{
    const sel=document.getElementById('msize'); if(!sel) return;
    sel.selectedIndex=i; onSizeChange();
-   const rows=SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[];
+   const rows=_sizemapRows();
    _paintSizePills(rows);
    // PDP price card shows the PICKED variant's exact price (from-price until then).
    const r=rows[i], mp=document.getElementById('mprice');
@@ -5824,10 +5861,14 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // Apparel only - wall art has a single face.
  function _sideHas(s){{ return !!(s && ((((s.quote||'').trim())) || s.photoSrc || _slotsFilled(s.slots) || (s.collage&&s.collage.some(Boolean)))); }}
  function _designedAreas(){{
-   // Front is ALWAYS reviewed; each extra area only if the buyer actually designed it.
+   // Front is ALWAYS reviewed; each extra area only if the buyer actually designed
+   // it - and a SLEEVE area only on a garment that has sleeves (#tank, defense in
+   // depth: SIDES resets per garment today, but this label must never claim a
+   // sleeve design on a sleeveless garment even after a refactor).
    var order=['front','back','sleeve-left','sleeve-right'], out=[];
    for(var i=0;i<order.length;i++){{ var a=order[i];
-     if(a==='front' || (MULTI_AREA && _sideHas(SIDES[a]))) out.push(a); }}
+     var sleeve=(a==='sleeve-left'||a==='sleeve-right');
+     if(a==='front' || (MULTI_AREA && (!sleeve||_garmentSleeves()) && _sideHas(SIDES[a]))) out.push(a); }}
    return out;
  }}
  function _areaLabel(a){{ return a==='sleeve-left'?'left sleeve':(a==='sleeve-right'?'right sleeve':a); }}
@@ -5966,34 +6007,46 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  const OCCASIONS=[
    {{label:'Birthday', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Black', quote:'Happy Birthday [Name]!'}},
    {{label:'Anniversary', kind:'cal', name:"Wall Calendar", color:'White', quote:'Our Year Together'}},
-   {{label:'For Mom', kind:'mug', name:"Accent Mug", color:'Dusty Rose', quote:'Best Mom Ever'}},
+   {{label:'For Mom', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Pink', quote:'Best Mom Ever'}},
    {{label:'For Dad', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'Black', quote:'Best Dad Ever'}},
    {{label:'Wedding', kind:'cal', name:"Wall Calendar", color:'White', quote:'Mr & Mrs [Name]'}},
    {{label:'New Baby', kind:'branded', name:"Organic Cotton Tote Bag", color:'Natural', quote:'Welcome Baby [Name]'}},
    {{label:'Graduation', kind:'apparel', name:"Men's T-Shirt", color:'White', quote:'Class of 2025'}},
    {{label:'Corporate', kind:'branded', name:"Organic Cotton Tote Bag", color:'Black', quote:'[Your Company]'}},
    {{label:'Memorial', kind:'mug', name:"Classic Ceramic Mug (11oz)", color:'White', quote:'In Loving Memory'}},
-   {{label:'Just Because', kind:'branded', name:"Organic Cotton Tote Bag", color:'Sage', quote:'Just Because'}}
+   {{label:'Just Because', kind:'branded', name:"Organic Cotton Tote Bag", color:'Natural', quote:'Just Because'}}
  ];
  // Curated cross-department sets. Combined from-price = sum of each item's from-price.
  const GIFTSETS=[
    {{key:'family', name:'Family Memory Set', items:[{{kind:'cal',name:"Wall Calendar",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Black'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}}]}},
-   {{key:'corporate', name:'Corporate Welcome Kit', items:[{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Black'}},{{kind:'branded',name:"Insulated Stainless Water Bottle",color:'White'}},{{kind:'branded',name:"Hardcover Journal",color:'Black'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'White'}}]}},
-   {{key:'newhome', name:'New Home Set', items:[{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Forest Green'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Sage'}},{{kind:'cal',name:"Wall Calendar",color:'White'}}]}},
+   {{key:'corporate', name:'Corporate Welcome Kit', items:[{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Black'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'White'}}]}},
+   {{key:'newhome', name:'New Home Set', items:[{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Forest Green'}},{{kind:'branded',name:"Organic Cotton Tote Bag",color:'Natural'}},{{kind:'cal',name:"Wall Calendar",color:'White'}}]}},
    {{key:'celebration', name:'Celebration Set', items:[{{kind:'apparel',name:"Men's T-Shirt",color:'White'}},{{kind:'mug',name:"Classic Ceramic Mug (11oz)",color:'Red'}}]}}
  ];
  function _fmtFor(kind){{ return kind==='mug'?(typeof MUG_FORMATS!=='undefined'?MUG_FORMATS:[]):kind==='branded'?(typeof BRANDED_FORMATS!=='undefined'?BRANDED_FORMATS:[]):kind==='cal'?(typeof CAL_FORMATS!=='undefined'?CAL_FORMATS:[]):(typeof APPAREL_FORMATS!=='undefined'?APPAREL_FORMATS:[]); }}
  function _prodFrom(kind,name){{ var ps=_fmtFor(kind).filter(function(f){{return f.name===name||f.name.indexOf(name+' - ')===0;}}).map(function(f){{return f.price;}}).filter(function(p){{return p>0;}}); return ps.length?Math.min.apply(null,ps):0; }}
- function _openProduct(kind,name,color){{ if(kind==='mug')shopMug(name,color); else if(kind==='branded')shopBranded(name,color); else if(kind==='cal')shopCalendar(name,color); else shopApparel(name,color); }}
+ // Defense in depth (#entry-fulfillable): an entry may only open a product the
+ // PUBLISHED pickers can sell - a dropped product has no format, and opening it
+ // would leave CURFMT='' and let fillSizes fall back to the poster sizemap (the
+ // customer designs a mug, pays poster prices, and the order can't route).
+ function _sellable(kind,name){{ return _fmtFor(kind).some(function(f){{ return f.name===name||f.name.indexOf(name+' - ')===0; }}); }}
+ function _openProduct(kind,name,color){{
+   if(!_sellable(kind,name)){{ var d=document.getElementById('depts'); if(d)d.scrollIntoView({{behavior:'smooth'}}); return; }}
+   if(kind==='mug')shopMug(name,color); else if(kind==='branded')shopBranded(name,color); else if(kind==='cal')shopCalendar(name,color); else shopApparel(name,color); }}
  function shopOccasion(i){{ var o=OCCASIONS[i]; if(!o)return; CARRY_DESIGN=o.quote; _openProduct(o.kind,o.name,o.color); }}
- function startGiftSet(i){{ var s=GIFTSETS[i]; if(!s||!s.items.length)return; var it=s.items[0]; _openProduct(it.kind,it.name,it.color); }}
+ function startGiftSet(i){{ var s=GIFTSETS[i]; if(!s||!s.items.length)return;
+   var it=s.items.filter(function(x){{ return _sellable(x.kind,x.name); }})[0]||null;
+   if(it) _openProduct(it.kind,it.name,it.color); }}
  function renderGiftSets(){{
    var oc=document.getElementById('occrow');
    if(oc) oc.innerHTML=OCCASIONS.map(function(o,i){{ return `<button type="button" class="occchip" onclick="shopOccasion(${{i}})">${{o.label}}</button>`; }}).join('');
    var sg=document.getElementById('setgrid');
    if(sg) sg.innerHTML=GIFTSETS.map(function(s,i){{
-     var from=s.items.reduce(function(t,it){{ return t+_prodFrom(it.kind,it.name); }},0);
-     var items=s.items.map(function(it){{ return it.name.replace(/ \\(.*\\)/,''); }}).join(' + ');
+     // only sellable items are advertised and priced (#entry-fulfillable)
+     var sell=s.items.filter(function(it){{ return _sellable(it.kind,it.name); }});
+     if(!sell.length) return '';
+     var from=sell.reduce(function(t,it){{ return t+_prodFrom(it.kind,it.name); }},0);
+     var items=sell.map(function(it){{ return it.name.replace(/ \\(.*\\)/,''); }}).join(' + ');
      return `<div class="setcard"><div class="setname">${{s.name}}</div><div class="setitems">${{items}}</div>`+
        `<div class="setfrom">${{from?`from $${{from.toFixed(2)}}`:''}}</div>`+
        `<button type="button" class="setcta" onclick="startGiftSet(${{i}})">Build this set &rarr;</button></div>`;
@@ -6906,7 +6959,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function onSizeChange(){{ drawArt(); updateReview(); recheckPhotoRes();
    // Keep the PDP size pills in lockstep with the hidden select (value contract).
    if(typeof _paintSizePills==='function')
-     _paintSizePills(SIZEMAP[CURFMT]||SIZEMAP[Object.keys(SIZEMAP)[0]]||[]);
+     _paintSizePills(_sizemapRows());
    // Size picked: clear any "choose a size first" warning back to the default,
    // and move the guidance blink along to the next task (review).
    const p=document.getElementById('sizeprompt');

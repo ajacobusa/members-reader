@@ -775,8 +775,34 @@ def create_order(data: dict) -> str:
     cust_id = data.get("customer_id") or get_or_create_customer(
         data.get("customer_email", ""), data.get("customer_name", ""), order_id)
     with _conn() as conn:
-        conn.execute("""
-            INSERT OR REPLACE INTO orders
+        # NEVER `INSERT OR REPLACE` here (audit C3): REPLACE is delete-then-insert,
+        # so a same-id re-run (admin fix-photo re-pipeline, webhook redelivery race)
+        # silently wiped proof_approved/proof_approved_at/proof_pdf (the customer's
+        # consent record) and vendor_order_id/gelato_order_id - blinding the
+        # router's double-submit guard. An existing order is left UNTOUCHED and its
+        # id returned; updates go through update_order, which enforces the
+        # LOCKED_FIELDS design lock.
+        existing = conn.execute("SELECT order_id FROM orders WHERE order_id=?",
+                                (order_id,)).fetchone()
+        if existing:
+            logger.info("create_order: %s already exists - preserved as-is "
+                        "(no REPLACE; updates must use update_order)", order_id)
+            return order_id
+        try:
+            _insert_order_row(conn, order_id, cust_id, data)
+        except sqlite3.IntegrityError:
+            # Concurrent same-id insert won the race (webhook redelivery): the
+            # existing row wins, untouched.
+            logger.info("create_order: %s concurrently created - preserved", order_id)
+            return order_id
+    _post_create_order(order_id, data)
+    return order_id
+
+
+def _insert_order_row(conn, order_id: str, cust_id: str, data: dict) -> None:
+    """The bare INSERT for a NEW order row (extracted so create_order can guard it)."""
+    conn.execute("""
+            INSERT INTO orders
             (order_id, etsy_order_id, customer_name, customer_email,
              recipient_name, sender_name, relationship, occasion,
              scenery, tone, memory, output_style, status,
@@ -825,6 +851,11 @@ def create_order(data: dict) -> str:
             # the NEXT month. Explicit local time fixes that for new + existing DBs.
             data.get("created_at") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         ))
+
+
+def _post_create_order(order_id: str, data: dict) -> None:
+    """Post-insert wiring for a NEWLY created order (never runs on a preserved
+    existing row)."""
     # Attach the customer's most-recent confirmed design (incl. any 12-month calendar
     # photo URLs) to this order, so the personalization travels with it to production.
     try:
@@ -832,7 +863,6 @@ def create_order(data: dict) -> str:
     except Exception as exc:  # noqa: BLE001 - never block an order, but never silent:
         # a failed link means the personalization/design may not reach production.
         logger.warning("link_design_to_order failed for %s: %s", order_id, exc)
-    return order_id
 
 
 # Customer-approved design fields that LOCK once the customer approves the proof.
@@ -881,6 +911,13 @@ def update_order(order_id: str, *, allow_locked: bool = False, **fields) -> None
                     "order_lock_override", actor="admin",
                     detail=f"order={order_id} fields={changed}")
     fields["updated_at"] = datetime.now().isoformat()
+    # AUDIT A11: the SET clause is built from field NAMES, so restrict them to
+    # bare identifiers before interpolation. Every current caller passes literal
+    # kwargs; this hard-stops any future caller passing user-controlled names
+    # (which would otherwise be SQL injection).
+    _bad = [k for k in fields if not k.replace("_", "").isalnum()]
+    if _bad:
+        raise ValueError(f"update_order: invalid field name(s) {_bad}")
     set_clause = ", ".join(f"{k}=?" for k in fields)
     values = list(fields.values()) + [order_id]
     with _conn() as conn:
