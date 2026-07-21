@@ -1,6 +1,7 @@
 """UX requirements for the personalization editor (generated storefront page):
 progress stepper, client-side upload size cap, duplicate-photo notice,
 loading spinner, and screen-reader affordances (aria-live + labels)."""
+import re
 from pathlib import Path
 
 from PIL import Image
@@ -1261,3 +1262,63 @@ def test_completed_steps_tap_back_to_design(tmp_path):
     # Visible affordance: completed steps read as clickable.
     assert "#esectabs .estep.done{cursor:pointer}" in h
     assert "#mstepper li.done[tabindex]{cursor:pointer}" in h
+
+
+def test_spin_overlay_never_leaks_between_products(tmp_path):
+    # REGRESSION: open a mug -> Spin your product -> close the editor -> open
+    # a WALL ART card: the mug spin overlay (previous product, previous
+    # design) stayed visible over the new product's preview, because only
+    # setProductType dismissed it - plain openM cards and closeM never did.
+    # Both now close any lingering spin before showing the new product.
+    h = _page(tmp_path)
+    open_m = h.split("function openM(", 1)[1].split("setStep(1); editStep(1);", 1)[0]
+    assert "close3D()" in open_m, "openM must dismiss a previous product's spin overlay"
+    close_m = h.split("function closeM(", 1)[1].split("BFLOW=null", 1)[0]
+    assert "close3D()" in close_m, "closeM must not keep a live spin render loop"
+
+
+def test_openm_resets_cross_product_editor_state(tmp_path):
+    # REGRESSION: shared-editor state leaked between products (openM/closeM
+    # never reset it; only setProductType reset a subset). Product B then
+    # showed or ORDERED product A's state: Layout Studio slot text rode into
+    # B's order wording, A's collage photos drew into B's proof, queued
+    # calendar-A month photos flushed into B's checkout (CAL_QUEUE), the
+    # "Added to your basket!" bar showed before B was added (missing-item
+    # orders), inspect-zoom left B cropped with editing paused, and a stale
+    # CURBASE offered the WRONG garment's quality tiers/prices.
+    h = _page(tmp_path)
+    m = re.search(r"function openM\(i\)\{(.*?)getElementById\('modal'\)"
+                  r"\.style\.display='flex'", h, re.S)
+    assert m, "openM body not found in the built page"
+    body = m.group(1)
+    assert "CURLAYOUT='freeform'" in body        # order wording can't be slot-poisoned
+    assert "SLOTS=_emptySlots()" in body
+    assert "COLLAGE=[null,null,null,null]" in body   # no stale photos in the next proof
+    assert "CAL_QUEUE=[]" in body                # no stale month photos into checkout
+    assert 'CURBASE=""' in body                  # tier picker re-keys per product
+    assert "postadd" in body                     # purchase-state bar hidden per open
+    assert "vzReset()" in body                   # inspect zoom/pan reset
+    assert "sizeprompt" in body                  # stale size warning cleared
+
+
+def test_wallart_order_wording_never_reads_stale_layout_slots(tmp_path):
+    # REGRESSION: basket lines and saved designs took wording straight from
+    # _slotWording(), which returns Layout Studio slot text whenever
+    # CURLAYOUT!=='freeform' - so a leaked layout from a previous product
+    # poisoned a WALL ART order's wording while its proof showed the typed
+    # text. Both consumers now go through the family-gated _orderWording().
+    h = _page(tmp_path)
+    assert h.count("wording:_orderWording(),") == 2   # basket line + saved design
+    assert "wording:_slotWording()" not in h
+    assert "function _orderWording()" in h
+    gate = h.split("function _orderWording()", 1)[1].split("}", 2)[0]
+    assert "(IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)" in gate
+
+
+def test_stale_queued_month_photo_never_overwrites_newer_upload(tmp_path):
+    # REGRESSION: a month photo queued pre-email stayed in CAL_QUEUE after the
+    # same month was re-uploaded post-email; the checkout flush then overwrote
+    # the newer photo's hosted URL with the stale one.
+    h = _page(tmp_path)
+    seg = h.split("function _calUpload(", 1)[1].split("function _flushCalQueue", 1)[0]
+    assert seg.count("CAL_QUEUE=CAL_QUEUE.filter(function(x){return x.i!==i;})") == 2

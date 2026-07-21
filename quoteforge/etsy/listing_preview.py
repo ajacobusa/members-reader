@@ -4553,6 +4553,10 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  function openM(i){{
    CUR = i; RATING = 0; paintStars(); REVIEWED=false; ADDED=false;
    WORD_DONE=false;
+   // A previous product's spin/see-on-product overlay must NEVER cover this
+   // one (a wall-art card was opening under a lingering mug spin). Only
+   // setProductType used to dismiss it - plain openM cards never did.
+   if(typeof close3D==='function') close3D();
    setStep(1); editStep(1);
    // Desktop: park the cursor in the wording field, ready to type (skipped
    // on phones - auto-focus would pop the keyboard over the preview).
@@ -4589,6 +4593,22 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    var _ot=(typeof OCCASION_TINT!=='undefined'&&d.occ)?OCCASION_TINT[d.occ]:null; if(_ot){{SELBG=_ot.bg; SELTXT=_ot.text;}}
    SELFONT = FONTS[0][1]; SELWALL = WALLS[0][0];
    TPOS={{x:0.5,y:0.5}}; TSIZE=0; TROT=0; setDragMode('text');
+   // Cross-product hygiene: NOTHING from the previous product may leak into
+   // this one. Leaked Layout Studio slots would poison THIS product's order
+   // wording (_slotWording reads them whenever CURLAYOUT!=='freeform'), stale
+   // collage photos would draw into its proof, and queued calendar uploads
+   // would flush into its checkout. Same rationale as the CAL_PHOTOS guard
+   // below - openM is the single door every product opens through.
+   CURLAYOUT='freeform'; SLOTS=_emptySlots(); LOFF={{}};
+   COLLAGE=[null,null,null,null];
+   if(typeof renderSlotInputs==='function') renderSlotInputs();   // restore the wording box
+   CAL_QUEUE=[];                  // queued month photos die with their product
+   CURBASE="";                    // Quality tiers re-key to THIS product
+   if(typeof vzReset==='function') vzReset();   // leave inspect-zoom, clear pan
+   var _pa=document.getElementById('postadd'); if(_pa)_pa.style.display='none';
+   var _sp=document.getElementById('sizeprompt');
+   if(_sp){{ _sp.style.display='none'; _sp.classList.remove('attn');
+     _sp.innerHTML='👇 Pick your <b>size</b> &amp; <b>quantity</b>, then tap <b>Add to basket</b>'; }}
    var ts=document.getElementById('mtsize'); if(ts)ts.value=0;
    var tl=document.getElementById('mtsizelbl'); if(tl)tl.textContent='Auto';
    var tr=document.getElementById('mtrot'); if(tr)tr.value=0;
@@ -4735,6 +4755,9 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
      var email=knownEmail();
      if(!email){{ CAL_QUEUE=CAL_QUEUE.filter(function(x){{return x.i!==i;}});
        CAL_QUEUE.push({{i:i,f:f}}); return; }}     // queue until we have an email
+     // An older queued photo for this month must not resurface at the checkout
+     // flush and overwrite this newer upload.
+     CAL_QUEUE=CAL_QUEUE.filter(function(x){{return x.i!==i;}});
      _calUploadNow(i,f,email);
    }}catch(e){{}}
  }}
@@ -5357,7 +5380,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
        + (_sl && _sides['sleeve-right']?SLEEVE_UPCHARGE:0)) : 0;
    CART.push({{fmt:CURFMT,size:p[0],unit:+(parseFloat(p[1])+_extra).toFixed(2),qty:qty,title:title,
      placement:(IS_APPAREL?APPLACEMENT:''),
-     sides:_sides, extra_print:+(_extra).toFixed(2), wording:_slotWording(),
+     sides:_sides, extra_print:+(_extra).toFixed(2), wording:_orderWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''),
      cal:_calMeta(),
      design:_fullDesign(),                 // FULL per-item design (both sides, cal, wording)
@@ -5621,7 +5644,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
  // ── Design state, Save, and final-proof Accept ──
  function _designState(){{
    return {{listing:(DATA[CUR]||{{}}).title||'', fmt:CURFMT, bg:SELBG, txt:SELTXT,
-     font:SELFONT, wall:SELWALL, wording:_slotWording(),
+     font:SELFONT, wall:SELWALL, wording:_orderWording(),
      layout:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?CURLAYOUT:''), slots:((IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)?JSON.parse(JSON.stringify(SLOTS)):null),
      size:((document.getElementById('msize')||{{}}).value||'').split('|')[0],
      tpos:TPOS, tsize:TSIZE, trot:TROT,
@@ -6525,6 +6548,15 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    (L.slots||[]).forEach(function(s){{ var v=_slot(s.slot);
      if(v && !seen[s.slot]){{ seen[s.slot]=1; out.push(v); }} }});
    return out.join(' / ');
+ }}
+ // Order wording: slot text is only ever REAL on the families that draw the
+ // Layout Studio (apparel/branded/mug/cal). Wall art draws the textarea/quote,
+ // so its order must never read a leaked layout's slots - the proof and the
+ // order have to tell the same story.
+ function _orderWording(){{
+   return (IS_APPAREL||IS_BRANDED||IS_MUG||IS_CAL)
+     ? _slotWording()
+     : (((document.getElementById('mtext')||{{}}).value)||'');
  }}
  // Apparel DESIGN FRAME the buyer can move + resize anywhere on the garment: the
  // dashed print area. centre (x,y as a fraction of the canvas) + scale.
@@ -8284,6 +8316,7 @@ def build_shop_home(password: str = "Jesus", numbers=None, kit_dir=None,
    }}
  }});
  function closeM(){{document.getElementById('modal').style.display='none';
+   close3D();   // a hidden modal must not keep a live spin render loop
    BFLOW=null; var bb=document.getElementById('bundlebanner'); if(bb)bb.style.display='none';}}
  document.querySelectorAll('#mstars span').forEach(function(el){{
    el.addEventListener('click', function(){{ setRating(parseInt(el.dataset.v)); }});
