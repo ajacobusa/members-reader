@@ -100,6 +100,32 @@ def fulfillable_apparel_facets(garment) -> tuple[list, list] | None:
     return (colors, sizes)
 
 
+def fulfillable_wallart_variations() -> list:
+    """build_variations() filtered to wall-art variants the approved export can
+    fulfil. Non-framed materials match their exact ``gelato_sku``. FRAMED is
+    special: the sellable unit is the print partner's prepared framed-poster
+    product ``GEL-FRAMED-{SIZE}-PRM`` (the composite poster+frame seed SKU never
+    maps 1:1), and the FINISH being sold must be named in that approved UID -
+    today only black wood exists, so Gallery Gold / Oak / Walnut / White / Slim
+    would be paid-then-refunded. Family-aware grace mode like the siblings."""
+    from quoteforge.etsy.variations import build_variations
+    vs = list(build_variations())
+    m = approved_export_map()
+    if not any(v.gelato_sku in m for v in vs if v.material != "framed"):
+        return vs                     # wall-art family not mapped yet - legacy
+    out = []
+    for v in vs:
+        if v.material == "framed":
+            fsku = f"GEL-FRAMED-{v.size.split()[0].upper()}-PRM"
+            uid = m.get(fsku, "")
+            toks = (v.frame_color or "").lower().split()[-2:]
+            if uid and all(t in uid for t in toks):
+                out.append(v)
+        elif v.gelato_sku in m:
+            out.append(v)
+    return out
+
+
 def fulfillable_mug_variations() -> list:
     """build_mug_variations() filtered to variants with a real approved UID (family-aware:
     unfiltered when the mug family has no coverage yet)."""
