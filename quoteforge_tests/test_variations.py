@@ -24,14 +24,16 @@ def test_all_variations_clear_the_configured_floor():
         for v in vs)
 
 
-def test_framed_expands_into_six_frames():
-    from quoteforge.etsy.frames import FRAMES
+def test_framed_expands_into_fulfillable_frames():
+    # Re-audit 2026-07-21: framed variants expand over the FULFILLABLE ladder
+    # (available_frames = defined ladder ∩ approved partner UIDs), not the full
+    # 6-frame aspiration - today that is Classic Black Wood alone.
+    from quoteforge.etsy.frames import available_frames
     vs = V.build_variations()
     framed = [v for v in vs if v.material == "framed"]
     assert framed
-    # every frame in the 6-tier ladder appears, with its tier set
-    assert {v.frame_color for v in framed} == {f.name for f in FRAMES}
-    assert {v.frame_tier for v in framed} == {"high", "mid", "low"}
+    assert {v.frame_color for v in framed} == {f.name for f in available_frames()}
+    assert {v.frame_color for v in framed} == {"Classic Black Wood"}
     # non-framed materials carry no frame
     assert all(v.frame_color == "" for v in vs if v.material != "framed")
 
@@ -52,7 +54,9 @@ def test_options_block_lists_materials_and_open_canvas():
     for m in ("Poster", "Framed", "Canvas", "Acrylic", "Metal"):
         assert m in block
     assert "open" in block.lower()           # canvas described as open
-    assert "Premium Solid Oak" in block and "Slim Black" in block   # frame ladder
+    # the frame ladder lists ONLY fulfillable finishes (re-audit 2026-07-21)
+    assert "Classic Black Wood" in block
+    assert "Premium Solid Oak" not in block and "Slim Black" not in block
 
 
 def test_cli_variations_writes_inventory(tmp_path, monkeypatch, capsys):
