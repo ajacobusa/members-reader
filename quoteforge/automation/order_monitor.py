@@ -34,8 +34,12 @@ def order_stage(order: dict) -> str:
 
 
 def _has_vendor(order: dict) -> bool:
-    """Whether the order was actually submitted to a print vendor."""
-    return bool(order.get("vendor_order_id") or order.get("gelato_order_id"))
+    """Whether the order was actually submitted to a print vendor. An order
+    fulfilled by the vendor's NATIVE store integration (vendor='gelato-native',
+    audit H6) has no QuoteForge-side vendor id by design - the vendor owns
+    submission - so it counts as vendored rather than a missing-id VIOLATION."""
+    return bool(order.get("vendor_order_id") or order.get("gelato_order_id")
+                or (order.get("vendor") or "").lower() == "gelato-native")
 
 
 def audit_order(order: dict) -> dict:

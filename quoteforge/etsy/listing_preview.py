@@ -194,6 +194,9 @@ def _service_request_form() -> str:
         'accept="image/*" multiple></label>'
         '<label class="srfile">Packaging photo(s) <span>- required for '
         'damage</span><input id="sr_ph_pkg" type="file" accept="image/*" multiple></label>'
+        '<label class="srfile">Shipping label photo <span>- required for '
+        'damaged/incomplete/wrong-item claims</span><input id="sr_ph_label" '
+        'type="file" accept="image/*" multiple></label>'
         '<label class="srconsent"><input id="sr_consent" type="checkbox"> '
         'I confirm the information above is accurate.</label>'
         '<div id="sr_status" class="srstatus" role="alert"></div>'
@@ -238,6 +241,8 @@ def _service_request_form() -> str:
         "if(pp&&pp.files){for(var i=0;i<pp.files.length;i++)fd.append('product_photo',pp.files[i]);}"
         "var pk=document.getElementById('sr_ph_pkg');"
         "if(pk&&pk.files){for(var j=0;j<pk.files.length;j++)fd.append('packaging_photo',pk.files[j]);}"
+        "var pl=document.getElementById('sr_ph_label');"
+        "if(pl&&pl.files){for(var n=0;n<pl.files.length;n++)fd.append('shipping_label_photo',pl.files[n]);}"
         "_srMsg('Submitting...');"
         "fetch(SERVICE_API,{method:'POST',body:fd}).then(function(r){return r.json();})"
         ".then(function(){done();}).catch(function(){mailto();done();});return;}"

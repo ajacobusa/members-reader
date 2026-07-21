@@ -496,7 +496,10 @@ def run_full_pipeline(
         else:
             # Already approved on screen, or an explicit auto-approve/skip bypass.
             _notify("proof", "Proof approved — proceeding to fulfillment")
-            update_order(order_id, proof_sent=1, proof_approved=1)
+            # AUDIT M9: every proof_approved write carries its timestamp - the
+            # consent record the made-to-order policy cites in disputes.
+            update_order(order_id, proof_sent=1, proof_approved=1,
+                         proof_approved_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             log_pipeline_stage(order_id, "proof", "approved",
                                "Proof approved (on-screen sign-off or configured bypass)")
 
@@ -601,6 +604,19 @@ def run_full_pipeline(
                 log_pipeline_stage(order_id, "gelato_order", "error", detail)
                 update_order(order_id, status="error")
                 _notify("gelato_order", f"Fulfillment error: {detail}")
+            elif status in ("native", "duplicate"):
+                # AUDIT H4: both mean the order IS being fulfilled - native: the
+                # vendor's own store integration owns submission (the router
+                # already recorded vendor/in_production); duplicate: a prior
+                # submission exists (vendor_order_id already stored). Parking
+                # either at approved_ready_to_print would instruct the operator
+                # to submit BY HAND an order already in flight - a double print
+                # and double charge. Leave the router's persisted state alone and
+                # skip auto follow-up (tracking/monitor take over).
+                routing_failed = True     # no auto follow-up; NOT a failure
+                log_pipeline_stage(order_id, "gelato_order", "skipped",
+                                   f"{status}: already being fulfilled - no manual re-submit")
+                _notify("gelato_order", f"{status}: order already in flight")
             else:   # manual -> flag for the operator (legitimately not auto-sent)
                 # STATUS HONESTY (end-to-end audit gap 2b): a manual-held order was
                 # never submitted anywhere, so it must NOT ride _log/STATUS_MAP into
@@ -650,7 +666,13 @@ def resume_after_proof_approval(order_id: str,
     if not order:
         raise ValueError(f"Order {order_id} not found")
 
-    update_order(order_id, proof_approved=1)
+    # AUDIT M9: stamp the consent time (never bare proof_approved), and don't
+    # clobber an existing customer-recorded timestamp on a re-resume.
+    if order.get("proof_approved") and order.get("proof_approved_at"):
+        pass                                    # consent already recorded
+    else:
+        update_order(order_id, proof_approved=1,
+                     proof_approved_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     log_pipeline_stage(order_id, "proof", "approved", "Customer approved proof")
 
     gelato_order_id = ""
@@ -714,6 +736,12 @@ def resume_after_proof_approval(order_id: str,
             update_order(order_id, status="error")
             log_pipeline_stage(order_id, "gelato_order", "error",
                                resp.get("detail", "fulfillment error"))
+        elif status == "native":
+            # AUDIT H4: the vendor's own store integration is fulfilling this
+            # order (router already recorded in_production). Do NOT downgrade to
+            # approved_ready_to_print - that instructs a manual double-submit.
+            log_pipeline_stage(order_id, "gelato_order", "skipped",
+                               "native: vendor integration fulfils - no manual re-submit")
         else:   # manual - approved but needs a hand-upload
             update_order(order_id, status="approved_ready_to_print")
             log_pipeline_stage(order_id, "gelato_order", "manual",
