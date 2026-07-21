@@ -110,7 +110,12 @@ def test_handle_damage_auto_executes(db):
     res = handle_issue("the canvas arrived torn", "A1")
     assert res["outcome"] == "auto-executed"
     order = db.get_order("A1")
-    assert order["status"] == "replacement_filed"
+    # AUDIT H5/M11 (2026-07-20): the replacement is staged where humans work -
+    # claim_status (the claim queue/digest key) - and the LIFECYCLE status column
+    # is untouched. The old "replacement_filed" status made the claim invisible
+    # to the queue while a stub "filed" nothing.
+    assert order["claim_status"] == "supplier_review"
+    assert order["status"] != "replacement_filed"
     # A customer reply was staged.
     assert any("resolution:" in m["message_type"]
                for m in db.get_customer_messages("A1"))

@@ -283,8 +283,12 @@ def _execute(d: AutoDecision, order_id: str | None) -> None:
         update_order(order_id, claim_status="supplier_review")
         try:
             from quoteforge.admin import _alert
-            _alert("autopilot", f"replacement approved for {order_id} "
-                   f"({d.category}) - file the vendor claim + replacement order")
+            _alert(f"Replacement approved - {order_id}",
+                   f"Autopilot approved a free replacement for {order_id} "
+                   f"({d.category}). File the vendor claim and place the "
+                   f"replacement order - the claim queue row is "
+                   f"claim_status=supplier_review.",
+                   f"replacement alert for {order_id}")
         except Exception as exc:  # noqa: BLE001 - alert is best-effort
             logger.warning("autopilot replacement alert failed for %s: %s",
                            order_id, exc)
