@@ -2313,6 +2313,51 @@ def _cmd_retry_fulfillment(args: list[str]) -> int:
     return 0
 
 
+def _cmd_golive_gates(args: list[str]) -> int:
+    """The 10 go-live gates, verified now (behavioral, no production mutation).
+    `golive-gates [email]` - prints the gate board; with `email`, alerts the
+    owner when any gate FAILS its automated check (a sign-off still pending is
+    reported, not alerted - that is the owner's queue, not a regression)."""
+    from quoteforge.automation.golive_gates import format_gates_text, run_gates
+    r = run_gates()
+    print(format_gates_text(r))
+    failing = [g for g in r["gates"] if not g["ok"]]
+    if failing and "email" in args:
+        _alert("🛑 GO-LIVE GATE FAILED its automated check",
+               "<pre>" + "\n".join(
+                   f"- {g['num']}. {g['title']}: {g['detail']}"
+                   for g in failing) + "</pre>", what="golive-gates")
+    return 0 if not failing else 1
+
+
+def _cmd_golive_signoff(args: list[str]) -> int:
+    """Record (or clear) the OWNER's sign-off on a go-live gate whose
+    verification ends with a human step (physical print, processor dashboard,
+    clean-machine drill...). `golive-signoff <gate_id> [--clear] [note...]`."""
+    from quoteforge.automation.golive_gates import (GATES, clear_signoff,
+                                                    load_signoffs,
+                                                    record_signoff)
+    if not args:
+        store = load_signoffs()
+        print("Gates needing an owner sign-off:")
+        for g in GATES:
+            if g["owner_signoff"]:
+                so = store.get(g["id"])
+                print(f"  {g['id']:<22} "
+                      + (f"signed off {so['at']}" if so else "PENDING"))
+        print("\nUsage: golive-signoff <gate_id> [--clear] [note...]")
+        return 0
+    gate_id = args[0]
+    if "--clear" in args[1:]:
+        clear_signoff(gate_id)
+        print(f"Sign-off cleared for {gate_id}.")
+        return 0
+    note = " ".join(a for a in args[1:] if a != "--clear")
+    record_signoff(gate_id, note=note)
+    print(f"Owner sign-off recorded for {gate_id}.")
+    return 0
+
+
 def _cmd_infra_check(args: list[str]) -> int:
     """Infrastructure review agent: re-verify the automation invariants (scheduled-job
     wiring, Etsy OAuth refresh, poller failure-surfacing, dispute-scan resilience,
@@ -3928,6 +3973,8 @@ def _cmd_integration(args: list[str]) -> int:
 
 COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
+    "golive-gates": _cmd_golive_gates,
+    "golive-signoff": _cmd_golive_signoff,
     "integration": _cmd_integration,
     "mockup-sync": _cmd_mockup_sync,
     "ecommerce-images": _cmd_ecommerce_images,
