@@ -2788,6 +2788,42 @@ def check_infrastructure() -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         checks.append(_c("editor_back_nav_guarded", False, str(exc)))
 
+    # P) The 10 go-live gates stay wired end to end: the registry carries all
+    # ten gate ids with callable checks, both admin commands exist, and the
+    # daily "QuoteForge Go-Live Gates" job is scheduled - so the gate board
+    # can never silently drop out of the daily sweep. (The gates RUN in their
+    # own scheduled job; this invariant guards the wiring, not the verdicts.)
+    try:
+        from quoteforge.automation.golive_gates import GATES as _gg
+        from quoteforge.admin import COMMANDS as _gcmds
+        from quoteforge.automation.scheduler import SCHEDULED_JOBS as _gjobs
+        _want_ids = {"payment_webhooks", "order_locking", "proof_hash",
+                     "shipping_margin", "apparel_calibration", "backup_restore",
+                     "webhook_flood", "chargeback_package", "infra_check_green",
+                     "suite_documented"}
+        _gprobs = []
+        _have = {g["id"] for g in _gg}
+        if _have != _want_ids:
+            _gprobs.append(f"gate registry drift: missing {_want_ids - _have}, "
+                           f"extra {_have - _want_ids}")
+        if not all(callable(g.get("check")) for g in _gg):
+            _gprobs.append("a gate has no callable check")
+        for _cmd in ("golive-gates", "golive-signoff"):
+            if _cmd not in _gcmds:
+                _gprobs.append(f"admin command '{_cmd}' unregistered")
+        _job = next((j for j in _gjobs
+                     if j.name == "QuoteForge Go-Live Gates"), None)
+        if _job is None:
+            _gprobs.append("daily 'QuoteForge Go-Live Gates' job unscheduled")
+        elif "golive-gates" not in _job.admin_args:
+            _gprobs.append("scheduled job no longer runs golive-gates")
+        checks.append(_c("golive_gates_wired", not _gprobs,
+                         "all 10 gates registered with callable checks; admin "
+                         "commands + daily job wired"
+                         if not _gprobs else "; ".join(_gprobs[:3])))
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        checks.append(_c("golive_gates_wired", False, str(exc)))
+
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 

@@ -143,6 +143,15 @@ SCHEDULED_JOBS: list[ScheduledJob] = [
         "auto-refresh, poller failure-surfacing, dispute-scan resilience, digest "
         "coverage, safety guardrails) and ALERT the owner on any regression."),
     ScheduledJob(
+        "QuoteForge Go-Live Gates", "golive-gates email",
+        ["/SC", "DAILY", "/ST", "06:25"],
+        "Daily: run the 10 go-live gates (payment/order webhook edges, order "
+        "lock, proof-hash chain, shipping tripwires, apparel calibration hold, "
+        "backup-restore rehearsal, webhook flood idempotency, chargeback "
+        "evidence package, infra_check green, suite numbers on record) and "
+        "ALERT the owner when any gate's automated check FAILS. Owner sign-offs "
+        "via `admin golive-signoff`."),
+    ScheduledJob(
         "QuoteForge Safety Check", "safety-check",
         ["/SC", "DAILY", "/ST", "06:15"],
         "Daily: verify the safety guardrails (no auto-refund, margin-floor hold, order "

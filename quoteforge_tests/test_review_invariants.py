@@ -38,6 +38,7 @@ def test_new_infra_checks_are_wired():
     assert "ecommerce_image_sync_wired" in names             # official-image auto-pull is scheduled + self-activating
     assert "editor_state_resets_on_open" in names            # no cross-product editor state leak (openM hygiene)
     assert "editor_back_nav_guarded" in names                # tap-back is backward-only + inert after acceptance
+    assert "golive_gates_wired" in names                     # the 10-gate go-live board can't drop out of the daily sweep
     assert "template_image_sync_wired" in names              # template-image persistence is scheduled + idempotent
     assert "etsy_listing_create_dedupe" in names             # re-run can't create duplicate Etsy listings
     assert "sync_jobs_alert_on_failure" in names             # a silently-failing image sync alerts the owner

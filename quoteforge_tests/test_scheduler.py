@@ -8,7 +8,8 @@ from quoteforge import admin
 
 
 def test_all_jobs_defined_with_unique_names():
-    assert len(SCHEDULED_JOBS) == 59   # + real-photo sync + selftest (no-human photo source)
+    assert len(SCHEDULED_JOBS) == 60   # + daily go-live gates board
+    assert "QuoteForge Go-Live Gates" in EXPECTED_TASK_NAMES  # the 10-gate daily verification
     assert "QuoteForge Real Photo Sync" in EXPECTED_TASK_NAMES
     assert "QuoteForge Real Photo Selftest" in EXPECTED_TASK_NAMES
     assert "QuoteForge Template Image Sync" in EXPECTED_TASK_NAMES  # daily official-image persistence
