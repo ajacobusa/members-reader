@@ -2808,7 +2808,7 @@ def check_infrastructure() -> dict:
                            f"extra {_have - _want_ids}")
         if not all(callable(g.get("check")) for g in _gg):
             _gprobs.append("a gate has no callable check")
-        for _cmd in ("golive-gates", "golive-signoff"):
+        for _cmd in ("golive-gates", "golive-signoff", "golive-proofcheck"):
             if _cmd not in _gcmds:
                 _gprobs.append(f"admin command '{_cmd}' unregistered")
         _job = next((j for j in _gjobs

@@ -2358,6 +2358,23 @@ def _cmd_golive_signoff(args: list[str]) -> int:
     return 0
 
 
+def _cmd_golive_proofcheck(args: list[str]) -> int:
+    """Automated live proof-hash comparison (gate 3): hash OUR print file for
+    the order, compare with the sha256 of the partner-fetched file, persist the
+    evidence - a MATCH auto-satisfies the gate, no manual sign-off needed.
+    `golive-proofcheck <order_id> <fetched_sha256>`."""
+    if len(args) < 2:
+        print("Usage: golive-proofcheck <order_id> <fetched_sha256>")
+        return 2
+    from quoteforge.automation.golive_gates import record_live_proof_check
+    ev = record_live_proof_check(args[0], args[1])
+    print(("MATCH - gate 3 auto-satisfied. " if ev["match"]
+           else "MISMATCH - gate 3 stays blocked (investigate before go-live). ")
+          + f"local={ev['local_sha256'][:16]}... "
+            f"fetched={ev['fetched_sha256'][:16]}...")
+    return 0 if ev["match"] else 1
+
+
 def _cmd_infra_check(args: list[str]) -> int:
     """Infrastructure review agent: re-verify the automation invariants (scheduled-job
     wiring, Etsy OAuth refresh, poller failure-surfacing, dispute-scan resilience,
@@ -3975,6 +3992,7 @@ COMMANDS = {
     "go-live-readiness": _cmd_go_live_readiness,
     "golive-gates": _cmd_golive_gates,
     "golive-signoff": _cmd_golive_signoff,
+    "golive-proofcheck": _cmd_golive_proofcheck,
     "integration": _cmd_integration,
     "mockup-sync": _cmd_mockup_sync,
     "ecommerce-images": _cmd_ecommerce_images,
