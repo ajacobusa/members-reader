@@ -132,3 +132,71 @@ def test_admin_commands_and_daily_job_wired():
     job = next((j for j in SCHEDULED_JOBS
                 if j.name == "QuoteForge Go-Live Gates"), None)
     assert job is not None and "golive-gates" in job.admin_args
+
+
+def test_automated_gates_carry_no_signoff_burden():
+    # REGRESSION: gates whose human step was AUTOMATED (restore drill runs the
+    # restored code, HTTP flood, policy cross-check, fresh-clone infra drill)
+    # must not keep demanding a sign-off; only the two irreducibly human gates
+    # (processor dashboard, physical print) plus evidence-pending proof_hash do.
+    byid = {g["id"]: g for g in gg.GATES}
+    for auto in ("backup_restore", "webhook_flood", "chargeback_package",
+                 "infra_check_green", "order_locking", "shipping_margin",
+                 "suite_documented"):
+        assert not byid[auto]["owner_signoff"], auto
+    for human in ("payment_webhooks", "apparel_calibration", "proof_hash"):
+        assert byid[human]["owner_signoff"], human
+    assert callable(byid["proof_hash"].get("evidence"))
+
+
+def test_recorded_evidence_satisfies_a_human_gate(tmp_path, monkeypatch):
+    # REGRESSION: recorded automated EVIDENCE (the live proof-hash MATCH)
+    # makes a human gate ready without a manual sign-off - and a MISMATCH
+    # never does.
+    monkeypatch.setattr(gg, "SIGNOFF_PATH", tmp_path / "signoffs.json")
+    state = {"ev": False}
+    fake = [{"num": 1, "id": "proof_hash", "owner_signoff": True,
+             "evidence": lambda: state["ev"],
+             "title": "t", "check": lambda: (True, "green")}]
+    monkeypatch.setattr(gg, "GATES", fake)
+    assert not gg.run_gates()["ready"]          # green but no evidence yet
+    state["ev"] = True
+    r = gg.run_gates()
+    assert r["ready"] and r["gates"][0]["evidenced"]
+
+
+def test_proofcheck_records_match_and_mismatch(tmp_path, monkeypatch):
+    # REGRESSION: record_live_proof_check hashes OUR print file, compares with
+    # the fetched hash, and persists honest evidence either way.
+    import hashlib as hl
+    monkeypatch.setattr(gg, "PROOF_EVIDENCE_PATH",
+                        tmp_path / "proof_hash_evidence.json")
+    art = tmp_path / "art.jpg"
+    art.write_bytes(b"live-print-bytes")
+    local = hl.sha256(b"live-print-bytes").hexdigest()
+    monkeypatch.setattr("quoteforge.automation.print_quality.hashable_print_file",
+                        lambda order: str(art))
+    from quoteforge.db import database
+    monkeypatch.setattr(database, "get_order",
+                        lambda oid: {"order_id": oid})
+    ev = gg.record_live_proof_check("QF-TEST-1", local)
+    assert ev["match"] and gg._proof_evidence_ok()
+    ev2 = gg.record_live_proof_check("QF-TEST-1", "deadbeef" * 8)
+    assert not ev2["match"] and not gg._proof_evidence_ok()
+
+
+def test_gate7_http_flood_single_row():
+    # REGRESSION (gate 7, upgraded): 20 CONCURRENT posts through the real
+    # Flask stack yield exactly one order row, all 2xx, threads settled.
+    ok, detail = gg._gate_webhook_flood()
+    assert ok, detail
+    assert "HTTP" in detail     # the real stack ran, not the fallback
+
+
+def test_gate8_package_matches_storefront_copy(tmp_path, monkeypatch):
+    # REGRESSION (gate 8, upgraded): the evidence package is cross-checked
+    # against the storefront's own consent sentence + 7-day window verbatim.
+    monkeypatch.setattr(gg, "SAMPLE_DIR", tmp_path / "golive")
+    ok, detail = gg._gate_chargeback_package()
+    assert ok, detail
+    assert "matches the storefront" in detail
