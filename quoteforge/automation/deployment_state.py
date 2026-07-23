@@ -37,8 +37,9 @@ def readiness() -> dict:
         from quoteforge.automation.file_host import active_backend
         b = active_backend()
         add("Print-file hosting", "ready" if b["public"] else "todo", b["detail"],
-            "Set Google Drive (GOOGLE_DRIVE_FOLDER_ID + GOOGLE_SERVICE_ACCOUNT_FILE) "
-            "or PUBLIC_FILE_DIR + PUBLIC_FILE_BASE_URL so uploaded JPGs are fetchable.")
+            "Set PUBLIC_FILE_DIR + PUBLIC_FILE_BASE_URL (the hosted webhook server's "
+            "/files route - preferred) so uploaded JPGs are fetchable; Google Drive "
+            "(GOOGLE_DRIVE_FOLDER_ID + GOOGLE_SERVICE_ACCOUNT_FILE) is the fallback.")
     except Exception:  # noqa: BLE001
         add("Print-file hosting", "todo", "unknown", "Configure a public file host.")
 
