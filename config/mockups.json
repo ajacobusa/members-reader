@@ -4,7 +4,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -30,7 +30,7 @@
       "category": "bottle",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -56,7 +56,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -81,7 +81,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -107,7 +107,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -133,7 +133,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -159,7 +159,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -184,7 +184,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -210,7 +210,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -236,7 +236,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -262,7 +262,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -288,7 +288,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -313,7 +313,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -338,7 +338,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -363,7 +363,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -388,7 +388,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -413,7 +413,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -438,7 +438,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -463,7 +463,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -489,7 +489,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -515,7 +515,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -541,7 +541,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -567,7 +567,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -593,7 +593,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -619,7 +619,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -644,7 +644,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -669,7 +669,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -694,7 +694,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -719,7 +719,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -744,7 +744,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -769,7 +769,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -794,7 +794,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -819,7 +819,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -844,7 +844,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -870,7 +870,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -896,7 +896,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -922,7 +922,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -948,7 +948,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -974,7 +974,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1000,7 +1000,7 @@
       "category": "branded",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1025,7 +1025,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1050,7 +1050,7 @@
       "category": "bottle",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1076,7 +1076,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1101,7 +1101,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1126,7 +1126,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1151,7 +1151,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1177,7 +1177,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1203,7 +1203,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1229,7 +1229,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1255,7 +1255,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1281,7 +1281,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1307,7 +1307,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1333,7 +1333,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1359,7 +1359,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1385,7 +1385,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1410,7 +1410,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1435,7 +1435,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1460,7 +1460,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1485,7 +1485,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1510,7 +1510,7 @@
       "category": "apparel",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1535,7 +1535,7 @@
       "category": "calendar",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": false,
           "reason": "no real UID / placeholder"
         }
@@ -1561,7 +1561,7 @@
       "category": "mug",
       "checkpoints": {
         "discovered": {
-          "at": "2026-08-01T05:40:02+00:00",
+          "at": "2026-08-02T05:40:02+00:00",
           "ok": true
         }
       },
@@ -1583,6 +1583,6 @@
       "status": "skipped"
     }
   },
-  "updated_utc": "2026-08-01T05:46:01+00:00",
+  "updated_utc": "2026-08-02T05:46:01+00:00",
   "version": 1
 }
